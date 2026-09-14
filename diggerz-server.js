@@ -96,9 +96,44 @@ function patchGameHtmlForBuild238(input) {
     html = html.replace(from, to);
   }
 
+  // Build 23.8: Diggerz is guest-only. Remove the old Log In / Log Out menu block.
+  const loginMenuStart = '            N.startsWith(q.thisMain.userPW, "NOPASSWORD")';
+  const shopMenuStart = '            b = new z;\n            b.Init(u.YELLOWBUTTON_PNG());\n            b.D7(this);\n            b.b7 = d;\n            d += 80;\n            b.b6 = q.SCREENWIDTH / 2 - 150;\n            b.set_local_xScale(b.set_local_yScale(.5));\n            b._1 = "weap message";';
+  const loginStartIndex = html.indexOf(loginMenuStart);
+  const shopStartIndex = loginStartIndex >= 0 ? html.indexOf(shopMenuStart, loginStartIndex) : -1;
+  if (loginStartIndex >= 0 && shopStartIndex > loginStartIndex) {
+    html = html.slice(0, loginStartIndex) + html.slice(shopStartIndex);
+  } else {
+    console.warn('[Diggerz 23.8] HTML patch target not found: login/logout menu block');
+  }
+
+  // Remove the unused Build 23.7 passwordless-account client. Build 23.8 has no player login system.
+  const oldAuthStart = '<script id="diggerz-build23-7-security-patch">';
+  const oldAuthStartIndex = html.indexOf(oldAuthStart);
+  if (oldAuthStartIndex >= 0) {
+    const oldAuthEndIndex = html.indexOf('</script>', oldAuthStartIndex);
+    if (oldAuthEndIndex >= 0) {
+      const guestOnlyScript = `<script id="diggerz-build23-8-guest-only">
+(function(){
+  try{localStorage.removeItem('diggerz.resurrection.accounts.v1');localStorage.removeItem('diggerz.resurrection.boundEmail.v1')}catch(e){}
+  try{sessionStorage.removeItem('diggerz.auth.active.v1')}catch(e){}
+  try{
+    if(window.q&&q.thisMain){
+      q.thisMain.userEmail='';
+      q.thisMain.userPW='NOPASSWORD_'+String(q.thisMain.userUniqueID||'');
+      if(typeof q.SaveGlobals==='function')q.SaveGlobals();
+    }
+  }catch(e){}
+  try{delete window.DiggerzAuth237}catch(e){window.DiggerzAuth237=undefined}
+}());
+<\/script>`;
+      html = html.slice(0, oldAuthStartIndex) + guestOnlyScript + html.slice(oldAuthEndIndex + '</script>'.length);
+    }
+  }
+
   const marker = '<hr><a name="Build 23.7"></a>';
-  if (!html.includes('Build 23.8 - Lightsword Audio Fix') && html.includes(marker)) {
-    const section = '<hr><a name="Build 23.8"></a> <h2>Build 23.8 - Lightsword Audio Fix</h2> <ul> <li>Reduced lightsword swing sound volume to 30% of the normal effects level.</li> <li>Added a 120 ms client-side cooldown so rapid lightsword spam cannot stack overlapping swing sounds.</li> <li>Applied the same reduced volume and anti-spam cooldown to the synthesized lightsword audio fallback.</li> <li>Updated active multiplayer build identifiers to 23.8.</li> </ul> ';
+  if (!html.includes('Build 23.8 - Multiplayer & Client Cleanup') && html.includes(marker)) {
+    const section = '<hr><a name="Build 23.8"></a> <h2>Build 23.8 - Multiplayer &amp; Client Cleanup</h2> <ul> <li>Reduced lightsword swing sound volume to 30% of the normal effects level.</li> <li>Added a 120 ms client-side cooldown so rapid lightsword spam cannot stack overlapping swing sounds.</li> <li>Applied the same reduced volume and anti-spam cooldown to the synthesized lightsword audio fallback.</li> <li>Fixed authenticated admin item, coin, and kill actions when the admin targets their own player.</li> <li>Removed the player Log In / Log Out feature and passwordless account client. Diggerz now runs as guest/local-progress play only.</li> <li>Added itch.io embedding support while keeping the multiplayer server on Railway.</li> <li>Updated active multiplayer build identifiers to 23.8.</li> </ul> ';
     html = html.replace(marker, section + marker);
   }
 
@@ -1333,7 +1368,7 @@ function relayGameMessage(client, message, rawLength) {
   if (message.t==='damage') {
     // PvP damage is authoritative in Build 23.3. Ignore old client-side hit guesses.
     if (room.mode==='pvp') return;
-    const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target||target===client)return;sendJson(target,envelope);return;
+    const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target)return;sendJson(target,envelope);return;
   }
 
   if (message.t==='admin-message') {
@@ -1595,8 +1630,9 @@ function parseFrames(client, chunk) {
 function applySecurityHeaders(req, res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Content-Security-Policy', "frame-ancestors 'none'; object-src 'none'; base-uri 'self'");
+  // Build 23.8: allow the Railway-hosted game to run inside the official itch.io HTML wrapper.
+  // Do not emit X-Frame-Options here; CSP frame-ancestors is the authoritative framing policy.
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'self' https://itch.io https://*.itch.io https://*.itch.zone; object-src 'none'; base-uri 'self'");
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 }
 
