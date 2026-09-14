@@ -1368,7 +1368,7 @@ function relayGameMessage(client, message, rawLength) {
   if (message.t==='damage') {
     // PvP damage is authoritative in Build 23.3. Ignore old client-side hit guesses.
     if (room.mode==='pvp') return;
-    const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target)return;sendJson(target,envelope);return;
+    const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target||target===client)return;sendJson(target,envelope);return;
   }
 
   if (message.t==='admin-message') {
