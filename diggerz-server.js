@@ -1,6 +1,6 @@
 'use strict';
 
-// Diggerz Build 23.6 Reblasted multiplayer + Battle Royale server.
+// Diggerz Build 23.8 Reblasted multiplayer + Battle Royale server.
 // Dependency-free Node.js WebSocket server: rooms, presence, and relay.
 
 const http = require('http');
@@ -26,7 +26,7 @@ const HEARTBEAT_TIMEOUT_MS = 45 * 1000;
 const ROSTER_INTERVAL_MS = 5 * 1000;
 const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const ALLOWED_RELAY_TYPES = new Set(['session', 'hello', 'chat', 'typing', 'health']);
-const BUILD = '23.6';
+const BUILD = '23.8';
 const WORLD_WIDTH = 128;
 const BATTLE_BUILD_MS = Number(process.env.DIGGERZ_BUILD_MS || 40 * 1000);
 const BATTLE_FIRST_SHRINK_MS = Number(process.env.DIGGERZ_FIRST_SHRINK_MS || 90 * 1000);
@@ -57,6 +57,54 @@ const ADMIN_LIME_SHA = 'c14bfe998610dbb2a6c1a3477cb8574b9c62a2f0310fc2a5278b2a71
 const ADMIN_LIME_PREFIX = 'DIGGERZ21.13:LIME:';
 const ADMIN_OWNER_ENV_CODE = String(process.env.DIGGERZ_ADMIN_OWNER_CODE || '').trim().toUpperCase();
 const ADMIN_LIME_ENV_CODE = String(process.env.DIGGERZ_ADMIN_LIME_CODE || '').trim().toUpperCase();
+function patchGameHtmlForBuild238(input) {
+  let html = Buffer.isBuffer(input) ? input.toString('utf8') : String(input || '');
+  const replacements = [
+    [
+      "null != l.z39 && 50 < l.z39.a1 && E.v2(Um.n7())",
+      "null != l.z39 && 50 < l.z39.a1 && (!window.__diggerzLightswordSfxAt || Date.now() - window.__diggerzLightswordSfxAt >= 120) && (window.__diggerzLightswordSfxAt = Date.now(), E.v2(Um.n7(), new fh(I.__cast(q.player.k8, md) / 100 * .3)))",
+      'lightsword playback limiter'
+    ],
+    [
+      "            if (lastPlayed[name] && now - lastPlayed[name] < 24) return true;\n            lastPlayed[name] = now;",
+      "            var cooldown = /lightsword/.test(name) ? 120 : 24;\n            if (lastPlayed[name] && now - lastPlayed[name] < cooldown) return true;\n            lastPlayed[name] = now;",
+      'synth lightsword cooldown'
+    ],
+    [
+      "            var destination = output(ctx, volume);",
+      "            var destination = output(ctx, /lightsword/.test(name) ? volume * .3 : volume);",
+      'synth lightsword volume'
+    ],
+    [
+      'usePvpTest ? "Build 23.7 native-packet PvP" : (useLocalDigTrade ? "Build 23.7 native-packet Dig+Trade" : "original multiplayer server")',
+      'usePvpTest ? "Build 23.8 native-packet PvP" : (useLocalDigTrade ? "Build 23.8 native-packet Dig+Trade" : "original multiplayer server")',
+      'connection route label'
+    ],
+    ['z-index: 100;">Build 23.7</div>', 'z-index: 100;">Build 23.8</div>', 'build badge'],
+    ['Build 23.7 multiplayer admin tools. Konami sequence + server-authorized admin session required.', 'Build 23.8 multiplayer admin tools. Konami sequence + server-authorized admin session required.', 'admin build label'],
+    ['<h2>Build 23.7 — Diggerz Multiplayer</h2>', '<h2>Build 23.8 — Diggerz Multiplayer</h2>', 'multiplayer heading'],
+    ['<span>MP DEBUG 23.7</span>', '<span>MP DEBUG 23.8</span>', 'debug build label'],
+    ["build:'23.7'", "build:'23.8'", 'matchmaking build id']
+  ];
+
+  for (const entry of replacements) {
+    const from = entry[0], to = entry[1], label = entry[2];
+    if (!html.includes(from)) {
+      console.warn('[Diggerz 23.8] HTML patch target not found:', label);
+      continue;
+    }
+    html = html.replace(from, to);
+  }
+
+  const marker = '<hr><a name="Build 23.7"></a>';
+  if (!html.includes('Build 23.8 - Lightsword Audio Fix') && html.includes(marker)) {
+    const section = '<hr><a name="Build 23.8"></a> <h2>Build 23.8 - Lightsword Audio Fix</h2> <ul> <li>Reduced lightsword swing sound volume to 30% of the normal effects level.</li> <li>Added a 120 ms client-side cooldown so rapid lightsword spam cannot stack overlapping swing sounds.</li> <li>Applied the same reduced volume and anti-spam cooldown to the synthesized lightsword audio fallback.</li> <li>Updated active multiplayer build identifiers to 23.8.</li> </ul> ';
+    html = html.replace(marker, section + marker);
+  }
+
+  return Buffer.from(html, 'utf8');
+}
+
 let gameHtml = null;
 let mapEditorHtml = null;
 let tilesPng = null;
@@ -65,7 +113,7 @@ let levelupOgg = null;
 let musicOgg = [null,null,null,null];
 let balloonPopOgg = null;
 let swapOgg = null;
-try { gameHtml = fs.readFileSync(GAME_HTML_PATH); } catch (error) { console.warn('[Diggerz] index.html not found at startup:', error.message); }
+try { gameHtml = patchGameHtmlForBuild238(fs.readFileSync(GAME_HTML_PATH)); } catch (error) { console.warn('[Diggerz] index.html not found at startup:', error.message); }
 try { mapEditorHtml = fs.readFileSync(MAP_EDITOR_PATH); } catch (error) { console.warn('[Diggerz] map-editor.html not found:', error.message); }
 try { tilesPng = fs.readFileSync(TILES_PNG_PATH); } catch (error) { console.warn('[Diggerz] tiles.png not found:', error.message); }
 try { bkndPng = fs.readFileSync(BKND_PNG_PATH); } catch (error) { console.warn('[Diggerz] bknd.png not found:', error.message); }
@@ -1702,7 +1750,7 @@ const server = http.createServer(async (req, res) => {
   if (urlPath === '/health') {
     const body = JSON.stringify({
       ok: true,
-      service: 'diggerz-build23.6-server',
+      service: 'diggerz-build23.8-server',
       build: BUILD,
       rooms: rooms.size,
       players: [...rooms.values()].reduce((sum, room) => sum + room.clients.size, 0),
@@ -1779,7 +1827,7 @@ server.on('upgrade', (req, socket) => {
 
   sendJson(client, {
     t: 'server-hello',
-    server: 'Diggerz Build 23.6 Reblasted Multiplayer + Battle Royale Server',
+    server: 'Diggerz Build 23.8 Reblasted Multiplayer + Battle Royale Server',
     protocol: 1,
     maxPlayersPerRoom: MAX_ROOM_PLAYERS
   });
