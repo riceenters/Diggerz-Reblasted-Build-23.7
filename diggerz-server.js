@@ -1385,7 +1385,9 @@ function relayGameMessage(client, message, rawLength) {
 
   if (message.t==='admin-item'||message.t==='admin-coins'||message.t==='admin-kill') {
     if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target||target===client)return;
+    // Build 23.8: authenticated admin actions are allowed to target the sender too.
+    // Build 23.7 rejected target===client, which made Give Item / Give Coins / Kill Self silently do nothing.
+    const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target)return;
     if(message.t==='admin-kill'){
       target.lastAttackerConnectionId=''; target.lastDamagedAt=0; target.adminKilledUntil=Date.now()+4000;
     }
