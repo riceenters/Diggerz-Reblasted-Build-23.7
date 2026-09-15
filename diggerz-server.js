@@ -57,6 +57,81 @@ const ADMIN_LIME_SHA = 'c14bfe998610dbb2a6c1a3477cb8574b9c62a2f0310fc2a5278b2a71
 const ADMIN_LIME_PREFIX = 'DIGGERZ21.13:LIME:';
 const ADMIN_OWNER_ENV_CODE = String(process.env.DIGGERZ_ADMIN_OWNER_CODE || '').trim().toUpperCase();
 const ADMIN_LIME_ENV_CODE = String(process.env.DIGGERZ_ADMIN_LIME_CODE || '').trim().toUpperCase();
+function crc32Buffer(buffer) {
+  if (!crc32Buffer.table) {
+    const table = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let x = n;
+      for (let k = 0; k < 8; k++) x = (x & 1) ? (0xEDB88320 ^ (x >>> 1)) : (x >>> 1);
+      table[n] = x >>> 0;
+    }
+    crc32Buffer.table = table;
+  }
+  let crc = 0xFFFFFFFF;
+  for (const byte of buffer) crc = crc32Buffer.table[(crc ^ byte) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+function buildStoredZip(entries) {
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+  for (const entry of entries) {
+    const name = Buffer.from(String(entry.name || '').replace(/\\/g, '/'), 'utf8');
+    const data = Buffer.isBuffer(entry.data) ? entry.data : Buffer.from(entry.data || '');
+    const crc = crc32Buffer(data);
+
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(0, 6);
+    local.writeUInt16LE(0, 8);
+    local.writeUInt16LE(0, 10);
+    local.writeUInt16LE(0, 12);
+    local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(data.length, 18);
+    local.writeUInt32LE(data.length, 22);
+    local.writeUInt16LE(name.length, 26);
+    local.writeUInt16LE(0, 28);
+    localParts.push(local, name, data);
+
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(20, 4);
+    central.writeUInt16LE(20, 6);
+    central.writeUInt16LE(0, 8);
+    central.writeUInt16LE(0, 10);
+    central.writeUInt16LE(0, 12);
+    central.writeUInt16LE(0, 14);
+    central.writeUInt32LE(crc, 16);
+    central.writeUInt32LE(data.length, 20);
+    central.writeUInt32LE(data.length, 24);
+    central.writeUInt16LE(name.length, 28);
+    central.writeUInt16LE(0, 30);
+    central.writeUInt16LE(0, 32);
+    central.writeUInt16LE(0, 34);
+    central.writeUInt16LE(0, 36);
+    central.writeUInt32LE(0, 38);
+    central.writeUInt32LE(offset, 42);
+    centralParts.push(central, name);
+
+    offset += local.length + name.length + data.length;
+  }
+
+  const centralOffset = offset;
+  const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(0, 4);
+  end.writeUInt16LE(0, 6);
+  end.writeUInt16LE(entries.length, 8);
+  end.writeUInt16LE(entries.length, 10);
+  end.writeUInt32LE(centralSize, 12);
+  end.writeUInt32LE(centralOffset, 16);
+  end.writeUInt16LE(0, 20);
+  return Buffer.concat([...localParts, ...centralParts, end]);
+}
+
 function patchGameHtmlForBuild238(input) {
   let html = Buffer.isBuffer(input) ? input.toString('utf8') : String(input || '');
   const replacements = [
@@ -1780,6 +1855,45 @@ async function handleAdminApi(req, res, urlPath) {
   return false;
 }
 
+let itchClientZip = null;
+function buildItchClientZip() {
+  if (itchClientZip) return itchClientZip;
+  if (!gameHtml) throw new Error('game html unavailable');
+
+  let itchHtml = gameHtml.toString('utf8');
+  const localAssets = [
+    'tiles.png','bknd.png','levelup.ogg',
+    'music_theme.ogg','music_theme2.ogg','music_theme3.ogg','music_theme4.ogg',
+    'balloon_pop.ogg','swap.ogg'
+  ];
+  for (const asset of localAssets) {
+    itchHtml = itchHtml.split("'/" + asset + "'").join("'" + asset + "'");
+    itchHtml = itchHtml.split('"/' + asset + '"').join('"' + asset + '"');
+  }
+
+  const readme = Buffer.from(
+    'Diggerz.io Reblasted Build 23.8 - itch.io client\\n' +
+    'Upload this ZIP to itch.io as an HTML project.\\n' +
+    'Multiplayer and admin services remain hosted on Railway.\\n',
+    'utf8'
+  );
+
+  itchClientZip = buildStoredZip([
+    { name: 'index.html', data: Buffer.from(itchHtml, 'utf8') },
+    { name: 'tiles.png', data: tilesPng },
+    { name: 'bknd.png', data: bkndPng },
+    { name: 'levelup.ogg', data: levelupOgg },
+    { name: 'music_theme.ogg', data: musicOgg[0] },
+    { name: 'music_theme2.ogg', data: musicOgg[1] },
+    { name: 'music_theme3.ogg', data: musicOgg[2] },
+    { name: 'music_theme4.ogg', data: musicOgg[3] },
+    { name: 'balloon_pop.ogg', data: balloonPopOgg },
+    { name: 'swap.ogg', data: swapOgg },
+    { name: 'README.txt', data: readme }
+  ]);
+  return itchClientZip;
+}
+
 const server = http.createServer(async (req, res) => {
   applySecurityHeaders(req,res);
   const urlPath = String(req.url || '/').split('?')[0];
@@ -1787,6 +1901,23 @@ const server = http.createServer(async (req, res) => {
     if (!applyAdminCors(req,res)) { sendApiJson(res,403,{ok:false,error:'forbidden'}); return; }
     if (req.method === 'OPTIONS') { res.writeHead(204,{'Cache-Control':'no-store'}); res.end(); return; }
     if (await handleAdminApi(req,res,urlPath)) return;
+  }
+  if (urlPath === '/itch-build-23.8.zip') {
+    try {
+      const body = buildItchClientZip();
+      res.writeHead(200, {
+        'Content-Type': 'application/zip',
+        'Content-Disposition': 'attachment; filename="Diggerz-Reblasted-Build-23.8-itch.zip"',
+        'Content-Length': body.length,
+        'Cache-Control': 'no-store'
+      });
+      res.end(body);
+    } catch (error) {
+      console.error('[Diggerz] itch build ZIP failed:', error);
+      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+      res.end('Unable to build the itch.io client ZIP.\\n');
+    }
+    return;
   }
   if (urlPath === '/banned') { const body=Buffer.from(banPageHtml(),'utf8'); res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Content-Length':body.length,'Cache-Control':'no-store'}); res.end(body); return; }
   if (urlPath === '/') {
