@@ -1717,8 +1717,10 @@ function parseFrames(client, chunk) {
 function applySecurityHeaders(req, res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Content-Security-Policy', "frame-ancestors 'none'; object-src 'none'; base-uri 'self'");
+  // Build 23.8: allow the Railway-hosted game to be embedded only by itch.io.
+  // Do not send X-Frame-Options here because DENY/SAMEORIGIN would override
+  // the intended cross-origin itch.io embedding in modern browsers.
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'self' https://itch.io https://*.itch.io https://*.itch.zone; object-src 'none'; base-uri 'self'");
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 }
 
