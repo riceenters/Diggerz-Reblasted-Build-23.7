@@ -137,6 +137,12 @@ function patchGameHtmlForBuild238(input) {
     html = html.split(mapEditorCall).join("window.open('"+railwayHttp+"/map-editor','diggerz-map-editor')");
   }
 
+  // Build 23.8 itch client: ban redirects must go to the Railway backend page,
+  // not to /banned on the itch.io static origin.
+  if (html.includes("location.replace('/banned')")) {
+    html = html.split("location.replace('/banned')").join("location.replace('"+railwayHttp+"/banned')");
+  }
+
   const marker = '<hr><a name="Build 23.7"></a>';
   if (!html.includes('Build 23.8 - Railway / itch Migration & Fixes') && html.includes(marker)) {
     const section = '<hr><a name="Build 23.8"></a> <h2>Build 23.8 - Railway / itch Migration &amp; Fixes</h2> <ul> <li>Reduced lightsword swing sound volume to 30% and added a 120 ms anti-spam cooldown.</li> <li>Fixed server-authorized admin item, coin, and kill actions when an admin targets themselves.</li> <li>Removed the player login / logout feature and retired the passwordless account client. Diggerz now runs guest-only.</li> <li>Prepared the browser client to use the permanent Railway multiplayer/admin backend when hosted on itch.io.</li> <li>Updated active multiplayer build identifiers to 23.8.</li> </ul> ';
