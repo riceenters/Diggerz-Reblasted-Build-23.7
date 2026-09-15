@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>banned</title>
+<style>
+html,body{margin:0;width:100%;height:100%;background:#000;color:#d40000;font-family:Arial,Helvetica,sans-serif}
+body{display:flex;align-items:center;justify-content:center;text-align:center}
+.wrap{width:min(900px,90vw)}
+.title,.reason{font-size:clamp(18px,2.6vw,30px);text-transform:lowercase}
+.timer{margin:28px 0;font-size:clamp(28px,5vw,64px);font-weight:800;line-height:1.15}
+.reason{word-break:break-word}
+</style>
+</head>
+<body>
+<main class="wrap">
+<div class="title">you have been banned</div>
+<div class="timer" id="timer"></div>
+<div class="reason" id="reason"></div>
+</main>
+<script>
+(function(){
+  var KEY='diggerz.resurrection.activeBan.v1',raw=null;
+  try{raw=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
+  if(!raw){location.replace('index.html');return}
+  document.getElementById('reason').textContent='reason: '+String(raw.reason||'no reason provided.').toLowerCase();
+  var el=document.getElementById('timer');
+  function pad(n){n=Math.max(0,Math.floor(n));return n<10?'0'+n:String(n)}
+  function render(){
+    if(raw.permanent){el.textContent='PERMANENT';return}
+    var left=Math.max(0,Math.floor((Number(raw.expiresAt||0)-Date.now())/1000));
+    if(left<=0){try{localStorage.removeItem(KEY)}catch(e){}location.replace('index.html');return}
+    var year=365*24*3600,month=30*24*3600,week=7*24*3600,day=24*3600,hour=3600;
+    var years=Math.floor(left/year);left%=year;
+    var months=Math.floor(left/month);left%=month;
+    var weeks=Math.floor(left/week);left%=week;
+    var days=Math.floor(left/day);left%=day;
+    var hours=Math.floor(left/hour);left%=hour;
+    var seconds=left;
+    el.textContent=pad(seconds)+' seconds '+pad(hours)+' hours '+pad(days)+' days '+pad(weeks)+' weeks '+pad(months)+' months '+pad(years)+' years';
+  }
+  render();setInterval(render,1000);
+})();
+</script>
+</body>
+</html>
