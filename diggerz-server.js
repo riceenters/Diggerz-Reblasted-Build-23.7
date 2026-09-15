@@ -96,9 +96,50 @@ function patchGameHtmlForBuild238(input) {
     html = html.replace(from, to);
   }
 
+  // Build 23.8: the game is guest-only. Remove the Log In / Log Out menu block
+  // and retire the 23.7 passwordless account client entirely.
+  const loginStart = html.indexOf('            N.startsWith(q.thisMain.userPW, "NOPASSWORD")');
+  const shopText = loginStart >= 0 ? html.indexOf('            this.d51.E37("Shop");', loginStart) : -1;
+  const shopStart = shopText >= 0 ? html.lastIndexOf('            b = new z;', shopText) : -1;
+  if (loginStart >= 0 && shopStart > loginStart) {
+    html = html.slice(0, loginStart) +
+      '            q.thisMain.userEmail = "";\n            q.thisMain.userPW = "";\n' +
+      html.slice(shopStart);
+  } else {
+    console.warn('[Diggerz 23.8] login menu block was not found.');
+  }
+
+  const authScriptStart = html.indexOf('<script id="diggerz-build23-7-security-patch">');
+  const authScriptEnd = authScriptStart >= 0 ? html.indexOf('</script>', authScriptStart) : -1;
+  if (authScriptStart >= 0 && authScriptEnd > authScriptStart) {
+    const noLoginScript = '<script id="diggerz-build23-8-no-login-patch">(function(){try{localStorage.removeItem("diggerz.resurrection.accounts.v1");localStorage.removeItem("diggerz.resurrection.boundEmail.v1");sessionStorage.removeItem("diggerz.auth.active.v1");delete window.DiggerzAuth237}catch(e){}var n=0,t=setInterval(function(){n++;try{if(window.q&&q.thisMain){q.thisMain.userEmail="";q.thisMain.userPW="";if(typeof q.SaveGlobals==="function")q.SaveGlobals();clearInterval(t)}}catch(e){}if(n>100)clearInterval(t)},100)}());</script>';
+    html = html.slice(0, authScriptStart) + noLoginScript + html.slice(authScriptEnd + 9);
+  } else {
+    console.warn('[Diggerz 23.8] legacy auth client script was not found.');
+  }
+
+  // Build 23.8 itch/Railway split: static browser clients always use Railway
+  // for multiplayer and protected admin HTTP endpoints.
+  const railwayHttp = 'https://diggerz-multiplayer-test-production.up.railway.app';
+  const railwayWs = 'wss://diggerz-multiplayer-test-production.up.railway.app';
+  const httpsWsOld = "    if(location.protocol==='https:')return 'wss://'+location.host;";
+  if (html.includes(httpsWsOld)) html = html.replace(httpsWsOld, "    if(location.protocol==='https:')return '"+railwayWs+"';");
+  else console.warn('[Diggerz 23.8] automatic HTTPS WebSocket target was not found.');
+
+  ['/api/admin/auth','/api/admin/bans','/api/admin/moderate'].forEach(function(apiPath) {
+    const from = "fetch('" + apiPath + "'";
+    const to = "fetch('" + railwayHttp + apiPath + "'";
+    if (html.includes(from)) html = html.split(from).join(to);
+  });
+
+  const mapEditorCall = "window.open('/map-editor','diggerz-map-editor')";
+  if (html.includes(mapEditorCall)) {
+    html = html.split(mapEditorCall).join("window.open('"+railwayHttp+"/map-editor','diggerz-map-editor')");
+  }
+
   const marker = '<hr><a name="Build 23.7"></a>';
-  if (!html.includes('Build 23.8 - Lightsword Audio Fix') && html.includes(marker)) {
-    const section = '<hr><a name="Build 23.8"></a> <h2>Build 23.8 - Lightsword Audio Fix</h2> <ul> <li>Reduced lightsword swing sound volume to 30% of the normal effects level.</li> <li>Added a 120 ms client-side cooldown so rapid lightsword spam cannot stack overlapping swing sounds.</li> <li>Applied the same reduced volume and anti-spam cooldown to the synthesized lightsword audio fallback.</li> <li>Updated active multiplayer build identifiers to 23.8.</li> </ul> ';
+  if (!html.includes('Build 23.8 - Railway / itch Migration & Fixes') && html.includes(marker)) {
+    const section = '<hr><a name="Build 23.8"></a> <h2>Build 23.8 - Railway / itch Migration &amp; Fixes</h2> <ul> <li>Reduced lightsword swing sound volume to 30% and added a 120 ms anti-spam cooldown.</li> <li>Fixed server-authorized admin item, coin, and kill actions when an admin targets themselves.</li> <li>Removed the player login / logout feature and retired the passwordless account client. Diggerz now runs guest-only.</li> <li>Prepared the browser client to use the permanent Railway multiplayer/admin backend when hosted on itch.io.</li> <li>Updated active multiplayer build identifiers to 23.8.</li> </ul> ';
     html = html.replace(marker, section + marker);
   }
 
@@ -1350,7 +1391,7 @@ function relayGameMessage(client, message, rawLength) {
 
   if (message.t==='admin-item'||message.t==='admin-coins'||message.t==='admin-kill') {
     if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target||target===client)return;
+    const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target)return;
     if(message.t==='admin-kill'){
       target.lastAttackerConnectionId=''; target.lastDamagedAt=0; target.adminKilledUntil=Date.now()+4000;
     }
@@ -1618,7 +1659,22 @@ function readJsonBody(req, maxBytes = 16 * 1024) {
 function sameOriginRequest(req) {
   const origin = String(req.headers.origin || '');
   if (!origin) return true;
-  try { return new URL(origin).host === String(req.headers.host || ''); } catch { return false; }
+  try {
+    const parsed = new URL(origin);
+    if (parsed.host === String(req.headers.host || '')) return true;
+    return parsed.protocol === 'https:' && (parsed.hostname === 'itch.zone' || parsed.hostname.endsWith('.itch.zone'));
+  } catch { return false; }
+}
+
+function applyAdminCors(req, res) {
+  const origin = String(req.headers.origin || '');
+  if (!origin) return true;
+  if (!sameOriginRequest(req)) return false;
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  return true;
 }
 
 function adminSessionForRequest(req) {
@@ -1721,7 +1777,11 @@ async function handleAdminApi(req, res, urlPath) {
 const server = http.createServer(async (req, res) => {
   applySecurityHeaders(req,res);
   const urlPath = String(req.url || '/').split('?')[0];
-  if (urlPath.startsWith('/api/admin/')) { if (await handleAdminApi(req,res,urlPath)) return; }
+  if (urlPath.startsWith('/api/admin/')) {
+    if (!applyAdminCors(req,res)) { sendApiJson(res,403,{ok:false,error:'forbidden'}); return; }
+    if (req.method === 'OPTIONS') { res.writeHead(204,{'Cache-Control':'no-store'}); res.end(); return; }
+    if (await handleAdminApi(req,res,urlPath)) return;
+  }
   if (urlPath === '/banned') { const body=Buffer.from(banPageHtml(),'utf8'); res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Content-Length':body.length,'Cache-Control':'no-store'}); res.end(body); return; }
   if (urlPath === '/') {
     if (!gameHtml) {

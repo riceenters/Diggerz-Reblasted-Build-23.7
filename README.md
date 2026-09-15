@@ -1,12 +1,15 @@
 # Diggerz.io Reblasted — Build 23.8
 
-## Build 23.8 — lightsword audio spam fix
+## Build 23.8 — Railway / itch migration and fixes
 - Reduced the recovered lightsword swing sound to **30%** of the normal effects level.
 - Added a **120 ms** per-client lightsword SFX cooldown so rapid swings cannot stack overlapping audio.
-- Applied the same volume reduction and cooldown to the synthesized audio fallback.
+- Fixed server-authorized **Give Item**, **Give Coins**, and **Kill** actions when an admin targets themselves.
+- Removed the player **Log In / Log Out** feature and retired the passwordless account client. Player progress remains browser-local guest progress.
+- Prepared the browser client to connect to the permanent Railway multiplayer/admin backend when the static client is hosted on itch.io.
+- Added CORS/preflight handling for protected admin API calls from itch.io's `*.itch.zone` game frames.
 - Updated the active multiplayer build identifiers to **23.8**.
 
-Build 23.7 hardens multiplayer performance and moderation on top of Build 23.4. One Render Web Service hosts the game, map editor, audio, moderation API, and WebSocket multiplayer server.
+The Railway service hosts the multiplayer server, moderation API, map editor, and the current web build. The client can also be packaged separately for itch.io while continuing to use Railway as its backend.
 
 ## Build 23.7 — stability, bans, and admin security
 - Movement/native relay traffic is rate-limited and encoded once per broadcast instead of once per recipient.
