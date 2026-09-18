@@ -81,7 +81,8 @@
     box.addEventListener('click',function(e){if(e.target===box)window.DiggerzSupport239.close()});
     document.getElementById('diggerz-support239-donate').onclick=function(){
       var n=Math.max(1,Math.min(1000,parseInt(slider.value,10)||1));
-      try{sessionStorage.setItem('diggerz.support239.selectedAmount',String(n))}catch(error){}\n      window.open('https://cash.app/$Houstonswallet','_blank','noopener,noreferrer');
+      try{sessionStorage.setItem('diggerz.support239.selectedAmount',String(n))}catch(error){}
+      window.open('https://cash.app/$Houstonswallet','_blank','noopener,noreferrer');
     };
   }
 
