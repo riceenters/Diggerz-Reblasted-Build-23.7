@@ -41,7 +41,7 @@
       '<input id="diggerz-support239-slider" type="range" min="1" max="1000" value="5" step="1">'+
       '<div style="display:flex;justify-content:space-between;font:700 13px Arial,sans-serif"><span>$1</span><span>$1000</span></div>'+
       '<div style="margin-top:18px;text-align:center"><button id="diggerz-support239-donate" type="button">Donate with Cash App</button></div>'+
-      '<div class="fine">Payments go to $Houstonswallet. The supporter board only shows verified donations. Clicking Donate by itself does not add money to the leaderboard.</div></section>'+
+      '<div class="fine">Payments go to $Houstonswallet. The selected amount is shown above. Cash App will open to $Houstonswallet; send that amount there. The supporter board only shows verified donations. Clicking Donate by itself does not add money to the leaderboard.</div></section>'+
       '<aside class="board"><h2>TOP SUPPORTERS</h2><div id="diggerz-support239-total" style="font:900 22px Arial Black,Arial,sans-serif;margin-bottom:8px">Verified total: $0</div><ol id="diggerz-support239-list"><li>No verified donations yet.</li></ol></aside></div>';
     document.body.appendChild(box);
 
@@ -81,7 +81,7 @@
     box.addEventListener('click',function(e){if(e.target===box)window.DiggerzSupport239.close()});
     document.getElementById('diggerz-support239-donate').onclick=function(){
       var n=Math.max(1,Math.min(1000,parseInt(slider.value,10)||1));
-      window.open('https://cash.app/$Houstonswallet/'+n,'_blank','noopener,noreferrer');
+      try{sessionStorage.setItem('diggerz.support239.selectedAmount',String(n))}catch(error){}\n      window.open('https://cash.app/$Houstonswallet','_blank','noopener,noreferrer');
     };
   }
 
