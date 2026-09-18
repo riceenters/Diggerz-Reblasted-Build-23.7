@@ -106,6 +106,11 @@
     var groups=window.DiggerzService.WEAPON_GROUPS||[];
     var betaPresent=groups.some(function(g){return Array.isArray(g)&&g.indexOf(81)>=0});
     if(!betaPresent)groups.unshift([81]);
+    // Build 23.3's active mining override draws normal weapons from
+    // COMMON_REWARDS rather than WEAPON_GROUPS, so Beta must be present here too.
+    var common=window.DiggerzService.COMMON_REWARDS||[];
+    var betaCommon=common.some(function(item){return item&&item.category===2&&item.id===81});
+    if(!betaCommon)common.push({category:2,id:81,count:1});
 
     // UPDATE Hat becomes a legitimate wearable catalog item.
     if(window.DiggerzService.ITEM_POOL&&window.DiggerzService.ITEM_POOL.indexOf(HAT_ID)<0)window.DiggerzService.ITEM_POOL.push(HAT_ID);
