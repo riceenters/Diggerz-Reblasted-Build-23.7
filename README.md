@@ -5,7 +5,7 @@
 - Fixed the recovered **Beta Gun** firing path so its legacy beam endpoint no longer freezes the client.
 - Added **Beta Gun** to the **common mining weapon pool**. It remains a normal category-2 item and is tradable through the existing two-stage trade system.
 - Added the new **UPDATE Hat** as item **395**. Its placement is handled only for that hat so existing hat offsets are not changed.
-- Replaced the removed Login menu slot with **Support**.
+- Replaced the removed Login menu slot with **Donate**.
 - Added **Support Diggerz** with a **$1–$1000** amount slider and Cash App redirect to **$Houstonswallet**.
 - Added a public **verified supporter leaderboard**. Clicking Donate does not create leaderboard credit; verified entries are added through the authenticated admin tools.
 - Added admin controls for adding/removing verified donation entries.
