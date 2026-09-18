@@ -1,4 +1,17 @@
-# Diggerz.io Reblasted — Build 23.8
+# Diggerz.io Reblasted — Build 23.9
+
+## Build 23.9 — economy protection, Beta Gun, support, and UPDATE hat
+- Patched the long-standing multiplayer **trade/reload duplication race**. Offered items are persisted out of the local inventory before the offer can complete, trade cancellation persists restored items, and duplicate completion messages are ignored.
+- Fixed the recovered **Beta Gun** firing path so its legacy beam endpoint no longer freezes the client.
+- Added **Beta Gun** to the **common mining weapon pool**. It remains a normal category-2 item and is tradable through the existing two-stage trade system.
+- Added the new **UPDATE Hat** as item **395**. Its placement is handled only for that hat so existing hat offsets are not changed.
+- Replaced the removed Login menu slot with **Donate**.
+- Added **Support Diggerz** with a **$1–$1000** amount slider and Cash App redirect to **$Houstonswallet**.
+- Added a public **verified supporter leaderboard**. Clicking Donate does not create leaderboard credit; verified entries are added through the authenticated admin tools.
+- Added admin controls for adding/removing verified donation entries.
+- Donation records use `DIGGERZ_DONATIONS_FILE` when configured, otherwise `donations.json` beside the server. On Railway, point this at persistent storage if the leaderboard must survive redeploys.
+- Added `build239-client.js` to both Railway-hosted play and the downloadable itch.io client package.
+- Updated active multiplayer build identifiers and the itch package to **23.9**.
 
 ## Build 23.8 — Railway / itch migration and fixes
 - Reduced the recovered lightsword swing sound to **30%** of the normal effects level.
@@ -99,7 +112,7 @@ Build 23.3 applies the rarity information supplied by KaiRotten. The quantities 
 - Dalmatian
 - Light Gun
 - eligible currently-active Shop items
-- Beta Gun is excluded from mining drops.
+- Beta Gun is now included in the common mining weapon group as of Build 23.9.
 - Decoration blocks and Cart Pusher are excluded from normal player reward pools; staff can still access decorative content through Admin tools.
 
 ### Inventory

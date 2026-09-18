@@ -1,6 +1,6 @@
 'use strict';
 
-// Diggerz Build 23.8 Reblasted multiplayer + Battle Royale server.
+// Diggerz Build 23.9 Reblasted multiplayer + Battle Royale server.
 // Dependency-free Node.js WebSocket server: rooms, presence, and relay.
 
 const http = require('http');
@@ -26,7 +26,7 @@ const HEARTBEAT_TIMEOUT_MS = 45 * 1000;
 const ROSTER_INTERVAL_MS = 5 * 1000;
 const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const ALLOWED_RELAY_TYPES = new Set(['session', 'hello', 'chat', 'typing', 'health']);
-const BUILD = '23.8';
+const BUILD = '23.9';
 const WORLD_WIDTH = 128;
 const BATTLE_BUILD_MS = Number(process.env.DIGGERZ_BUILD_MS || 40 * 1000);
 const BATTLE_FIRST_SHRINK_MS = Number(process.env.DIGGERZ_FIRST_SHRINK_MS || 90 * 1000);
@@ -39,6 +39,7 @@ const BATTLE_MIN_PLAY_WIDTH = 12;
 const BATTLE_MAX_INSET = Math.max(0, Math.floor((WORLD_WIDTH - BATTLE_MIN_PLAY_WIDTH) / 2));
 const PROJECTILE_ATTACKS = new Set([20,22,23,29,31,33,35,37,39]);
 const GAME_HTML_PATH = path.join(__dirname, 'index.html');
+const BUILD239_CLIENT_PATH = path.join(__dirname, 'build239-client.js');
 const MAP_EDITOR_PATH = path.join(__dirname, 'map-editor.html');
 const TILES_PNG_PATH = path.join(__dirname, 'tiles.png');
 const BKND_PNG_PATH = path.join(__dirname, 'bknd.png');
@@ -49,6 +50,7 @@ const SWAP_OGG_PATH = path.join(__dirname, 'swap.ogg');
 const MAPS_DIR = path.join(__dirname, 'maps');
 const BANS_FILE = process.env.DIGGERZ_BANS_FILE || path.join(__dirname, 'bans.json');
 const PLAYERS_FILE = process.env.DIGGERZ_PLAYERS_FILE || path.join(__dirname, 'players.json');
+const DONATIONS_FILE = process.env.DIGGERZ_DONATIONS_FILE || path.join(__dirname, 'donations.json');
 const MAX_KNOWN_PLAYERS = 2000;
 const KNOWN_PLAYER_MAX_AGE_MS = 180 * 24 * 60 * 60 * 1000;
 const ADMIN_OWNER_SHA = '87712f48ae7baef068d070d5823c838ea174f695c634bccced0b7bcc757c40eb';
@@ -132,7 +134,7 @@ function buildStoredZip(entries) {
   return Buffer.concat([...localParts, ...centralParts, end]);
 }
 
-function patchGameHtmlForBuild238(input) {
+function patchGameHtmlForBuild239(input) {
   let html = Buffer.isBuffer(input) ? input.toString('utf8') : String(input || '');
   const replacements = [
     [
@@ -152,14 +154,14 @@ function patchGameHtmlForBuild238(input) {
     ],
     [
       'usePvpTest ? "Build 23.7 native-packet PvP" : (useLocalDigTrade ? "Build 23.7 native-packet Dig+Trade" : "original multiplayer server")',
-      'usePvpTest ? "Build 23.8 native-packet PvP" : (useLocalDigTrade ? "Build 23.8 native-packet Dig+Trade" : "original multiplayer server")',
+      'usePvpTest ? "Build 23.9 native-packet PvP" : (useLocalDigTrade ? "Build 23.9 native-packet Dig+Trade" : "original multiplayer server")',
       'connection route label'
     ],
-    ['z-index: 100;">Build 23.7</div>', 'z-index: 100;">Build 23.8</div>', 'build badge'],
-    ['Build 23.7 multiplayer admin tools. Konami sequence + server-authorized admin session required.', 'Build 23.8 multiplayer admin tools. Konami sequence + server-authorized admin session required.', 'admin build label'],
-    ['<h2>Build 23.7 — Diggerz Multiplayer</h2>', '<h2>Build 23.8 — Diggerz Multiplayer</h2>', 'multiplayer heading'],
-    ['<span>MP DEBUG 23.7</span>', '<span>MP DEBUG 23.8</span>', 'debug build label'],
-    ["build:'23.7'", "build:'23.8'", 'matchmaking build id']
+    ['z-index: 100;">Build 23.7</div>', 'z-index: 100;">Build 23.9</div>', 'build badge'],
+    ['Build 23.7 multiplayer admin tools. Konami sequence + server-authorized admin session required.', 'Build 23.9 multiplayer admin tools. Konami sequence + server-authorized admin session required.', 'admin build label'],
+    ['<h2>Build 23.7 — Diggerz Multiplayer</h2>', '<h2>Build 23.9 — Diggerz Multiplayer</h2>', 'multiplayer heading'],
+    ['<span>MP DEBUG 23.7</span>', '<span>MP DEBUG 23.9</span>', 'debug build label'],
+    ["build:'23.7'", "build:'23.9'", 'matchmaking build id']
   ];
 
   for (const entry of replacements) {
@@ -177,11 +179,10 @@ function patchGameHtmlForBuild238(input) {
   const shopText = loginStart >= 0 ? html.indexOf('            this.d51.E37("Shop");', loginStart) : -1;
   const shopStart = shopText >= 0 ? html.lastIndexOf('            b = new z;', shopText) : -1;
   if (loginStart >= 0 && shopStart > loginStart) {
-    html = html.slice(0, loginStart) +
-      '            q.thisMain.userEmail = "";\n            q.thisMain.userPW = "";\n' +
-      html.slice(shopStart);
+    const supportMenuBlock = "            q.thisMain.userEmail = \"\";\n            q.thisMain.userPW = \"\";\n            b = new z;\n            b.Init(u.YELLOWBUTTON_PNG());\n            b.D7(this);\n            b.b7 = d;\n            d += 80;\n            b.b6 = q.SCREENWIDTH / 2 - 150;\n            b.set_local_xScale(b.set_local_yScale(.5));\n            b._1 = \"support message\";\n            b.F6(5, 0, 1, 500);\n            this._9.push(b);\n            this.d51 = new ob(0,0,\"\",q.MAIN_FONT_BIG);\n            this.d51.D7(b);\n            this.d51.E37(\"Donate\");\n            this.d51.b7 = 2;\n            this.d51.B8 = 5;\n            this.d51.C33 = function(){ if(window.DiggerzSupport239) window.DiggerzSupport239.open(); };\n            this.d51._1 = \"welcome message\";\n            this._9.push(this.d51);\n            c = new xa(0,-70,\"Support Diggerz multiplayer\");\n            c.D7(b, !0);\n            c.set_local_xScale(c.set_local_yScale(1.25));\n            this._9.push(c);\n";
+    html = html.slice(0, loginStart) + supportMenuBlock + html.slice(shopStart);
   } else {
-    console.warn('[Diggerz 23.8] login menu block was not found.');
+    console.warn('[Diggerz 23.9] login/support menu block was not found.');
   }
 
   const authScriptStart = html.indexOf('<script id="diggerz-build23-7-security-patch">');
@@ -224,10 +225,23 @@ function patchGameHtmlForBuild238(input) {
     html = html.replace(marker, section + marker);
   }
 
+  if (!html.includes('build239-client.js')) {
+    const build239Tag = '<script src="/build239-client.js"></script>';
+    const bodyClose = html.lastIndexOf('</body>');
+    html = bodyClose >= 0 ? html.slice(0, bodyClose) + build239Tag + html.slice(bodyClose) : html + build239Tag;
+  }
+
+  const marker239 = '<hr><a name="Build 23.8"></a>';
+  if (!html.includes('Build 23.9 - Economy, Beta Gun, Support & UPDATE Hat') && html.includes(marker239)) {
+    const section239 = '<hr><a name="Build 23.9"></a> <h2>Build 23.9 - Economy, Beta Gun, Support &amp; UPDATE Hat</h2> <ul> <li>Patched the long-standing multiplayer trade reload/duplication race.</li> <li>Fixed Beta Gun firing, added it to common mining weapon drops, and kept it tradable.</li> <li>Added the UPDATE Hat with item-specific player-head placement.</li> <li>Added Support Diggerz donations and a verified supporter leaderboard.</li> </ul> ';
+    html = html.replace(marker239, section239 + marker239);
+  }
+
   return Buffer.from(html, 'utf8');
 }
 
 let gameHtml = null;
+let build239ClientJs = null;
 let mapEditorHtml = null;
 let tilesPng = null;
 let bkndPng = null;
@@ -235,7 +249,8 @@ let levelupOgg = null;
 let musicOgg = [null,null,null,null];
 let balloonPopOgg = null;
 let swapOgg = null;
-try { gameHtml = patchGameHtmlForBuild238(fs.readFileSync(GAME_HTML_PATH)); } catch (error) { console.warn('[Diggerz] index.html not found at startup:', error.message); }
+try { gameHtml = patchGameHtmlForBuild239(fs.readFileSync(GAME_HTML_PATH)); } catch (error) { console.warn('[Diggerz] index.html not found at startup:', error.message); }
+try { build239ClientJs = fs.readFileSync(BUILD239_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build239-client.js not found:', error.message); }
 try { mapEditorHtml = fs.readFileSync(MAP_EDITOR_PATH); } catch (error) { console.warn('[Diggerz] map-editor.html not found:', error.message); }
 try { tilesPng = fs.readFileSync(TILES_PNG_PATH); } catch (error) { console.warn('[Diggerz] tiles.png not found:', error.message); }
 try { bkndPng = fs.readFileSync(BKND_PNG_PATH); } catch (error) { console.warn('[Diggerz] bknd.png not found:', error.message); }
@@ -249,6 +264,7 @@ const adminSessions = new Map();
 const adminAuthAttempts = new Map();
 let bans = [];
 let knownPlayers = [];
+let donations = [];
 let nextConnectionNumber = 1;
 let nextMatchNumber = 1;
 let nextTradeNumber = 1;
@@ -358,6 +374,44 @@ function saveKnownPlayers() {
     console.warn('[Diggerz] could not save known players:', error.message);
     return false;
   }
+}
+
+function loadDonations() {
+  try {
+    if (!fs.existsSync(DONATIONS_FILE)) return [];
+    const raw = JSON.parse(fs.readFileSync(DONATIONS_FILE, 'utf8'));
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(x => x && typeof x === 'object' && Number(x.amount) > 0).map(x => ({
+      id: String(x.id || '').slice(0,80) || 'DON-'+crypto.randomBytes(6).toString('hex').toUpperCase(),
+      name: normalizeName(x.name || 'Anonymous'),
+      amount: Math.max(1,Math.min(1000,Math.round(Number(x.amount)*100)/100)),
+      createdAt: Number(x.createdAt) || Date.now(),
+      verified: true
+    })).slice(-5000);
+  } catch (error) {
+    console.warn('[Diggerz] could not load donations:', error.message);
+    return [];
+  }
+}
+
+function saveDonations() {
+  try {
+    fs.mkdirSync(path.dirname(DONATIONS_FILE), { recursive:true });
+    const tmp = DONATIONS_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(donations, null, 2));
+    fs.renameSync(tmp, DONATIONS_FILE);
+    return true;
+  } catch (error) {
+    console.warn('[Diggerz] could not save donations:', error.message);
+    return false;
+  }
+}
+
+function publicDonationBoard() {
+  const rows = donations.filter(d => d && d.verified && d.amount > 0)
+    .slice().sort((a,b)=>b.amount-a.amount || a.createdAt-b.createdAt)
+    .map(d=>({id:d.id,name:d.name||'Anonymous',amount:d.amount,createdAt:d.createdAt}));
+  return { donations:rows, total:rows.reduce((sum,d)=>sum+Number(d.amount||0),0) };
 }
 
 function rememberPlayer(client, name, clientId) {
@@ -509,6 +563,7 @@ function findClientsGlobalByName(name) {
 
 bans = loadBans();
 knownPlayers = loadKnownPlayers();
+donations = loadDonations();
 pruneExpiredBans(true);
 
 function sanitizeMap(raw, filename = '') {
@@ -1792,6 +1847,42 @@ async function handleAdminApi(req, res, urlPath) {
     pruneExpiredBans(true);
     sendApiJson(res,200,{ok:true,bans:bans.map(publicBan)}); return true;
   }
+  if (urlPath === '/api/admin/donations' && req.method === 'GET') {
+    const session = adminSessionForRequest(req);
+    if (!session) { sendApiJson(res,401,{ok:false,error:'admin-auth'}); return true; }
+    sendApiJson(res,200,Object.assign({ok:true},publicDonationBoard()));
+    return true;
+  }
+  if (urlPath === '/api/admin/donations' && req.method === 'POST') {
+    const session = adminSessionForRequest(req);
+    if (!session) { sendApiJson(res,401,{ok:false,error:'admin-auth'}); return true; }
+    let body;
+    try { body = await readJsonBody(req,8192); }
+    catch { sendApiJson(res,400,{ok:false,error:'bad-request'}); return true; }
+    const action = String(body && body.action || 'add');
+    if (action === 'remove') {
+      const id = String(body && body.id || '');
+      const before = donations.length;
+      donations = donations.filter(d => d && d.id !== id);
+      if (donations.length === before) { sendApiJson(res,404,{ok:false,error:'donation-not-found'}); return true; }
+      saveDonations();
+      sendApiJson(res,200,{ok:true});
+      return true;
+    }
+    const amount = Math.round(Number(body && body.amount) * 100) / 100;
+    if (!Number.isFinite(amount) || amount < 1 || amount > 1000) {
+      sendApiJson(res,400,{ok:false,error:'invalid-amount'});
+      return true;
+    }
+    const entry = {id:'DON-'+crypto.randomBytes(6).toString('hex').toUpperCase(),name:normalizeName(body && body.name || 'Anonymous'),amount,createdAt:Date.now(),verified:true};
+    donations.push(entry);
+    donations = donations.slice(-5000);
+    saveDonations();
+    log('Admin '+session.role+' verified donation '+entry.id+': '+entry.name+' $'+entry.amount);
+    sendApiJson(res,200,{ok:true,donation:entry});
+    return true;
+  }
+
   if (urlPath === '/api/admin/moderate' && req.method === 'POST') {
     const session = adminSessionForRequest(req); if (!session) { sendApiJson(res,401,{ok:false,error:'admin-auth'}); return true; }
     let body; try { body = await readJsonBody(req,8192); } catch { sendApiJson(res,400,{ok:false,error:'bad-request'}); return true; }
@@ -1866,7 +1957,7 @@ function buildItchClientZip() {
   const localAssets = [
     'tiles.png','bknd.png','levelup.ogg',
     'music_theme.ogg','music_theme2.ogg','music_theme3.ogg','music_theme4.ogg',
-    'balloon_pop.ogg','swap.ogg'
+    'balloon_pop.ogg','swap.ogg','build239-client.js'
   ];
   for (const asset of localAssets) {
     itchHtml = itchHtml.split("'/" + asset + "'").join("'" + asset + "'");
@@ -1874,7 +1965,7 @@ function buildItchClientZip() {
   }
 
   const readme = Buffer.from(
-    'Diggerz.io Reblasted Build 23.8 - itch.io client\\n' +
+    'Diggerz.io Reblasted Build 23.9 - itch.io client\\n' +
     'Upload this ZIP to itch.io as an HTML project.\\n' +
     'Multiplayer and admin services remain hosted on Railway.\\n',
     'utf8'
@@ -1891,6 +1982,7 @@ function buildItchClientZip() {
     { name: 'music_theme4.ogg', data: musicOgg[3] },
     { name: 'balloon_pop.ogg', data: balloonPopOgg },
     { name: 'swap.ogg', data: swapOgg },
+    { name: 'build239-client.js', data: build239ClientJs },
     { name: 'README.txt', data: readme }
   ]);
   return itchClientZip;
@@ -1904,12 +1996,24 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'OPTIONS') { res.writeHead(204,{'Cache-Control':'no-store'}); res.end(); return; }
     if (await handleAdminApi(req,res,urlPath)) return;
   }
-  if (urlPath === '/itch-build-23.8.zip') {
+  if (urlPath === '/api/donations') {
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204,{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET, OPTIONS','Cache-Control':'no-store'});
+      res.end();
+      return;
+    }
+    if (req.method !== 'GET') { sendApiJson(res,405,{ok:false,error:'method-not-allowed'}); return; }
+    res.setHeader('Access-Control-Allow-Origin','*');
+    sendApiJson(res,200,Object.assign({ok:true},publicDonationBoard()));
+    return;
+  }
+
+  if (urlPath === '/itch-build-23.9.zip') {
     try {
       const body = buildItchClientZip();
       res.writeHead(200, {
         'Content-Type': 'application/zip',
-        'Content-Disposition': 'attachment; filename="Diggerz-Reblasted-Build-23.8-itch.zip"',
+        'Content-Disposition': 'attachment; filename="Diggerz-Reblasted-Build-23.9-itch.zip"',
         'Content-Length': body.length,
         'Cache-Control': 'no-store'
       });
@@ -1936,6 +2040,7 @@ const server = http.createServer(async (req, res) => {
     res.end(gameHtml);
     return;
   }
+  if (urlPath === '/build239-client.js') { serveBuffer(res,build239ClientJs,'application/javascript; charset=utf-8'); return; }
   if (urlPath === '/map-editor' || urlPath === '/map-editor.html') { serveBuffer(res,mapEditorHtml,'text/html; charset=utf-8'); return; }
   if (urlPath === '/tiles.png') { serveBuffer(res,tilesPng,'image/png'); return; }
   if (urlPath === '/bknd.png') { serveBuffer(res,bkndPng,'image/png'); return; }
@@ -1949,7 +2054,7 @@ const server = http.createServer(async (req, res) => {
   if (urlPath === '/health') {
     const body = JSON.stringify({
       ok: true,
-      service: 'diggerz-build23.8-server',
+      service: 'diggerz-build23.9-server',
       build: BUILD,
       rooms: rooms.size,
       players: [...rooms.values()].reduce((sum, room) => sum + room.clients.size, 0),
@@ -2026,7 +2131,7 @@ server.on('upgrade', (req, socket) => {
 
   sendJson(client, {
     t: 'server-hello',
-    server: 'Diggerz Build 23.8 Reblasted Multiplayer + Battle Royale Server',
+    server: 'Diggerz Build 23.9 Reblasted Multiplayer + Battle Royale Server',
     protocol: 1,
     maxPlayersPerRoom: MAX_ROOM_PLAYERS
   });
