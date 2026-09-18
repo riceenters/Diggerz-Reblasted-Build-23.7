@@ -27,7 +27,7 @@
       '#diggerz-support239 li{padding:7px 0;border-bottom:1px solid #333}'+
       '#diggerz-support239 .fine{font:12px Arial,sans-serif;color:#bbb;margin-top:12px}'+
       '#diggerz-hat239-layer{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden}'+
-      '.diggerz-update-hat239{position:absolute;height:auto;transform:translate(-50%,-100%);transform-origin:50% 100%;filter:drop-shadow(0 2px 1px rgba(0,0,0,.45));image-rendering:auto}'+
+      '.diggerz-update-hat239{position:absolute;height:auto;transform:translate(-50%,-100%);transform-origin:50% 100%;filter:drop-shadow(0 2px 1px rgba(0,0,0,.45));image-rendering:pixelated}'+
       '@media(max-width:720px){#diggerz-support239 .panel{grid-template-columns:1fr;padding:16px}}';
     document.head.appendChild(style);
 
@@ -255,6 +255,28 @@
   }
 
   var hatNodes={};
+  var HAT_RENDER_SRC=HAT_SRC;
+  function prepareLowResHat(){
+    var source=new Image();
+    source.onload=function(){
+      try{
+        // Deliberately rasterize the modern UPDATE art to a tiny texture so it
+        // matches Diggerz/Coaster Town's older low-resolution asset style.
+        var lowW=64;
+        var lowH=Math.max(1,Math.round(source.naturalHeight*lowW/source.naturalWidth));
+        var canvas=document.createElement('canvas');
+        canvas.width=lowW;
+        canvas.height=lowH;
+        var ctx=canvas.getContext('2d');
+        ctx.imageSmoothingEnabled=false;
+        ctx.drawImage(source,0,0,lowW,lowH);
+        HAT_RENDER_SRC=canvas.toDataURL('image/png');
+        for(var key in hatNodes)if(hatNodes[key])hatNodes[key].src=HAT_RENDER_SRC;
+      }catch(error){}
+    };
+    source.src=HAT_SRC;
+  }
+  prepareLowResHat();
   function logicalHead(ent){
     try{
       var head=ent&&ent.i33&&ent.i33.f2?ent.i33.f2('head'):null;
@@ -286,7 +308,7 @@
     if(!img){
       img=document.createElement('img');
       img.className='diggerz-update-hat239';
-      img.src=HAT_SRC;
+      img.src=HAT_RENDER_SRC;
       img.alt='';
       layer.appendChild(img);
       hatNodes[key]=img;
