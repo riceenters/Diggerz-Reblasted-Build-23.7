@@ -284,6 +284,14 @@ function patchGameHtmlForBuild239(input) {
   if (html.includes(rgbAdminCatalogOld240)) html = html.replace(rgbAdminCatalogOld240, rgbAdminCatalogNew240);
   else console.warn('[Diggerz 24.0] RGB admin catalog target was not found.');
 
+  // Final Build 24.0 mining patch: breaking terrain destroys that block.
+  // The player only receives a randomized mining reward, not a free copy of
+  // the exact block that was just mined.
+  const minedBlockOld240 = "            this.state.mined++;\n            this.addItem(1, id, 0, 1, 0, \"\");\n            // Bonus items are tied to the mined coordinate and cannot be\n            // rerolled. Protected catalog items only enter through today's\n            // super-rare rotation; normal finds are blocks or normal weapons,\n            // while the explicitly listed clothing/ray-gun sets use the rare pool.\n            var reward = this.miningRewardAt(targetX, targetY);";
+  const minedBlockNew240 = "            this.state.mined++;\n            // Build 24.0: the mined terrain itself is destroyed and is NOT added to inventory.\n            // Only the randomized mining reward below can create an item drop.\n            var reward = this.miningRewardAt(targetX, targetY);";
+  if (html.includes(minedBlockOld240)) html = html.replace(minedBlockOld240, minedBlockNew240);
+  else console.warn('[Diggerz 24.0] mined-block inventory patch target was not found.');
+
   if (!html.includes('build240-client.js')) {
     const build240Tag = '<script src="/build240-client.js"></script>';
     const bodyClose = html.lastIndexOf('</body>');
