@@ -2078,7 +2078,7 @@ function buildItchClientZip() {
   const localAssets = [
     'tiles.png','bknd.png','levelup.ogg',
     'music_theme.ogg','music_theme2.ogg','music_theme3.ogg','music_theme4.ogg',
-    'balloon_pop.ogg','swap.ogg','jams_vip.ogg','build239-client.js','build240-client.js'
+    'balloon_pop.ogg','swap.ogg','build239-client.js','build240-client.js'
   ];
   for (const asset of localAssets) {
     itchHtml = itchHtml.split("'/" + asset + "'").join("'" + asset + "'");
@@ -2103,7 +2103,7 @@ function buildItchClientZip() {
     { name: 'music_theme4.ogg', data: musicOgg[3] },
     { name: 'balloon_pop.ogg', data: balloonPopOgg },
     { name: 'swap.ogg', data: swapOgg },
-    { name: 'jams_vip.ogg', data: jamsVipOgg },
+    ...(jamsVipOgg ? [{ name: 'jams_vip.ogg', data: jamsVipOgg }] : []),
     { name: 'build239-client.js', data: build239ClientJs },
     { name: 'build240-client.js', data: build240ClientJs },
     { name: 'README.txt', data: readme }
@@ -2175,7 +2175,14 @@ const server = http.createServer(async (req, res) => {
   if (urlPath === '/music_theme4.ogg') { serveBuffer(res,musicOgg[3],'audio/ogg'); return; }
   if (urlPath === '/balloon_pop.ogg') { serveBuffer(res,balloonPopOgg,'audio/ogg'); return; }
   if (urlPath === '/swap.ogg') { serveBuffer(res,swapOgg,'audio/ogg'); return; }
-  if (urlPath === '/jams_vip.ogg') { serveBuffer(res,jamsVipOgg,'audio/ogg'); return; }
+  if (urlPath === '/jams_vip.ogg') {
+    if (!jamsVipOgg) {
+      res.writeHead(404,{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store'});
+      res.end('JAMS VIP local audio is not bundled; client will use the official playback fallback.\n');
+      return;
+    }
+    serveBuffer(res,jamsVipOgg,'audio/ogg'); return;
+  }
   if (urlPath === '/health') {
     const body = JSON.stringify({
       ok: true,
