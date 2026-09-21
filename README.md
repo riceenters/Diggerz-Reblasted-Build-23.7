@@ -12,8 +12,11 @@
 - Added **RGB Weekend** every Saturday and Sunday. The normal “Today’s Super Rares” display becomes **RGB WEEKEND!** and features three rotating RGB variants as the only featured Super Rares for the weekend.
 - Added animated normal RGB variants for Ball Cap, Wings, Trance Eyes, Jetpack, Military Hat, Mohawk, Spiky Hair, Cute Bob, Short Hair, the K-Pop set (shirt, pants, shoes, and Stetson), Sparkle Shoes, Sparkle Gloves, Retriever, Dual Lightsword, Lightsword, Shirt, WC Shirt, and Pants.
 - Added matching **True RGB** variants with a darker rainbow cycle.
-- Outside RGB Weekend, mining has a **1/1000 True RGB roll**. A successful True RGB pickup uses a special celebration instead of the normal Super Rare screen.
-- True RGB pickup celebrations are broadcast across every active multiplayer room: **“(name) FOUND A TRUE RGB ITEM! 1/1000 CHANCE!!! CONGRATS!!!”**
+- Outside RGB Weekend, regular True RGB finds now use a **1/100,000** event roll. **True RGB Military Hat** is the troll-tier **1/1,000,000** find, while each True RGB K-Pop piece (shirt, pants, shoes, and Stetson) has its own **1/101,337** roll.
+- True RGB pickup celebrations now fire for multiplayer shared-drop awards as well as normal pickups and are broadcast across every active multiplayer room. The global message reports the actual item's odds.
+- Equipped RGB and True RGB cosmetics now keep their animated rainbow treatment instead of only appearing RGB in inventory icons.
+- RGB and True RGB Wings inherit the recovered Golden Wings movement/gravity behavior and add animated rainbow sparkles.
+- RGB and True RGB K-Pop Shoes inherit the recovered K-Pop dance animation, play **JAMS VIP** while equipped, and leave an RGB sparkle trail while walking.
 - RGB/True RGB Lightswords retain the recovered Lightsword mining/tool and Battle Royale melee behavior.
 - RGB Weekend is synchronized to **America/New_York** weekend dates so all players see the same event window and featured trio.
 
