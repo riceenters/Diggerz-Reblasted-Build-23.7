@@ -1,3 +1,13 @@
+# Diggerz.io Reblasted — Build 24.0
+
+## Build 24.0 — phase 1 patches and PvP polish
+- Item drops now fall through cleared space instead of remaining suspended in mid-air.
+- Mining bonus drops now use fresh random rolls instead of being tied to a map coordinate.
+- Player-placed blocks cannot be recycled to repeatedly generate bonus loot, closing the infinite Super Rare farming exploit.
+- Battle Royale music now ducks to a lower volume during active combat instead of stopping, then returns to full volume when a winner is declared.
+- Leaving PvP before a match starts now cleans up the PvP music instead of allowing it to continue outside the mode.
+- Restored the older Battle Royale countdown/message placement and presentation while retaining the newer font.
+
 # Diggerz.io Reblasted — Build 23.9
 
 ## Build 23.9 — economy protection, Beta Gun, support, and UPDATE hat
