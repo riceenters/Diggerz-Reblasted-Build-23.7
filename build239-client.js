@@ -40,8 +40,8 @@
       '<div class="amount" id="diggerz-support239-amount">$5</div>'+
       '<input id="diggerz-support239-slider" type="range" min="1" max="1000" value="5" step="1">'+
       '<div style="display:flex;justify-content:space-between;font:700 13px Arial,sans-serif"><span>$1</span><span>$1000</span></div>'+
-      '<div style="margin-top:18px;text-align:center"><button id="diggerz-support239-donate" type="button">Donate with Cash App</button></div>'+
-      '<div class="fine">Payments go to $Houstonswallet. The selected amount is shown above. Cash App will open to $Houstonswallet; send that amount there. The supporter board only shows verified donations. Clicking Donate by itself does not add money to the leaderboard.</div></section>'+
+      '<div style="margin-top:18px;text-align:center;display:flex;gap:12px;justify-content:center;flex-wrap:wrap"><button id="diggerz-support239-donate" type="button">Donate with Cash App</button><button id="diggerz-support239-kofi" type="button">Donate to Lime on Ko-fi</button></div>'+
+      '<div class="fine">Cash App payments go to $Houstonswallet; use the selected amount shown above. Lime accepts support through Ko-fi at ko-fi.com/limeguy314. The supporter board only shows manually verified donations from either payment method.</div></section>'+
       '<aside class="board"><h2>TOP SUPPORTERS</h2><div id="diggerz-support239-total" style="font:900 22px Arial Black,Arial,sans-serif;margin-bottom:8px">Verified total: $0</div><ol id="diggerz-support239-list"><li>No verified donations yet.</li></ol></aside></div>';
     document.body.appendChild(box);
 
@@ -83,6 +83,9 @@
       var n=Math.max(1,Math.min(1000,parseInt(slider.value,10)||1));
       try{sessionStorage.setItem('diggerz.support239.selectedAmount',String(n))}catch(error){}
       window.open('https://cash.app/$Houstonswallet','_blank','noopener,noreferrer');
+    };
+    document.getElementById('diggerz-support239-kofi').onclick=function(){
+      window.open('https://ko-fi.com/limeguy314/','_blank','noopener,noreferrer');
     };
   }
 
