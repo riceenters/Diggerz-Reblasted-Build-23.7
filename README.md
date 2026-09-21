@@ -4,6 +4,7 @@
 - Item drops now fall through cleared space instead of remaining suspended in mid-air.
 - Mining bonus drops now use fresh random rolls instead of being tied to a map coordinate.
 - Player-placed blocks cannot be recycled to repeatedly generate bonus loot, closing the infinite Super Rare farming exploit.
+- Mining a terrain block no longer gives that same block back to the player's inventory; breaking terrain is now destructive and only the randomized mining reward table can produce loot.
 - Mining no longer returns a free copy of the exact terrain block that was broken; only randomized mining rewards enter inventory.
 - Battle Royale music now ducks to a lower volume during active combat instead of stopping, then returns to full volume when a winner is declared.
 - Leaving PvP before a match starts now cleans up the PvP music instead of allowing it to continue outside the mode.
