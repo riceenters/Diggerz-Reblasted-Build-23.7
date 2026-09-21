@@ -149,6 +149,7 @@
   function registerRgbObject(obj,def){
     if(!obj||!def)return obj;
     obj._build240Rgb=def;
+    obj._build240RgbStetson=!!def.stetson;
     if(rgbObjects.indexOf(obj)<0)rgbObjects.push(obj);
     return obj;
   }
@@ -223,7 +224,7 @@
       out=oldN7.apply(this,args);
       obj=out||b;
       // Clear a stale marker if the display-object pool recycled an old RGB root.
-      if(obj&&obj._build240Rgb)obj._build240Rgb=null;
+      if(obj&&obj._build240Rgb){obj._build240Rgb=null;obj._build240RgbStetson=false;}
       return out;
     };
 
