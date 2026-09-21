@@ -38,6 +38,8 @@ const BATTLE_MAX_RIGHT = WORLD_WIDTH - 0.5;
 const BATTLE_MIN_PLAY_WIDTH = 12;
 const BATTLE_MAX_INSET = Math.max(0, Math.floor((WORLD_WIDTH - BATTLE_MIN_PLAY_WIDTH) / 2));
 const PROJECTILE_ATTACKS = new Set([20,22,23,29,31,33,35,37,39]);
+const TRUE_RGB_IDS = new Set(Array.from({length:21}, (_,i) => 550 + i));
+const RGB_LIGHTSWORD_IDS = new Set([516,517,566,567]);
 const GAME_HTML_PATH = path.join(__dirname, 'index.html');
 const BUILD239_CLIENT_PATH = path.join(__dirname, 'build239-client.js');
 const BUILD240_CLIENT_PATH = path.join(__dirname, 'build240-client.js');
@@ -248,6 +250,22 @@ function patchGameHtmlForBuild239(input) {
   if (html.includes(shrinkPromptOld240)) html = html.replace(shrinkPromptOld240, shrinkPromptNew240);
   else console.warn('[Diggerz 24.0] PvP shrink prompt target was not found.');
 
+  // Build 24.0 RGB Weekend board + RGB tool support.
+  const rgbBoardOld240 = "            d = new xa(0,c,\"^2TODAY'S SUPER RARES\",q.MAIN_FONT_BIG);\n            d.D7(this, !0);\n            d.set_local_xScale(d.set_local_yScale(.65));\n            this._9.push(d);\n            c += 65;\n            d = -150;";
+  const rgbBoardNew240 = "            var rgbWeekend240=!!(window.DiggerzBuild240&&window.DiggerzBuild240.isRgbWeekend&&window.DiggerzBuild240.isRgbWeekend());\n            d = new xa(0,c,rgbWeekend240?\"^6RGB WEEKEND!\":\"^2TODAY'S SUPER RARES\",q.MAIN_FONT_BIG);\n            d.D7(this, !0);\n            d.set_local_xScale(d.set_local_yScale(.65));\n            this._9.push(d);\n            c += 65;\n            if(rgbWeekend240){\n                var rgbInfo240=new xa(0,c,\"^6RGB Weekend! ^0Limited-time RGB variants are featured Saturday + Sunday.\\n^0Get one of these 3 before Monday! Off-week RGB finds become EXTREMELY RARE True RGB items.\",q.MAIN_FONT_SMALL);\n                rgbInfo240.D7(this,!0);\n                rgbInfo240.set_local_xScale(rgbInfo240.set_local_yScale(.42));\n                this._9.push(rgbInfo240);\n                c += 52\n            }\n            d = -150;";
+  if (html.includes(rgbBoardOld240)) html = html.replace(rgbBoardOld240, rgbBoardNew240);
+  else console.warn('[Diggerz 24.0] RGB Weekend board target was not found.');
+
+  const rgbCardOld240 = "        F36: function(a, b, c, d, e, g) {\n            var f = new ja(70,70,!0);\n            f._1 = \"added\";";
+  const rgbCardNew240 = "        F36: function(a, b, c, d, e, g) {\n            var f = new ja(70,70,!0);\n            if(window.DiggerzBuild240&&window.DiggerzBuild240.isRgbWeekend&&window.DiggerzBuild240.isRgbWeekend()&&window.DiggerzBuild240.decorateRgbWeekendBox)window.DiggerzBuild240.decorateRgbWeekendBox(f);\n            f._1 = \"added\";";
+  if (html.includes(rgbCardOld240)) html = html.replace(rgbCardOld240, rgbCardNew240);
+  else console.warn('[Diggerz 24.0] RGB Weekend card target was not found.');
+
+  const rgbToolOld240 = "var isToolWeapon = heldId === 239 || (heldId >= 379 && heldId <= 394);";
+  const rgbToolNew240 = "var isToolWeapon = heldId === 239 || (heldId >= 379 && heldId <= 394) || (window.DiggerzBuild240 && window.DiggerzBuild240.isRgbWeaponId && window.DiggerzBuild240.isRgbWeaponId(heldId));";
+  if (html.includes(rgbToolOld240)) html = html.replace(rgbToolOld240, rgbToolNew240);
+  else console.warn('[Diggerz 24.0] RGB Lightsword client target was not found.');
+
   if (!html.includes('build240-client.js')) {
     const build240Tag = '<script src="/build240-client.js"></script>';
     const bodyClose = html.lastIndexOf('</body>');
@@ -262,7 +280,7 @@ function patchGameHtmlForBuild239(input) {
 
   const marker240 = '<hr><a name="Build 23.9"></a>';
   if (!html.includes('Build 24.0 - Patches & PvP Polish') && html.includes(marker240)) {
-    const section240 = '<hr><a name="Build 24.0"></a> <h2>Build 24.0 - Patches &amp; PvP Polish</h2> <ul> <li>Item drops now fall through cleared space instead of remaining suspended in mid-air.</li> <li>Mining bonus drops now use fresh random rolls, and player-placed blocks cannot be recycled for bonus-loot farming.</li> <li>PvP music now ducks during combat instead of stopping, returns to full volume on a winner, and stops cleanly when leaving PvP early.</li> <li>Restored the older Battle Royale text placement and presentation while keeping the newer in-game font.</li> </ul> ';
+    const section240 = '<hr><a name="Build 24.0"></a> <h2>Build 24.0 - Patches, PvP Polish &amp; RGB Weekend</h2> <ul> <li>Item drops now fall through cleared space instead of remaining suspended in mid-air.</li> <li>Mining bonus drops now use fresh random rolls, and player-placed blocks cannot be recycled for bonus-loot farming.</li> <li>PvP music now ducks during combat instead of stopping, returns to full volume on a winner, and stops cleanly when leaving PvP early.</li> <li>Restored the older Battle Royale text placement and presentation while keeping the newer in-game font.</li> <li>Added RGB Weekend: three animated RGB variants replace the normal featured Super Rares every Saturday and Sunday.</li> <li>Added darker True RGB variants as a 1/1000 off-week mining find, with a global all-server celebration when claimed.</li> </ul> ';
     html = html.replace(marker240, section240 + marker240);
   }
 
@@ -701,6 +719,17 @@ function broadcastRoom(room, payload, exceptClient = null, transient = false) {
   try { frame = encodeFrame(Buffer.from(JSON.stringify(payload), 'utf8'), 0x1); }
   catch { return; }
   for (const client of room.clients) if (client !== exceptClient) writeFrame(client, frame, transient);
+}
+
+function broadcastGlobal(payload, exceptClient = null) {
+  let frame;
+  try { frame = encodeFrame(Buffer.from(JSON.stringify(payload), 'utf8'), 0x1); }
+  catch { return; }
+  for (const room of rooms.values()) {
+    for (const client of room.clients) {
+      if (client !== exceptClient) writeFrame(client, frame, false);
+    }
+  }
 }
 
 function sendBinary(client, payload, transient = false) {
@@ -1426,7 +1455,7 @@ function relayGameMessage(client, message, rawLength) {
   if (message.t==='tool-attack') {
     if (room.mode!=='pvp' || !room.battle || (room.battle.phase!=='fight'&&room.battle.phase!=='elimination') || !client.alive || client.eliminated) return;
     const itemId=Number(message.itemId)|0;
-    if(itemId!==239 && !(itemId>=379&&itemId<=394)) return;
+    if(itemId!==239 && !(itemId>=379&&itemId<=394) && !RGB_LIGHTSWORD_IDS.has(itemId)) return;
     const fx=Number(message.fromX),fy=Number(message.fromY),tx=Number(message.toX),ty=Number(message.toY);
     if(![fx,fy,tx,ty].every(Number.isFinite))return;
     // Tool weapons are melee. Clamp their PvP reach even if a modified client
@@ -1481,6 +1510,21 @@ function relayGameMessage(client, message, rawLength) {
     room.coins.delete(id);
     sendJson(client,{t:'coin-award',amount:Math.max(1,coin.value|0),reason:'kill-drop'});
     broadcastRoom(room,{t:'coin-remove',id});
+    return;
+  }
+
+  if (message.t==='true-rgb-found') {
+    const itemId=Number(message.itemId)|0;
+    if(!TRUE_RGB_IDS.has(itemId)) return;
+    const now=Date.now();
+    if(now-(client.lastTrueRgbAnnounceAt||0)<2500) return;
+    client.lastTrueRgbAnnounceAt=now;
+    broadcastGlobal({
+      t:'true-rgb-global',
+      name:String(client.name||'Player').slice(0,32),
+      itemId,
+      serverNow:now
+    },client);
     return;
   }
 
