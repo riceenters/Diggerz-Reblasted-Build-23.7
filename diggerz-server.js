@@ -50,6 +50,7 @@ const LEVELUP_OGG_PATH = path.join(__dirname, 'levelup.ogg');
 const MUSIC_OGG_PATHS = [1,2,3,4].map((n,i)=>path.join(__dirname, i===0?'music_theme.ogg':`music_theme${n}.ogg`));
 const BALLOON_POP_OGG_PATH = path.join(__dirname, 'balloon_pop.ogg');
 const SWAP_OGG_PATH = path.join(__dirname, 'swap.ogg');
+const JAMS_VIP_OGG_PATH = path.join(__dirname, 'jams_vip.ogg');
 const MAPS_DIR = path.join(__dirname, 'maps');
 const BANS_FILE = process.env.DIGGERZ_BANS_FILE || path.join(__dirname, 'bans.json');
 const PLAYERS_FILE = process.env.DIGGERZ_PLAYERS_FILE || path.join(__dirname, 'players.json');
@@ -287,6 +288,13 @@ function patchGameHtmlForBuild239(input) {
   if (html.includes(rgbStetsonShaderOld240)) html = html.replace(rgbStetsonShaderOld240, rgbStetsonShaderNew240);
   else console.warn('[Diggerz 24.0] RGB Stetson shader target was not found.');
 
+  // Expose the recovered wearable behavior factory so build240-client.js can
+  // map virtual RGB item IDs back to their native special behaviors.
+  const rgbRuntimeBridgeOld240 = "getAi:function(){ return ai }, getH:function(){ return h }, getCg:function(){ return cg }";
+  const rgbRuntimeBridgeNew240 = "getAi:function(){ return ai }, getH:function(){ return h }, getCg:function(){ return cg }, getYf:function(){ return Yf }";
+  if (html.includes(rgbRuntimeBridgeOld240)) html = html.replace(rgbRuntimeBridgeOld240, rgbRuntimeBridgeNew240);
+  else if (!html.includes("getYf:function(){ return Yf }")) console.warn('[Diggerz 24.0] RGB wearable runtime bridge target was not found.');
+
   const rgbAdminCatalogOld240 = "var out = [], max = category === 1 ? 700 : 450, id, display, name;";
   const rgbAdminCatalogNew240 = "var out = [], max = category === 1 ? 700 : 700, id, display, name;";
   if (html.includes(rgbAdminCatalogOld240)) html = html.replace(rgbAdminCatalogOld240, rgbAdminCatalogNew240);
@@ -331,6 +339,7 @@ let levelupOgg = null;
 let musicOgg = [null,null,null,null];
 let balloonPopOgg = null;
 let swapOgg = null;
+let jamsVipOgg = null;
 try { gameHtml = patchGameHtmlForBuild239(fs.readFileSync(GAME_HTML_PATH)); } catch (error) { console.warn('[Diggerz] index.html not found at startup:', error.message); }
 try { build239ClientJs = fs.readFileSync(BUILD239_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build239-client.js not found:', error.message); }
 try { build240ClientJs = fs.readFileSync(BUILD240_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build240-client.js not found:', error.message); }
@@ -341,6 +350,7 @@ try { levelupOgg = fs.readFileSync(LEVELUP_OGG_PATH); } catch (error) { console.
 for (let i=0;i<MUSIC_OGG_PATHS.length;i++) try { musicOgg[i]=fs.readFileSync(MUSIC_OGG_PATHS[i]); } catch(error) { console.warn(`[Diggerz] music theme ${i+1} not found:`,error.message); }
 try { balloonPopOgg=fs.readFileSync(BALLOON_POP_OGG_PATH); } catch(error) { console.warn('[Diggerz] balloon_pop.ogg not found:',error.message); }
 try { swapOgg=fs.readFileSync(SWAP_OGG_PATH); } catch(error) { console.warn('[Diggerz] swap.ogg not found:',error.message); }
+try { jamsVipOgg=fs.readFileSync(JAMS_VIP_OGG_PATH); } catch(error) { console.warn('[Diggerz] jams_vip.ogg not found:',error.message); }
 
 const rooms = new Map();
 const adminSessions = new Map();
@@ -1550,6 +1560,7 @@ function relayGameMessage(client, message, rawLength) {
   if (message.t==='true-rgb-found') {
     const itemId=Number(message.itemId)|0;
     if(!TRUE_RGB_IDS.has(itemId)) return;
+    const odds=itemId===554?1000000:([559,560,561,562].includes(itemId)?101337:100000);
     const now=Date.now();
     if(now-(client.lastTrueRgbAnnounceAt||0)<2500) return;
     client.lastTrueRgbAnnounceAt=now;
@@ -1557,6 +1568,7 @@ function relayGameMessage(client, message, rawLength) {
       t:'true-rgb-global',
       name:String(client.name||'Player').slice(0,32),
       itemId,
+      odds,
       serverNow:now
     },client);
     return;
@@ -2066,7 +2078,7 @@ function buildItchClientZip() {
   const localAssets = [
     'tiles.png','bknd.png','levelup.ogg',
     'music_theme.ogg','music_theme2.ogg','music_theme3.ogg','music_theme4.ogg',
-    'balloon_pop.ogg','swap.ogg','build239-client.js','build240-client.js'
+    'balloon_pop.ogg','swap.ogg','jams_vip.ogg','build239-client.js','build240-client.js'
   ];
   for (const asset of localAssets) {
     itchHtml = itchHtml.split("'/" + asset + "'").join("'" + asset + "'");
@@ -2091,6 +2103,7 @@ function buildItchClientZip() {
     { name: 'music_theme4.ogg', data: musicOgg[3] },
     { name: 'balloon_pop.ogg', data: balloonPopOgg },
     { name: 'swap.ogg', data: swapOgg },
+    { name: 'jams_vip.ogg', data: jamsVipOgg },
     { name: 'build239-client.js', data: build239ClientJs },
     { name: 'build240-client.js', data: build240ClientJs },
     { name: 'README.txt', data: readme }
@@ -2162,6 +2175,7 @@ const server = http.createServer(async (req, res) => {
   if (urlPath === '/music_theme4.ogg') { serveBuffer(res,musicOgg[3],'audio/ogg'); return; }
   if (urlPath === '/balloon_pop.ogg') { serveBuffer(res,balloonPopOgg,'audio/ogg'); return; }
   if (urlPath === '/swap.ogg') { serveBuffer(res,swapOgg,'audio/ogg'); return; }
+  if (urlPath === '/jams_vip.ogg') { serveBuffer(res,jamsVipOgg,'audio/ogg'); return; }
   if (urlPath === '/health') {
     const body = JSON.stringify({
       ok: true,
