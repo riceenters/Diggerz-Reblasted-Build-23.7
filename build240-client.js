@@ -420,19 +420,33 @@
         }
 
         var hash=randomHash();
-        var roll=hash%10000;
+        var roll=hash%10000,item,list;
         if(roll<12)return this.superRareRewardAt(hash);
         if(roll<42){
+          list=window.DiggerzService.RARE_REWARDS||[];
+          if(list.length){
+            item=list[Math.floor(hash/42)%list.length];
+            return {category:item.category,id:item.id,count:item.count||1,tier:'rare'};
+          }
           var rares=window.DiggerzService.RARE_DROPS||[];
           if(!rares.length)return null;
-          return {category:2,id:rares[Math.floor(hash/42)%rares.length],tier:'rare'};
+          return {category:2,id:rares[Math.floor(hash/42)%rares.length],count:1,tier:'rare'};
         }
-        if(roll<642){
-          var blocks=window.DiggerzService.NORMAL_BLOCK_POOL||[];
-          if(!blocks.length)return null;
-          return {category:1,id:blocks[Math.floor(hash/642)%blocks.length],tier:'block'};
+        if(roll<1242){
+          // Preserve the established Build 23.3 common-reward quantities/pool;
+          // only the random source changed in Build 24.
+          list=window.DiggerzService.COMMON_REWARDS||[];
+          if(list.length){
+            item=list[Math.floor(hash/642)%list.length];
+            return {category:item.category,id:item.id,count:item.count||1,tier:item.category===1?'block':'weapon'};
+          }
+          if(roll<642){
+            var blocks=window.DiggerzService.NORMAL_BLOCK_POOL||[];
+            if(!blocks.length)return null;
+            return {category:1,id:blocks[Math.floor(hash/642)%blocks.length],count:1,tier:'block'};
+          }
+          return this.normalWeaponRewardAt(hash);
         }
-        if(roll<1242)return this.normalWeaponRewardAt(hash);
         return null;
       };
 
