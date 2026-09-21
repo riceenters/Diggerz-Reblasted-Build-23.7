@@ -411,7 +411,16 @@
           return null;
         }
 
-        if(!isRgbWeekend()){
+        if(isRgbWeekend()){
+          // RGB Weekend gets an extra independent Super Rare roll before the
+          // normal mining table, making the featured trio roughly twice as
+          // obtainable as ordinary daily Super Rares without reducing any
+          // existing Rare/Common reward band.
+          var rgbWeekendBonusRoll=randomHash()%10000;
+          if(rgbWeekendBonusRoll<12){
+            return this.superRareRewardAt(randomHash());
+          }
+        }else{
           var trueRoll=randomHash()%1000;
           if(trueRoll===0){
             var trueId=TRUE_RGB_IDS[randomHash()%TRUE_RGB_IDS.length];
