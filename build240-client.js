@@ -8,10 +8,18 @@
   var rgbAnimationStarted=false;
   var rgbObjects=[];
   var RGB_TIME_ZONE='America/New_York';
+  var TRUE_RGB_DEFAULT_ODDS=100000;
+  var TRUE_RGB_KPOP_ODDS=101337;
+  var TRUE_RGB_MILITARY_ODDS=1000000;
+  var TRUE_RGB_MILITARY_ID=554;
+  var TRUE_RGB_KPOP_IDS={559:true,560:true,561:true,562:true};
+  var RGB_KPOP_SHOE_IDS={511:true,561:true};
+  var rgbKpopAudio=null;
+  var rgbKpopAudioRetryAt=0;
 
   // Build 24.0 RGB catalog. Normal RGB IDs are weekend-event variants.
   // Their True RGB counterparts use the same recovered item geometry/behavior
-  // but a darker animated color cycle and only come from the off-week 1/1000 roll.
+  // but a darker animated color cycle and only come from the off-week ultra-rare rolls.
   var RGB_ITEMS=[
     {id:500,trueId:550,baseId:110,name:'RGB Ball Cap',trueName:'True RGB Ball Cap'},
     {id:501,trueId:551,baseId:213,name:'RGB Wings',trueName:'True RGB Wings'},
@@ -124,6 +132,47 @@
     return !!RGB_WEAPON_IDS[id|0];
   }
 
+  function trueRgbOdds(id){
+    id=id|0;
+    if(id===TRUE_RGB_MILITARY_ID)return TRUE_RGB_MILITARY_ODDS;
+    if(TRUE_RGB_KPOP_IDS[id])return TRUE_RGB_KPOP_ODDS;
+    return TRUE_RGB_DEFAULT_ODDS;
+  }
+
+  function genericTrueRgbIds(){
+    var out=[];
+    for(var i=0;i<TRUE_RGB_IDS.length;i++){
+      var id=TRUE_RGB_IDS[i]|0;
+      if(id!==TRUE_RGB_MILITARY_ID&&!TRUE_RGB_KPOP_IDS[id])out.push(id);
+    }
+    return out;
+  }
+
+  function rollTrueRgbReward(){
+    // Military Hat is intentionally absurdly rare.
+    if(randomHash()%TRUE_RGB_MILITARY_ODDS===0)
+      return {category:2,id:TRUE_RGB_MILITARY_ID,count:1,tier:'true-rgb'};
+
+    // Each True RGB K-Pop piece, including the Stetson, has its own 1/101,337 roll.
+    var kpop=[559,560,561,562];
+    var start=randomHash()%kpop.length;
+    for(var i=0;i<kpop.length;i++){
+      var id=kpop[(start+i)%kpop.length];
+      if(randomHash()%TRUE_RGB_KPOP_ODDS===0)
+        return {category:2,id:id,count:1,tier:'true-rgb'};
+    }
+
+    // Everything else uses the general 1/100,000 True RGB event roll.
+    if(randomHash()%TRUE_RGB_DEFAULT_ODDS===0){
+      var pool=genericTrueRgbIds();
+      if(pool.length){
+        var pick=pool[randomHash()%pool.length];
+        return {category:2,id:pick,count:1,tier:'true-rgb'};
+      }
+    }
+    return null;
+  }
+
   function inventoryCount(service,category,id){
     var total=0,slots=service&&service.state&&service.state.slots||[];
     for(var i=0;i<slots.length;i++){
@@ -144,6 +193,129 @@
       case 4:return [f,0,1];
       default:return [1,0,q];
     }
+  }
+
+  function rgbColorFor(def,color){
+    var low=def&&def.trueRgb?0.10:0.28;
+    var gain=def&&def.trueRgb?0.62:1.12;
+    return [low+gain*color[0],low+gain*color[1],low+gain*color[2]];
+  }
+
+  function applyRgbColor(obj,def,color){
+    if(!obj||!def)return false;
+    var rgb=rgbColorFor(def,color);
+    try{
+      obj._build240RgbStetson=!!def.stetson;
+      obj.c9=false;
+      if(typeof obj.set_local_r==='function')obj.set_local_r(rgb[0]);
+      if(typeof obj.set_local_g==='function')obj.set_local_g(rgb[1]);
+      if(typeof obj.set_local_b==='function')obj.set_local_b(rgb[2]);
+      if(typeof obj.set_r==='function')obj.set_r(rgb[0]);
+      if(typeof obj.set_g==='function')obj.set_g(rgb[1]);
+      if(typeof obj.set_b==='function')obj.set_b(rgb[2]);
+      return true;
+    }catch(error){return false}
+  }
+
+  function entityNode(ent,path){
+    try{
+      var node=ent;
+      for(var i=0;i<path.length;i++)node=node&&node.f2?node.f2(path[i]):null;
+      return node||null;
+    }catch(error){return null}
+  }
+
+  function tintDirectBodyParts(ent,color){
+    var ap=ent&&ent.J33;
+    if(!ap||!ap.length)return;
+    var shirt=RGB_BY_ID[ap[2]|0];
+    if(shirt){
+      applyRgbColor(entityNode(ent,['i33']),shirt,color);
+      applyRgbColor(entityNode(ent,['front_shoulder','arm']),shirt,color);
+      applyRgbColor(entityNode(ent,['back_shoulder','arm_back']),shirt,color);
+      applyRgbColor(entityNode(ent,['torso']),shirt,color);
+    }
+    var pants=RGB_BY_ID[ap[7]|0];
+    if(pants){
+      applyRgbColor(entityNode(ent,['front_lowerleg','leg']),pants,color);
+      applyRgbColor(entityNode(ent,['back_lowerleg','leg_back']),pants,color);
+      applyRgbColor(entityNode(ent,['pants']),pants,color);
+    }
+  }
+
+  function hasRgbKpopShoes(ent){
+    var ap=ent&&ent.J33;
+    return !!(ap&&RGB_KPOP_SHOE_IDS[ap[3]|0]);
+  }
+
+  function spawnKpopTrail(ent,def,color,now){
+    if(!ent||!hasRgbKpopShoes(ent))return;
+    var x=Number(ent.b6),y=Number(ent.b7);
+    if(!isFinite(x)||!isFinite(y))return;
+    var lx=Number(ent._build240TrailX),ly=Number(ent._build240TrailY);
+    ent._build240TrailX=x;ent._build240TrailY=y;
+    if(!isFinite(lx)||!isFinite(ly)||Math.hypot(x-lx,y-ly)<1.25)return;
+    if(ent._build240TrailAt&&now-ent._build240TrailAt<95)return;
+    ent._build240TrailAt=now;
+    try{
+      var rt=window.DiggerzRuntime,z=rt&&rt.getZ&&rt.getZ(),f=rt&&rt.getF&&rt.getF();
+      var service=window.q&&q.diggerzService,game=service&&service.game;
+      if(!z||!f||!f.STAR_PNG||!game)return;
+      var sp=z.I9();
+      sp.Init(f.STAR_PNG());
+      sp.D7(game);
+      sp.b6=x+(Math.random()-.5)*12;
+      sp.b7=y+12+(Math.random()-.5)*7;
+      sp.set_local_xScale(sp.set_local_yScale(.16+Math.random()*.08));
+      applyRgbColor(sp,def,color);
+      sp.F6(5,.95,0,520);
+      sp.F6(3,sp.A4||.18,.04,520);
+      sp.F6(4,sp.A5||.18,.04,520);
+      game._9.push(sp);
+    }catch(error){}
+  }
+
+  function updateRgbKpopMusic(){
+    var local=window.l&&l.z39;
+    var wanted=hasRgbKpopShoes(local);
+    if(!wanted){
+      if(rgbKpopAudio&&!rgbKpopAudio.paused){
+        try{rgbKpopAudio.pause();rgbKpopAudio.currentTime=0}catch(error){}
+      }
+      return;
+    }
+    if(!rgbKpopAudio){
+      try{
+        rgbKpopAudio=new Audio('/jams_vip.ogg');
+        rgbKpopAudio.loop=true;
+        rgbKpopAudio.volume=.58;
+      }catch(error){return}
+    }
+    if(rgbKpopAudio.paused&&Date.now()>=rgbKpopAudioRetryAt){
+      rgbKpopAudioRetryAt=Date.now()+1500;
+      try{var p=rgbKpopAudio.play();if(p&&p.catch)p.catch(function(){})}catch(error){}
+    }
+  }
+
+  function animateEquippedRgb(color,now){
+    var service=window.q&&q.diggerzService;
+    var local=window.l&&l.z39;
+    if(local){
+      tintDirectBodyParts(local,color);
+      var ldef=RGB_BY_ID[local.J33&&local.J33[3]|0];
+      if(ldef&&RGB_KPOP_SHOE_IDS[ldef.id|0])spawnKpopTrail(local,ldef,color,now);
+    }
+    try{
+      var peers=service&&service.pvpPeers||{};
+      for(var key in peers){
+        var ent=service.pvpEntityForPeer&&service.pvpEntityForPeer(peers[key]);
+        if(!ent)continue;
+        tintDirectBodyParts(ent,color);
+        var def=RGB_BY_ID[ent.J33&&ent.J33[3]|0];
+        if(def&&RGB_KPOP_SHOE_IDS[def.id|0])spawnKpopTrail(ent,def,color,now);
+      }
+    }catch(error){}
+    updateRgbKpopMusic();
   }
 
   function registerRgbObject(obj,def){
@@ -169,34 +341,37 @@
       // Pooled display objects can be recycled. Only animate an object while it
       // still carries its RGB marker and has not been destroyed.
       if(obj.a0===1||obj.a2===false)continue;
-      var low=def.trueRgb?0.10:0.28;
-      var gain=def.trueRgb?0.62:1.12;
-      var r=low+gain*color[0],g=low+gain*color[1],b=low+gain*color[2];
-      try{
-        // c9=false makes the hue sweep affect the full recovered item image.
-        // This also RGB-ifies Golden Wings' inherited sparkle children.
-        obj.c9=false;
-        obj.set_local_r(r);obj.set_local_g(g);obj.set_local_b(b);
-        obj.set_r(r);obj.set_g(g);obj.set_b(b);
-        kept.push(obj);
-      }catch(error){}
+      // c9=false makes the hue sweep affect the full recovered item image.
+      // This also RGB-ifies Golden Wings' inherited sparkle children.
+      if(applyRgbColor(obj,def,color))kept.push(obj);
     }
     rgbObjects=kept;
+    animateEquippedRgb(color,Number(now)||Date.now());
     requestAnimationFrame(animateRgbObjects);
   }
 
-  function announceTrueRgbLocal(service,name){
-    var player=service&&service.playerName?service.playerName():'Player';
-    var message=String(player||'Player')+' FOUND A TRUE RGB ITEM! 1/1000 CHANCE!!! CONGRATS!!!';
+  function trueRgbMessage(player,itemId){
+    var odds=trueRgbOdds(itemId);
+    return String(player||'Player')+' FOUND A TRUE RGB ITEM! 1/'+odds.toLocaleString('en-US')+' CHANCE!!! CONGRATS!!!';
+  }
+
+  function announceTrueRgb(service,player,itemId){
+    var message=trueRgbMessage(player,itemId);
     try{service.message('^6'+message)}catch(error){}
+    // Use the same full-screen center-message path used by Super Rare finds.
     try{service.centerMessage('^6'+message)}catch(error){}
     return message;
+  }
+
+  function announceTrueRgbLocal(service,itemId){
+    var player=service&&service.playerName?service.playerName():'Player';
+    return announceTrueRgb(service,player,itemId);
   }
 
   function installRgb(proto){
     if(rgbInstalled||proto.__build240Rgb)return true;
     if(!window.DiggerzRuntime)return false;
-    var rt=window.DiggerzRuntime,h=rt.getH&&rt.getH();
+    var rt=window.DiggerzRuntime,h=rt.getH&&rt.getH(),Yf=rt.getYf&&rt.getYf();
     if(!h||typeof h.n7!=='function')return false;
 
     // Register the virtual variant IDs with every existing inventory/catalog
@@ -205,6 +380,20 @@
     for(var i=0;i<RGB_IDS.length;i++){
       if(itemPool.indexOf(RGB_IDS[i])<0)itemPool.push(RGB_IDS[i]);
       if(itemPool.indexOf(TRUE_RGB_IDS[i])<0)itemPool.push(TRUE_RGB_IDS[i]);
+    }
+
+    // Map virtual RGB IDs back to their recovered base IDs in the wearable
+    // behavior factory too. This restores native properties such as Golden
+    // Wings gravity/sparkles and the K-Pop Shoes dance animation.
+    if(Yf&&typeof Yf.W48==='function'&&!Yf.__build240RgbMapped){
+      var oldW48=Yf.W48;
+      Yf.W48=function(a,b,c){
+        var def=RGB_BY_ID[a|0];
+        var out=oldW48.call(this,def?def.baseId:a,b,c);
+        if(def&&out)registerRgbObject(out,def);
+        return out;
+      };
+      Yf.__build240RgbMapped=true;
     }
 
     var oldN7=h.n7;
@@ -287,7 +476,7 @@
           var after=inventoryCount(this,drop.category,drop.id);
           if(after>before){
             var itemName=RGB_BY_ID[drop.id|0].name;
-            announceTrueRgbLocal(this,itemName);
+            announceTrueRgbLocal(this,drop.id|0);
             try{
               if(typeof this.pvpSend==='function')this.pvpSend({t:'true-rgb-found',itemId:drop.id|0,itemName:itemName});
             }catch(error){}
@@ -301,11 +490,25 @@
     if(typeof proto.pvpReceive==='function'){
       var oldReceive=proto.pvpReceive;
       proto.pvpReceive=function(message){
+        // Multiplayer drop awards bypass the normal pickup() path, so announce
+        // a True RGB find here after the server-authoritative item reaches inventory.
+        if(message&&message.t==='drop-award'&&message.drop&&message.drop.tier==='true-rgb'){
+          var award=message.drop,id=award.id|0,def=RGB_BY_ID[id];
+          if(def&&def.trueRgb){
+            var before=inventoryCount(this,award.category|0,id);
+            var result=oldReceive.apply(this,arguments);
+            var after=inventoryCount(this,award.category|0,id);
+            if(after>before){
+              announceTrueRgbLocal(this,id);
+              try{if(typeof this.pvpSend==='function')this.pvpSend({t:'true-rgb-found',itemId:id,itemName:def.name})}catch(error){}
+            }
+            return result;
+          }
+        }
         if(message&&message.t==='true-rgb-global'){
           var who=String(message.name||'Player');
-          var line=who+' FOUND A TRUE RGB ITEM! 1/1000 CHANCE!!! CONGRATS!!!';
-          try{this.message('^6'+line)}catch(error){}
-          try{this.centerMessage('^6'+line)}catch(error){}
+          var id=message.itemId|0;
+          announceTrueRgb(this,who,id);
           return;
         }
         return oldReceive.apply(this,arguments);
@@ -403,7 +606,7 @@
       }
 
       // Every successful natural-block break gets fresh independent randomness.
-      // Monday-Friday first gets the 1/1000 True RGB roll. Saturday/Sunday
+      // Monday-Friday first checks the ultra-rare True RGB tables. Saturday/Sunday
       // reserve Super Rare finds for the three featured normal RGB variants.
       proto.miningRewardAt=function(x,y){
         var placed=this._build240PlacedTiles&&this._build240PlacedTiles[(x|0)+':'+(y|0)];
@@ -422,11 +625,8 @@
             return this.superRareRewardAt(randomHash());
           }
         }else{
-          var trueRoll=randomHash()%1000;
-          if(trueRoll===0){
-            var trueId=TRUE_RGB_IDS[randomHash()%TRUE_RGB_IDS.length];
-            return {category:2,id:trueId,count:1,tier:'true-rgb'};
-          }
+          var trueReward=rollTrueRgbReward();
+          if(trueReward)return trueReward;
         }
 
         var hash=randomHash();
