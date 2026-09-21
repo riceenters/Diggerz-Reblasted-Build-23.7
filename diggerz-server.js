@@ -266,6 +266,19 @@ function patchGameHtmlForBuild239(input) {
   if (html.includes(rgbToolOld240)) html = html.replace(rgbToolOld240, rgbToolNew240);
   else console.warn('[Diggerz 24.0] RGB Lightsword client target was not found.');
 
+  // RGB Stetson: the recovered Yellow Stetson has a chromatic/red band and a
+  // grayscale body. A special negative shader flag keeps the body yellow while
+  // only the original colored/red band receives the animated RGB multiplier.
+  const rgbStetsonFlagOld240 = "                g = this.c9 ? 1 : 0;";
+  const rgbStetsonFlagNew240 = "                g = this._build240RgbStetson ? -1 : (this.c9 ? 1 : 0);";
+  if (html.includes(rgbStetsonFlagOld240)) html = html.replace(rgbStetsonFlagOld240, rgbStetsonFlagNew240);
+  else console.warn('[Diggerz 24.0] RGB Stetson render flag target was not found.');
+
+  const rgbStetsonShaderOld240 = "lowp float aLerpNum = vOnlyDoGrey * (sign(abs(color.r - color.g)+abs(color.r - color.b)));\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\tcolor.r *= mix(vRMul, 1.0, aLerpNum);\\n\\t\\t\\t\\t\\tcolor.g *= mix(vGMul, 1.0, aLerpNum);\\n\\t\\t\\t\\t\\tcolor.b *= mix(vBMul, 1.0, aLerpNum);";
+  const rgbStetsonShaderNew240 = "lowp float chroma240 = sign(abs(color.r - color.g)+abs(color.r - color.b));\\\\n\\\\t\\\\t\\\\t\\\\t\\\\tif (vOnlyDoGrey < -0.5) {\\\\n\\\\t\\\\t\\\\t\\\\t\\\\t\\\\tcolor.r *= mix(1.0, vRMul, chroma240);\\\\n\\\\t\\\\t\\\\t\\\\t\\\\t\\\\tcolor.g *= mix(0.85, vGMul, chroma240);\\\\n\\\\t\\\\t\\\\t\\\\t\\\\t\\\\tcolor.b *= mix(0.15, vBMul, chroma240);\\\\n\\\\t\\\\t\\\\t\\\\t\\\\t} else {\\\\n\\\\t\\\\t\\\\t\\\\t\\\\t\\\\tlowp float aLerpNum = vOnlyDoGrey * chroma240;\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\tcolor.r *= mix(vRMul, 1.0, aLerpNum);\\n\\t\\t\\t\\t\\tcolor.g *= mix(vGMul, 1.0, aLerpNum);\\n\\t\\t\\t\\t\\tcolor.b *= mix(vBMul, 1.0, aLerpNum);\\\\n\\\\t\\\\t\\\\t\\\\t\\\\t}";
+  if (html.includes(rgbStetsonShaderOld240)) html = html.replace(rgbStetsonShaderOld240, rgbStetsonShaderNew240);
+  else console.warn('[Diggerz 24.0] RGB Stetson shader target was not found.');
+
   if (!html.includes('build240-client.js')) {
     const build240Tag = '<script src="/build240-client.js"></script>';
     const bodyClose = html.lastIndexOf('</body>');
