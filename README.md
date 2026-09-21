@@ -1,12 +1,19 @@
 # Diggerz.io Reblasted — Build 24.0
 
-## Build 24.0 — phase 1 patches and PvP polish
+## Build 24.0 — patches, PvP polish, and RGB Weekend
 - Item drops now fall through cleared space instead of remaining suspended in mid-air.
 - Mining bonus drops now use fresh random rolls instead of being tied to a map coordinate.
 - Player-placed blocks cannot be recycled to repeatedly generate bonus loot, closing the infinite Super Rare farming exploit.
 - Battle Royale music now ducks to a lower volume during active combat instead of stopping, then returns to full volume when a winner is declared.
 - Leaving PvP before a match starts now cleans up the PvP music instead of allowing it to continue outside the mode.
 - Restored the older Battle Royale countdown/message placement and presentation while retaining the newer font.
+- Added **RGB Weekend** every Saturday and Sunday. The normal “Today’s Super Rares” display becomes **RGB WEEKEND!** and features three rotating RGB variants as the only featured Super Rares for the weekend.
+- Added animated normal RGB variants for Ball Cap, Wings, Trance Eyes, Jetpack, Military Hat, Mohawk, Spiky Hair, Cute Bob, Short Hair, the K-Pop set (shirt, pants, shoes, and Stetson), Sparkle Shoes, Sparkle Gloves, Retriever, Dual Lightsword, Lightsword, Shirt, WC Shirt, and Pants.
+- Added matching **True RGB** variants with a darker rainbow cycle.
+- Outside RGB Weekend, mining has a **1/1000 True RGB roll**. A successful True RGB pickup uses a special celebration instead of the normal Super Rare screen.
+- True RGB pickup celebrations are broadcast across every active multiplayer room: **“(name) FOUND A TRUE RGB ITEM! 1/1000 CHANCE!!! CONGRATS!!!”**
+- RGB/True RGB Lightswords retain the recovered Lightsword mining/tool and Battle Royale melee behavior.
+- RGB Weekend is synchronized to **America/New_York** weekend dates so all players see the same event window and featured trio.
 
 # Diggerz.io Reblasted — Build 23.9
 
