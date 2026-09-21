@@ -16,6 +16,8 @@
   var RGB_KPOP_SHOE_IDS={511:true,561:true};
   var rgbKpopAudio=null;
   var rgbKpopAudioRetryAt=0;
+  var rgbKpopAudioFailed=false;
+  var rgbKpopYoutubeFrame=null;
 
   // Build 24.0 RGB catalog. Normal RGB IDs are weekend-event variants.
   // Their True RGB counterparts use the same recovered item geometry/behavior
@@ -274,6 +276,33 @@
     }catch(error){}
   }
 
+  function stopRgbKpopYoutube(){
+    if(rgbKpopYoutubeFrame){
+      try{rgbKpopYoutubeFrame.remove()}catch(error){
+        try{rgbKpopYoutubeFrame.parentNode.removeChild(rgbKpopYoutubeFrame)}catch(_e){}
+      }
+      rgbKpopYoutubeFrame=null;
+    }
+  }
+
+  function startRgbKpopYoutube(){
+    if(rgbKpopYoutubeFrame||!document.body)return;
+    try{
+      var frame=document.createElement('iframe');
+      frame.id='diggerz-jams-vip-240';
+      frame.title='JAMS VIP';
+      frame.width='1';frame.height='1';
+      frame.allow='autoplay';
+      frame.setAttribute('aria-hidden','true');
+      frame.style.cssText='position:fixed;width:1px;height:1px;left:-9999px;top:-9999px;border:0;opacity:0;pointer-events:none';
+      // Official Fishcracks upload. Used only if the bundled/local JAMS VIP
+      // audio asset is unavailable in a deployment.
+      frame.src='https://www.youtube-nocookie.com/embed/K89rLAhCmmk?autoplay=1&loop=1&playlist=K89rLAhCmmk&controls=0&disablekb=1&fs=0&modestbranding=1';
+      document.body.appendChild(frame);
+      rgbKpopYoutubeFrame=frame;
+    }catch(error){}
+  }
+
   function updateRgbKpopMusic(){
     var local=window.l&&l.z39;
     var wanted=hasRgbKpopShoes(local);
@@ -281,6 +310,11 @@
       if(rgbKpopAudio&&!rgbKpopAudio.paused){
         try{rgbKpopAudio.pause();rgbKpopAudio.currentTime=0}catch(error){}
       }
+      stopRgbKpopYoutube();
+      return;
+    }
+    if(rgbKpopAudioFailed){
+      startRgbKpopYoutube();
       return;
     }
     if(!rgbKpopAudio){
@@ -288,11 +322,26 @@
         rgbKpopAudio=new Audio('/jams_vip.ogg');
         rgbKpopAudio.loop=true;
         rgbKpopAudio.volume=.58;
-      }catch(error){return}
+        rgbKpopAudio.onerror=function(){
+          rgbKpopAudioFailed=true;
+          try{rgbKpopAudio.pause()}catch(error){}
+          startRgbKpopYoutube();
+        };
+      }catch(error){
+        rgbKpopAudioFailed=true;
+        startRgbKpopYoutube();
+        return;
+      }
     }
     if(rgbKpopAudio.paused&&Date.now()>=rgbKpopAudioRetryAt){
       rgbKpopAudioRetryAt=Date.now()+1500;
-      try{var p=rgbKpopAudio.play();if(p&&p.catch)p.catch(function(){})}catch(error){}
+      try{
+        var p=rgbKpopAudio.play();
+        if(p&&p.catch)p.catch(function(error){
+          // Autoplay can be rejected before the first user gesture. Keep
+          // retrying locally; do not mark the asset missing for that case.
+        });
+      }catch(error){}
     }
   }
 
