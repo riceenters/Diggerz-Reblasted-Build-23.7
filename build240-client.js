@@ -219,7 +219,7 @@
 
   function entityNode(ent,path){
     try{
-      var node=ent;
+      var node=ent&&ent.i33?ent.i33:ent;
       for(var i=0;i<path.length;i++)node=node&&node.f2?node.f2(path[i]):null;
       return node||null;
     }catch(error){return null}
@@ -230,7 +230,6 @@
     if(!ap||!ap.length)return;
     var shirt=RGB_BY_ID[ap[2]|0];
     if(shirt){
-      applyRgbColor(entityNode(ent,['i33']),shirt,color);
       applyRgbColor(entityNode(ent,['front_shoulder','arm']),shirt,color);
       applyRgbColor(entityNode(ent,['back_shoulder','arm_back']),shirt,color);
       applyRgbColor(entityNode(ent,['torso']),shirt,color);
@@ -269,8 +268,8 @@
       sp.set_local_xScale(sp.set_local_yScale(.16+Math.random()*.08));
       applyRgbColor(sp,def,color);
       sp.F6(5,.95,0,520);
-      sp.F6(3,sp.A4||.18,.04,520);
-      sp.F6(4,sp.A5||.18,.04,520);
+      sp.F6(3,.2,.04,520);
+      sp.F6(4,.2,.04,520);
       game._9.push(sp);
     }catch(error){}
   }
