@@ -14,6 +14,7 @@
   var TRUE_RGB_MILITARY_ID=554;
   var TRUE_RGB_KPOP_IDS={559:true,560:true,561:true,562:true};
   var RGB_KPOP_SHOE_IDS={511:true,561:true};
+  var RGB_WING_IDS={501:true,551:true};
   var rgbKpopAudio=null;
   var rgbKpopAudioRetryAt=0;
   var rgbKpopAudioFailed=false;
@@ -249,6 +250,37 @@
     return !!(ap&&RGB_KPOP_SHOE_IDS[ap[3]|0]);
   }
 
+  function rgbWingDef(ent){
+    var ap=ent&&ent.J33,id=ap&&ap[5]|0;
+    return RGB_WING_IDS[id]?RGB_BY_ID[id]:null;
+  }
+
+  function spawnWingSparkles(ent,def,color,now){
+    if(!ent||!def)return;
+    if(ent._build240WingSparkAt&&now-ent._build240WingSparkAt<85)return;
+    ent._build240WingSparkAt=now;
+    var x=Number(ent.b6),y=Number(ent.b7);
+    if(!isFinite(x)||!isFinite(y))return;
+    try{
+      var rt=window.DiggerzRuntime,z=rt&&rt.getZ&&rt.getZ(),f=rt&&rt.getF&&rt.getF();
+      var service=window.q&&q.diggerzService,game=service&&service.game;
+      if(!z||!f||!f.SPARK_PNG||!game)return;
+      for(var si=0;si<2;si++){
+        var sp=z.I9();
+        sp.Init(f.SPARK_PNG());
+        sp.D7(game);
+        sp.b6=x+(si?1:-1)*(18+Math.random()*18)+(Math.random()-.5)*7;
+        sp.b7=y-12+(Math.random()-.5)*40;
+        sp.set_local_xScale(sp.set_local_yScale(.55+Math.random()*.35));
+        applyRgbColor(sp,def,color);
+        sp.F6(5,.95,0,520);
+        sp.F6(3,.75,.08,520);
+        sp.F6(4,.75,.08,520);
+        game._9.push(sp);
+      }
+    }catch(error){}
+  }
+
   function spawnKpopTrail(ent,def,color,now){
     if(!ent||!hasRgbKpopShoes(ent))return;
     var x=Number(ent.b6),y=Number(ent.b7);
@@ -352,6 +384,8 @@
       tintDirectBodyParts(local,color);
       var ldef=RGB_BY_ID[local.J33&&local.J33[3]|0];
       if(ldef&&RGB_KPOP_SHOE_IDS[ldef.id|0])spawnKpopTrail(local,ldef,color,now);
+      var lwing=rgbWingDef(local);
+      if(lwing)spawnWingSparkles(local,lwing,color,now);
     }
     try{
       var peers=service&&service.pvpPeers||{};
@@ -361,6 +395,8 @@
         tintDirectBodyParts(ent,color);
         var def=RGB_BY_ID[ent.J33&&ent.J33[3]|0];
         if(def&&RGB_KPOP_SHOE_IDS[def.id|0])spawnKpopTrail(ent,def,color,now);
+        var wing=rgbWingDef(ent);
+        if(wing)spawnWingSparkles(ent,wing,color,now);
       }
     }catch(error){}
     updateRgbKpopMusic();
