@@ -1,6 +1,6 @@
 'use strict';
 
-// Diggerz Build 23.9 Reblasted multiplayer + Battle Royale server.
+// Diggerz Build 24.0 Reblasted multiplayer + Battle Royale server.
 // Dependency-free Node.js WebSocket server: rooms, presence, and relay.
 
 const http = require('http');
@@ -26,7 +26,7 @@ const HEARTBEAT_TIMEOUT_MS = 45 * 1000;
 const ROSTER_INTERVAL_MS = 5 * 1000;
 const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const ALLOWED_RELAY_TYPES = new Set(['session', 'hello', 'chat', 'typing', 'health']);
-const BUILD = '23.9';
+const BUILD = '24.0';
 const WORLD_WIDTH = 128;
 const BATTLE_BUILD_MS = Number(process.env.DIGGERZ_BUILD_MS || 40 * 1000);
 const BATTLE_FIRST_SHRINK_MS = Number(process.env.DIGGERZ_FIRST_SHRINK_MS || 90 * 1000);
@@ -40,6 +40,7 @@ const BATTLE_MAX_INSET = Math.max(0, Math.floor((WORLD_WIDTH - BATTLE_MIN_PLAY_W
 const PROJECTILE_ATTACKS = new Set([20,22,23,29,31,33,35,37,39]);
 const GAME_HTML_PATH = path.join(__dirname, 'index.html');
 const BUILD239_CLIENT_PATH = path.join(__dirname, 'build239-client.js');
+const BUILD240_CLIENT_PATH = path.join(__dirname, 'build240-client.js');
 const MAP_EDITOR_PATH = path.join(__dirname, 'map-editor.html');
 const TILES_PNG_PATH = path.join(__dirname, 'tiles.png');
 const BKND_PNG_PATH = path.join(__dirname, 'bknd.png');
@@ -154,14 +155,14 @@ function patchGameHtmlForBuild239(input) {
     ],
     [
       'usePvpTest ? "Build 23.7 native-packet PvP" : (useLocalDigTrade ? "Build 23.7 native-packet Dig+Trade" : "original multiplayer server")',
-      'usePvpTest ? "Build 23.9 native-packet PvP" : (useLocalDigTrade ? "Build 23.9 native-packet Dig+Trade" : "original multiplayer server")',
+      'usePvpTest ? "Build 24.0 native-packet PvP" : (useLocalDigTrade ? "Build 24.0 native-packet Dig+Trade" : "original multiplayer server")',
       'connection route label'
     ],
-    ['z-index: 100;">Build 23.7</div>', 'z-index: 100;">Build 23.9</div>', 'build badge'],
-    ['Build 23.7 multiplayer admin tools. Konami sequence + server-authorized admin session required.', 'Build 23.9 multiplayer admin tools. Konami sequence + server-authorized admin session required.', 'admin build label'],
-    ['<h2>Build 23.7 — Diggerz Multiplayer</h2>', '<h2>Build 23.9 — Diggerz Multiplayer</h2>', 'multiplayer heading'],
-    ['<span>MP DEBUG 23.7</span>', '<span>MP DEBUG 23.9</span>', 'debug build label'],
-    ["build:'23.7'", "build:'23.9'", 'matchmaking build id']
+    ['z-index: 100;">Build 23.7</div>', 'z-index: 100;">Build 24.0</div>', 'build badge'],
+    ['Build 23.7 multiplayer admin tools. Konami sequence + server-authorized admin session required.', 'Build 24.0 multiplayer admin tools. Konami sequence + server-authorized admin session required.', 'admin build label'],
+    ['<h2>Build 23.7 — Diggerz Multiplayer</h2>', '<h2>Build 24.0 — Diggerz Multiplayer</h2>', 'multiplayer heading'],
+    ['<span>MP DEBUG 23.7</span>', '<span>MP DEBUG 24.0</span>', 'debug build label'],
+    ["build:'23.7'", "build:'24.0'", 'matchmaking build id']
   ];
 
   for (const entry of replacements) {
@@ -231,10 +232,38 @@ function patchGameHtmlForBuild239(input) {
     html = bodyClose >= 0 ? html.slice(0, bodyClose) + build239Tag + html.slice(bodyClose) : html + build239Tag;
   }
 
+  // Build 24.0 phase 1: PvP music/text behavior.
+  const musicOld240 = "    function stopPvpMusic(){if(pvpHowl)try{pvpHowl.stop();pvpHowl.unload()}catch(e){}pvpHowl=null;pvpKey='';pvpFightAt=0}\n    var prevReceive233=proto.pvpReceive;\n    proto.pvpReceive=function(m){\n      if(m&&m.t==='battle-state'){\n        if(m.phase==='build')startPvpMusic(m.preMatchTrack,m.musicStartedAt,m.fightAt,m.serverNow);else stopPvpMusic()\n      }else if(m&&m.t==='battle-event'){\n        if(m.kind==='build-start')startPvpMusic(m.preMatchTrack,m.musicStartedAt,m.fightAt,m.serverNow);else if(m.kind==='fight')stopPvpMusic()\n      }\n      return prevReceive233.call(this,m)\n    };\n    setInterval(function(){\n      var service=P.service,show=!!(P.joined&&P.mode==='digtrade'&&service&&service.mode==='digtrade');player.style.display=show?'block':'none';if(!show&&digHowl)try{digHowl.pause()}catch(e){};\n      if(P.mode==='pvp'&&pvpFightAt&&pvpKey&&pvpHowl){var rem=pvpFightAt-(Date.now()+pvpOffset);if(rem<=0){stopPvpMusic()}else if(rem<=3000){try{pvpHowl.volume(Math.max(0,pvpBaseVolume*(rem/3000)))}catch(e){}}else try{pvpHowl.volume(pvpBaseVolume)}catch(e){}}\n      else if(P.mode!=='pvp'&&pvpHowl)stopPvpMusic();\n    },100);";
+  const musicNew240 = "    function stopPvpMusic(){if(pvpHowl)try{pvpHowl.stop();pvpHowl.unload()}catch(e){}pvpHowl=null;pvpKey='';pvpFightAt=0}\n    function setPvpMusicVolume(target,ms){if(!pvpHowl)return;target=Math.max(0,Math.min(1,+target||0));try{var current=Number(pvpHowl.volume());if(ms&&pvpHowl.fade)pvpHowl.fade(isFinite(current)?current:pvpBaseVolume,target,ms);else pvpHowl.volume(target);if(!pvpHowl.playing())pvpHowl.play()}catch(e){}}\n    function duckPvpMusic(ms){pvpFightAt=0;setPvpMusicVolume(pvpBaseVolume*.25,ms||900)}\n    function raisePvpMusic(ms){setPvpMusicVolume(pvpBaseVolume,ms||1200)}\n    var prevReceive233=proto.pvpReceive;\n    proto.pvpReceive=function(m){\n      if(m&&m.t==='battle-state'){\n        if(m.phase==='build')startPvpMusic(m.preMatchTrack,m.musicStartedAt,m.fightAt,m.serverNow);\n        else if(m.phase==='fight'||m.phase==='elimination')duckPvpMusic(700);\n        else if(m.phase==='finished')raisePvpMusic(1200)\n      }else if(m&&m.t==='battle-event'){\n        if(m.kind==='build-start')startPvpMusic(m.preMatchTrack,m.musicStartedAt,m.fightAt,m.serverNow);\n        else if(m.kind==='fight'||m.kind==='elimination')duckPvpMusic(900)\n      }else if(m&&m.t==='winner')raisePvpMusic(1200);\n      return prevReceive233.call(this,m)\n    };\n    setInterval(function(){\n      var service=P.service,show=!!(P.joined&&P.mode==='digtrade'&&service&&service.mode==='digtrade');player.style.display=show?'block':'none';if(!show&&digHowl)try{digHowl.pause()}catch(e){};\n      if((P.mode!=='pvp'||!P.joined)&&pvpHowl){stopPvpMusic();return}\n      if(P.mode==='pvp'&&P.joined&&pvpFightAt&&pvpKey&&pvpHowl){var rem=pvpFightAt-(Date.now()+pvpOffset),duck=pvpBaseVolume*.25;if(rem<=0){pvpFightAt=0;setPvpMusicVolume(duck,0)}else if(rem<=3000){try{pvpHowl.volume(duck+(pvpBaseVolume-duck)*(rem/3000))}catch(e){}}else try{pvpHowl.volume(pvpBaseVolume)}catch(e){}}\n    },100);";
+  if (html.includes(musicOld240)) html = html.replace(musicOld240, musicNew240);
+  else console.warn('[Diggerz 24.0] PvP music patch target was not found.');
+
+  const nativePromptOld240 = "    function nativePrompt(service,text){if(!service||!text)return;try{service.centerMessage(String(text))}catch(e){}}\n    function smallPrompt(service,text){if(!service||!text)return;try{var game=service.game||l.z38;if(!game||!game._9){nativePrompt(service,text);return}for(var i=0;i<game._9.length;i++){var old=game._9[i];if(old&&old._1==='BattleSmallText'){old.a0=1;try{old.e3()}catch(_e){}}}var a=new xa(q.CENTERX,q.CENTERY-55,String(text),q.MAIN_FONT_SMALL);a._1='BattleSmallText';a.set_local_xScale(a.set_local_yScale(1.25));a.F6(5,1,0,1550);game._9.push(a)}catch(e){nativePrompt(service,text)}}\n";
+  const nativePromptNew240 = "    function nativePrompt(service,text){if(!service||!text)return;var raw=String(text);var isBattle=/FIGHT!|ELIMINATION HAS BEGUN!|SHRINK!| wins!$/i.test(raw);if(!isBattle){try{service.centerMessage(raw)}catch(e){}return}try{var game=service.game||l.z38;if(!game||!game._9){service.centerMessage(raw);return}for(var i=0;i<game._9.length;i++){var old=game._9[i];if(old&&old._1==='BattleBigText'){old.a0=1;try{old.e3()}catch(_e){}}}var winner=/ wins!$/i.test(raw),y=winner?Math.round(q.SCREENHEIGHT*.31):Math.round(q.SCREENHEIGHT*.40),a=new xa(q.CENTERX,y,raw,q.MAIN_FONT_BIG);a._1='BattleBigText';var start=winner?1.8:2.15,end=winner?1.45:1.15;a.set_alp(0);a.set_local_xScale(a.set_local_yScale(start));a.F6(5,0,1,120);a.F6(3,start,end,260);a.F6(4,start,end,260);a.F6(5,1,0,320,!1,winner?2250:620);game._9.push(a);setTimeout(function(){try{a.a0=1}catch(_e){}},winner?2700:1100)}catch(e){try{service.centerMessage(raw)}catch(_e){}}}\n    function smallPrompt(service,text){if(!service||!text)return;var raw=String(text);if(/^\\^[0-9][123]$/.test(raw)){nativePrompt(service,raw);return}try{var game=service.game||l.z38;if(!game||!game._9){nativePrompt(service,raw);return}for(var i=0;i<game._9.length;i++){var old=game._9[i];if(old&&old._1==='BattleSmallText'){old.a0=1;try{old.e3()}catch(_e){}}}var a=new xa(q.CENTERX,Math.round(q.SCREENHEIGHT*.14),raw,q.MAIN_FONT_SMALL);a._1='BattleSmallText';a.set_local_xScale(a.set_local_yScale(1.05));a.F6(5,1,0,1450);game._9.push(a)}catch(e){nativePrompt(service,raw)}}\n";
+  if (html.includes(nativePromptOld240)) html = html.replace(nativePromptOld240, nativePromptNew240);
+  else console.warn('[Diggerz 24.0] PvP text helper patch target was not found.');
+
+  const shrinkPromptOld240 = "        else if(m.kind==='shrink-warning'){smallPrompt(this,'^1World Shrink Coming!')}\n        else if(m.kind==='elimination'){nativePrompt(this,'^6ELIMINATION HAS BEGUN!')}";
+  const shrinkPromptNew240 = "        else if(m.kind==='shrink-warning'){smallPrompt(this,'^1World Shrink Coming!')}\n        else if(m.kind==='shrink'){nativePrompt(this,'^3SHRINK!')}\n        else if(m.kind==='elimination'){nativePrompt(this,'^6ELIMINATION HAS BEGUN!')}";
+  if (html.includes(shrinkPromptOld240)) html = html.replace(shrinkPromptOld240, shrinkPromptNew240);
+  else console.warn('[Diggerz 24.0] PvP shrink prompt target was not found.');
+
+  if (!html.includes('build240-client.js')) {
+    const build240Tag = '<script src="/build240-client.js"></script>';
+    const bodyClose = html.lastIndexOf('</body>');
+    html = bodyClose >= 0 ? html.slice(0, bodyClose) + build240Tag + html.slice(bodyClose) : html + build240Tag;
+  }
+
   const marker239 = '<hr><a name="Build 23.8"></a>';
   if (!html.includes('Build 23.9 - Economy, Beta Gun, Support & UPDATE Hat') && html.includes(marker239)) {
     const section239 = '<hr><a name="Build 23.9"></a> <h2>Build 23.9 - Economy, Beta Gun, Support &amp; UPDATE Hat</h2> <ul> <li>Patched the long-standing multiplayer trade reload/duplication race.</li> <li>Fixed Beta Gun firing, added it to common mining weapon drops, and kept it tradable.</li> <li>Added the UPDATE Hat with item-specific player-head placement.</li> <li>Added Support Diggerz donations and a verified supporter leaderboard.</li> </ul> ';
     html = html.replace(marker239, section239 + marker239);
+  }
+
+  const marker240 = '<hr><a name="Build 23.9"></a>';
+  if (!html.includes('Build 24.0 - Patches & PvP Polish') && html.includes(marker240)) {
+    const section240 = '<hr><a name="Build 24.0"></a> <h2>Build 24.0 - Patches &amp; PvP Polish</h2> <ul> <li>Item drops now fall through cleared space instead of remaining suspended in mid-air.</li> <li>Mining bonus drops now use fresh random rolls, and player-placed blocks cannot be recycled for bonus-loot farming.</li> <li>PvP music now ducks during combat instead of stopping, returns to full volume on a winner, and stops cleanly when leaving PvP early.</li> <li>Restored the older Battle Royale text placement and presentation while keeping the newer in-game font.</li> </ul> ';
+    html = html.replace(marker240, section240 + marker240);
   }
 
   return Buffer.from(html, 'utf8');
@@ -242,6 +271,7 @@ function patchGameHtmlForBuild239(input) {
 
 let gameHtml = null;
 let build239ClientJs = null;
+let build240ClientJs = null;
 let mapEditorHtml = null;
 let tilesPng = null;
 let bkndPng = null;
@@ -251,6 +281,7 @@ let balloonPopOgg = null;
 let swapOgg = null;
 try { gameHtml = patchGameHtmlForBuild239(fs.readFileSync(GAME_HTML_PATH)); } catch (error) { console.warn('[Diggerz] index.html not found at startup:', error.message); }
 try { build239ClientJs = fs.readFileSync(BUILD239_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build239-client.js not found:', error.message); }
+try { build240ClientJs = fs.readFileSync(BUILD240_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build240-client.js not found:', error.message); }
 try { mapEditorHtml = fs.readFileSync(MAP_EDITOR_PATH); } catch (error) { console.warn('[Diggerz] map-editor.html not found:', error.message); }
 try { tilesPng = fs.readFileSync(TILES_PNG_PATH); } catch (error) { console.warn('[Diggerz] tiles.png not found:', error.message); }
 try { bkndPng = fs.readFileSync(BKND_PNG_PATH); } catch (error) { console.warn('[Diggerz] bknd.png not found:', error.message); }
@@ -1957,7 +1988,7 @@ function buildItchClientZip() {
   const localAssets = [
     'tiles.png','bknd.png','levelup.ogg',
     'music_theme.ogg','music_theme2.ogg','music_theme3.ogg','music_theme4.ogg',
-    'balloon_pop.ogg','swap.ogg','build239-client.js'
+    'balloon_pop.ogg','swap.ogg','build239-client.js','build240-client.js'
   ];
   for (const asset of localAssets) {
     itchHtml = itchHtml.split("'/" + asset + "'").join("'" + asset + "'");
@@ -1965,7 +1996,7 @@ function buildItchClientZip() {
   }
 
   const readme = Buffer.from(
-    'Diggerz.io Reblasted Build 23.9 - itch.io client\\n' +
+    'Diggerz.io Reblasted Build 24.0 - itch.io client\\n' +
     'Upload this ZIP to itch.io as an HTML project.\\n' +
     'Multiplayer and admin services remain hosted on Railway.\\n',
     'utf8'
@@ -1983,6 +2014,7 @@ function buildItchClientZip() {
     { name: 'balloon_pop.ogg', data: balloonPopOgg },
     { name: 'swap.ogg', data: swapOgg },
     { name: 'build239-client.js', data: build239ClientJs },
+    { name: 'build240-client.js', data: build240ClientJs },
     { name: 'README.txt', data: readme }
   ]);
   return itchClientZip;
@@ -2008,12 +2040,12 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (urlPath === '/itch-build-23.9.zip') {
+  if (urlPath === '/itch-build-24.0.zip') {
     try {
       const body = buildItchClientZip();
       res.writeHead(200, {
         'Content-Type': 'application/zip',
-        'Content-Disposition': 'attachment; filename="Diggerz-Reblasted-Build-23.9-itch.zip"',
+        'Content-Disposition': 'attachment; filename="Diggerz-Reblasted-Build-24.0-itch.zip"',
         'Content-Length': body.length,
         'Cache-Control': 'no-store'
       });
@@ -2041,6 +2073,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (urlPath === '/build239-client.js') { serveBuffer(res,build239ClientJs,'application/javascript; charset=utf-8'); return; }
+  if (urlPath === '/build240-client.js') { serveBuffer(res,build240ClientJs,'application/javascript; charset=utf-8'); return; }
   if (urlPath === '/map-editor' || urlPath === '/map-editor.html') { serveBuffer(res,mapEditorHtml,'text/html; charset=utf-8'); return; }
   if (urlPath === '/tiles.png') { serveBuffer(res,tilesPng,'image/png'); return; }
   if (urlPath === '/bknd.png') { serveBuffer(res,bkndPng,'image/png'); return; }
@@ -2054,7 +2087,7 @@ const server = http.createServer(async (req, res) => {
   if (urlPath === '/health') {
     const body = JSON.stringify({
       ok: true,
-      service: 'diggerz-build23.9-server',
+      service: 'diggerz-build24.0-server',
       build: BUILD,
       rooms: rooms.size,
       players: [...rooms.values()].reduce((sum, room) => sum + room.clients.size, 0),
@@ -2131,7 +2164,7 @@ server.on('upgrade', (req, socket) => {
 
   sendJson(client, {
     t: 'server-hello',
-    server: 'Diggerz Build 23.9 Reblasted Multiplayer + Battle Royale Server',
+    server: 'Diggerz Build 24.0 Reblasted Multiplayer + Battle Royale Server',
     protocol: 1,
     maxPlayersPerRoom: MAX_ROOM_PLAYERS
   });
