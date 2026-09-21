@@ -388,7 +388,8 @@
       proto.__build240Patches=true;
 
       // Track blocks placed after the world was loaded. Re-mining a placed block
-      // returns the block but cannot generate another bonus-loot roll.
+      // cannot generate another bonus-loot roll. Build 24.0 also no longer
+      // returns mined terrain itself to inventory.
       var oldSetTile=proto.setTile;
       if(typeof oldSetTile==='function'){
         proto.setTile=function(x,y,id,variant){
