@@ -252,7 +252,7 @@ function patchGameHtmlForBuild239(input) {
 
   // Build 24.0 RGB Weekend board + RGB tool support.
   const rgbBoardOld240 = "            d = new xa(0,c,\"^2TODAY'S SUPER RARES\",q.MAIN_FONT_BIG);\n            d.D7(this, !0);\n            d.set_local_xScale(d.set_local_yScale(.65));\n            this._9.push(d);\n            c += 65;\n            d = -150;";
-  const rgbBoardNew240 = "            var rgbWeekend240=!!(window.DiggerzBuild240&&window.DiggerzBuild240.isRgbWeekend&&window.DiggerzBuild240.isRgbWeekend());\n            d = new xa(0,c,rgbWeekend240?\"^6RGB WEEKEND!\":\"^2TODAY'S SUPER RARES\",q.MAIN_FONT_BIG);\n            d.D7(this, !0);\n            d.set_local_xScale(d.set_local_yScale(.65));\n            this._9.push(d);\n            c += 65;\n            if(rgbWeekend240){\n                var rgbInfo240=new xa(0,c,\"^6RGB Weekend! ^0Limited-time RGB variants are featured Saturday + Sunday.\\n^0Get one of these 3 before Monday! Off-week RGB finds become EXTREMELY RARE True RGB items.\",q.MAIN_FONT_SMALL);\n                rgbInfo240.D7(this,!0);\n                rgbInfo240.set_local_xScale(rgbInfo240.set_local_yScale(.42));\n                this._9.push(rgbInfo240);\n                c += 52\n            }\n            d = -150;";
+  const rgbBoardNew240 = "            var rgbWeekend240=!!(window.DiggerzBuild240&&window.DiggerzBuild240.isRgbWeekend&&window.DiggerzBuild240.isRgbWeekend());\n            d = new xa(0,c,rgbWeekend240?\"^6RGB WEEKEND!\":\"^2TODAY'S SUPER RARES\",q.MAIN_FONT_BIG);\n            d.D7(this, !0);\n            d.set_local_xScale(d.set_local_yScale(.65));\n            this._9.push(d);\n            c += 65;\n            if(rgbWeekend240){\n                var rgbInfo240=new xa(0,c,\"^6RGB Weekend! ^0These 3 limited-time RGB variants are more common than normal featured Super Rares.\\n^0Get them before Monday! Off-week RGB finds become EXTREMELY RARE True RGB items -- the highest-value variants!\",q.MAIN_FONT_SMALL);\n                rgbInfo240.D7(this,!0);\n                rgbInfo240.set_local_xScale(rgbInfo240.set_local_yScale(.42));\n                this._9.push(rgbInfo240);\n                c += 52\n            }\n            d = -150;";
   if (html.includes(rgbBoardOld240)) html = html.replace(rgbBoardOld240, rgbBoardNew240);
   else console.warn('[Diggerz 24.0] RGB Weekend board target was not found.');
 
@@ -278,6 +278,11 @@ function patchGameHtmlForBuild239(input) {
   const rgbStetsonShaderNew240 = "lowp float chroma240 = sign(abs(color.r - color.g)+abs(color.r - color.b));\\n\\t\\t\\t\\t\\tif (vOnlyDoGrey < -0.5) {\\n\\t\\t\\t\\t\\t\\tcolor.r *= mix(1.0, vRMul, chroma240);\\n\\t\\t\\t\\t\\t\\tcolor.g *= mix(0.85, vGMul, chroma240);\\n\\t\\t\\t\\t\\t\\tcolor.b *= mix(0.15, vBMul, chroma240);\\n\\t\\t\\t\\t\\t} else {\\n\\t\\t\\t\\t\\t\\tlowp float aLerpNum = vOnlyDoGrey * chroma240;\\n\\t\\t\\t\\t\\t\\n\\t\\t\\t\\t\\tcolor.r *= mix(vRMul, 1.0, aLerpNum);\\n\\t\\t\\t\\t\\tcolor.g *= mix(vGMul, 1.0, aLerpNum);\\n\\t\\t\\t\\t\\tcolor.b *= mix(vBMul, 1.0, aLerpNum);\\n\\t\\t\\t\\t\\t}";
   if (html.includes(rgbStetsonShaderOld240)) html = html.replace(rgbStetsonShaderOld240, rgbStetsonShaderNew240);
   else console.warn('[Diggerz 24.0] RGB Stetson shader target was not found.');
+
+  const rgbAdminCatalogOld240 = "var out = [], max = category === 1 ? 700 : 450, id, display, name;";
+  const rgbAdminCatalogNew240 = "var out = [], max = category === 1 ? 700 : 700, id, display, name;";
+  if (html.includes(rgbAdminCatalogOld240)) html = html.replace(rgbAdminCatalogOld240, rgbAdminCatalogNew240);
+  else console.warn('[Diggerz 24.0] RGB admin catalog target was not found.');
 
   if (!html.includes('build240-client.js')) {
     const build240Tag = '<script src="/build240-client.js"></script>';
