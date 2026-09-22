@@ -189,3 +189,12 @@ Diggerz.io and Coaster Town were originally created by **MeanDean**. Diggerz.io 
 - The server keeps a bounded recent-player identity ledger containing only username plus hashed installation/IP identifiers. Offline bans can reuse those hashes for stronger enforcement.
 - Exact normalized usernames are now also checked when a player connects, so prospective bans take effect on the next join.
 - `DIGGERZ_PLAYERS_FILE` can point the recent-player ledger at persistent storage, just like `DIGGERZ_BANS_FILE`.
+
+
+## Fanmade classic Roblox collab
+- Added **Noob Mask**, **Noob Shirt**, **Noob Pants**, and **Noob Gloves** as shop-only collab cosmetics. The four-piece set totals **300 coins** and is scheduled to leave the shop after **December 1, 2026**.
+- Wearing the complete Noob set enables a special death effect that bursts the character into its body-part pieces and plays the classic death/oof sound.
+- Full-set wearers play the supplied Roblox-style **ouch** sound when damaged by lava.
+- Added the **Roblox Rocket Launcher** as a **300-coin Bazooka skin**. It keeps Bazooka gameplay behavior, uses the supplied launch and impact sounds, and replaces the visible missile with a classic stud brick.
+- Added **M.U.L.E. (Bitblaster Mix)** as the fifth PvP music selection and as **Track 5** in the music player.
+- The new maps are intentionally not part of this patch yet; map-rotation changes will be handled separately when the finished maps are supplied.
