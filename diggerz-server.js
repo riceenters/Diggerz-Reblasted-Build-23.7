@@ -312,15 +312,15 @@ function patchGameHtmlForBuild239(input) {
 
   // Shop quantities: collab launcher purchases can grant a stack instead of one item.
   const shopQtyIdOld240 = '            var purchaseItemId = item.itemId | 0;';
-  const shopQtyIdNew240 = '            var purchaseItemId = item.itemId | 0;\\n            var purchaseQuantity = Math.max(1, Math.min(65535, Number(item.quantity || 1) | 0));';
+  const shopQtyIdNew240 = '            var purchaseItemId = item.itemId | 0;\n            var purchaseQuantity = Math.max(1, Math.min(65535, Number(item.quantity || 1) | 0));';
   if (html.includes(shopQtyIdOld240)) html = html.replace(shopQtyIdOld240,shopQtyIdNew240);
   else console.warn('[Diggerz 24.0] shop quantity item target was not found.');
   const shopQtyStackOld240 = '                    current.count > 0 && current.count < 65535) {';
   const shopQtyStackNew240 = '                    current.count > 0 && current.count <= 65535 - purchaseQuantity) {';
   if (html.includes(shopQtyStackOld240)) html = html.replace(shopQtyStackOld240,shopQtyStackNew240);
   else console.warn('[Diggerz 24.0] shop quantity stack target was not found.');
-  const shopQtyGrantOld240 = '                if (stackExisting) slots[targetSlot].count += 1;\\n                else slots[targetSlot] = this.item(2, purchaseItemId, 0, 1, 0, "");';
-  const shopQtyGrantNew240 = '                if (stackExisting) slots[targetSlot].count += purchaseQuantity;\\n                else slots[targetSlot] = this.item(2, purchaseItemId, 0, purchaseQuantity, 0, "");';
+  const shopQtyGrantOld240 = '                if (stackExisting) slots[targetSlot].count += 1;\n                else slots[targetSlot] = this.item(2, purchaseItemId, 0, 1, 0, "");';
+  const shopQtyGrantNew240 = '                if (stackExisting) slots[targetSlot].count += purchaseQuantity;\n                else slots[targetSlot] = this.item(2, purchaseItemId, 0, purchaseQuantity, 0, "");';
   if (html.includes(shopQtyGrantOld240)) html = html.replace(shopQtyGrantOld240,shopQtyGrantNew240);
   else console.warn('[Diggerz 24.0] shop quantity grant target was not found.');
   const shopQtyDisplayOld240 = '                    packet.R9(item.display || ("{2," + item.itemId + ",1}"))';
