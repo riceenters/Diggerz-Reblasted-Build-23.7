@@ -51,6 +51,7 @@ const MUSIC_OGG_PATHS = [1,2,3,4].map((n,i)=>path.join(__dirname, i===0?'music_t
 const BALLOON_POP_OGG_PATH = path.join(__dirname, 'balloon_pop.ogg');
 const SWAP_OGG_PATH = path.join(__dirname, 'swap.ogg');
 const JAMS_VIP_OGG_PATH = path.join(__dirname, 'jams_vip.ogg');
+const EPIC_SEA_OGG_PATH = path.join(__dirname, 'epic_sea.ogg');
 const MAPS_DIR = path.join(__dirname, 'maps');
 const BANS_FILE = process.env.DIGGERZ_BANS_FILE || path.join(__dirname, 'bans.json');
 const PLAYERS_FILE = process.env.DIGGERZ_PLAYERS_FILE || path.join(__dirname, 'players.json');
@@ -245,7 +246,7 @@ function patchGameHtmlForBuild239(input) {
 
   // Build 24.0 phase 1: PvP music/text behavior.
   const musicOld240 = "    function stopPvpMusic(){if(pvpHowl)try{pvpHowl.stop();pvpHowl.unload()}catch(e){}pvpHowl=null;pvpKey='';pvpFightAt=0}\n    var prevReceive233=proto.pvpReceive;\n    proto.pvpReceive=function(m){\n      if(m&&m.t==='battle-state'){\n        if(m.phase==='build')startPvpMusic(m.preMatchTrack,m.musicStartedAt,m.fightAt,m.serverNow);else stopPvpMusic()\n      }else if(m&&m.t==='battle-event'){\n        if(m.kind==='build-start')startPvpMusic(m.preMatchTrack,m.musicStartedAt,m.fightAt,m.serverNow);else if(m.kind==='fight')stopPvpMusic()\n      }\n      return prevReceive233.call(this,m)\n    };\n    setInterval(function(){\n      var service=P.service,show=!!(P.joined&&P.mode==='digtrade'&&service&&service.mode==='digtrade');player.style.display=show?'block':'none';if(!show&&digHowl)try{digHowl.pause()}catch(e){};\n      if(P.mode==='pvp'&&pvpFightAt&&pvpKey&&pvpHowl){var rem=pvpFightAt-(Date.now()+pvpOffset);if(rem<=0){stopPvpMusic()}else if(rem<=3000){try{pvpHowl.volume(Math.max(0,pvpBaseVolume*(rem/3000)))}catch(e){}}else try{pvpHowl.volume(pvpBaseVolume)}catch(e){}}\n      else if(P.mode!=='pvp'&&pvpHowl)stopPvpMusic();\n    },100);";
-  const musicNew240 = "    function stopPvpMusic(){if(pvpHowl)try{pvpHowl.stop();pvpHowl.unload()}catch(e){}pvpHowl=null;pvpKey='';pvpFightAt=0}\n    function setPvpMusicVolume(target,ms){if(!pvpHowl)return;target=Math.max(0,Math.min(1,+target||0));try{var current=Number(pvpHowl.volume());if(ms&&pvpHowl.fade)pvpHowl.fade(isFinite(current)?current:pvpBaseVolume,target,ms);else pvpHowl.volume(target);if(!pvpHowl.playing())pvpHowl.play()}catch(e){}}\n    function duckPvpMusic(ms){pvpFightAt=0;setPvpMusicVolume(pvpBaseVolume*.25,ms||900)}\n    function raisePvpMusic(ms){setPvpMusicVolume(pvpBaseVolume,ms||1200)}\n    var prevReceive233=proto.pvpReceive;\n    proto.pvpReceive=function(m){\n      if(m&&m.t==='battle-state'){\n        if(m.phase==='build')startPvpMusic(m.preMatchTrack,m.musicStartedAt,m.fightAt,m.serverNow);\n        else if(m.phase==='fight'||m.phase==='elimination')duckPvpMusic(700);\n        else if(m.phase==='finished')raisePvpMusic(1200)\n      }else if(m&&m.t==='battle-event'){\n        if(m.kind==='build-start')startPvpMusic(m.preMatchTrack,m.musicStartedAt,m.fightAt,m.serverNow);\n        else if(m.kind==='fight'||m.kind==='elimination')duckPvpMusic(900)\n      }else if(m&&m.t==='winner')raisePvpMusic(1200);\n      return prevReceive233.call(this,m)\n    };\n    setInterval(function(){\n      var service=P.service,show=!!(P.joined&&P.mode==='digtrade'&&service&&service.mode==='digtrade');player.style.display=show?'block':'none';if(!show&&digHowl)try{digHowl.pause()}catch(e){};\n      if((P.mode!=='pvp'||!P.joined)&&pvpHowl){stopPvpMusic();return}\n      if(P.mode==='pvp'&&P.joined&&pvpFightAt&&pvpKey&&pvpHowl){var rem=pvpFightAt-(Date.now()+pvpOffset),duck=pvpBaseVolume*.25;if(rem<=0){pvpFightAt=0;setPvpMusicVolume(duck,0)}else if(rem<=3000){try{pvpHowl.volume(duck+(pvpBaseVolume-duck)*(rem/3000))}catch(e){}}else try{pvpHowl.volume(pvpBaseVolume)}catch(e){}}\n    },100);";
+  const musicNew240 = "    function stopPvpMusic(){if(pvpHowl)try{pvpHowl.stop();pvpHowl.unload()}catch(e){}pvpHowl=null;pvpKey='';pvpFightAt=0}\n    function setPvpMusicVolume(target,ms){if(!pvpHowl)return;target=Math.max(0,Math.min(1,+target||0));try{var current=Number(pvpHowl.volume());if(ms&&pvpHowl.fade)pvpHowl.fade(isFinite(current)?current:pvpBaseVolume,target,ms);else pvpHowl.volume(target);if(!pvpHowl.playing())pvpHowl.play()}catch(e){}}\n    function duckPvpMusic(ms){pvpFightAt=0;setPvpMusicVolume(pvpBaseVolume*.25,ms||900)}\n    function raisePvpMusic(ms){setPvpMusicVolume(pvpBaseVolume,ms||1200)}\n    var prevReceive233=proto.pvpReceive;\n    proto.pvpReceive=function(m){\n      if(m&&m.t==='battle-state'){\n        if(m.mapMusic)stopPvpMusic();\n        else if(m.phase==='build')startPvpMusic(m.preMatchTrack,m.musicStartedAt,m.fightAt,m.serverNow);\n        else if(m.phase==='fight'||m.phase==='elimination')duckPvpMusic(700);\n        else if(m.phase==='finished')raisePvpMusic(1200)\n      }else if(m&&m.t==='battle-event'){\n        if(m.mapMusic)stopPvpMusic();\n        else if(m.kind==='build-start')startPvpMusic(m.preMatchTrack,m.musicStartedAt,m.fightAt,m.serverNow);\n        else if(m.kind==='fight'||m.kind==='elimination')duckPvpMusic(900)\n      }else if(m&&m.t==='winner')raisePvpMusic(1200);\n      return prevReceive233.call(this,m)\n    };\n    setInterval(function(){\n      var service=P.service,show=!!(P.joined&&P.mode==='digtrade'&&service&&service.mode==='digtrade');player.style.display=show?'block':'none';if(!show&&digHowl)try{digHowl.pause()}catch(e){};\n      if((P.mode!=='pvp'||!P.joined)&&pvpHowl){stopPvpMusic();return}\n      if(P.mode==='pvp'&&P.joined&&pvpFightAt&&pvpKey&&pvpHowl){var rem=pvpFightAt-(Date.now()+pvpOffset),duck=pvpBaseVolume*.25;if(rem<=0){pvpFightAt=0;setPvpMusicVolume(duck,0)}else if(rem<=3000){try{pvpHowl.volume(duck+(pvpBaseVolume-duck)*(rem/3000))}catch(e){}}else try{pvpHowl.volume(pvpBaseVolume)}catch(e){}}\n    },100);";
   if (html.includes(musicOld240)) html = html.replace(musicOld240, musicNew240);
   else console.warn('[Diggerz 24.0] PvP music patch target was not found.');
 
@@ -300,6 +301,36 @@ function patchGameHtmlForBuild239(input) {
   if (html.includes(rgbAdminCatalogOld240)) html = html.replace(rgbAdminCatalogOld240, rgbAdminCatalogNew240);
   else console.warn('[Diggerz 24.0] RGB admin catalog target was not found.');
 
+  // Build 24.0 map/UI fixes: PvP can inherit l.a42="Free Dig" from the recovered client.
+  // Keep the Battle Royale intro/super-rare screen in Battle Royale mode regardless.
+  const battleIntroModeOld240 = '"Free Dig" == l.a42 &&';
+  const battleIntroModeNew240 = '(!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && "Free Dig" == l.a42 &&';
+  const battleIntroModeCount240 = html.split(battleIntroModeOld240).length - 1;
+  if (battleIntroModeCount240 === 3) html = html.split(battleIntroModeOld240).join(battleIntroModeNew240);
+  else console.warn('[Diggerz 24.0] Battle Royale intro mode patch expected 3 targets, found',battleIntroModeCount240);
+
+  // Shop quantities: collab launcher purchases can grant a stack instead of one item.
+  const shopQtyIdOld240 = '            var purchaseItemId = item.itemId | 0;';
+  const shopQtyIdNew240 = '            var purchaseItemId = item.itemId | 0;\\n            var purchaseQuantity = Math.max(1, Math.min(65535, Number(item.quantity || 1) | 0));';
+  if (html.includes(shopQtyIdOld240)) html = html.replace(shopQtyIdOld240,shopQtyIdNew240);
+  else console.warn('[Diggerz 24.0] shop quantity item target was not found.');
+  const shopQtyStackOld240 = '                    current.count > 0 && current.count < 65535) {';
+  const shopQtyStackNew240 = '                    current.count > 0 && current.count <= 65535 - purchaseQuantity) {';
+  if (html.includes(shopQtyStackOld240)) html = html.replace(shopQtyStackOld240,shopQtyStackNew240);
+  else console.warn('[Diggerz 24.0] shop quantity stack target was not found.');
+  const shopQtyGrantOld240 = '                if (stackExisting) slots[targetSlot].count += 1;\\n                else slots[targetSlot] = this.item(2, purchaseItemId, 0, 1, 0, "");';
+  const shopQtyGrantNew240 = '                if (stackExisting) slots[targetSlot].count += purchaseQuantity;\\n                else slots[targetSlot] = this.item(2, purchaseItemId, 0, purchaseQuantity, 0, "");';
+  if (html.includes(shopQtyGrantOld240)) html = html.replace(shopQtyGrantOld240,shopQtyGrantNew240);
+  else console.warn('[Diggerz 24.0] shop quantity grant target was not found.');
+  const shopQtyDisplayOld240 = '                    packet.R9(item.display || ("{2," + item.itemId + ",1}"))';
+  const shopQtyDisplayNew240 = '                    packet.R9(item.display || ("{2," + item.itemId + "," + Math.max(1,Number(item.quantity)||1) + "}"))';
+  if (html.includes(shopQtyDisplayOld240)) html = html.replace(shopQtyDisplayOld240,shopQtyDisplayNew240);
+  else console.warn('[Diggerz 24.0] shop quantity display target was not found.');
+  const shopQtyMsgOld240 = '                "Purchased " + item.name + " for " + item.price + " coins.") +';
+  const shopQtyMsgNew240 = '                "Purchased " + item.name + (purchaseQuantity > 1 ? " x" + purchaseQuantity : "") + " for " + item.price + " coins.") +';
+  if (html.includes(shopQtyMsgOld240)) html = html.replace(shopQtyMsgOld240,shopQtyMsgNew240);
+  else console.warn('[Diggerz 24.0] shop quantity message target was not found.');
+
   // Fanmade Roblox collab: Bazooka skin 604 keeps native type-23 projectile
   // physics/damage, but its visible missile becomes a classic stud brick.
   const robloxRocketCtorOld240 = "        this.Init(f.MISSILE_PNG());\n        this.O23(b, c, d, e);\n        a = this.b33;";
@@ -352,6 +383,7 @@ let musicOgg = [null,null,null,null];
 let balloonPopOgg = null;
 let swapOgg = null;
 let jamsVipOgg = null;
+let epicSeaOgg = null;
 try { gameHtml = patchGameHtmlForBuild239(fs.readFileSync(GAME_HTML_PATH)); } catch (error) { console.warn('[Diggerz] index.html not found at startup:', error.message); }
 try { build239ClientJs = fs.readFileSync(BUILD239_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build239-client.js not found:', error.message); }
 try { build240ClientJs = fs.readFileSync(BUILD240_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build240-client.js not found:', error.message); }
@@ -363,6 +395,7 @@ for (let i=0;i<MUSIC_OGG_PATHS.length;i++) try { musicOgg[i]=fs.readFileSync(MUS
 try { balloonPopOgg=fs.readFileSync(BALLOON_POP_OGG_PATH); } catch(error) { console.warn('[Diggerz] balloon_pop.ogg not found:',error.message); }
 try { swapOgg=fs.readFileSync(SWAP_OGG_PATH); } catch(error) { console.warn('[Diggerz] swap.ogg not found:',error.message); }
 try { jamsVipOgg=fs.readFileSync(JAMS_VIP_OGG_PATH); } catch(error) { console.warn('[Diggerz] jams_vip.ogg not found:',error.message); }
+try { epicSeaOgg=fs.readFileSync(EPIC_SEA_OGG_PATH); } catch(error) { console.warn('[Diggerz] epic_sea.ogg not found:',error.message); }
 
 const rooms = new Map();
 const adminSessions = new Map();
@@ -737,6 +770,17 @@ function battleMapName(room) {
   return room && room.map ? room.map.name : 'Default Map';
 }
 
+const BATTLE_MAP_META = Object.freeze({
+  'Canyons': { author:'HeuFancy', music:'' },
+  'The Epic Sea': { author:'HeuFancy', music:'epic_sea.ogg' }
+});
+function battleMapMeta(room) {
+  const name=battleMapName(room);
+  return BATTLE_MAP_META[name] || {author:'',music:''};
+}
+function battleMapAuthor(room) { return String(battleMapMeta(room).author||''); }
+function battleMapMusic(room) { return String(battleMapMeta(room).music||''); }
+
 function serveBuffer(res, buffer, contentType) {
   if (!buffer) { res.writeHead(404,{'Content-Type':'text/plain; charset=utf-8'}); res.end('Missing file.\n'); return; }
   res.writeHead(200,{'Content-Type':contentType,'Content-Length':buffer.length,'Cache-Control':'no-store'});
@@ -881,6 +925,9 @@ function battleSnapshot(room) {
     right: b.right,
     elimination: !!b.elimination,
     winnerConnectionId: b.winnerConnectionId || '',
+    mapName: battleMapName(room),
+    mapAuthor: battleMapAuthor(room),
+    mapMusic: battleMapMusic(room),
     preMatchTrack: Number.isFinite(b.preMatchTrack) ? b.preMatchTrack : -1,
     musicStartedAt: Number.isFinite(b.musicStartedAt) ? b.musicStartedAt : 0,
     serverNow: Date.now()
@@ -918,7 +965,8 @@ function startBattleBuild(room) {
   // Build 23.3: the server chooses one shared pre-match song per PvP round.
   // Clients use musicStartedAt for late-join synchronization and fade it for
   // the final three seconds before FIGHT.
-  b.preMatchTrack = Math.floor(Math.random() * 5);
+  const fixedMapMusic = battleMapMusic(room);
+  b.preMatchTrack = fixedMapMusic ? -1 : Math.floor(Math.random() * 5);
   b.musicStartedAt = Date.now();
   for (const c of room.clients) {
     c.pvpHealth = 3;
@@ -929,7 +977,7 @@ function startBattleBuild(room) {
     c.hits = 0;
   }
   broadcastBattleState(room);
-  broadcastRoom(room, { t:'battle-event', kind:'build-start', seconds:Math.max(1,Math.round(BATTLE_BUILD_MS/1000)), fightAt:b.fightAt, preMatchTrack:b.preMatchTrack, musicStartedAt:b.musicStartedAt, serverNow:Date.now() });
+  broadcastRoom(room, { t:'battle-event', kind:'build-start', seconds:Math.max(1,Math.round(BATTLE_BUILD_MS/1000)), fightAt:b.fightAt, mapName:battleMapName(room), mapAuthor:battleMapAuthor(room), mapMusic:battleMapMusic(room), preMatchTrack:b.preMatchTrack, musicStartedAt:b.musicStartedAt, serverNow:Date.now() });
   log(`Battle ${room.code}: 40-second build phase started.`);
 }
 
@@ -1227,6 +1275,8 @@ function addClientToRoom(client, room, mode, name) {
     t: 'room-state', room: room.code,
     map: room.map || null,
     mapName: room.map ? String(room.map.name||'Custom Map') : (room.mode==='pvp' ? battleMapName(room) : 'Default Dig+Trade'),
+    mapAuthor: room.mode==='pvp' ? battleMapAuthor(room) : '',
+    mapMusic: room.mode==='pvp' ? battleMapMusic(room) : '',
     tiles: [...room.tiles.values()], drops: [...room.drops.values()], coins: [...room.coins.values()], speaker: room.speaker ? {...room.speaker} : null, serverNow: Date.now()
   });
   if (mode === 'pvp') sendBattleState(client);
@@ -2116,6 +2166,7 @@ function buildItchClientZip() {
     { name: 'balloon_pop.ogg', data: balloonPopOgg },
     { name: 'swap.ogg', data: swapOgg },
     ...(jamsVipOgg ? [{ name: 'jams_vip.ogg', data: jamsVipOgg }] : []),
+    ...(epicSeaOgg ? [{ name: 'epic_sea.ogg', data: epicSeaOgg }] : []),
     { name: 'build239-client.js', data: build239ClientJs },
     { name: 'build240-client.js', data: build240ClientJs },
     { name: 'README.txt', data: readme }
@@ -2201,6 +2252,7 @@ const server = http.createServer(async (req, res) => {
     }
     serveBuffer(res,jamsVipOgg,'audio/ogg'); return;
   }
+  if (urlPath === '/epic_sea.ogg') { serveBuffer(res,epicSeaOgg,'audio/ogg'); return; }
   if (urlPath === '/mule.mp3') {
     res.writeHead(302,{
       'Location':'https://jtoh.fandom.com/wiki/Special:Redirect/file/8-Bit_Weapon_-_M.U.L.E_(Bitblaster_Mix).mp3',
