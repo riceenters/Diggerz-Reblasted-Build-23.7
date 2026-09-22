@@ -1199,9 +1199,11 @@
       proto.showLocalDeath=function(source){
         if(!fullNoob(this.state&&this.state.appearance))return oldDeath.apply(this,arguments);
         var ent=window.l&&l.z39;
-        try{explodeNoobAt(ent);playOne(OOF_SRC,.9);if(ent&&ent.set_local_alp)ent.set_local_alp(0)}catch(error){}
-        var self=this;this.deathReadyAt=Date.now()+1700;
-        window.setTimeout(function(){try{self.centerMessage('^1YOU DIED!')}catch(error){}},800);
+        // Preserve the original death/respawn state machine, then layer the
+        // Noob full-set body-piece explosion and classic oof sound on top.
+        var result=oldDeath.apply(this,arguments);
+        try{explodeNoobAt(ent);playOne(OOF_SRC,.9)}catch(error){}
+        return result;
       };
     }
 
