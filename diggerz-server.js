@@ -4,6 +4,7 @@
 // Dependency-free Node.js WebSocket server: rooms, presence, and relay.
 
 const http = require('http');
+const https = require('https');
 const crypto = require('crypto');
 const os = require('os');
 const fs = require('fs');
@@ -54,6 +55,7 @@ const SWAP_OGG_PATH = path.join(__dirname, 'swap.ogg');
 const JAMS_VIP_OGG_PATH = path.join(__dirname, 'jams_vip.ogg');
 const EPIC_SEA_OGG_PATH = path.join(__dirname, 'epic_sea.ogg');
 const MULE_OGG_PATH = path.join(__dirname, 'mule.ogg');
+const MULE_REMOTE_URL = 'https://jtoh.fandom.com/wiki/Special:Redirect/file/8-Bit_Weapon_-_M.U.L.E_(Bitblaster_Mix).mp3';
 const MAPS_DIR = path.join(__dirname, 'maps');
 const BANS_FILE = process.env.DIGGERZ_BANS_FILE || path.join(__dirname, 'bans.json');
 const PLAYERS_FILE = process.env.DIGGERZ_PLAYERS_FILE || path.join(__dirname, 'players.json');
@@ -829,6 +831,57 @@ function battleMapMeta(room) {
 }
 function battleMapAuthor(room) { return String(battleMapMeta(room).author||''); }
 function battleMapMusic(room) { return String(battleMapMeta(room).music||''); }
+
+function proxyRemoteAudio(res, remoteUrl, redirects = 0) {
+  if (redirects > 5) {
+    res.writeHead(502, {'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store'});
+    res.end('Audio source redirect loop.\n');
+    return;
+  }
+  let parsed;
+  try { parsed = new URL(remoteUrl); }
+  catch {
+    res.writeHead(502, {'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store'});
+    res.end('Invalid audio source.\n');
+    return;
+  }
+  const transport = parsed.protocol === 'http:' ? http : https;
+  const req = transport.get(parsed, {
+    headers: {
+      'User-Agent':'Mozilla/5.0 Diggerz-Reblasted/24.0',
+      'Accept':'audio/mpeg,audio/ogg,audio/*;q=0.9,*/*;q=0.1'
+    }
+  }, upstream => {
+    const status = upstream.statusCode || 0;
+    if (status >= 300 && status < 400 && upstream.headers.location) {
+      const next = new URL(upstream.headers.location, parsed).toString();
+      upstream.resume();
+      proxyRemoteAudio(res, next, redirects + 1);
+      return;
+    }
+    if (status !== 200) {
+      upstream.resume();
+      res.writeHead(502, {'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store'});
+      res.end('M.U.L.E. audio source unavailable.\n');
+      return;
+    }
+    res.writeHead(200, {
+      'Content-Type': upstream.headers['content-type'] || 'audio/mpeg',
+      'Cache-Control':'public, max-age=3600',
+      'Access-Control-Allow-Origin':'*'
+    });
+    upstream.pipe(res);
+  });
+  req.setTimeout(12000, () => req.destroy(new Error('audio source timeout')));
+  req.on('error', () => {
+    if (!res.headersSent) {
+      res.writeHead(502, {'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store'});
+      res.end('M.U.L.E. audio source unavailable.\n');
+    } else {
+      try { res.end(); } catch {}
+    }
+  });
+}
 
 function serveBuffer(res, buffer, contentType) {
   if (!buffer) { res.writeHead(404,{'Content-Type':'text/plain; charset=utf-8'}); res.end('Missing file.\n'); return; }
@@ -2305,7 +2358,8 @@ const server = http.createServer(async (req, res) => {
   }
   if (urlPath === '/epic_sea.ogg') { serveBuffer(res,epicSeaOgg,'audio/ogg'); return; }
   if (urlPath === '/mule.ogg' || urlPath === '/mule.mp3') {
-    serveBuffer(res,muleOgg,'audio/ogg');
+    if (muleOgg) serveBuffer(res,muleOgg,'audio/ogg');
+    else proxyRemoteAudio(res,MULE_REMOTE_URL);
     return;
   }
   if (urlPath === '/health') {
