@@ -16,7 +16,8 @@
 - True RGB pickup celebrations now fire for multiplayer shared-drop awards as well as normal pickups and are broadcast across every active multiplayer room. The global message reports the actual item's odds.
 - Equipped RGB and True RGB cosmetics now keep their animated rainbow treatment instead of only appearing RGB in inventory icons.
 - RGB and True RGB Wings inherit the recovered Golden Wings movement/gravity behavior and add animated rainbow sparkles.
-- RGB and True RGB K-Pop Shoes inherit the recovered K-Pop dance animation, play **JAMS VIP** while equipped, and leave an RGB sparkle trail while walking.
+- RGB and True RGB K-Pop Shoes inherit the recovered K-Pop dance animation, play **JAMS VIP** as proximity audio that fades in near a wearer and fades out with distance, and leave an RGB sparkle trail while walking.
+- RGB and True RGB Stetsons now animate the **entire hat** through the RGB cycle instead of only the hat band.
 - RGB/True RGB Lightswords retain the recovered Lightsword mining/tool and Battle Royale melee behavior.
 - RGB Weekend is synchronized to **America/New_York** weekend dates so all players see the same event window and featured trio.
 
