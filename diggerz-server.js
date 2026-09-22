@@ -395,7 +395,15 @@ for (let i=0;i<MUSIC_OGG_PATHS.length;i++) try { musicOgg[i]=fs.readFileSync(MUS
 try { balloonPopOgg=fs.readFileSync(BALLOON_POP_OGG_PATH); } catch(error) { console.warn('[Diggerz] balloon_pop.ogg not found:',error.message); }
 try { swapOgg=fs.readFileSync(SWAP_OGG_PATH); } catch(error) { console.warn('[Diggerz] swap.ogg not found:',error.message); }
 try { jamsVipOgg=fs.readFileSync(JAMS_VIP_OGG_PATH); } catch(error) { console.warn('[Diggerz] jams_vip.ogg not found:',error.message); }
-try { epicSeaOgg=fs.readFileSync(EPIC_SEA_OGG_PATH); } catch(error) { console.warn('[Diggerz] epic_sea.ogg not found:',error.message); }
+try {
+  if (fs.existsSync(EPIC_SEA_OGG_PATH)) {
+    epicSeaOgg=fs.readFileSync(EPIC_SEA_OGG_PATH);
+  } else {
+    const epicParts=fs.readdirSync(__dirname).filter(name=>/^epic_sea\.ogg\.part\d+$/.test(name)).sort();
+    if (epicParts.length) epicSeaOgg=Buffer.concat(epicParts.map(name=>fs.readFileSync(path.join(__dirname,name))));
+    else throw new Error('no bundled audio or audio parts found');
+  }
+} catch(error) { console.warn('[Diggerz] epic_sea.ogg not found:',error.message); }
 
 const rooms = new Map();
 const adminSessions = new Map();
@@ -732,12 +740,14 @@ function loadCustomMaps() {
   const maps=[];
   try { fs.mkdirSync(MAPS_DIR,{recursive:true}); } catch {}
   let files=[];
-  try { files=fs.readdirSync(MAPS_DIR).filter(f=>f.toLowerCase().endsWith('.json')&&f.toLowerCase()!=='digtrade.json').sort((a,b)=>a.localeCompare(b)); }
+  try { files=fs.readdirSync(MAPS_DIR).filter(f=>{const n=f.toLowerCase();return (n.endsWith('.json')||n.endsWith('.json.gz'))&&n!=='digtrade.json';}).sort((a,b)=>a.localeCompare(b)); }
   catch (error) { console.warn('[Diggerz] could not read maps folder:', error.message); return maps; }
   for (const file of files) {
     try {
-      const raw=JSON.parse(fs.readFileSync(path.join(MAPS_DIR,file),'utf8'));
-      const map=sanitizeMap(raw,file);
+      const mapBytes=fs.readFileSync(path.join(MAPS_DIR,file));
+      const mapText=file.toLowerCase().endsWith('.json.gz')?zlib.gunzipSync(mapBytes).toString('utf8'):mapBytes.toString('utf8');
+      const raw=JSON.parse(mapText);
+      const map=sanitizeMap(raw,file.replace(/\.gz$/i,''));
       if (!map) { console.warn(`[Diggerz] skipped invalid map ${file}`); continue; }
       maps.push(map);
     } catch (error) { console.warn(`[Diggerz] skipped map ${file}:`,error.message); }
