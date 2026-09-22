@@ -901,9 +901,11 @@
   var OUCH_SRC='data:audio/ogg;base64,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';
   var OOF_SRC='data:audio/ogg;base64,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';
   var MULE_SRC='/mule.mp3';
+  var EPIC_SEA_SRC='epic_sea.ogg';
 
   var overlayLayer=null,overlayNodes={},projectileNodes=[];
   var muleAudio=null,mulePvp=false,muleTrackKey='';
+  var mapMusicAudio=null,mapMusicName='',mapMusicPvp=false,mapMusicKey='';
   var installed=false;
 
   function playOne(src,volume){
@@ -1088,6 +1090,58 @@
     if(a.readyState>=1)sync();else a.addEventListener('loadedmetadata',sync,{once:true});
   }
   function stopMule(){if(muleAudio)try{muleAudio.pause();muleAudio.currentTime=0}catch(error){}mulePvp=false;muleTrackKey=''}
+  function mapMusicUrl(name){
+    name=String(name||'');
+    return name==='epic_sea.ogg'?EPIC_SEA_SRC:name;
+  }
+  function ensureMapMusic(name){
+    name=String(name||'');
+    if(!name)return null;
+    if(mapMusicAudio&&mapMusicName===name)return mapMusicAudio;
+    if(mapMusicAudio)try{mapMusicAudio.pause();mapMusicAudio.currentTime=0}catch(error){}
+    mapMusicName=name;
+    try{
+      mapMusicAudio=new Audio(mapMusicUrl(name));
+      mapMusicAudio.loop=true;
+      mapMusicAudio.preload='auto';
+      mapMusicAudio.volume=.7;
+    }catch(error){mapMusicAudio=null}
+    return mapMusicAudio;
+  }
+  function mapMusicPlayAt(name,startedAt,serverNow,volume){
+    var a=ensureMapMusic(name);if(!a)return;
+    var key=String(name)+'|'+String(startedAt||0);
+    a.volume=volume==null?.7:volume;
+    function sync(){
+      try{
+        var elapsed=Math.max(0,((serverNow||Date.now())-(startedAt||Date.now()))/1000);
+        if(isFinite(a.duration)&&a.duration>0)a.currentTime=elapsed%a.duration;
+        a.play().catch(function(){});
+      }catch(error){}
+    }
+    if(key===mapMusicKey){
+      try{if(a.paused)a.play().catch(function(){})}catch(error){}
+      return;
+    }
+    mapMusicKey=key;
+    if(a.readyState>=1)sync();else a.addEventListener('loadedmetadata',sync,{once:true});
+  }
+  function stopMapMusic(){
+    if(mapMusicAudio)try{mapMusicAudio.pause();mapMusicAudio.currentTime=0}catch(error){}
+    mapMusicPvp=false;mapMusicKey='';
+  }
+  function announceMap(service,m){
+    if(!m||m.t!=='room-state'||!window.DiggerzPvp22||window.DiggerzPvp22.mode!=='pvp')return;
+    var name=String(m.mapName||(m.map&&m.map.name)||'Default Map');
+    var author=String(m.mapAuthor||'').trim();
+    var key=String(m.room||'')+'|'+name;
+    if(service._build240EnteredMapKey===key)return;
+    service._build240EnteredMapKey=key;
+    try{
+      service.message('Now entering: '+name);
+      if(author)service.message('Map built by: '+author);
+    }catch(error){}
+  }
   function installTrackFive(){
     var sel=document.getElementById('diggerz-music-track'),play=document.getElementById('diggerz-music-play'),pause=document.getElementById('diggerz-music-pause'),restart=document.getElementById('diggerz-music-restart'),rewind=document.getElementById('diggerz-music-rewind');
     if(!sel||sel._build240Mule)return !!sel;
@@ -1163,7 +1217,7 @@
             {shopId:2402,itemId:601,price:75,name:'Noob Shirt',description:'Classic blue Noob shirt. Fanmade Roblox collab. Leaving Dec 1.'},
             {shopId:2403,itemId:602,price:75,name:'Noob Pants',description:'Classic light-green Noob pants. Fanmade Roblox collab. Leaving Dec 1.'},
             {shopId:2404,itemId:603,price:75,name:'Noob Gloves',description:'Classic yellow Noob hands. Fanmade Roblox collab. Leaving Dec 1.'},
-            {shopId:2405,itemId:604,price:300,name:'Roblox Rocket Launcher',description:'Classic stud-rocket Bazooka skin. Fanmade Roblox collab. Leaving Dec 1.'}
+            {shopId:2405,itemId:604,price:300,quantity:1337,display:'{2,604,1337}',name:'Roblox Rocket Launcher',description:'Classic stud-rocket Bazooka skin. Includes 1,337 launchers per purchase. Fanmade Roblox collab. Leaving Dec 1.'}
           ];
           for(var i=0;i<extra.length;i++)list.push(extra[i]);
         }
@@ -1211,18 +1265,32 @@
       var oldReceive=proto.pvpReceive;
       proto.pvpReceive=function(m){
         try{
+          if(m&&m.t==='room-state')announceMap(this,m);
           if(m&&m.t==='death'){
             var peer=this.pvpPeerForConnection&&this.pvpPeerForConnection(m._serverFrom),ap=peer&&peer.info&&peer.info.appearance,e=peer&&this.pvpEntityForPeer&&this.pvpEntityForPeer(peer);
             if(fullNoob(ap)&&e){explodeNoobAt(e);playOne(OOF_SRC,.55)}
           }
           if(m&&m.t==='battle-state'){
-            if((m.preMatchTrack|0)===4&&(m.phase==='build'||m.phase==='fight'||m.phase==='elimination')){
-              mulePvp=true;muleTrackKey=String(m.musicStartedAt||0);mulePlayAt(m.musicStartedAt,m.serverNow,m.phase==='build'?.7:.18);
-            }else if(m.phase==='waiting'){stopMule()}
+            if(m.mapMusic&&(m.phase==='build'||m.phase==='fight'||m.phase==='elimination')){
+              stopMule();mapMusicPvp=true;mapMusicPlayAt(m.mapMusic,m.musicStartedAt,m.serverNow,m.phase==='build'?.7:.18);
+            }else{
+              if(mapMusicPvp)stopMapMusic();
+              if((m.preMatchTrack|0)===4&&(m.phase==='build'||m.phase==='fight'||m.phase==='elimination')){
+                mulePvp=true;muleTrackKey=String(m.musicStartedAt||0);mulePlayAt(m.musicStartedAt,m.serverNow,m.phase==='build'?.7:.18);
+              }else if(m.phase==='waiting'){stopMule()}
+            }
           }else if(m&&m.t==='battle-event'){
-            if(m.kind==='build-start'&&(m.preMatchTrack|0)===4){mulePvp=true;muleTrackKey=String(m.musicStartedAt||0);mulePlayAt(m.musicStartedAt,m.serverNow,.7)}
-            else if((m.kind==='fight'||m.kind==='elimination')&&mulePvp&&muleAudio)muleAudio.volume=.18;
-          }else if(m&&m.t==='winner'&&mulePvp&&muleAudio)muleAudio.volume=.7;
+            if(m.mapMusic&&m.kind==='build-start'){
+              stopMule();mapMusicPvp=true;mapMusicPlayAt(m.mapMusic,m.musicStartedAt,m.serverNow,.7);
+            }else if((m.kind==='fight'||m.kind==='elimination')&&mapMusicPvp&&mapMusicAudio){
+              mapMusicAudio.volume=.18;
+            }else if(m.kind==='build-start'&&(m.preMatchTrack|0)===4){
+              if(mapMusicPvp)stopMapMusic();mulePvp=true;muleTrackKey=String(m.musicStartedAt||0);mulePlayAt(m.musicStartedAt,m.serverNow,.7);
+            }else if((m.kind==='fight'||m.kind==='elimination')&&mulePvp&&muleAudio)muleAudio.volume=.18;
+          }else if(m&&m.t==='winner'){
+            if(mapMusicPvp&&mapMusicAudio)mapMusicAudio.volume=.7;
+            else if(mulePvp&&muleAudio)muleAudio.volume=.7;
+          }
         }catch(error){}
         return oldReceive.apply(this,arguments);
       };
@@ -1255,6 +1323,7 @@
       installTrackFive();
       var P=window.DiggerzPvp22;
       if(mulePvp&&(!P||P.mode!=='pvp'||!P.joined))stopMule();
+      if(mapMusicPvp&&(!P||P.mode!=='pvp'||!P.joined))stopMapMusic();
     },500);
     return true;
   }
