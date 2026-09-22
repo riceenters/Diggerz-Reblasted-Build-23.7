@@ -15,18 +15,16 @@
   var TRUE_RGB_KPOP_IDS={559:true,560:true,561:true,562:true};
   var RGB_KPOP_SHOE_IDS={511:true,561:true};
   var RGB_WING_IDS={501:true,551:true};
-  var RGB_KPOP_AUDIO_SOURCES=[
-    '/jams_vip.ogg',
-    'https://nu.vgmtreasurechest.com/soundtracks/kaiju-paradise-original-game-soundtrack-2021/okmbxjdn/13.%20JAMS%20%28VIP%29.mp3'
-  ];
+  var RGB_KPOP_AUDIO_URL='/jams_vip.ogg';
   var RGB_KPOP_MAX_VOLUME=.58;
   var RGB_KPOP_FULL_DISTANCE=3;
   var RGB_KPOP_FADE_DISTANCE=16;
   var rgbKpopAudio=null;
   var rgbKpopAudioRetryAt=0;
-  var rgbKpopAudioSourceIndex=0;
   var rgbKpopAudioFailed=false;
   var rgbKpopGestureInstalled=false;
+  var rgbKpopBroadcastActive=null;
+  var rgbKpopBroadcastAt=0;
 
   // Build 24.0 RGB catalog. Normal RGB IDs are weekend-event variants.
   // Their True RGB counterparts use the same recovered item geometry/behavior
@@ -280,7 +278,8 @@
       var peer=peers[key];
       var ent=service&&service.pvpEntityForPeer?service.pvpEntityForPeer(peer):null;
       var peerAppearance=peer&&peer.info&&peer.info.appearance;
-      if(!hasRgbKpopShoes(ent,peerAppearance))continue;
+      var remoteActive=peer&&peer._build240RgbKpopActive===true;
+      if(!remoteActive&&!hasRgbKpopShoes(ent,peerAppearance))continue;
       state.present=true;
 
       var px=NaN,py=NaN;
@@ -367,25 +366,14 @@
   function ensureRgbKpopAudio(){
     if(rgbKpopAudio||rgbKpopAudioFailed)return rgbKpopAudio;
     try{
-      rgbKpopAudio=new Audio();
+      rgbKpopAudio=new Audio(RGB_KPOP_AUDIO_URL);
       rgbKpopAudio.loop=true;
       rgbKpopAudio.preload='auto';
       rgbKpopAudio.volume=0;
       rgbKpopAudio.playsInline=true;
-      rgbKpopAudioSourceIndex=0;
-      rgbKpopAudio.src=RGB_KPOP_AUDIO_SOURCES[rgbKpopAudioSourceIndex];
       rgbKpopAudio.onerror=function(){
-        if(rgbKpopAudioSourceIndex+1<RGB_KPOP_AUDIO_SOURCES.length){
-          rgbKpopAudioSourceIndex++;
-          try{
-            rgbKpopAudio.src=RGB_KPOP_AUDIO_SOURCES[rgbKpopAudioSourceIndex];
-            rgbKpopAudio.load();
-            rgbKpopAudioRetryAt=0;
-          }catch(error){}
-        }else{
-          rgbKpopAudioFailed=true;
-          try{rgbKpopAudio.pause()}catch(error){}
-        }
+        rgbKpopAudioFailed=true;
+        try{rgbKpopAudio.pause()}catch(error){}
       };
       rgbKpopAudio.load();
     }catch(error){
@@ -412,9 +400,7 @@
       if(!state.present)return;
       var audio=ensureRgbKpopAudio();
       if(!audio)return;
-      try{
-        audio.volume=Math.max(audio.volume,Math.min(RGB_KPOP_MAX_VOLUME,state.factor*RGB_KPOP_MAX_VOLUME));
-      }catch(error){}
+      try{audio.volume=Math.max(audio.volume,Math.min(RGB_KPOP_MAX_VOLUME,state.factor*RGB_KPOP_MAX_VOLUME))}catch(error){}
       tryPlayRgbKpop();
     }
     document.addEventListener('pointerdown',unlock,{passive:true});
@@ -422,7 +408,21 @@
     document.addEventListener('keydown',unlock);
   }
 
-  function updateRgbKpopMusic(){
+  function broadcastRgbKpopState(now){
+    var service=window.q&&q.diggerzService;
+    if(!service||typeof service.pvpSend!=='function')return;
+    var local=window.l&&l.z39;
+    var appearance=service.state&&service.state.appearance;
+    var active=hasRgbKpopShoes(local,appearance);
+    if(active!==rgbKpopBroadcastActive||now-rgbKpopBroadcastAt>=2000){
+      rgbKpopBroadcastActive=active;
+      rgbKpopBroadcastAt=now;
+      try{service.pvpSend({t:'rgb-kpop-state',active:!!active})}catch(error){}
+    }
+  }
+
+  function updateRgbKpopMusic(now){
+    broadcastRgbKpopState(now||Date.now());
     var state=rgbKpopMusicState();
 
     if(!state.present){
@@ -447,8 +447,6 @@
       audio.volume=Math.max(0,Math.min(1,current));
     }catch(error){}
 
-    // Keep the track running silently while a wearer exists but is out of range.
-    // That makes walking back toward them fade into the current point in the song.
     if(audio.paused&&Date.now()>=rgbKpopAudioRetryAt){
       rgbKpopAudioRetryAt=Date.now()+1200;
       tryPlayRgbKpop();
@@ -480,7 +478,7 @@
         if(wing)spawnWingSparkles(ent,wing,color,now);
       }
     }catch(error){}
-    updateRgbKpopMusic();
+    updateRgbKpopMusic(now);
   }
 
   function registerRgbObject(obj,def){
@@ -669,6 +667,13 @@
             }
             return result;
           }
+        }
+        if(message&&message.t==='rgb-kpop-state'){
+          try{
+            var peer=this.pvpPeerForConnection&&this.pvpPeerForConnection(message._serverFrom);
+            if(peer)peer._build240RgbKpopActive=!!message.active;
+          }catch(error){}
+          return;
         }
         if(message&&message.t==='true-rgb-global'){
           var who=String(message.name||'Player');
