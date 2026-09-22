@@ -198,3 +198,12 @@ Diggerz.io and Coaster Town were originally created by **MeanDean**. Diggerz.io 
 - Added the **Roblox Rocket Launcher** as a **300-coin Bazooka skin**. It keeps Bazooka gameplay behavior, uses the supplied launch and impact sounds, and replaces the visible missile with a classic stud brick.
 - Added **M.U.L.E. (Bitblaster Mix)** as the fifth PvP music selection and as **Track 5** in the music player.
 - The new maps are intentionally not part of this patch yet; map-rotation changes will be handled separately when the finished maps are supplied.
+
+
+## Build 24.0 — Epic Sea rotation update
+- Added **The Epic Sea**, built by **HeuFancy**, to the Battle Royale map rotation.
+- Removed both Neatfinity Battle Royale maps from the rotation.
+- **Canyons** and **The Epic Sea** now announce their map credit in chat when a player enters the room.
+- **The Epic Sea** uses its own fixed round music instead of a randomly selected PvP track.
+- Roblox Rocket Launcher shop purchases now grant **1,337** launchers per 300-coin purchase.
+- Fixed the recovered intro/Super Rare screen so Battle Royale rooms identify themselves as **Battle Royale** instead of **Dig + Trade**.
