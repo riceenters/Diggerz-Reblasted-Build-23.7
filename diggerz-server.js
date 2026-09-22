@@ -53,6 +53,7 @@ const BALLOON_POP_OGG_PATH = path.join(__dirname, 'balloon_pop.ogg');
 const SWAP_OGG_PATH = path.join(__dirname, 'swap.ogg');
 const JAMS_VIP_OGG_PATH = path.join(__dirname, 'jams_vip.ogg');
 const EPIC_SEA_OGG_PATH = path.join(__dirname, 'epic_sea.ogg');
+const MULE_OGG_PATH = path.join(__dirname, 'mule.ogg');
 const MAPS_DIR = path.join(__dirname, 'maps');
 const BANS_FILE = process.env.DIGGERZ_BANS_FILE || path.join(__dirname, 'bans.json');
 const PLAYERS_FILE = process.env.DIGGERZ_PLAYERS_FILE || path.join(__dirname, 'players.json');
@@ -332,6 +333,21 @@ function patchGameHtmlForBuild239(input) {
   if (html.includes(shopQtyMsgOld240)) html = html.replace(shopQtyMsgOld240,shopQtyMsgNew240);
   else console.warn('[Diggerz 24.0] shop quantity message target was not found.');
 
+  // Build 24.0 collab hotfix: permit exact embedded PNG artwork in shop cards.
+  const shopDataImageOld240 = `        0 <= c.indexOf("{") ? (a = new z,
+        a.Init(f.AURA_PNG()),
+        c = h.N24(a, c),
+        a._9.push(c)) : (a = new z,
+        a.D8("http://www.coaster.town/shop/" + c)),`;
+  const shopDataImageNew240 = `        0 === c.indexOf("data:image/") ? (a = new z,
+        a.D8(c)) : 0 <= c.indexOf("{") ? (a = new z,
+        a.Init(f.AURA_PNG()),
+        c = h.N24(a, c),
+        a._9.push(c)) : (a = new z,
+        a.D8("http://www.coaster.town/shop/" + c)),`;
+  if (html.includes(shopDataImageOld240)) html = html.replace(shopDataImageOld240,shopDataImageNew240);
+  else console.warn('[Diggerz 24.0] shop data-image renderer target was not found.');
+
   // Fanmade Roblox collab: Bazooka skin 604 keeps native type-23 projectile
   // physics/damage, but its visible missile becomes a classic stud brick.
   const robloxRocketCtorOld240 = "        this.Init(f.MISSILE_PNG());\n        this.O23(b, c, d, e);\n        a = this.b33;";
@@ -385,6 +401,7 @@ let balloonPopOgg = null;
 let swapOgg = null;
 let jamsVipOgg = null;
 let epicSeaOgg = null;
+let muleOgg = null;
 try { gameHtml = patchGameHtmlForBuild239(fs.readFileSync(GAME_HTML_PATH)); } catch (error) { console.warn('[Diggerz] index.html not found at startup:', error.message); }
 try { build239ClientJs = fs.readFileSync(BUILD239_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build239-client.js not found:', error.message); }
 try { build240ClientJs = fs.readFileSync(BUILD240_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build240-client.js not found:', error.message); }
@@ -411,6 +428,19 @@ try {
     }
   }
 } catch(error) { console.warn('[Diggerz] epic_sea.ogg not found:',error.message); }
+try {
+  if (fs.existsSync(MULE_OGG_PATH)) {
+    muleOgg=fs.readFileSync(MULE_OGG_PATH);
+  } else {
+    const muleBase64Parts=fs.readdirSync(__dirname).filter(name=>/^mule\.ogg\.b64\.part\d+$/.test(name)).sort();
+    if (muleBase64Parts.length) {
+      const encoded=muleBase64Parts.map(name=>fs.readFileSync(path.join(__dirname,name),'utf8').trim()).join('');
+      muleOgg=Buffer.from(encoded,'base64');
+    } else {
+      throw new Error('no bundled M.U.L.E. audio or audio parts found');
+    }
+  }
+} catch(error) { console.warn('[Diggerz] mule.ogg not found:',error.message); }
 
 const rooms = new Map();
 const adminSessions = new Map();
@@ -640,7 +670,6 @@ function publicBan(ban) {
 
 function activeBanFor(client, name, clientId) {
   pruneExpiredBans(true);
-  const ipHash = hashIdentity(client && client.ip || '');
   const cid = normalizeClientId(clientId || (client && client.clientId) || '');
   const clientIdHash = cid ? hashIdentity(cid) : '';
   const nameKey = normalizeName(name).toLowerCase();
@@ -648,7 +677,6 @@ function activeBanFor(client, name, clientId) {
     if (!ban || (!ban.permanent && ban.expiresAt <= Date.now())) continue;
     if (ban.nameKey && nameKey && ban.nameKey === nameKey) return ban;
     if (ban.clientIdHash && clientIdHash && secureHexEqual(ban.clientIdHash, clientIdHash)) return ban;
-    if (ban.ipHash && ipHash && secureHexEqual(ban.ipHash, ipHash)) return ban;
   }
   return null;
 }
@@ -2131,7 +2159,8 @@ async function handleAdminApi(req, res, urlPath) {
       name:normalizeName(targetName),
       nameKey,
       clientIdHash:(target&&target.clientId)?hashIdentity(target.clientId):(known&&known.clientIdHash||''),
-      ipHash:(target&&target.ip)?hashIdentity(target.ip):(known&&known.ipHash||''),
+      // Do not bind player bans to an IP: shared NAT/mobile networks caused collateral bans.
+      ipHash:'',
       createdAt,expiresAt,permanent,reason,byRole:session.role
     };
     // Replace an older ban for the same exact username so one later unban fully clears it.
@@ -2161,7 +2190,7 @@ function buildItchClientZip() {
   const localAssets = [
     'tiles.png','bknd.png','levelup.ogg',
     'music_theme.ogg','music_theme2.ogg','music_theme3.ogg','music_theme4.ogg',
-    'balloon_pop.ogg','swap.ogg','build239-client.js','build240-client.js'
+    'balloon_pop.ogg','swap.ogg','mule.ogg','build239-client.js','build240-client.js'
   ];
   for (const asset of localAssets) {
     itchHtml = itchHtml.split("'/" + asset + "'").join("'" + asset + "'");
@@ -2188,6 +2217,7 @@ function buildItchClientZip() {
     { name: 'swap.ogg', data: swapOgg },
     ...(jamsVipOgg ? [{ name: 'jams_vip.ogg', data: jamsVipOgg }] : []),
     ...(epicSeaOgg ? [{ name: 'epic_sea.ogg', data: epicSeaOgg }] : []),
+    ...(muleOgg ? [{ name: 'mule.ogg', data: muleOgg }] : []),
     { name: 'build239-client.js', data: build239ClientJs },
     { name: 'build240-client.js', data: build240ClientJs },
     { name: 'README.txt', data: readme }
@@ -2274,12 +2304,8 @@ const server = http.createServer(async (req, res) => {
     serveBuffer(res,jamsVipOgg,'audio/ogg'); return;
   }
   if (urlPath === '/epic_sea.ogg') { serveBuffer(res,epicSeaOgg,'audio/ogg'); return; }
-  if (urlPath === '/mule.mp3') {
-    res.writeHead(302,{
-      'Location':'https://jtoh.fandom.com/wiki/Special:Redirect/file/8-Bit_Weapon_-_M.U.L.E_(Bitblaster_Mix).mp3',
-      'Cache-Control':'no-store'
-    });
-    res.end();
+  if (urlPath === '/mule.ogg' || urlPath === '/mule.mp3') {
+    serveBuffer(res,muleOgg,'audio/ogg');
     return;
   }
   if (urlPath === '/health') {
