@@ -399,9 +399,15 @@ try {
   if (fs.existsSync(EPIC_SEA_OGG_PATH)) {
     epicSeaOgg=fs.readFileSync(EPIC_SEA_OGG_PATH);
   } else {
-    const epicParts=fs.readdirSync(__dirname).filter(name=>/^epic_sea\.ogg\.part\d+$/.test(name)).sort();
-    if (epicParts.length) epicSeaOgg=Buffer.concat(epicParts.map(name=>fs.readFileSync(path.join(__dirname,name))));
-    else throw new Error('no bundled audio or audio parts found');
+    const epicBase64Parts=fs.readdirSync(__dirname).filter(name=>/^epic_sea\.ogg\.b64\.part\d+$/.test(name)).sort();
+    if (epicBase64Parts.length) {
+      const encoded=epicBase64Parts.map(name=>fs.readFileSync(path.join(__dirname,name),'utf8').trim()).join('');
+      epicSeaOgg=Buffer.from(encoded,'base64');
+    } else {
+      const epicParts=fs.readdirSync(__dirname).filter(name=>/^epic_sea\.ogg\.part\d+$/.test(name)).sort();
+      if (epicParts.length) epicSeaOgg=Buffer.concat(epicParts.map(name=>fs.readFileSync(path.join(__dirname,name))));
+      else throw new Error('no bundled audio or audio parts found');
+    }
   }
 } catch(error) { console.warn('[Diggerz] epic_sea.ogg not found:',error.message); }
 
@@ -740,14 +746,18 @@ function loadCustomMaps() {
   const maps=[];
   try { fs.mkdirSync(MAPS_DIR,{recursive:true}); } catch {}
   let files=[];
-  try { files=fs.readdirSync(MAPS_DIR).filter(f=>{const n=f.toLowerCase();return (n.endsWith('.json')||n.endsWith('.json.gz'))&&n!=='digtrade.json';}).sort((a,b)=>a.localeCompare(b)); }
+  try { files=fs.readdirSync(MAPS_DIR).filter(f=>{const n=f.toLowerCase();return (n.endsWith('.json')||n.endsWith('.json.gz')||n.endsWith('.json.gz.b64'))&&n!=='digtrade.json';}).sort((a,b)=>a.localeCompare(b)); }
   catch (error) { console.warn('[Diggerz] could not read maps folder:', error.message); return maps; }
   for (const file of files) {
     try {
       const mapBytes=fs.readFileSync(path.join(MAPS_DIR,file));
-      const mapText=file.toLowerCase().endsWith('.json.gz')?zlib.gunzipSync(mapBytes).toString('utf8'):mapBytes.toString('utf8');
+      const lower=file.toLowerCase();
+      let mapText;
+      if(lower.endsWith('.json.gz.b64')) mapText=zlib.gunzipSync(Buffer.from(mapBytes.toString('utf8').trim(),'base64')).toString('utf8');
+      else if(lower.endsWith('.json.gz')) mapText=zlib.gunzipSync(mapBytes).toString('utf8');
+      else mapText=mapBytes.toString('utf8');
       const raw=JSON.parse(mapText);
-      const map=sanitizeMap(raw,file.replace(/\.gz$/i,''));
+      const map=sanitizeMap(raw,file.replace(/\.gz\.b64$/i,'').replace(/\.gz$/i,''));
       if (!map) { console.warn(`[Diggerz] skipped invalid map ${file}`); continue; }
       maps.push(map);
     } catch (error) { console.warn(`[Diggerz] skipped map ${file}:`,error.message); }
