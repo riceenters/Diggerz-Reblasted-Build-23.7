@@ -25,7 +25,7 @@ const HEARTBEAT_INTERVAL_MS = 15 * 1000;
 const HEARTBEAT_TIMEOUT_MS = 45 * 1000;
 const ROSTER_INTERVAL_MS = 5 * 1000;
 const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
-const ALLOWED_RELAY_TYPES = new Set(['session', 'hello', 'chat', 'typing', 'health']);
+const ALLOWED_RELAY_TYPES = new Set(['session', 'hello', 'chat', 'typing', 'health', 'rgb-kpop-state']);
 const BUILD = '24.0';
 const WORLD_WIDTH = 128;
 const BATTLE_BUILD_MS = Number(process.env.DIGGERZ_BUILD_MS || 40 * 1000);
@@ -2177,8 +2177,14 @@ const server = http.createServer(async (req, res) => {
   if (urlPath === '/swap.ogg') { serveBuffer(res,swapOgg,'audio/ogg'); return; }
   if (urlPath === '/jams_vip.ogg') {
     if (!jamsVipOgg) {
-      res.writeHead(404,{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store'});
-      res.end('JAMS VIP local audio is not bundled; client will use the official playback fallback.\n');
+      // Single audio endpoint for the game. If the bundled asset is not yet
+      // present in this checkout, redirect directly to the audio file rather
+      // than using any video/iframe playback path.
+      res.writeHead(302,{
+        'Location':'https://nu.vgmtreasurechest.com/soundtracks/kaiju-paradise-original-game-soundtrack-2021/okmbxjdn/13.%20JAMS%20%28VIP%29.mp3',
+        'Cache-Control':'no-store'
+      });
+      res.end();
       return;
     }
     serveBuffer(res,jamsVipOgg,'audio/ogg'); return;
