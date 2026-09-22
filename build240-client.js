@@ -15,10 +15,18 @@
   var TRUE_RGB_KPOP_IDS={559:true,560:true,561:true,562:true};
   var RGB_KPOP_SHOE_IDS={511:true,561:true};
   var RGB_WING_IDS={501:true,551:true};
+  var RGB_KPOP_AUDIO_SOURCES=[
+    '/jams_vip.ogg',
+    'https://nu.vgmtreasurechest.com/soundtracks/kaiju-paradise-original-game-soundtrack-2021/okmbxjdn/13.%20JAMS%20%28VIP%29.mp3'
+  ];
+  var RGB_KPOP_MAX_VOLUME=.58;
+  var RGB_KPOP_FULL_DISTANCE=3;
+  var RGB_KPOP_FADE_DISTANCE=16;
   var rgbKpopAudio=null;
   var rgbKpopAudioRetryAt=0;
+  var rgbKpopAudioSourceIndex=0;
   var rgbKpopAudioFailed=false;
-  var rgbKpopYoutubeFrame=null;
+  var rgbKpopGestureInstalled=false;
 
   // Build 24.0 RGB catalog. Normal RGB IDs are weekend-event variants.
   // Their True RGB counterparts use the same recovered item geometry/behavior
@@ -36,9 +44,8 @@
     {id:509,trueId:559,baseId:67,name:'RGB K-Pop Shirt',trueName:'True RGB K-Pop Shirt'},
     {id:510,trueId:560,baseId:57,name:'RGB K-Pop Pants',trueName:'True RGB K-Pop Pants'},
     {id:511,trueId:561,baseId:56,name:'RGB K-Pop Shoes',trueName:'True RGB K-Pop Shoes'},
-    // Yellow Stetson is the recovered K-Pop-set hat. RGB/True RGB cycle its
-    // colored hat surface while preserving the original wearable slot/offset.
-    {id:512,trueId:562,baseId:105,name:'RGB Stetson',trueName:'True RGB Stetson',stetson:true},
+    // Both RGB Stetsons now cycle the entire recovered Yellow Stetson texture.
+    {id:512,trueId:562,baseId:105,name:'RGB Stetson',trueName:'True RGB Stetson'},
     {id:513,trueId:563,baseId:234,name:'RGB Sparkle Shoes',trueName:'True RGB Sparkle Shoes'},
     {id:514,trueId:564,baseId:233,name:'RGB Sparkle Gloves',trueName:'True RGB Sparkle Gloves'},
     {id:515,trueId:565,baseId:125,name:'RGB Retriever',trueName:'True RGB Retriever'},
@@ -245,9 +252,54 @@
     }
   }
 
-  function hasRgbKpopShoes(ent){
+  function hasRgbKpopShoes(ent,appearanceFallback){
     var ap=ent&&ent.J33;
+    if(!(ap&&ap.length))ap=appearanceFallback;
     return !!(ap&&RGB_KPOP_SHOE_IDS[ap[3]|0]);
+  }
+
+  function rgbKpopMusicState(){
+    var service=window.q&&q.diggerzService;
+    var local=window.l&&l.z39;
+    var scale=window.l&&Number(l._44)||1;
+    var state={present:false,factor:0,distance:Infinity};
+    if(!local)return state;
+
+    // A wearer always hears their own shoes at full intended volume.
+    if(hasRgbKpopShoes(local,service&&service.state&&service.state.appearance)){
+      state.present=true;state.factor=1;state.distance=0;return state;
+    }
+
+    var lx=Number(local.b6)/scale,ly=Number(local.b7)/scale;
+    var peers=service&&service.pvpPeers||{};
+    for(var key in peers){
+      var peer=peers[key];
+      var ent=service&&service.pvpEntityForPeer?service.pvpEntityForPeer(peer):null;
+      var ap=(ent&&ent.J33&&ent.J33.length)?ent.J33:(peer&&peer.info&&peer.info.appearance);
+      if(!ap||!RGB_KPOP_SHOE_IDS[ap[3]|0])continue;
+      state.present=true;
+
+      var px=NaN,py=NaN;
+      if(ent&&isFinite(Number(ent.b6))&&isFinite(Number(ent.b7))){
+        px=Number(ent.b6)/scale;py=Number(ent.b7)/scale;
+      }else if(peer&&isFinite(Number(peer.lastX))&&isFinite(Number(peer.lastY))){
+        px=Number(peer.lastX);py=Number(peer.lastY);
+      }else if(peer&&peer.info&&isFinite(Number(peer.info.x))&&isFinite(Number(peer.info.y))){
+        px=Number(peer.info.x);py=Number(peer.info.y);
+      }
+      if(!isFinite(px)||!isFinite(py)||!isFinite(lx)||!isFinite(ly))continue;
+      var distance=Math.hypot(px-lx,py-ly);
+      if(distance<state.distance)state.distance=distance;
+    }
+
+    if(!state.present||!isFinite(state.distance))return state;
+    if(state.distance<=RGB_KPOP_FULL_DISTANCE)state.factor=1;
+    else if(state.distance>=RGB_KPOP_FADE_DISTANCE)state.factor=0;
+    else{
+      var t=(RGB_KPOP_FADE_DISTANCE-state.distance)/(RGB_KPOP_FADE_DISTANCE-RGB_KPOP_FULL_DISTANCE);
+      state.factor=t*t*(3-2*t);
+    }
+    return state;
   }
 
   function rgbWingDef(ent){
@@ -308,72 +360,94 @@
     }catch(error){}
   }
 
-  function stopRgbKpopYoutube(){
-    if(rgbKpopYoutubeFrame){
-      try{rgbKpopYoutubeFrame.remove()}catch(error){
-        try{rgbKpopYoutubeFrame.parentNode.removeChild(rgbKpopYoutubeFrame)}catch(_e){}
-      }
-      rgbKpopYoutubeFrame=null;
+  function ensureRgbKpopAudio(){
+    if(rgbKpopAudio||rgbKpopAudioFailed)return rgbKpopAudio;
+    try{
+      rgbKpopAudio=new Audio();
+      rgbKpopAudio.loop=true;
+      rgbKpopAudio.preload='auto';
+      rgbKpopAudio.volume=0;
+      rgbKpopAudio.playsInline=true;
+      rgbKpopAudioSourceIndex=0;
+      rgbKpopAudio.src=RGB_KPOP_AUDIO_SOURCES[rgbKpopAudioSourceIndex];
+      rgbKpopAudio.onerror=function(){
+        if(rgbKpopAudioSourceIndex+1<RGB_KPOP_AUDIO_SOURCES.length){
+          rgbKpopAudioSourceIndex++;
+          try{
+            rgbKpopAudio.src=RGB_KPOP_AUDIO_SOURCES[rgbKpopAudioSourceIndex];
+            rgbKpopAudio.load();
+            rgbKpopAudioRetryAt=0;
+          }catch(error){}
+        }else{
+          rgbKpopAudioFailed=true;
+          try{rgbKpopAudio.pause()}catch(error){}
+        }
+      };
+      rgbKpopAudio.load();
+    }catch(error){
+      rgbKpopAudioFailed=true;
+      rgbKpopAudio=null;
     }
+    return rgbKpopAudio;
   }
 
-  function startRgbKpopYoutube(){
-    if(rgbKpopYoutubeFrame||!document.body)return;
+  function tryPlayRgbKpop(){
+    var audio=ensureRgbKpopAudio();
+    if(!audio||rgbKpopAudioFailed)return;
     try{
-      var frame=document.createElement('iframe');
-      frame.id='diggerz-jams-vip-240';
-      frame.title='JAMS VIP';
-      frame.width='1';frame.height='1';
-      frame.allow='autoplay';
-      frame.setAttribute('aria-hidden','true');
-      frame.style.cssText='position:fixed;width:1px;height:1px;left:-9999px;top:-9999px;border:0;opacity:0;pointer-events:none';
-      // Official Fishcracks upload. Used only if the bundled/local JAMS VIP
-      // audio asset is unavailable in a deployment.
-      frame.src='https://www.youtube-nocookie.com/embed/K89rLAhCmmk?autoplay=1&loop=1&playlist=K89rLAhCmmk&controls=0&disablekb=1&fs=0&modestbranding=1';
-      document.body.appendChild(frame);
-      rgbKpopYoutubeFrame=frame;
+      var p=audio.play();
+      if(p&&p.catch)p.catch(function(){});
     }catch(error){}
   }
 
-  function updateRgbKpopMusic(){
-    var local=window.l&&l.z39;
-    var wanted=hasRgbKpopShoes(local);
-    if(!wanted){
-      if(rgbKpopAudio&&!rgbKpopAudio.paused){
-        try{rgbKpopAudio.pause();rgbKpopAudio.currentTime=0}catch(error){}
-      }
-      stopRgbKpopYoutube();
-      return;
-    }
-    if(rgbKpopAudioFailed){
-      startRgbKpopYoutube();
-      return;
-    }
-    if(!rgbKpopAudio){
+  function installRgbKpopGestureUnlock(){
+    if(rgbKpopGestureInstalled)return;
+    rgbKpopGestureInstalled=true;
+    function unlock(){
+      var state=rgbKpopMusicState();
+      if(!state.present)return;
+      var audio=ensureRgbKpopAudio();
+      if(!audio)return;
       try{
-        rgbKpopAudio=new Audio('/jams_vip.ogg');
-        rgbKpopAudio.loop=true;
-        rgbKpopAudio.volume=.58;
-        rgbKpopAudio.onerror=function(){
-          rgbKpopAudioFailed=true;
-          try{rgbKpopAudio.pause()}catch(error){}
-          startRgbKpopYoutube();
-        };
-      }catch(error){
-        rgbKpopAudioFailed=true;
-        startRgbKpopYoutube();
-        return;
-      }
-    }
-    if(rgbKpopAudio.paused&&Date.now()>=rgbKpopAudioRetryAt){
-      rgbKpopAudioRetryAt=Date.now()+1500;
-      try{
-        var p=rgbKpopAudio.play();
-        if(p&&p.catch)p.catch(function(error){
-          // Autoplay can be rejected before the first user gesture. Keep
-          // retrying locally; do not mark the asset missing for that case.
-        });
+        audio.volume=Math.max(audio.volume,Math.min(RGB_KPOP_MAX_VOLUME,state.factor*RGB_KPOP_MAX_VOLUME));
       }catch(error){}
+      tryPlayRgbKpop();
+    }
+    document.addEventListener('pointerdown',unlock,{passive:true});
+    document.addEventListener('touchstart',unlock,{passive:true});
+    document.addEventListener('keydown',unlock);
+  }
+
+  function updateRgbKpopMusic(){
+    var state=rgbKpopMusicState();
+
+    if(!state.present){
+      if(rgbKpopAudio&&!rgbKpopAudio.paused){
+        try{
+          rgbKpopAudio.volume=Math.max(0,rgbKpopAudio.volume-.035);
+          if(rgbKpopAudio.volume<=.01){rgbKpopAudio.pause();rgbKpopAudio.currentTime=0}
+        }catch(error){}
+      }
+      return;
+    }
+
+    var audio=ensureRgbKpopAudio();
+    if(!audio)return;
+
+    var target=Math.max(0,Math.min(RGB_KPOP_MAX_VOLUME,state.factor*RGB_KPOP_MAX_VOLUME));
+    try{
+      var current=isFinite(Number(audio.volume))?Number(audio.volume):0;
+      var step=.045;
+      if(current<target)current=Math.min(target,current+step);
+      else if(current>target)current=Math.max(target,current-step);
+      audio.volume=Math.max(0,Math.min(1,current));
+    }catch(error){}
+
+    // Keep the track running silently while a wearer exists but is out of range.
+    // That makes walking back toward them fade into the current point in the song.
+    if(audio.paused&&Date.now()>=rgbKpopAudioRetryAt){
+      rgbKpopAudioRetryAt=Date.now()+1200;
+      tryPlayRgbKpop();
     }
   }
 
@@ -603,6 +677,7 @@
     rgbInstalled=true;
     if(!rgbAnimationStarted){
       rgbAnimationStarted=true;
+      installRgbKpopGestureUnlock();
       requestAnimationFrame(animateRgbObjects);
     }
     return true;
