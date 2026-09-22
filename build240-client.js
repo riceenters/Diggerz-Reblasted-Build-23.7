@@ -235,16 +235,21 @@
     }catch(error){return null}
   }
 
-  function tintDirectBodyParts(ent,color){
-    var ap=ent&&ent.J33;
-    if(!ap||!ap.length)return;
-    var shirt=RGB_BY_ID[ap[2]|0];
+  function rgbDefAtSlot(ent,appearanceFallback,slot){
+    var ap=ent&&ent.J33,id=ap&&ap.length?(ap[slot]|0):0;
+    if(RGB_BY_ID[id])return RGB_BY_ID[id];
+    id=appearanceFallback&&appearanceFallback.length?(appearanceFallback[slot]|0):0;
+    return RGB_BY_ID[id]||null;
+  }
+
+  function tintDirectBodyParts(ent,color,appearanceFallback){
+    var shirt=rgbDefAtSlot(ent,appearanceFallback,2);
     if(shirt){
       applyRgbColor(entityNode(ent,['front_shoulder','arm']),shirt,color);
       applyRgbColor(entityNode(ent,['back_shoulder','arm_back']),shirt,color);
       applyRgbColor(entityNode(ent,['torso']),shirt,color);
     }
-    var pants=RGB_BY_ID[ap[7]|0];
+    var pants=rgbDefAtSlot(ent,appearanceFallback,7);
     if(pants){
       applyRgbColor(entityNode(ent,['front_lowerleg','leg']),pants,color);
       applyRgbColor(entityNode(ent,['back_lowerleg','leg_back']),pants,color);
@@ -253,9 +258,8 @@
   }
 
   function hasRgbKpopShoes(ent,appearanceFallback){
-    var ap=ent&&ent.J33;
-    if(!(ap&&ap.length))ap=appearanceFallback;
-    return !!(ap&&RGB_KPOP_SHOE_IDS[ap[3]|0]);
+    var def=rgbDefAtSlot(ent,appearanceFallback,3);
+    return !!(def&&RGB_KPOP_SHOE_IDS[def.id|0]);
   }
 
   function rgbKpopMusicState(){
@@ -275,8 +279,8 @@
     for(var key in peers){
       var peer=peers[key];
       var ent=service&&service.pvpEntityForPeer?service.pvpEntityForPeer(peer):null;
-      var ap=(ent&&ent.J33&&ent.J33.length)?ent.J33:(peer&&peer.info&&peer.info.appearance);
-      if(!ap||!RGB_KPOP_SHOE_IDS[ap[3]|0])continue;
+      var peerAppearance=peer&&peer.info&&peer.info.appearance;
+      if(!hasRgbKpopShoes(ent,peerAppearance))continue;
       state.present=true;
 
       var px=NaN,py=NaN;
@@ -302,9 +306,9 @@
     return state;
   }
 
-  function rgbWingDef(ent){
-    var ap=ent&&ent.J33,id=ap&&ap[5]|0;
-    return RGB_WING_IDS[id]?RGB_BY_ID[id]:null;
+  function rgbWingDef(ent,appearanceFallback){
+    var def=rgbDefAtSlot(ent,appearanceFallback,5);
+    return def&&RGB_WING_IDS[def.id|0]?def:null;
   }
 
   function spawnWingSparkles(ent,def,color,now){
@@ -455,21 +459,24 @@
     var service=window.q&&q.diggerzService;
     var local=window.l&&l.z39;
     if(local){
-      tintDirectBodyParts(local,color);
-      var ldef=RGB_BY_ID[local.J33&&local.J33[3]|0];
+      var localAppearance=service&&service.state&&service.state.appearance;
+      tintDirectBodyParts(local,color,localAppearance);
+      var ldef=rgbDefAtSlot(local,localAppearance,3);
       if(ldef&&RGB_KPOP_SHOE_IDS[ldef.id|0])spawnKpopTrail(local,ldef,color,now);
-      var lwing=rgbWingDef(local);
+      var lwing=rgbWingDef(local,localAppearance);
       if(lwing)spawnWingSparkles(local,lwing,color,now);
     }
     try{
       var peers=service&&service.pvpPeers||{};
       for(var key in peers){
-        var ent=service.pvpEntityForPeer&&service.pvpEntityForPeer(peers[key]);
+        var peer=peers[key];
+        var ent=service.pvpEntityForPeer&&service.pvpEntityForPeer(peer);
         if(!ent)continue;
-        tintDirectBodyParts(ent,color);
-        var def=RGB_BY_ID[ent.J33&&ent.J33[3]|0];
+        var peerAppearance=peer&&peer.info&&peer.info.appearance;
+        tintDirectBodyParts(ent,color,peerAppearance);
+        var def=rgbDefAtSlot(ent,peerAppearance,3);
         if(def&&RGB_KPOP_SHOE_IDS[def.id|0])spawnKpopTrail(ent,def,color,now);
-        var wing=rgbWingDef(ent);
+        var wing=rgbWingDef(ent,peerAppearance);
         if(wing)spawnWingSparkles(ent,wing,color,now);
       }
     }catch(error){}
