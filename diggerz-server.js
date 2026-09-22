@@ -291,7 +291,7 @@ function patchGameHtmlForBuild239(input) {
   // Expose the recovered wearable behavior factory so build240-client.js can
   // map virtual RGB item IDs back to their native special behaviors.
   const rgbRuntimeBridgeOld240 = "getAi:function(){ return ai }, getH:function(){ return h }, getCg:function(){ return cg }";
-  const rgbRuntimeBridgeNew240 = "getAi:function(){ return ai }, getH:function(){ return h }, getCg:function(){ return cg }, getYf:function(){ return Yf }";
+  const rgbRuntimeBridgeNew240 = "getAi:function(){ return ai }, getH:function(){ return h }, getCg:function(){ return cg }, getYf:function(){ return Yf }, getF:function(){ return f }";
   if (html.includes(rgbRuntimeBridgeOld240)) html = html.replace(rgbRuntimeBridgeOld240, rgbRuntimeBridgeNew240);
   else if (!html.includes("getYf:function(){ return Yf }")) console.warn('[Diggerz 24.0] RGB wearable runtime bridge target was not found.');
 
@@ -299,6 +299,18 @@ function patchGameHtmlForBuild239(input) {
   const rgbAdminCatalogNew240 = "var out = [], max = category === 1 ? 700 : 700, id, display, name;";
   if (html.includes(rgbAdminCatalogOld240)) html = html.replace(rgbAdminCatalogOld240, rgbAdminCatalogNew240);
   else console.warn('[Diggerz 24.0] RGB admin catalog target was not found.');
+
+  // Fanmade Roblox collab: Bazooka skin 604 keeps native type-23 projectile
+  // physics/damage, but its visible missile becomes a classic stud brick.
+  const robloxRocketCtorOld240 = "        this.Init(f.MISSILE_PNG());\n        this.O23(b, c, d, e);\n        a = this.b33;";
+  const robloxRocketCtorNew240 = "        this.Init(f.MISSILE_PNG());\n        this.O23(b, c, d, e);\n        if(window.DiggerzBuild240&&window.DiggerzBuild240.isRobloxLauncherEntity&&window.DiggerzBuild240.isRobloxLauncherEntity(p)){this._build240RobloxRocket=true;try{this.set_local_alp(0)}catch(_e){}try{window.DiggerzBuild240.registerRobloxRocketProjectile(this,p,b,c,d,e)}catch(_e){}}\n        a = this.b33;";
+  if (html.includes(robloxRocketCtorOld240)) html = html.replace(robloxRocketCtorOld240, robloxRocketCtorNew240);
+  else console.warn('[Diggerz 24.0] Roblox Rocket projectile constructor target was not found.');
+
+  const robloxRocketImpactOld240 = "        e0: function() {\n            this.A59();\n            this.a2 && E.V0(l.z38, this.b6, this.b7, 1, 1, 1, -1, 1, -1, 1, 1, 1, 1, .5, 1, 1, .25, .5);";
+  const robloxRocketImpactNew240 = "        e0: function() {\n            this.A59();\n            if(this._build240RobloxRocket&&window.DiggerzBuild240&&window.DiggerzBuild240.robloxRocketImpact)try{window.DiggerzBuild240.robloxRocketImpact(this)}catch(_e){}\n            this.a2 && E.V0(l.z38, this.b6, this.b7, 1, 1, 1, -1, 1, -1, 1, 1, 1, 1, .5, 1, 1, .25, .5);";
+  if (html.includes(robloxRocketImpactOld240)) html = html.replace(robloxRocketImpactOld240, robloxRocketImpactNew240);
+  else console.warn('[Diggerz 24.0] Roblox Rocket projectile impact target was not found.');
 
   // Final Build 24.0 mining patch: breaking terrain destroys that block.
   // The player only receives a randomized mining reward, not a free copy of
@@ -906,7 +918,7 @@ function startBattleBuild(room) {
   // Build 23.3: the server chooses one shared pre-match song per PvP round.
   // Clients use musicStartedAt for late-join synchronization and fade it for
   // the final three seconds before FIGHT.
-  b.preMatchTrack = Math.floor(Math.random() * 4);
+  b.preMatchTrack = Math.floor(Math.random() * 5);
   b.musicStartedAt = Date.now();
   for (const c of room.clients) {
     c.pvpHealth = 3;
@@ -2188,6 +2200,14 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     serveBuffer(res,jamsVipOgg,'audio/ogg'); return;
+  }
+  if (urlPath === '/mule.mp3') {
+    res.writeHead(302,{
+      'Location':'https://jtoh.fandom.com/wiki/Special:Redirect/file/8-Bit_Weapon_-_M.U.L.E_(Bitblaster_Mix).mp3',
+      'Cache-Control':'no-store'
+    });
+    res.end();
+    return;
   }
   if (urlPath === '/health') {
     const body = JSON.stringify({
