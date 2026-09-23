@@ -920,6 +920,7 @@
     id=id|0;
     obj._build240CollabId=id;
     if(id===NOOB_MASK_ID){
+      try{if(obj.set_local_alp)obj.set_local_alp(0)}catch(error){}
       obj._1='Noob Mask';
     }else if(id===NOOB_SHIRT_ID){
       try{
@@ -943,6 +944,7 @@
       }catch(error){}
       obj._1='Noob Gloves';
     }else if(id===ROBLOX_LAUNCHER_ID){
+      try{if(obj.set_local_alp)obj.set_local_alp(0)}catch(error){}
       obj._1='Roblox Rocket Launcher';
     }
     return obj;
@@ -996,16 +998,73 @@
       if(wear&&wear.set_local_alp)wear.set_local_alp(hide?0:1);
     }catch(error){}
   }
+  function findCollabNode(root,id,depth){
+    if(!root||depth>7)return null;
+    try{if((root._build240CollabId|0)===(id|0))return root}catch(error){}
+    var kids=null;
+    try{kids=root._9}catch(error){}
+    if(kids&&kids.length){
+      for(var i=0;i<kids.length;i++){
+        var hit=findCollabNode(kids[i],id,depth+1);
+        if(hit)return hit;
+      }
+    }
+    return null;
+  }
+  function collabNode(ent,id){
+    return findCollabNode(ent&&ent.i33,id,0)||findCollabNode(ent,id,0);
+  }
+  function hideCollabNative(ent,id,hide){
+    try{
+      var node=collabNode(ent,id);
+      if(node&&node.set_local_alp)node.set_local_alp(hide?0:1);
+    }catch(error){}
+  }
+  function pointForNode(node){
+    try{
+      var wt=node&&node.__worldTransform;
+      if(wt&&isFinite(wt.tx)&&isFinite(wt.ty))return{x:wt.tx,y:wt.ty,node:node};
+      if(node&&isFinite(node.A7)&&isFinite(node.A8))return{x:node.A7,y:node.A8,node:node};
+    }catch(error){}
+    return null;
+  }
+  function collabEquipped(ent,ap,id,slot){
+    return !!((ap&&((ap[slot]|0)===(id|0)))||collabNode(ent,id));
+  }
+  function fullNoobEquipped(service,ent,ap){
+    ap=ap||(service&&service.state&&service.state.appearance);
+    if(fullNoob(ap))return true;
+    return !!(collabEquipped(ent,ap,NOOB_MASK_ID,1)&&
+      collabEquipped(ent,ap,NOOB_SHIRT_ID,2)&&
+      collabEquipped(ent,ap,NOOB_GLOVES_ID,4)&&
+      collabEquipped(ent,ap,NOOB_PANTS_ID,7));
+  }
+  function isLavaSource(source){
+    if(source==null)return false;
+    if(typeof source==='string')return source.toLowerCase().indexOf('lava')>=0;
+    if(typeof source==='object'){
+      var keys=['type','kind','name','source','damageType','tileName','label','cause'];
+      for(var i=0;i<keys.length;i++){
+        try{
+          var v=source[keys[i]];
+          if(v!=null&&String(v).toLowerCase().indexOf('lava')>=0)return true;
+        }catch(error){}
+      }
+    }
+    return false;
+  }
   function renderPerson(key,ent,ap){
     var m=canvasMetrics();
-    var maskOn=ap&&(ap[1]|0)===NOOB_MASK_ID;
-    var rocketOn=ap&&(ap[4]|0)===ROBLOX_LAUNCHER_ID;
+    var maskOn=collabEquipped(ent,ap,NOOB_MASK_ID,1);
+    var rocketOn=collabEquipped(ent,ap,ROBLOX_LAUNCHER_ID,4);
     var mask=overlayNodes[key+':mask'],rocket=overlayNodes[key+':rocket'];
     var face=ent&&ent.i33&&Number(ent.i33.b4)<0?-1:1;
     if(maskOn&&ent){
-      var hp=pointFor(ent,'head');
+      var maskNative=collabNode(ent,NOOB_MASK_ID);
+      var hp=pointForNode(maskNative)||pointFor(ent,'head');
       if(hp){
         hideNativeWear(ent,'head',true);
+        hideCollabNative(ent,NOOB_MASK_ID,true);
         mask=overlayImg(key+':mask','diggerz-noob-mask240',NOOB_MASK_SRC);
         mask.style.display='block';
         mask.style.width=Math.max(28,56*m.s)+'px';
@@ -1016,23 +1075,25 @@
       }
     }else{
       if(mask)mask.style.display='none';
-      if(ent)hideNativeWear(ent,'head',false);
+      if(ent){hideNativeWear(ent,'head',false);hideCollabNative(ent,NOOB_MASK_ID,false)}
     }
     if(rocketOn&&ent){
-      var apnt=pointFor(ent,'front_arm')||pointFor(ent,'torso');
+      var rocketNative=collabNode(ent,ROBLOX_LAUNCHER_ID);
+      var apnt=pointForNode(rocketNative)||pointFor(ent,'front_arm')||pointFor(ent,'torso');
       if(apnt){
         hideNativeWear(ent,'front_arm',true);
+        hideCollabNative(ent,ROBLOX_LAUNCHER_ID,true);
         rocket=overlayImg(key+':rocket','diggerz-rbx-launcher240',ROCKET_SRC);
         rocket.style.display='block';
-        rocket.style.width=Math.max(72,96*m.s)+'px';
+        rocket.style.width=Math.max(92,112*m.s)+'px';
         rocket.style.height='auto';
-        rocket.style.left=(m.x+(apnt.x+(face<0?-82:-14))*m.s)+'px';
-        rocket.style.top=(m.y+(apnt.y-13)*m.s)+'px';
+        rocket.style.left=(m.x+(apnt.x+(face<0?-101:-11))*m.s)+'px';
+        rocket.style.top=(m.y+(apnt.y-14)*m.s)+'px';
         rocket.style.transform='scaleX('+face+')';
       }
     }else{
       if(rocket)rocket.style.display='none';
-      if(ent)hideNativeWear(ent,'front_arm',false);
+      if(ent){hideNativeWear(ent,'front_arm',false);hideCollabNative(ent,ROBLOX_LAUNCHER_ID,false)}
     }
   }
 
@@ -1050,24 +1111,34 @@
         var base=n.split(':')[0];
         if(base!=='local'&&!seen[base])overlayNodes[n].style.display='none';
       }
-      var m=canvasMetrics(),keep=[];
+      var m=canvasMetrics(),keep=[],now=Date.now();
       for(var i=0;i<projectileNodes.length;i++){
         var rec=projectileNodes[i],pr=rec.projectile,node=rec.node;
-        if(!pr||pr.a0===1||pr.a2===false){try{node.remove()}catch(error){}continue}
+        if(!pr){try{node.remove()}catch(error){}continue}
         var x=isFinite(pr.A7)?pr.A7:pr.b6,y=isFinite(pr.A8)?pr.A8:pr.b7;
-        if(isFinite(x)&&isFinite(y)){node.style.left=(m.x+x*m.s-9)+'px';node.style.top=(m.y+y*m.s-6)+'px'}
-        keep.push(rec);
+        if(isFinite(x)&&isFinite(y)){
+          node.style.left=(m.x+x*m.s-9)+'px';node.style.top=(m.y+y*m.s-6)+'px';
+          if(isFinite(rec.lastX)&&isFinite(rec.lastY)&&Math.abs(x-rec.lastX)+Math.abs(y-rec.lastY)>.25)rec.moved=true;
+          rec.lastX=x;rec.lastY=y;
+        }
+        var age=now-(rec.createdAt||now);
+        var ended=(pr.a0===1)||(pr.a2===false&&rec.moved&&age>60);
+        if(ended){
+          try{node.remove()}catch(error){}
+          try{if(rec.moved&&window.DiggerzBuild240&&window.DiggerzBuild240.robloxRocketImpactSound)window.DiggerzBuild240.robloxRocketImpactSound(pr)}catch(error){}
+          continue;
+        }
+        if(age<8000)keep.push(rec);else try{node.remove()}catch(error){}
       }
       projectileNodes=keep;
     }catch(error){}
     requestAnimationFrame(overlayLoop);
   }
 
-  function explodeNoobAt(ent){
-    if(!ent)return;
-    ensureLayer();
-    var m=canvasMetrics(),p=pointFor(ent,'torso')||pointFor(ent,'head');
+  function explodeNoobAtPoint(p){
     if(!p)return;
+    ensureLayer();
+    var m=canvasMetrics();
     var parts=[
       [NOOB_MASK_SRC,56,50],[NOOB_SHIRT_SRC,34,27],[NOOB_PANTS_SRC,34,8],
       [NOOB_FRONT_LEG_SRC,24,17],[NOOB_BACK_LEG_SRC,24,15],
@@ -1085,6 +1156,34 @@
         setTimeout(function(){try{img.remove()}catch(error){}},980);
       })(parts[i],i);
     }
+  }
+  function explodeNoobAt(ent){
+    if(!ent)return;
+    var p=pointFor(ent,'torso')||pointFor(ent,'head');
+    if(p)explodeNoobAtPoint({x:p.x,y:p.y});
+  }
+  function scheduleNoobDeath(ent,volume){
+    if(!ent)return;
+    var p=pointFor(ent,'torso')||pointFor(ent,'head');
+    if(!p)return;
+    p={x:p.x,y:p.y};
+    var started=Date.now(),done=false;
+    function finish(){
+      if(done)return;done=true;
+      try{explodeNoobAtPoint(p);playOne(OOF_SRC,volume==null?.9:volume)}catch(error){}
+    }
+    function tick(){
+      if(done)return;
+      var age=Date.now()-started,gone=false;
+      try{
+        gone=!ent||ent.a0===1||ent.a2===false||
+          (ent.i33&&(ent.i33.a0===1||ent.i33.a2===false))||
+          (window.l&&window.l.z39&&window.l.z39!==ent);
+      }catch(error){}
+      if((gone&&age>=35)||age>=360){finish();return}
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
   }
 
   function ensureMule(){
@@ -1252,13 +1351,9 @@
     if(typeof proto.hurtLocalPlayer==='function'){
       var oldHurt=proto.hurtLocalPlayer;
       proto.hurtLocalPlayer=function(amount,source){
-        var isFull=fullNoob(this.state&&this.state.appearance);
-        if(isFull&&source==='lava'){
-          playOne(OUCH_SRC,.8);
-          var oldOuch=window.DiggerzPlayOuch;
-          try{window.DiggerzPlayOuch=function(){};return oldHurt.apply(this,arguments)}
-          finally{window.DiggerzPlayOuch=oldOuch}
-        }
+        var ent=window.l&&l.z39;
+        var isFull=fullNoobEquipped(this,ent,this.state&&this.state.appearance);
+        if(isFull&&isLavaSource(source))playOne(OUCH_SRC,.8);
         return oldHurt.apply(this,arguments);
       };
     }
@@ -1266,12 +1361,10 @@
     if(typeof proto.showLocalDeath==='function'){
       var oldDeath=proto.showLocalDeath;
       proto.showLocalDeath=function(source){
-        if(!fullNoob(this.state&&this.state.appearance))return oldDeath.apply(this,arguments);
         var ent=window.l&&l.z39;
-        // Preserve the original death/respawn state machine, then layer the
-        // Noob full-set body-piece explosion and classic oof sound on top.
+        if(!fullNoobEquipped(this,ent,this.state&&this.state.appearance))return oldDeath.apply(this,arguments);
         var result=oldDeath.apply(this,arguments);
-        try{explodeNoobAt(ent);playOne(OOF_SRC,.9)}catch(error){}
+        scheduleNoobDeath(ent,.9);
         return result;
       };
     }
@@ -1279,11 +1372,12 @@
     if(typeof proto.pvpReceive==='function'){
       var oldReceive=proto.pvpReceive;
       proto.pvpReceive=function(m){
+        var pendingDeathEnt=null;
         try{
           if(m&&m.t==='room-state')announceMap(this,m);
           if(m&&m.t==='death'){
             var peer=this.pvpPeerForConnection&&this.pvpPeerForConnection(m._serverFrom),ap=peer&&peer.info&&peer.info.appearance,e=peer&&this.pvpEntityForPeer&&this.pvpEntityForPeer(peer);
-            if(fullNoob(ap)&&e){explodeNoobAt(e);playOne(OOF_SRC,.55)}
+            if(e&&fullNoobEquipped(this,e,ap))pendingDeathEnt=e;
           }
           if(m&&m.t==='battle-state'){
             if(m.mapMusic&&(m.phase==='build'||m.phase==='fight'||m.phase==='elimination')){
@@ -1307,8 +1401,10 @@
             else if(mulePvp&&muleAudio)muleAudio.volume=.7;
           }
         }catch(error){}
-        return oldReceive.apply(this,arguments);
-      };
+        var receiveResult=oldReceive.apply(this,arguments);
+        if(pendingDeathEnt)scheduleNoobDeath(pendingDeathEnt,.55);
+        return receiveResult;
+      }
     }
 
     proto.__build240RobloxCollab=true;
@@ -1324,16 +1420,22 @@
         var node=document.createElement('div');node.className='diggerz-stud240';
         var angle=Math.atan2((toY||0)-(fromY||0),(toX||0)-(fromX||0))*180/Math.PI;
         node.style.transform='rotate('+angle+'deg)';
-        overlayLayer.appendChild(node);projectileNodes.push({projectile:projectile,node:node});
+        overlayLayer.appendChild(node);
+        projectileNodes.push({projectile:projectile,node:node,createdAt:Date.now(),lastX:fromX,lastY:fromY,moved:false});
         playOne(ROCKET_LAUNCH_SRC,.75);
+      }catch(error){}
+    };
+    window.DiggerzBuild240.robloxRocketImpactSound=function(projectile){
+      try{
+        if(!projectile||projectile._build240ImpactPlayed)return;
+        projectile._build240ImpactPlayed=true;
+        playOne(ROCKET_EXPLOSION_SRC,.8);
       }catch(error){}
     };
     window.DiggerzBuild240.robloxRocketImpact=function(projectile){
       try{
-        if(!projectile||projectile._build240ImpactPlayed)return;
-        projectile._build240ImpactPlayed=true;
+        window.DiggerzBuild240.robloxRocketImpactSound(projectile);
         for(var i=projectileNodes.length-1;i>=0;i--)if(projectileNodes[i].projectile===projectile){try{projectileNodes[i].node.remove()}catch(error){}projectileNodes.splice(i,1)}
-        playOne(ROCKET_EXPLOSION_SRC,.8);
       }catch(error){}
     };
     requestAnimationFrame(overlayLoop);
