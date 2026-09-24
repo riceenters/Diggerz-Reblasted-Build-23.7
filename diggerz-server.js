@@ -350,10 +350,10 @@ function patchGameHtmlForBuild239(input) {
   if (html.includes(shopDataImageOld240)) html = html.replace(shopDataImageOld240,shopDataImageNew240);
   else console.warn('[Diggerz 24.0] shop data-image renderer target was not found.');
 
-  // Fanmade Roblox collab: Bazooka skin 604 keeps native type-23 projectile
-  // physics/damage, but its visible missile becomes a classic stud brick.
+  // Fanmade Roblox collab: keep the native Bazooka missile artwork/physics,
+  // but attach the Roblox launch/impact audio lifecycle to launcher 604.
   const robloxRocketCtorOld240 = "        this.Init(f.MISSILE_PNG());\n        this.O23(b, c, d, e);\n        a = this.b33;";
-  const robloxRocketCtorNew240 = "        this.Init(f.MISSILE_PNG());\n        this.O23(b, c, d, e);\n        if(window.DiggerzBuild240&&window.DiggerzBuild240.isRobloxLauncherEntity&&window.DiggerzBuild240.isRobloxLauncherEntity(p)){this._build240RobloxRocket=true;try{this.set_local_alp(0)}catch(_e){}try{window.DiggerzBuild240.registerRobloxRocketProjectile(this,p,b,c,d,e)}catch(_e){}}\n        a = this.b33;";
+  const robloxRocketCtorNew240 = "        this.Init(f.MISSILE_PNG());\n        this.O23(b, c, d, e);\n        if(window.DiggerzBuild240&&window.DiggerzBuild240.isRobloxLauncherEntity&&window.DiggerzBuild240.isRobloxLauncherEntity(p)){this._build240RobloxRocket=true;try{window.DiggerzBuild240.registerRobloxRocketProjectile(this,p,b,c,d,e)}catch(_e){}}\n        a = this.b33;";
   if (html.includes(robloxRocketCtorOld240)) html = html.replace(robloxRocketCtorOld240, robloxRocketCtorNew240);
   else console.warn('[Diggerz 24.0] Roblox Rocket projectile constructor target was not found.');
 
