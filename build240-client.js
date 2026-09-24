@@ -919,6 +919,22 @@
     if(!obj)return obj;
     id=id|0;
     obj._build240CollabId=id;
+
+    // IMPORTANT: h.n7/W48 build the collab item from a recovered base item.
+    // The inventory equip code only allows an item to be worn when the rendered
+    // object's h44 matches the ORIGINAL inventory item id. If h44 stays as the
+    // borrowed base id (Pumpkin Mask 42 / Bazooka 139), item 600 cannot be
+    // re-equipped and item 604 is stored/drawn as the wrong base item.
+    // Restore the virtual collab identity and its real wearable slot here.
+    try{
+      obj.a4=2;
+      obj.h44=id;
+      if(id===NOOB_MASK_ID)obj.t46=1;
+      else if(id===NOOB_SHIRT_ID)obj.t46=2;
+      else if(id===NOOB_PANTS_ID)obj.t46=7;
+      else if(id===NOOB_GLOVES_ID||id===ROBLOX_LAUNCHER_ID)obj.t46=4;
+    }catch(error){}
+
     if(id===NOOB_MASK_ID){
       obj._1='Noob Mask';
     }else if(id===NOOB_SHIRT_ID){
@@ -1027,7 +1043,8 @@
     return null;
   }
   function collabEquipped(ent,ap,id,slot){
-    return !!((ap&&((ap[slot]|0)===(id|0)))||collabNode(ent,id));
+    if(ap&&((ap[slot]|0)===(id|0)))return true;
+    return !!collabNode(ent,id);
   }
   function fullNoobEquipped(service,ent,ap){
     ap=ap||(service&&service.state&&service.state.appearance);
