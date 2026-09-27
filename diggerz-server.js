@@ -13,6 +13,9 @@ const zlib = require('zlib');
 
 const PORT = Number(process.env.PORT || 8080);
 const HOST = process.env.HOST || '0.0.0.0';
+// Railway supplies PORT at runtime. Keep the health endpoint independent of
+// the browser/game assets so a deployment can become healthy immediately.
+const HEALTH_PATHS = new Set(['/health', '/healthz']);
 const MAX_ROOM_PLAYERS = 10;
 const MAX_MESSAGE_BYTES = 64 * 1024;
 const MAX_MESSAGES_PER_SECOND = 120;
@@ -2734,7 +2737,7 @@ const server = http.createServer(async (req, res) => {
     else proxyRemoteAudio(res,MULE_REMOTE_URL);
     return;
   }
-  if (urlPath === '/health') {
+  if (HEALTH_PATHS.has(urlPath)) {
     const body = JSON.stringify({
       ok: true,
       service: 'diggerz-build24.0-server',
@@ -2847,6 +2850,10 @@ const heartbeat = setInterval(() => {
   }
 }, HEARTBEAT_INTERVAL_MS);
 heartbeat.unref();
+
+server.on('error', error => {
+  console.error('[Diggerz] HTTP server error:', error && error.stack ? error.stack : error);
+});
 
 server.listen(PORT, HOST, () => {
   log(`Diggerz multiplayer server listening on ${HOST}:${PORT}`);
