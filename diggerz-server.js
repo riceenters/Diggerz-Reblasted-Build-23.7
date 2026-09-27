@@ -996,6 +996,7 @@ function ensureRoomState(room) {
   if (!room.turretCooldowns) room.turretCooldowns = new Map();
   if (room.speaker === undefined) room.speaker = null;
   if (room.adminBackground === undefined) room.adminBackground = null;
+  if (room.adminPvpOverride === undefined) room.adminPvpOverride = false;
   if (room.mode === 'pvp' && !room.battle) {
     room.battle = {
       phase: 'waiting',
@@ -1175,7 +1176,8 @@ function eliminateOrRespawn(victim, attacker, source) {
 function dealPvpDamage(attacker, victim, amount, source) {
   if (!attacker || !victim || attacker === victim || !attacker.room || attacker.room !== victim.room) return false;
   const room = attacker.room;
-  if (room.mode !== 'pvp' || !room.battle || (room.battle.phase !== 'fight' && room.battle.phase !== 'elimination')) return false;
+  if (room.mode !== 'pvp' && !(room.mode === 'digtrade' && room.adminPvpOverride)) return false;
+  if (room.mode === 'pvp' && (!room.battle || (room.battle.phase !== 'fight' && room.battle.phase !== 'elimination'))) return false;
   if (!victim.alive || victim.eliminated) return false;
   if (victim.adminEffects && victim.adminEffects.god) {
     sendJson(attacker, {t:'hit-confirm', targetConnectionId:victim.connectionId, targetName:victim.name, health:victim.pvpHealth, blockedByGod:true});
@@ -1189,7 +1191,16 @@ function dealPvpDamage(attacker, victim, amount, source) {
   sendJson(victim, { t:'damage', amount:damage, source:String(source||'weapon'), attackerConnectionId:attacker.connectionId, attackerName:attacker.name });
   sendJson(attacker, { t:'hit-confirm', targetConnectionId:victim.connectionId, targetName:victim.name, health:victim.pvpHealth });
   broadcastRoom(room, { t:'health', current:victim.pvpHealth, maximum:3, _serverFrom:victim.connectionId, _serverName:victim.name }, victim);
-  if (victim.pvpHealth <= 0) eliminateOrRespawn(victim, attacker, source);
+  if (victim.pvpHealth <= 0) {
+    if(room.mode==='pvp') eliminateOrRespawn(victim, attacker, source);
+    else {
+      victim.pvpHealth=3; victim.alive=true; victim.eliminated=false; sendJson(victim,{t:'admin-pvp-killed',killerName:attacker&&attacker.name||'Player'});
+      const sx=attacker&&attacker.position?attacker.position.x:0, sy=attacker&&attacker.position?attacker.position.y-1:1; victim.position={x:sx,y:sy};
+      broadcastRoom(room,{t:'peer-state',x:sx,y:sy,_serverFrom:victim.connectionId,_serverName:victim.name});
+      sendJson(victim,{t:'force-respawn',x:sx,y:sy});
+      broadcastRoom(room,{t:'kill-feed',killerName:attacker&&attacker.name||'Player',killerConnectionId:attacker&&attacker.connectionId||'',victimName:victim.name,victimConnectionId:victim.connectionId,kills:attacker?((attacker.kills|0)):0,source:String(source||'weapon')});
+    }
+  }
   return true;
 }
 
@@ -1388,6 +1399,7 @@ function addClientToRoom(client, room, mode, name) {
     mapAuthor: room.mode==='pvp' ? battleMapAuthor(room) : '',
     mapMusic: room.mode==='pvp' ? battleMapMusic(room) : '',
     adminBackground: Number.isFinite(room.adminBackground) ? room.adminBackground : null,
+    adminPvpOverride: !!room.adminPvpOverride,
     tiles: [...room.tiles.values()], drops: [...room.drops.values()], coins: [...room.coins.values()], speaker: room.speaker ? {...room.speaker} : null, serverNow: Date.now()
   });
   if (mode === 'pvp') sendBattleState(client);
@@ -1629,9 +1641,38 @@ function relayGameMessage(client, message, rawLength) {
     const target=findRoomClient(room,String(message.targetConnectionId||'')); if(!target){sendJson(client,{t:'server-error',code:'player-not-found',message:'Player not found.'});return;}
     const effect=String(message.effect||''); if(!['god','fly','noclip','invis'].includes(effect)){sendJson(client,{t:'server-error',code:'bad-effect',message:'Unknown admin effect.'});return;}
     target.adminEffects[effect]=!!message.enabled;
+    if(effect==='invis') target.hidden=target.adminEffects[effect];
     broadcastRoom(room,{t:'admin-effect',connectionId:target.connectionId,effect,enabled:target.adminEffects[effect],effects:{...target.adminEffects}});
+    if(effect==='invis') broadcastRoom(room,{t:'admin-peer-visibility',connectionId:target.connectionId,hidden:target.hidden,name:target.name});
     return;
   }
+  if (message.t==='admin-bring') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
+    const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target){sendJson(client,{t:'server-error',code:'player-not-found',message:'Player not found.'});return;}
+    if(target===client){sendJson(client,{t:'server-error',code:'admin-bring-self',message:'You are already here.'});return;}
+    target.position={x:Number(client.position&&client.position.x)||0,y:(Number(client.position&&client.position.y)||0)-1};
+    broadcastRoom(room,{t:'peer-state',x:target.position.x,y:target.position.y,_serverFrom:target.connectionId,_serverName:target.name});
+    return;
+  }
+  if (message.t==='admin-fake-leave') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
+    const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target){sendJson(client,{t:'server-error',code:'player-not-found',message:'Player not found.'});return;}
+    target.hidden=true; broadcastRoom(room,{t:'admin-fake-leave',connectionId:target.connectionId,name:target.name});
+    return;
+  }
+  if (message.t==='admin-fake-return') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
+    const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target){sendJson(client,{t:'server-error',code:'player-not-found',message:'Player not found.'});return;}
+    target.hidden=false; broadcastRoom(room,{t:'admin-fake-return',connectionId:target.connectionId,name:target.name});
+    return;
+  }
+  if (message.t==='admin-pvp') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
+    room.adminPvpOverride=!!message.enabled;
+    broadcastRoom(room,{t:'admin-pvp-state',enabled:room.adminPvpOverride});
+    return;
+  }
+
   if (message.t==='admin-rename') {
     if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
     const target=findRoomClient(room,String(message.targetConnectionId||'')); if(!target){sendJson(client,{t:'server-error',code:'player-not-found',message:'Player not found.'});return;}
@@ -1694,33 +1735,23 @@ function relayGameMessage(client, message, rawLength) {
   }
 
   if (message.t==='attack') {
-    if (room.mode==='pvp') {
+    if (room.mode==='pvp' || (room.mode==='digtrade' && room.adminPvpOverride)) {
       const b=room.battle;
-      if (!b || (b.phase!=='fight'&&b.phase!=='elimination') || !client.alive || client.eliminated) {
-        sendJson(client,{t:'fire-blocked'});
-        return;
-      }
+      if (room.mode==='pvp' && (!b || (b.phase!=='fight'&&b.phase!=='elimination'))) { sendJson(client,{t:'fire-blocked'}); return; }
+      if (!client.alive || client.eliminated) { sendJson(client,{t:'fire-blocked'}); return; }
       client.shots=(client.shots|0)+1;
-      broadcastRoom(room,envelope,client); // projectile / weapon visuals
+      broadcastRoom(room,envelope,client);
       const attackType=Number(message.attackType)|0;
-      if (!PROJECTILE_ATTACKS.has(attackType)) {
-        const target=lineHitTarget(client,message);
-        if (target) dealPvpDamage(client,target,1,'weapon');
-      }
+      if (!PROJECTILE_ATTACKS.has(attackType)) { const target=lineHitTarget(client,message); if(target)dealPvpDamage(client,target,1,'weapon'); }
       return;
     }
-    // Free Dig / Dig+Trade is intentionally non-combat. Do not relay weapon
-    // attacks even if an older or modified client manages to send one.
-    if (room.mode==='digtrade') {
-      sendJson(client,{t:'freedig-fire-blocked'});
-      return;
-    }
+    if (room.mode==='digtrade') { sendJson(client,{t:'freedig-fire-blocked'}); return; }
     broadcastRoom(room,envelope,client);
     return;
   }
 
   if (message.t==='tool-attack') {
-    if (room.mode!=='pvp' || !room.battle || (room.battle.phase!=='fight'&&room.battle.phase!=='elimination') || !client.alive || client.eliminated) return;
+    if ((room.mode!=='pvp' && !(room.mode==='digtrade'&&room.adminPvpOverride)) || (room.mode==='pvp' && (!room.battle || (room.battle.phase!=='fight'&&room.battle.phase!=='elimination'))) || !client.alive || client.eliminated) return;
     const itemId=Number(message.itemId)|0;
     if(itemId!==239 && !(itemId>=379&&itemId<=394) && !RGB_LIGHTSWORD_IDS.has(itemId)) return;
     const fx=Number(message.fromX),fy=Number(message.fromY),tx=Number(message.toX),ty=Number(message.toY);
@@ -1737,7 +1768,7 @@ function relayGameMessage(client, message, rawLength) {
   }
 
   if (message.t==='impact') {
-    if (room.mode!=='pvp' || !room.battle || (room.battle.phase!=='fight'&&room.battle.phase!=='elimination') || !client.alive || client.eliminated) return;
+    if ((room.mode!=='pvp' && !(room.mode==='digtrade'&&room.adminPvpOverride)) || (room.mode==='pvp' && (!room.battle || (room.battle.phase!=='fight'&&room.battle.phase!=='elimination'))) || !client.alive || client.eliminated) return;
     const x=Number(message.x),y=Number(message.y),impactType=Number(message.impactType)|0;
     if (!Number.isFinite(x)||!Number.isFinite(y)) return;
     for (const target of room.clients) {
@@ -1852,8 +1883,15 @@ function relayGameMessage(client, message, rawLength) {
   }
 
   if (message.t==='damage') {
-    // PvP damage is authoritative in Build 23.3. Ignore old client-side hit guesses.
+    // Normal PvP is server-authoritative. In Dig+Trade, admin PvP override
+    // explicitly opens the same authoritative damage path.
     if (room.mode==='pvp') return;
+    if (room.mode==='digtrade' && room.adminPvpOverride) {
+      const target=findRoomClient(room,String(message.targetConnectionId||''));
+      if(target) dealPvpDamage(client,target,Number(message.amount)||1,String(message.source||'weapon'));
+      return;
+    }
+    if (room.mode==='digtrade') return;
     const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target||target===client)return;if(target.adminEffects&&target.adminEffects.god)return;sendJson(target,envelope);return;
   }
 
