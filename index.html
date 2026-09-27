@@ -115150,11 +115150,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 
   <h3>Fake Players</h3>
   <label>Bot name</label><input id="admin-bot-name" type="text" maxlength="32" placeholder="Fake player name…">
-  <label>Bot behavior</label><select id="admin-bot-ai"><option value="idle">Idle</option><option value="wander">Wander</option><option value="follow">Follow</option><option value="mine">Mining Bot</option></select>
+  <label>Bot behavior</label><select id="admin-bot-ai"><option value="idle">Idle</option><option value="wander">Wander</option><option value="follow">Follow</option><option value="mining">Mining Bot</option></select>
   <div class="row"><button id="admin-bot-spawn">Spawn Fake Player</button><button id="admin-bot-remove">Remove Selected Bot</button></div>
-  <div class="row"><button id="admin-bot-control" type="button">Control Selected Bot</button><button id="admin-bot-stop-control" type="button">Stop Control</button></div>
-  <label>Fake player chat</label><input id="admin-bot-chat" type="text" maxlength="180" placeholder="Chat as the selected fake player…"><button id="admin-bot-chat-send" type="button">Send As Fake Player</button>
-
+  <label>Chat as selected fake player</label><input id="admin-bot-chat" type="text" maxlength="180" placeholder="Message from the fake player…">
+  <button id="admin-bot-send-chat" type="button">Send Fake-Player Chat</button>
+  <div class="row"><button id="admin-bot-control" type="button">Control Selected Bot</button><button id="admin-bot-stop" type="button">Stop Control</button></div>
+  <div style="margin-top:5px;opacity:.72;font-size:12px">Control moves the selected fake player with WASD, switches the camera to it, and suspends your normal player until you stop control or press Escape.</div>
 
   <h3>Quick Chaos</h3>
   <div class="row"><button id="admin-kill-all">Kill Everyone</button><button id="admin-fly-all">Fly Everyone</button></div>
@@ -115479,7 +115480,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       if(m.t==='welcome'){P.joined=true;try{if(P.service)P.service._pvpAnnounceJoins=false}catch(_e){}setTimeout(function(){try{if(P.service)P.service._pvpAnnounceJoins=true}catch(_e){}},2500);P.room=m.room||'';P.connectionId=m.connectionId||'';P.maxPlayers=m.max||10;dbg('MP-021','WELCOME room='+P.room+' connectionId='+(m.connectionId||'?')+' count='+(m.count||'?')+'/'+(m.max||'?'));setStatus('Connected to '+(P.mode==='pvp'?'Battle':'Dig+Trade')+' server.');return}
       if(m.t==='player-count'){dbg('MP-022','player-count room='+(m.room||P.room||'?')+' '+m.count+'/'+m.max);P.connected=(m.count>=2);if(P.connected&&P.service){if(P.service.pvpSendHello)P.service.pvpSendHello();if(P.service.pvpSendNativeSpawn)P.service.pvpSendNativeSpawn()}return}
       if(m.t==='room-ready'){dbg('MP-023','ROOM READY room='+(m.room||P.room||'?')+' mode='+(m.mode||'?'));if(m.mode&&m.mode!==P.mode){setStatus('Server mode mismatch.');return}P.connected=true;setStatus('Native Diggerz packet link ready.');if(P.service&&P.service.pvpSendHello)P.service.pvpSendHello();if(P.service&&P.service.pvpSendNativeSpawn){P.service.pvpSendNativeSpawn();setTimeout(function(){if(P.service)P.service.pvpSendNativeSpawn()},500)}return}
-      if(m.t==='server-error'){dbg('MP-050','server-error code='+(m.code||'?')+' message='+(m.message||'?'));P.connected=false;setStatus('Multiplayer server error: '+String(m.message||m.code||'Unknown error.'));return}
+      if(m.t==='server-error'){dbg('MP-050','server-error code='+(m.code||'?')+' message='+(m.message||'?'));try{var ae=document.getElementById('diggerz-admin-status');if(ae&&String(m.code||'').indexOf('admin')===0)ae.textContent='Admin command rejected: '+String(m.message||m.code||'authentication failed')+'. Re-authenticate if needed.'}catch(_e){}P.connected=false;setStatus('Multiplayer server error: '+String(m.message||m.code||'Unknown error.'));return}
       if(m.t==='peer-left'){dbg('MP-040','peer-left '+String(m.connectionId||'?'));P.connected=((m.count||0)>=2);routeGameMessage(m);if(!P.starting&&!P.connected)setStatus('Waiting for more players…');return}
       if(m.t==='pong')return;if(m.t==='hello')dbg('MP-030','peer hello from '+String(m.name||m._serverName||'?'));routeGameMessage(m)
     };
@@ -115811,7 +115812,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     // Continuously send server position + mouse aim, and keep the camera on YOU.
     proto.pvpTick=function(){
       if(!(this.mode==='pvp'||this.mode==='digtrade')||!P.joined||!l.z39)return;if(!P.service)P.attach(this);
-      try{if(!this.localDead&&l.z38&&!window.DiggerzAdminBotControlActive){l.z38.s38=l.z39;l.z38.t39=l.z39.b6;l.z38.T30=l.z39.b7}}catch(e){}
+      try{if(!this.localDead&&l.z38){l.z38.s38=l.z39;l.z38.t39=l.z39.b6;l.z38.T30=l.z39.b7}}catch(e){}
       if(this.ticks%3===0){
         var x=l.z39.b6/l._44,y=l.z39.b7/l._44;this.pvpSend({t:'state',x:x,y:y});
         try{var game=this.game||l.z38,wx=(q.mX-game.A7)/(game.a8||1)/l._44,wy=(q.mY-game.A8)/(game.a9||1)/l._44;if(isFinite(wx)&&isFinite(wy))this.pvpSend({t:'aim',x:wx,y:wy})}catch(e){}
@@ -117018,7 +117019,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     if(name===s.playerName()&&window.DiggerzPvp22&&window.DiggerzPvp22.connectionId)return window.DiggerzPvp22.connectionId;
     var p=s.pvpFindPeerByName&&s.pvpFindPeerByName(name);return p?p.connectionId:''
   }
-  function send(msg){var s=svc();if(!s||!auth()||!s.pvpSend)return false;msg.adminToken=token();s.pvpSend(msg);return true}
+  function send(msg){var s=svc();if(!s){say('Admin service is not ready. Enter a multiplayer room first.');return false}if(!auth()){say('Admin authentication expired. Re-enter the admin code.');return false}if(!s.pvpSend){say('Multiplayer command link is not ready. Reconnect to the room.');return false}msg.adminToken=token();var ok=!!s.pvpSend(msg);if(!ok)say('Admin command could not be sent. Check that you are still connected to the server.');return ok}
   function selectedOrSelf(){var cid=targetCid();if(cid)return cid;var p=window.DiggerzPvp22;return p&&p.connectionId||''}
   function togglePower(power,button){
     var cid=selectedOrSelf();if(!cid)return say('Select a player first.');
@@ -117035,8 +117036,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       if(!item.category||!item.count)return;
       var row=document.createElement('div');row.style.cssText='display:flex;gap:4px;align-items:center;padding:4px;border-bottom:1px solid #293746';
       var label=document.createElement('span');label.style.flex='1';label.textContent='Slot '+i+' — '+(svc()&&svc().itemName?svc().itemName(item.category,item.id):('Item '+item.id))+' × '+item.count;
-      var take=document.createElement('button');take.textContent='Take';take.onclick=function(){var msg={t:String(viewerTarget).indexOf('BOT-')===0?'admin-bot-inventory-command':'admin-inventory-command',targetConnectionId:viewerTarget,action:'take',slot:i,count:item.count};send(msg);setTimeout(requestInventory,120)};
-      var rem=document.createElement('button');rem.textContent='Remove';rem.onclick=function(){var msg={t:String(viewerTarget).indexOf('BOT-')===0?'admin-bot-inventory-command':'admin-inventory-command',targetConnectionId:viewerTarget,action:'remove',slot:i,count:item.count};send(msg);setTimeout(requestInventory,120)};
+      var take=document.createElement('button');take.textContent='Take';take.onclick=function(){send({t:'admin-inventory-command',targetConnectionId:viewerTarget,action:'take',slot:i,count:item.count});setTimeout(requestInventory,120)};
+      var rem=document.createElement('button');rem.textContent='Remove';rem.onclick=function(){send({t:'admin-inventory-command',targetConnectionId:viewerTarget,action:'remove',slot:i,count:item.count});setTimeout(requestInventory,120)};
       row.appendChild(label);row.appendChild(take);row.appendChild(rem);box.appendChild(row)
     });
     if(!box.children.length)box.textContent='Inventory is empty.'
@@ -117045,49 +117046,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     var cid=targetCid();if(!cid)return say('Select an online player first.');
     viewerTarget=cid;send({t:'admin-inventory-request',targetConnectionId:cid});say('Requesting inventory…')
   }
-  var controlledBot='', controlActive=false, controlKeys={w:false,a:false,s:false,d:false,shift:false};
-  function controlTarget(){return controlledBot||targetCid()}
-  function controlCamera(){
-    if(!controlActive)return;
-    try{
-      var s=svc(),p=s&&s.pvpPeerForConnection?s.pvpPeerForConnection(controlledBot):null,e=p&&s.pvpEntityForPeer?s.pvpEntityForPeer(p):null;
-      if(e&&l&&l.z38){l.z38.s38=e;l.z38.t39=e.b6;l.z38.T30=e.b7}
-    }catch(e){}
-  }
-  function stopBotControl(){
-    if(!controlledBot)return;
-    send({t:'admin-bot-control',targetConnectionId:controlledBot,stop:true});
-    controlActive=false;window.DiggerzAdminBotControlActive=false;
-    var old=controlledBot;controlledBot='';
-    try{if(l&&l.z38&&l.z39){l.z38.s38=l.z39;l.z38.t39=l.z39.b6;l.z38.T30=l.z39.b7}}catch(e){}
-    say('Stopped controlling fake player.');
-  }
-  function startBotControl(){
-    var cid=targetCid();
-    if(!cid||String(cid).indexOf('BOT-')!==0)return say('Select a fake player first.');
-    if(controlActive)stopBotControl();
-    controlledBot=cid;controlActive=true;window.DiggerzAdminBotControlActive=true;
-    say('Controlling '+targetName()+'. WASD moves the fake player. Your normal player is suspended.');
-    controlCamera();
-  }
-  window.addEventListener('keydown',function(e){
-    if(!controlActive)return;
-    var k=String(e.key||'').toLowerCase();
-    if(k in controlKeys){controlKeys[k]=true;e.preventDefault();e.stopImmediatePropagation();}
-    if(k==='escape'){e.preventDefault();e.stopImmediatePropagation();stopBotControl();}
-  },true);
-  window.addEventListener('keyup',function(e){
-    if(!controlActive)return;
-    var k=String(e.key||'').toLowerCase();
-    if(k in controlKeys){controlKeys[k]=false;e.preventDefault();e.stopImmediatePropagation();}
-  },true);
-  function controlTick(){
-    if(!controlActive||!controlledBot)return;
-    var dx=(controlKeys.a?-1:0)+(controlKeys.d?1:0),dy=(controlKeys.w?-1:0)+(controlKeys.s?1:0);
-    send({t:'admin-bot-control',targetConnectionId:controlledBot,dx:dx,dy:dy});
-    controlCamera();
-  }
-
   function setup(){
     if(wired)return true;var s=svc();if(!s||!window.DiggerzPvp22)return false;wired=true;
     var buttons={god:'admin-god',fly:'admin-fly',noclip:'admin-noclip',freeze:'admin-freeze',invisible:'admin-invisible'};
@@ -117099,21 +117057,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     document.getElementById('admin-launch').onclick=function(){var cid=selectedOrSelf();if(cid)send({t:'admin-power',targetConnectionId:cid,power:'launch',value:true})};
     document.getElementById('admin-rename').onclick=function(){var cid=selectedOrSelf(),n=document.getElementById('admin-new-name').value.trim();if(cid&&n)send({t:'admin-name',targetConnectionId:cid,name:n})};
     document.getElementById('admin-inventory-refresh').onclick=requestInventory;
-    document.getElementById('admin-inventory-clear').onclick=function(){
-      if(!viewerTarget)return;
-      if(String(viewerTarget).indexOf('BOT-')===0)send({t:'admin-bot-inventory-command',targetConnectionId:viewerTarget,action:'clear',slot:-1,count:0});
-      else send({t:'admin-inventory-command',targetConnectionId:viewerTarget,action:'clear',slot:-1,count:0});
-      setTimeout(requestInventory,180)
-    };
-    document.getElementById('admin-bot-control').onclick=startBotControl;
-    document.getElementById('admin-bot-stop-control').onclick=stopBotControl;
-    document.getElementById('admin-bot-chat-send').onclick=function(){
-      var cid=targetCid(),msg=document.getElementById('admin-bot-chat').value.trim();
-      if(!cid||String(cid).indexOf('BOT-')!==0)return say('Select a fake player first.');
-      if(!msg)return;
-      send({t:'admin-bot-chat',targetConnectionId:cid,message:msg});
-      document.getElementById('admin-bot-chat').value='';
-    };
+    document.getElementById('admin-inventory-clear').onclick=function(){if(viewerTarget)send({t:'admin-inventory-command',targetConnectionId:viewerTarget,action:'clear',slot:-1,count:0});setTimeout(requestInventory,180)};
     document.getElementById('admin-set-background').onclick=function(){send({t:'admin-background',background:+document.getElementById('admin-background').value})};
     document.getElementById('admin-bot-spawn').onclick=function(){var n=document.getElementById('admin-bot-name').value.trim()||'Fake Player';send({t:'admin-bot-spawn',name:n,ai:document.getElementById('admin-bot-ai').value})};
     document.getElementById('admin-bot-remove').onclick=function(){var cid=targetCid();if(cid&&String(cid).indexOf('BOT-')===0)send({t:'admin-bot-remove',targetConnectionId:cid});else say('Select a fake player first.')};
@@ -117169,7 +117113,134 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
   var keys={w:false,a:false,s:false,d:false,shift:false};
   document.addEventListener('keydown',function(e){var k=String(e.key||'').toLowerCase();if(k in keys)keys[k]=true});
   document.addEventListener('keyup',function(e){var k=String(e.key||'').toLowerCase();if(k in keys)keys[k]=false});
-  setInterval(function(){install();flyTick();controlTick()},50);
+  setInterval(function(){install();flyTick()},50);
+})();
+</script>
+<script id="diggerz-admin-bot-possession">
+(function(){
+  var installedService=null, installedProto=false, receiveWrapped=false;
+  var keys={w:false,a:false,s:false,d:false,shift:false,space:false};
+  var mouseDown=false, controlId='';
+  function svc(){return window.Main&&window.Main.diggerzService?window.Main.diggerzService:null}
+  function say(x){var e=document.getElementById('diggerz-admin-status');if(e)e.textContent=String(x&&x.message||x||'Done.')}
+  function token(){return window.DiggerzAdminSessionToken||''}
+  function send(m){var s=svc();if(!s||!s.pvpSend)return false;m.adminToken=token();return !!s.pvpSend(m)}
+  function targetCid(){var s=svc(),input=document.getElementById('admin-player'),name=String(input&&input.value||'').trim();if(!s||!name)return '';if(window.DiggerzPvp22&&name===s.playerName())return window.DiggerzPvp22.connectionId||'';var p=s.pvpFindPeerByName&&s.pvpFindPeerByName(name);return p?p.connectionId:''}
+  function botPeer(){var s=svc();return s&&controlId&&s.pvpPeerForConnection?s.pvpPeerForConnection(controlId):null}
+  function buildBotSpawn(service,m){
+    if(!service||!m||!m.id||!service.buildNativePacket||!service.injectNativePacket)return;
+    try{
+      var id=service.guidFromParts(m.id), ap=Array.isArray(m.appearance)?m.appearance.slice(0,11):[];while(ap.length<11)ap.push(0);
+      var packet=service.buildNativePacket(5,1,function(out){
+        out.R8(id);out.R9(String(m.name||'Fake Player'));out.r8(Number(m.x)||0);out.r8(0);out.r8(Number(m.y)||2);out.r8(0);
+        out.R2(ap.length);for(var i=0;i<ap.length;i++)out.R2(ap[i]|0);out.R9(String(m.appearanceText||''));out.R2(0);out.R4(0);out.R2(0);out.s0(false);out.R2(1);out.R0(0);out.s0(false);out.R0(0);out.R2(Math.max(0,Math.min(65535,m.wins|0)));out.R8(service.zeroId);out.R4(0);out.r8(Number(m.skin)||1.44);out.r8(1);
+      });
+      var raw=packet&&packet.Q1&&packet.Q1.b;if(raw&&raw.buffer){var ab=raw.buffer.slice(raw.byteOffset||0,(raw.byteOffset||0)+raw.byteLength);service.injectNativePacket(ab)}
+    }catch(e){console.warn('Diggerz bot native spawn',e)}
+  }
+  function worldSnapshot(service){
+    if(!service||!window.DiggerzPvp22||!window.DiggerzPvp22.joined)return;
+    var roomKey=String(window.DiggerzPvp22.room||'');
+    if(service.__botSnapshotRoom!==roomKey){service.__botSnapshotRoom=roomKey;service.__botWorldSnapshotSent=false}
+    if(service.__botWorldSnapshotSent)return;
+    if(service._pvpBaseMapApplied)return;
+    var st=service.state;if(!st||!Array.isArray(st.tiles))return;
+    var w=Math.min(128,st.width|0||128),h=Math.min(80,st.height|0||80),vars=st.variants||[],packed=new Uint16Array(128*80);
+    for(var y=0;y<h;y++)for(var x=0;x<w;x++){var id=st.tiles[x+y*(st.width|0||128)]|0;packed[x+y*128]=(id&2047)|((vars[x+y*(st.width|0||128)]|0&31)<<11)}
+    var bytes='';for(var bi=0;bi<packed.length;bi++){bytes+=String.fromCharCode(packed[bi]&255,(packed[bi]>>>8)&255)}
+    var data=btoa(bytes);
+    service.__botWorldSnapshotSent=true;
+    send({t:'world-snapshot',width:128,height:80,encoding:'u16-v1',data:data});
+  }
+  function installProto(service){
+    if(installedProto||!window.DiggerzService||!window.DiggerzService.prototype)return;
+    installedProto=true;
+    var proto=window.DiggerzService.prototype;
+    var oldReceive=proto.pvpReceive;
+    proto.pvpReceive=function(m){
+      if(m&&m.t==='hello'&&String(m._serverFrom||'').indexOf('BOT-')===0){
+        var self=this;setTimeout(function(){buildBotSpawn(self,m)},0);
+      }
+      if(m&&m.t==='admin-bot-control-state'){
+        if(m.active){controlId=String(m.targetConnectionId||'');window.DiggerzPvp22.controlledBotId=controlId;say('Controlling '+String(m.name||'fake player')+'. WASD controls the bot. Escape stops control.');}
+        else {controlId='';window.DiggerzPvp22.controlledBotId='';say('Bot control stopped. Your player controls are restored.')}
+      }
+      if(m&&m.t==='admin-bot-loot'&&String(m.botConnectionId||'')===String(controlId||''))say('Mining bot coins: '+(m.coins|0));
+      var r=oldReceive.call(this,m);
+      if(m&&m.t==='peer-state'&&m._serverFrom){var peer=this.pvpPeerForConnection&&this.pvpPeerForConnection(m._serverFrom),e=peer&&this.pvpEntityForPeer(peer);if(e){if(m.face){try{if(e.i33)e.i33.b4=m.face<0?-1:1}catch(_e){}}if(peer.info&&peer.info.bot&&isFinite(+m.x)&&isFinite(+m.y)){try{e.l38((+m.x)*l._44,(+m.y)*l._44)}catch(_e2){e.b6=(+m.x)*l._44;e.b7=(+m.y)*l._44}}}}
+      return r;
+    };
+    var oldTick=proto.pvpTick;
+    proto.pvpTick=function(){
+      var P=window.DiggerzPvp22,active=!!(P&&P.controlledBotId),localX=l&&l.z39?l.z39.b6:0,localY=l&&l.z39?l.z39.b7:0;
+      var r=oldTick.call(this);
+      if(active&&P&&P.joined&&this.mode&&l&&l.z39){
+        // Undo any movement/physics that the normal player received this frame.
+        try{l.z39.l38(localX,localY)}catch(e){l.z39.b6=localX;l.z39.b7=localY}
+        try{var body=l.z39.b33&&l.z39.b33.tBJ;if(body){body.wrap_vel||body.setupVelocity();body.wrap_vel.tBJ.x=0;body.wrap_vel.tBJ.y=0}}catch(e){}
+        var peer=this.pvpPeerForConnection(P.controlledBotId),ent=peer&&this.pvpEntityForPeer(peer);
+        if(ent&&l.z38){try{l.z38.s38=ent;l.z38.t39=ent.b6;l.z38.T30=ent.b7}catch(e){}}
+        if(peer){
+          var game=this.game||l.z38,ax=peer.lastX||0,ay=peer.lastY||0;
+          try{ax=(q.mX-game.A7)/(game.a8||1)/l._44;ay=(q.mY-game.A8)/(game.a9||1)/l._44}catch(e){}
+          send({t:'admin-bot-control',action:'keys',targetConnectionId:P.controlledBotId,keys:keys,aimX:ax,aimY:ay});
+        }
+      }
+      return r;
+    };
+    var oldA17=proto.A17;
+    proto.A17=function(opcode,body,c){
+      if(window.DiggerzPvp22&&window.DiggerzPvp22.controlledBotId&&opcode===287)return;
+      return oldA17.call(this,opcode,body,c)
+    };
+    var oldDirect=proto.weaponDirectHit;
+    proto.weaponDirectHit=function(fromX,fromY,toX,toY,attackType){
+      var P=window.DiggerzPvp22;
+      if(P&&P.controlledBotId){
+        var held=null;try{held=l.z39&&l.z39.n38&&l.z39.n38.B30?l.z39.n38.B30[l.z39.n38.q43]:null}catch(e){}
+        if(held&&held.T40){send({t:'admin-bot-mine',targetConnectionId:P.controlledBotId,x:Math.round(toX),y:Math.round(toY)});return}
+        send({t:'admin-bot-attack',targetConnectionId:P.controlledBotId,fromX:Number(fromX)||0,fromY:Number(fromY)||0,toX:Number(toX)||0,toY:Number(toY)||0,attackType:attackType|0});return;
+      }
+      return oldDirect.call(this,fromX,fromY,toX,toY,attackType)
+    };
+    var oldChat=proto.playerChat;
+    proto.playerChat=function(text){
+      var P=window.DiggerzPvp22;
+      if(P&&P.controlledBotId){send({t:'admin-bot-chat',targetConnectionId:P.controlledBotId,text:String(text||'').slice(0,180)});return true}
+      return oldChat.call(this,text)
+    };
+  }
+  function wrapReceive(){
+    var s=svc();if(!s||s===installedService||!s.pvpReceive)return;
+    installedService=s;installProto(s);
+    if(s.__botPossessionReceive)return;s.__botPossessionReceive=true;
+    var old=s.pvpReceive;s.pvpReceive=function(m){
+      if(m&&m.t==='admin-bot-control-state'&&m.active)controlId=String(m.targetConnectionId||'');
+      var r=old.call(this,m);
+      if(m&&m.t==='room-state')setTimeout(function(){worldSnapshot(s)},700);
+      return r;
+    };
+  }
+  function addControls(){return true}
+  function startControl(){var cid=targetCid();if(!cid||String(cid).indexOf('BOT-')!==0)return say('Select a fake player first.');if(send({t:'admin-bot-control',action:'start',targetConnectionId:cid})){controlId=cid}}
+  function stopControl(){if(!controlId)return say('No fake player is being controlled.');send({t:'admin-bot-control',action:'stop',targetConnectionId:controlId})}
+  function bind(){
+    var c=document.getElementById('admin-bot-control'),st=document.getElementById('admin-bot-stop'),chat=document.getElementById('admin-bot-send-chat');
+    if(c&&!c.__bound){c.__bound=true;c.onclick=startControl} if(st&&!st.__bound){st.__bound=true;st.onclick=stopControl}
+    if(chat&&!chat.__bound){chat.__bound=true;chat.onclick=function(){var cid=targetCid(),input=document.getElementById('admin-bot-chat');var text=String(input&&input.value||'').trim();if(!cid||String(cid).indexOf('BOT-')!==0)return say('Select a fake player first.');if(!text)return;say('Sending chat as fake player…');if(send({t:'admin-bot-chat',targetConnectionId:cid,text:text}))input.value=''}}
+  }
+  function keyHandler(e,down){if(!controlId)return;var k=String(e.key||'').toLowerCase();if(k==='escape'){e.preventDefault();e.stopImmediatePropagation();stopControl();return}if(k in keys){keys[k]=down;e.preventDefault();e.stopImmediatePropagation()}}
+  document.addEventListener('keydown',function(e){keyHandler(e,true)},true);document.addEventListener('keyup',function(e){keyHandler(e,false)},true);
+  document.addEventListener('mousedown',function(e){
+    if(!controlId||e.button!==0)return;mouseDown=true;
+    var s=svc(),P=window.DiggerzPvp22;if(!s||!P||!P.controlledBotId)return;
+    var game=s.game||l.z38,tx=0,ty=0;try{tx=Math.round((q.mX-game.A7)/(game.a8||1)/l._44);ty=Math.round((q.mY-game.A8)/(game.a9||1)/l._44)}catch(_e){}
+    var held=null;try{held=l.z39&&l.z39.n38&&l.z39.n38.B30?l.z39.n38.B30[l.z39.n38.q43]:null}catch(_e2){}
+    if(held&&held.T40)send({t:'admin-bot-mine',targetConnectionId:P.controlledBotId,x:tx,y:ty});
+  },true);
+  document.addEventListener('mouseup',function(e){if(e.button===0)mouseDown=false},true);
+  setInterval(function(){wrapReceive();addControls();bind()},200);
+  setInterval(function(){if(controlId&&(!window.DiggerzPvp22||!window.DiggerzPvp22.joined))controlId=''},500);
 })();
 </script>
 </body>

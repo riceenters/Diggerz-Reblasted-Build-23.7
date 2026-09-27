@@ -991,6 +991,17 @@ function ensureRoomState(room) {
   if (!room.cottonMachines) room.cottonMachines = new Map();
   if (!room.turretCooldowns) room.turretCooldowns = new Map();
   if (!room.bots) room.bots = new Map();
+  if (!room.baseTiles) room.baseTiles = new Map();
+  if (!room.baseMapReady) {
+    if (room.map && Array.isArray(room.map.tiles)) {
+      for (const row of room.map.tiles) {
+        if (!Array.isArray(row) || row.length < 3) continue;
+        const x=Number(row[0])|0,y=Number(row[1])|0,id=Number(row[2])|0,variant=(Number(row[3])|0)&31;
+        if (x>=0&&x<128&&y>=0&&y<80&&id>0) room.baseTiles.set(`${x},${y}`,{x,y,id,variant});
+      }
+      room.baseMapReady = true;
+    }
+  }
   if (room.adminPvpOverride === undefined) room.adminPvpOverride = false;
   if (room.speaker === undefined) room.speaker = null;
   if (room.mode === 'pvp' && !room.battle) {
@@ -1181,9 +1192,10 @@ function dealPvpDamage(attacker, victim, amount, source) {
   victim.lastDamagedAt = Date.now();
   victim.pvpHealth = Math.max(0, (victim.pvpHealth == null ? 3 : victim.pvpHealth) - damage);
   attacker.hits = (attacker.hits|0) + 1;
-  sendJson(victim, { t:'damage', amount:damage, source:String(source||'weapon'), attackerConnectionId:attacker.connectionId, attackerName:attacker.name });
-  sendJson(attacker, { t:'hit-confirm', targetConnectionId:victim.connectionId, targetName:victim.name, health:victim.pvpHealth });
-  broadcastRoom(room, { t:'health', current:victim.pvpHealth, maximum:3, _serverFrom:victim.connectionId, _serverName:victim.name }, victim);
+  if (victim.bot) broadcastRoom(room,{t:'health',current:victim.pvpHealth,maximum:3,_serverFrom:victim.connectionId,_serverName:victim.name});
+  else sendJson(victim, { t:'damage', amount:damage, source:String(source||'weapon'), attackerConnectionId:attacker.connectionId, attackerName:attacker.name });
+  if (!attacker.bot) sendJson(attacker, { t:'hit-confirm', targetConnectionId:victim.connectionId, targetName:victim.name, health:victim.pvpHealth });
+  broadcastRoom(room, { t:'health', current:victim.pvpHealth, maximum:3, _serverFrom:victim.connectionId, _serverName:victim.name }, victim.bot ? null : victim);
   if (victim.pvpHealth <= 0) eliminateOrRespawn(victim, attacker, source);
   return true;
 }
@@ -1194,8 +1206,9 @@ function lineHitTarget(attacker, message) {
   if (![fx,fy,tx,ty].every(Number.isFinite)) return null;
   const vx=tx-fx, vy=ty-fy, vv=vx*vx+vy*vy;
   let best=null, bestT=2;
-  for (const target of room.clients) {
-    if (target===attacker || !target.alive || target.eliminated || !target.position) continue;
+  const actors=[...room.clients,...(room.bots?room.bots.values():[])];
+  for (const target of actors) {
+    if (target===attacker || target.hidden || !target.alive || target.eliminated || !target.position) continue;
     const px=target.position.x, py=target.position.y;
     let t=vv>0?((px-fx)*vx+(py-fy)*vy)/vv:0;
     if (t<0 || t>1) continue;
@@ -1389,7 +1402,7 @@ function addClientToRoom(client, room, mode, name) {
   // Existing admin-spawned fake players are virtual peers, so replay their
   // hello packets to a newcomer just like a real client would.
   if (room.bots) for (const bot of room.bots.values()) if (!bot.hidden) {
-    sendJson(client,{t:'hello',id:bot._guid||randomBotGuidParts(),name:bot.name,appearance:bot.appearance,appearanceText:bot.appearanceText,x:bot.position.x,y:bot.position.y,skin:bot.skin,wins:bot.wins||0,mode:room.mode,_serverFrom:bot.connectionId,_serverName:bot.name});
+    sendJson(client,{t:'hello',id:bot._guid||randomBotGuidParts(),name:bot.name,appearance:bot.appearance,appearanceText:bot.appearanceText,x:bot.position.x,y:bot.position.y,skin:bot.skin,wins:bot.wins||0,mode:room.mode,bot:true,_serverFrom:bot.connectionId,_serverName:bot.name});
   }
 
   broadcastRoom(room, { t:'player-count', room:room.code, count:actorCount(room), max:MAX_ROOM_PLAYERS });
@@ -1518,6 +1531,18 @@ function findRoomClient(room, connectionId) {
   return null;
 }
 
+// Admin commands may target real clients or server-side fake players.
+function findRoomActor(room, connectionId) {
+  if (!room || !connectionId) return null;
+  const id=String(connectionId);
+  for (const c of room.clients) if (c.connectionId === id) return c;
+  if (room.bots && typeof room.bots.get === 'function') {
+    const bot=room.bots.get(id);
+    if (bot) return bot;
+  }
+  return null;
+}
+
 function guidKey(parts) {
   if (!Array.isArray(parts) || parts.length < 4) return '';
   return parts.slice(0, 4).map(v => Number(v) | 0).join(':');
@@ -1607,6 +1632,102 @@ function completeTrade(client, partner) {
   sendJson(partner,{t:'trade-complete',tradeId:id,receive:aOffer});
 }
 
+function roomTileAt(room,x,y) {
+  if (!room) return null;
+  x=Number(x)|0; y=Number(y)|0;
+  if (x<0||x>=128||y<0||y>=80) return null;
+  const key=`${x},${y}`;
+  if (room.tiles && room.tiles.has(key)) {
+    const t=room.tiles.get(key);
+    return t && (t.id|0) ? t : null;
+  }
+  return room.baseTiles && room.baseTiles.get(key) || null;
+}
+function setRoomTile(room,actor,x,y,id,variant=0) {
+  x=Number(x)|0; y=Number(y)|0; id=Number(id)|0; variant=Number(variant)|0;
+  if (!room || x<0||x>=128||y<0||y>=80) return false;
+  const key=`${x},${y}`;
+  room.tiles.set(key,{x,y,id,variant,ownerConnectionId:actor&&actor.connectionId||'SERVER'});
+  if (id===0) { room.cottonMachines.delete(key); room.turretCooldowns.delete(key); }
+  broadcastRoom(room,{t:'tile',x,y,id,variant,_serverFrom:actor&&actor.connectionId||'SERVER',_serverName:actor&&actor.name||'Server'});
+  return true;
+}
+function botAddInventory(bot,item) {
+  if (!bot || !item || !item.id || !item.count) return;
+  if (!Array.isArray(bot.inventory)) bot.inventory=[];
+  let slot=bot.inventory.find(s=>s.category===item.category&&s.id===item.id&&s.variant===item.variant&&s.extra===item.extra&&s.text===item.text);
+  if (slot) { slot.count=Math.min(65535,slot.count+item.count); return; }
+  if (bot.inventory.length>=50) return;
+  bot.inventory.push({category:item.category|0,id:item.id|0,variant:item.variant|0,count:Math.max(1,item.count|0),extra:item.extra|0,text:String(item.text||'').slice(0,180)});
+}
+function botFindGround(room,bot,xOverride=null) {
+  const x=Math.max(0,Math.min(127,Math.floor(xOverride==null?bot.position.x:xOverride)));
+  for(let y=Math.max(1,Math.floor(bot.position.y)+1);y<80;y++) {
+    const t=roomTileAt(room,x,y);
+    if(t && (t.id|0)) return y;
+  }
+  return null;
+}
+function botMineOne(room,bot,x,y) {
+  const tile=roomTileAt(room,x,y);
+  if(!tile || !(tile.id|0)) return false;
+  const id=tile.id|0;
+  // Leave interactive machines and PvP turrets alone; the native bot is a miner.
+  if(id===122||id===127||id===211||id===212||id===363||id===364||id===365) return false;
+  if(!setRoomTile(room,bot,x,y,0,0)) return false;
+  botAddInventory(bot,{category:1,id,variant:tile.variant|0,count:1,extra:0,text:''});
+  bot.mined=(bot.mined|0)+1;
+  if(Math.random()<0.015) {
+    bot.coins=(bot.coins|0)+1;
+    sendJson(bot.controlledBy ? findRoomClient(room,bot.controlledBy) : null,{t:'admin-bot-loot',botConnectionId:bot.connectionId,coins:bot.coins});
+  }
+  return true;
+}
+function tickMiningBot(room,bot,now) {
+  if (!room.baseMapReady) return;
+  if (!bot.mining) bot.mining={dir:1,rowY:null,nextAt:0,initialized:false};
+  const m=bot.mining;
+  if (!m.initialized) {
+    const startX=3,ground=botFindGround(room,bot,startX);
+    if (ground==null) return;
+    m.rowY=Math.max(1,ground); m.dir=1; m.initialized=true;
+    bot.position.x=startX; bot.position.y=Math.max(0,m.rowY-1.05);
+  }
+  if (now < (m.nextAt||0)) return;
+  m.nextAt=now+180;
+  const x=Math.floor(bot.position.x + m.dir);
+  const y=Math.max(1,Math.min(79,m.rowY|0));
+  if (x<1 || x>126) {
+    m.dir*=-1; m.rowY=Math.min(78,(m.rowY|0)+1); bot.position.x=Math.max(2,Math.min(125,bot.position.x)); bot.position.y=Math.max(0,m.rowY-1.05); return;
+  }
+  if (botMineOne(room,bot,x,y)) {
+    bot.position.x += m.dir*0.55;
+    bot.face=m.dir;
+  } else {
+    const here=roomTileAt(room,Math.floor(bot.position.x),y);
+    if (!here) { m.rowY=Math.min(78,(m.rowY|0)+1); bot.position.y=Math.max(0,m.rowY-1.05); }
+    else { bot.position.x += m.dir*0.55; }
+  }
+  bot.position.x=Math.max(1,Math.min(126,bot.position.x));
+  broadcastRoom(room,{t:'peer-state',x:bot.position.x,y:bot.position.y,face:bot.face||1,anim:'mine',_serverFrom:bot.connectionId,_serverName:bot.name},null,true);
+}
+function applyBotControl(room,bot,now) {
+  if (!bot.controlledBy || !bot.controlKeys) return false;
+  if (now-(bot.controlUpdatedAt||0)>1000) bot.controlKeys={};
+  const k=bot.controlKeys||{};
+  const dx=(k.d?1:0)-(k.a?1:0), dy=(k.s?1:0)-(k.w?1:0);
+  const len=Math.hypot(dx,dy)||1, speed=k.shift?0.48:0.30;
+  if (dx||dy) {
+    bot.position.x += dx/len*speed;
+    bot.position.y += dy/len*speed;
+    bot.face=dx<0?-1:dx>0?1:(bot.face||1);
+  }
+  bot.position.x=Math.max(-20,Math.min(WORLD_WIDTH+20,bot.position.x));
+  bot.position.y=Math.max(-30,Math.min(120,bot.position.y));
+  broadcastRoom(room,{t:'peer-state',x:bot.position.x,y:bot.position.y,face:bot.face||1,controlled:true,_serverFrom:bot.connectionId,_serverName:bot.name},null,true);
+  return true;
+}
+
 function combatEnabled(room) {
   return !!(room && (room.mode === 'pvp' || room.adminPvpOverride));
 }
@@ -1626,12 +1747,10 @@ function spawnAdminBot(room, name, options = {}) {
     position:{x:Number.isFinite(+options.x)?+options.x:randomSpawnX(room),y:Number.isFinite(+options.y)?+options.y:2},
     appearance:Array.isArray(options.appearance)?options.appearance.slice(0,11).map(v=>Number(v)|0):[0,247,0,0,326,0,0,0,0,0,0],
     appearanceText:String(options.appearanceText||'').slice(0,180),skin:Number(options.skin)||1.44,wins:0,kills:0,pvpHealth:3,alive:true,eliminated:false,
-    ai:String(options.ai||'idle'),hidden:false,godMode:false,fly:false,noclip:false,frozen:false,
-    phase:Math.random()*Math.PI*2,speed:.35+Math.random()*.25,
-    mining:false,mineCooldown:0,mineRowDir:Math.random()<.5?-1:1,mineSteps:0,
-    controlledBy:null,chatCooldown:0,inventory:[],coins:0};
+    ai:String(options.ai||'idle'),hidden:false,godMode:false,fly:false,noclip:false,frozen:false,phase:Math.random()*Math.PI*2,speed:.35+Math.random()*.25,
+    face:1,inventory:[],coins:0,mined:0,controlledBy:'',controlKeys:{},controlUpdatedAt:0,chatCount:0,aim:{x:0,y:0}};
   room.bots.set(cid,bot);
-  broadcastRoom(room,{t:'hello',id:bot._guid,name:bot.name,appearance:bot.appearance,appearanceText:bot.appearanceText,x:bot.position.x,y:bot.position.y,skin:bot.skin,wins:0,mode:room.mode,_serverFrom:cid,_serverName:bot.name});
+  broadcastRoom(room,{t:'hello',id:bot._guid,name:bot.name,appearance:bot.appearance,appearanceText:bot.appearanceText,x:bot.position.x,y:bot.position.y,skin:bot.skin,wins:0,mode:room.mode,bot:true,_serverFrom:cid,_serverName:bot.name});
   broadcastRoom(room,{t:'player-count',room:room.code,count:actorCount(room),max:MAX_ROOM_PLAYERS});
   broadcastRoster(room);
   return bot;
@@ -1643,69 +1762,22 @@ function removeAdminBot(room, bot, announce = true) {
   broadcastRoom(room,{t:'player-count',room:room.code,count:actorCount(room),max:MAX_ROOM_PLAYERS});
   broadcastRoster(room); return true;
 }
-function botMineStep(room, bot, now) {
-  if (!bot || room.mode !== 'digtrade' || now < (bot.mineCooldown||0)) return;
-  const bx=Math.round(bot.position.x), by=Math.round(bot.position.y);
-  // The original public mining bot alternated long horizontal rows after
-  // moving downward. Recreate that behavior against the server's authoritative
-  // tile map, so every browser sees the same blocks disappear.
-  const candidates=[
-    [bx+bot.mineRowDir,by+1],[bx+bot.mineRowDir,by],[bx+bot.mineRowDir,by-1],
-    [bx,by+1],[bx,by-1]
-  ];
-  let picked=null;
-  for(const [x,y] of candidates){
-    const t=room.tiles.get(`${x},${y}`);
-    if(t && (t.id|0)>0 && (t.id|0)!==122 && (t.id|0)!==211 && (t.id|0)!==212){picked={x,y,t};break;}
-  }
-  if(!picked){
-    bot.mineRowDir*=-1;
-    bot.position.y=Math.min(118,bot.position.y+1);
-    bot.mineCooldown=now+180;
-    return;
-  }
-  const {x,y,t}=picked;
-  room.tiles.set(`${x},${y}`,{x,y,id:0,variant:0,ownerConnectionId:bot.connectionId});
-  broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,_serverFrom:bot.connectionId,_serverName:bot.name});
-  bot.mineSteps=(bot.mineSteps||0)+1;
-  // Keep a lightweight bot inventory for the admin inventory viewer. The
-  // browser UI can inspect/control these slots without a real browser client.
-  const existing=bot.inventory.find(it=>it.category===1&&it.id===(t.id|0));
-  if(existing) existing.count=(existing.count|0)+1;
-  else bot.inventory.push({category:1,id:t.id|0,variant:t.variant|0,count:1,extra:0,text:''});
-  bot.mineCooldown=now+260;
-  if(bot.mineSteps%18===0) bot.position.y=Math.min(118,bot.position.y+1);
-}
-
 function tickAdminBots(room, now) {
   if (!room || !room.bots || !room.bots.size) return;
   for (const bot of room.bots.values()) {
     if (bot.hidden || bot.frozen) continue;
-    if (bot.controlledBy) {
-      // A possessed bot is driven by short-lived admin control packets.
-      const c=bot.controlInput||{};
-      const dx=Math.max(-1,Math.min(1,Number(c.dx)||0)), dy=Math.max(-1,Math.min(1,Number(c.dy)||0));
-      const speed=bot.fly?.22:.12;
-      if(dx||dy){bot.position.x+=dx*speed;bot.position.y+=dy*speed;}
-      if(c.expiresAt && c.expiresAt<now){bot.controlledBy=null;bot.controlInput=null;}
-    } else if (bot.ai === 'mine') {
-      bot.phase += .025;
-      bot.position.x += bot.mineRowDir*bot.speed*.045;
-      if(Math.random()<.018) bot.position.y=Math.min(118,bot.position.y+.2);
-      botMineStep(room,bot,now);
-    } else if (bot.ai === 'wander') {
-      bot.phase += .035;
-      bot.position.x += Math.cos(bot.phase)*bot.speed*.06;
-      bot.position.y += Math.sin(bot.phase*1.7)*bot.speed*.015;
-    } else if (bot.ai === 'follow' && room.clients.size) {
+    if (applyBotControl(room,bot,now)) continue;
+    if (bot.ai === 'mining') { tickMiningBot(room,bot,now); continue; }
+    if (bot.ai === 'wander') { bot.phase += .035; bot.position.x += Math.cos(bot.phase)*bot.speed*.06; bot.position.y += Math.sin(bot.phase*1.7)*bot.speed*.015; }
+    if (bot.ai === 'follow' && room.clients.size) {
       const target=[...room.clients].filter(c=>!c.closed&&c.position)[0];
-      if(target){const dx=target.position.x-bot.position.x,dy=target.position.y-bot.position.y,d=Math.hypot(dx,dy)||1;bot.position.x+=dx/d*.025;bot.position.y+=dy/d*.025;}
+      if(target){const dx=target.position.x-bot.position.x,dy=target.position.y-bot.position.y,d=Math.hypot(dx,dy)||1;bot.position.x+=dx/d*.025;bot.position.y+=dy/d*.025;bot.face=dx<0?-1:1;}
     }
-    bot.position.x=Math.max(-20,Math.min(WORLD_WIDTH+20,bot.position.x));
-    bot.position.y=Math.max(-30,Math.min(120,bot.position.y));
-    broadcastRoom(room,{t:'peer-state',x:bot.position.x,y:bot.position.y,_serverFrom:bot.connectionId,_serverName:bot.name},null,true);
+    bot.position.x=Math.max(-20,Math.min(WORLD_WIDTH+20,bot.position.x)); bot.position.y=Math.max(-30,Math.min(120,bot.position.y));
+    broadcastRoom(room,{t:'peer-state',x:bot.position.x,y:bot.position.y,face:bot.face||1,anim:bot.ai,_serverFrom:bot.connectionId,_serverName:bot.name},null,true);
   }
 }
+
 function relayGameMessage(client, message, rawLength) {
   if (!client.room) {
     sendJson(client, { t:'server-error', code:'not-joined', message:'Join a room before sending game data.' });
@@ -1840,6 +1912,93 @@ function relayGameMessage(client, message, rawLength) {
 
   if (ALLOWED_RELAY_TYPES.has(message.t)) { broadcastRoom(room,envelope,client); return; }
 
+  if (message.t==='world-snapshot') {
+    // Default Dig+Trade worlds are generated in the browser, so the server does
+    // not receive a base map from match-making. The first client snapshot gives
+    // native server bots a canonical view of the terrain they are allowed to mine.
+    if (room.baseMapReady || room.map) return;
+    room.baseTiles.clear();
+    if(String(message.encoding||'')==='u16-v1' && typeof message.data==='string') {
+      try {
+        const bytes=Buffer.from(message.data,'base64');
+        const cells=Math.min(128*80,Math.floor(bytes.length/2));
+        for(let i=0;i<cells;i++){const packed=bytes.readUInt16LE(i*2);const id=packed&2047,v=(packed>>>11)&31;if(id)room.baseTiles.set(`${i%128},${Math.floor(i/128)}`,{x:i%128,y:Math.floor(i/128),id,variant:v});}
+      } catch {}
+    } else {
+      const rows=Array.isArray(message.tiles)?message.tiles.slice(0,10240):[];
+      for(const row of rows){
+        if(!Array.isArray(row)||row.length<3)continue;
+        const x=Number(row[0])|0,y=Number(row[1])|0,id=Number(row[2])|0,v=(Number(row[3])|0)&31;
+        if(x<0||x>=128||y<0||y>=80||id<=0||id>2047)continue;
+        room.baseTiles.set(`${x},${y}`,{x,y,id,variant:v});
+      }
+    }
+    room.baseMapReady=true;
+    broadcastRoom(room,{t:'bot-world-ready',count:room.baseTiles.size});
+    return;
+  }
+
+  if (message.t==='admin-bot-control') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
+    const bot=room.bots&&room.bots.get(String(message.targetConnectionId||''));
+    if(!bot){sendJson(client,{t:'server-error',code:'bot-not-found'});return;}
+    const action=String(message.action||'');
+    if(action==='start'){
+      if(bot.controlledBy && bot.controlledBy!==client.connectionId){sendJson(client,{t:'server-error',code:'bot-controlled',message:'That fake player is already being controlled.'});return;}
+      bot.controlledBy=client.connectionId;bot.controlKeys={};bot.controlUpdatedAt=Date.now();bot.previousAi=bot.ai==='controlled'?(bot.previousAi||'idle'):bot.ai;bot.ai='controlled';
+      sendJson(client,{t:'admin-bot-control-state',active:true,targetConnectionId:bot.connectionId,x:bot.position.x,y:bot.position.y,name:bot.name});
+      broadcastRoom(room,{t:'admin-bot-control-indicator',connectionId:bot.connectionId,controllerConnectionId:client.connectionId,active:true});
+      return;
+    }
+    if(action==='stop'){
+      if(bot.controlledBy===client.connectionId) {bot.controlledBy='';bot.controlKeys={};bot.controlUpdatedAt=0;bot.ai=bot.previousAi||'idle';bot.previousAi='';}
+      sendJson(client,{t:'admin-bot-control-state',active:false,targetConnectionId:bot.connectionId});
+      broadcastRoom(room,{t:'admin-bot-control-indicator',connectionId:bot.connectionId,controllerConnectionId:client.connectionId,active:false});
+      return;
+    }
+    if(action==='keys'){
+      if(bot.controlledBy!==client.connectionId)return;
+      const k=message.keys||{};bot.controlKeys={w:!!k.w,a:!!k.a,s:!!k.s,d:!!k.d,shift:!!k.shift,space:!!k.space};bot.controlUpdatedAt=Date.now();
+      if(Number.isFinite(+message.aimX)&&Number.isFinite(+message.aimY))bot.aim={x:+message.aimX,y:+message.aimY};
+      return;
+    }
+    return;
+  }
+
+  if (message.t==='admin-bot-chat') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
+    const bot=room.bots&&room.bots.get(String(message.targetConnectionId||''));if(!bot)return;
+    const text=String(message.text||'').replace(/[\x00-\x1F\x7F]/g,' ').trim().slice(0,180);if(!text)return;
+    bot.chatCount=(bot.chatCount|0)+1;
+    broadcastRoom(room,{t:'chat',text,_serverFrom:bot.connectionId,_serverName:bot.name,bot:true});
+    return;
+  }
+
+  if (message.t==='admin-bot-mine') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
+    const bot=room.bots&&room.bots.get(String(message.targetConnectionId||''));if(!bot||bot.controlledBy!==client.connectionId)return;
+    const x=Number(message.x)|0,y=Number(message.y)|0;
+    if(x<0||x>=128||y<0||y>=80||!bot.position)return;
+    if(Math.hypot(bot.position.x-x,bot.position.y-y)>4.8)return;
+    if(botMineOne(room,bot,x,y)) {
+      broadcastRoom(room,{t:'bot-mine',connectionId:bot.connectionId,x,y,_serverFrom:bot.connectionId,_serverName:bot.name});
+    }
+    return;
+  }
+
+  if (message.t==='admin-bot-attack') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
+    const bot=room.bots&&room.bots.get(String(message.targetConnectionId||''));if(!bot||bot.controlledBy!==client.connectionId)return;
+    const fx=Number(message.fromX),fy=Number(message.fromY),tx=Number(message.toX),ty=Number(message.toY),attackType=Number(message.attackType)|0;
+    if(![fx,fy,tx,ty].every(Number.isFinite))return;
+    if(!combatEnabled(room)){sendJson(client,{t:'freedig-fire-blocked'});return;}
+    const clipped=Object.assign({},message,{fromX:fx,fromY:fy,toX:tx,toY:ty,attackType});
+    bot.shots=(bot.shots|0)+1;
+    broadcastRoom(room,{t:'attack',fromX:fx,fromY:fy,toX:tx,toY:ty,attackType,_serverFrom:bot.connectionId,_serverName:bot.name,bot:true});
+    if(!PROJECTILE_ATTACKS.has(attackType)){const target=lineHitTarget(bot,clipped);if(target)dealPvpDamage(bot,target,1,'weapon');}
+    return;
+  }
+
   if (message.t==='tile') {
     const tile={x:Number(message.x)|0,y:Number(message.y)|0,id:Number(message.id)|0,variant:Number(message.variant)|0,ownerConnectionId:client.connectionId};
     if(tile.x<0||tile.x>=128||tile.y<0||tile.y>=80)return;
@@ -1932,17 +2091,7 @@ function relayGameMessage(client, message, rawLength) {
     if(power==='bring' && target.position && client.position) { target.position.x=client.position.x; target.position.y=client.position.y-1; broadcastRoom(room,{t:'peer-state',x:target.position.x,y:target.position.y,_serverFrom:target.connectionId,_serverName:target.name}); }
     if(power==='invisible'){target.hidden=value;broadcastRoom(room,{t:'admin-peer-visibility',connectionId:target.connectionId,hidden:value,name:target.name});}
     else if(!target.bot) sendJson(target,{t:'admin-power',power,value});
-    else {
-      if(power==='god')target.godMode=value;
-      if(power==='fly')target.fly=value;
-      if(power==='noclip')target.noclip=value;
-      if(power==='freeze')target.frozen=value;
-      if(power==='invisible'){target.hidden=value;broadcastRoom(room,{t:'admin-peer-visibility',connectionId:target.connectionId,hidden:value,name:target.name});}
-      if(power==='heal'){target.alive=true;target.pvpHealth=3;}
-      if(power==='bring'){target.position={...client.position};}
-      if(power==='launch'){target.position.y=Math.max(-30,target.position.y-4);}
-      broadcastRoom(room,{t:'admin-power',power,value,_serverFrom:target.connectionId,_serverName:target.name});
-    }
+    else broadcastRoom(room,{t:'admin-power',power,value,_serverFrom:target.connectionId,_serverName:target.name});
     return;
   }
 
@@ -1986,27 +2135,9 @@ function relayGameMessage(client, message, rawLength) {
     return;
   }
 
-  if (message.t==='admin-bot-control') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
-    const bot=room.bots&&room.bots.get(String(message.targetConnectionId||'')); if(!bot)return;
-    if(message.stop){if(String(bot.controlledBy||'')===String(client.connectionId)) {bot.controlledBy=null;bot.controlInput=null;} return;}
-    bot.controlledBy=client.connectionId;
-    bot.controlInput={dx:Number(message.dx)||0,dy:Number(message.dy)||0,expiresAt:Date.now()+700};
-    return;
-  }
-  if (message.t==='admin-bot-chat') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
-    const bot=room.bots&&room.bots.get(String(message.targetConnectionId||'')); if(!bot)return;
-    const text=String(message.message||'').replace(/[\x00-\x1F\x7F]/g,'').trim().slice(0,180); if(!text)return;
-    if(Date.now()<(bot.chatCooldown||0))return;
-    bot.chatCooldown=Date.now()+700;
-    broadcastRoom(room,{t:'chat',name:bot.name,text:text,_serverFrom:bot.connectionId,_serverName:bot.name});
-    return;
-  }
-
   if (message.t==='admin-bot-spawn') {
     if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
-    const bot=spawnAdminBot(room,message.name,{ai:message.ai||'idle'});
+    const bot=spawnAdminBot(room,message.name,{ai:message.ai||'idle',x:message.x,y:message.y});
     if(!bot){sendJson(client,{t:'server-error',code:'bot-limit',message:'Room is full.'});return;}
     sendJson(client,{t:'admin-bot-created',connectionId:bot.connectionId,name:bot.name});
     return;
@@ -2020,10 +2151,7 @@ function relayGameMessage(client, message, rawLength) {
   if (message.t==='admin-inventory-request') {
     if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
     const target=findRoomActor(room,String(message.targetConnectionId||''));if(!target)return;
-    if(target.bot){
-      sendJson(client,{t:'admin-inventory-data',targetConnectionId:target.connectionId,slots:Array.isArray(target.inventory)?target.inventory.slice(0,50):[],coins:Number(target.coins)||0});
-      return;
-    }
+    if(target.bot){sendJson(client,{t:'admin-inventory-data',targetConnectionId:target.connectionId,slots:Array.isArray(target.inventory)?target.inventory.slice(0,50):[],coins:target.coins|0,bot:true,mined:target.mined|0});return;}
     target._adminInventoryRequest={adminConnectionId:client.connectionId,expiresAt:Date.now()+5000};
     sendJson(target,{t:'admin-inventory-request',adminConnectionId:client.connectionId});
     return;
@@ -2038,32 +2166,21 @@ function relayGameMessage(client, message, rawLength) {
   }
   if (message.t==='admin-inventory-command') {
     if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
-    const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target)return;
-    target._adminInventoryControl={adminConnectionId:client.connectionId,expiresAt:Date.now()+5000};
-    sendJson(target,{t:'admin-inventory-command',requesterConnectionId:client.connectionId,action:String(message.action||''),slot:Number(message.slot)|0,count:Number(message.count)|0});
-    return;
-  }
-  if (message.t==='admin-bot-inventory-command') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
-    const bot=room.bots&&room.bots.get(String(message.targetConnectionId||''));if(!bot)return;
-    const action=String(message.action||''),slot=Number(message.slot)|0,count=Math.max(1,Number(message.count)|0);
-    if(action==='clear') bot.inventory=[];
-    else if(slot>=0&&slot<bot.inventory.length){
-      const it=bot.inventory[slot]; const n=Math.min(count,it.count|0);
-      if(action==='remove'||action==='take'){
-        it.count-=n;
-        if(it.count<=0) bot.inventory.splice(slot,1);
-        if(action==='take'){
-          // Transfer to the admin's normal inventory through the same
-          // authenticated client-side inventory path used for real players.
-          sendJson(client,{t:'admin-inventory-return',targetConnectionId:bot.connectionId,item:Object.assign({},it,{count:n})});
-        }
+    const target=findRoomActor(room,String(message.targetConnectionId||''));if(!target)return;
+    const action=String(message.action||'');
+    if(target.bot){
+      if(!Array.isArray(target.inventory))target.inventory=[];
+      if(action==='clear') target.inventory=[];
+      else if(action==='take'||action==='remove'){
+        const slot=Number(message.slot)|0,count=Math.max(1,Number(message.count)|0),it=target.inventory[slot];
+        if(it){const n=Math.min(count,it.count|0),removed={...it,count:n};it.count-=n;if(it.count<=0)target.inventory.splice(slot,1);if(action==='take'){const admin=findRoomClient(room,client.connectionId);if(admin)sendJson(admin,{t:'admin-inventory-return',targetConnectionId:target.connectionId,item:removed});}}
       }
+      sendJson(client,{t:'admin-inventory-data',targetConnectionId:target.connectionId,slots:target.inventory.slice(0,50),coins:target.coins|0,bot:true,mined:target.mined|0});return;
     }
-    sendJson(client,{t:'admin-inventory-data',targetConnectionId:bot.connectionId,slots:bot.inventory.slice(0,50),coins:bot.coins||0});
+    target._adminInventoryControl={adminConnectionId:client.connectionId,expiresAt:Date.now()+5000};
+    sendJson(target,{t:'admin-inventory-command',requesterConnectionId:client.connectionId,action:action,slot:Number(message.slot)|0,count:Number(message.count)|0});
     return;
   }
-
   if (message.t==='admin-inventory-return') {
     const control=client._adminInventoryControl;
     if(!control||control.expiresAt<Date.now()||String(message.requesterConnectionId||'')!==String(control.adminConnectionId))return;
@@ -2162,6 +2279,7 @@ function leaveRoom(client) {
   if (!room) return;
 
   if (client.trade) cancelTrade(client, 'Player disconnected.');
+  if (room.bots) for (const bot of room.bots.values()) if (bot.controlledBy===client.connectionId) { bot.controlledBy=''; bot.controlKeys={}; bot.controlUpdatedAt=0; bot.ai=bot.previousAi||'idle'; bot.previousAi=''; broadcastRoom(room,{t:'admin-bot-control-indicator',connectionId:bot.connectionId,controllerConnectionId:client.connectionId,active:false}); }
   room.clients.delete(client);
   client.room = null;
 
