@@ -207,7 +207,3 @@ Diggerz.io and Coaster Town were originally created by **MeanDean**. Diggerz.io 
 - **The Epic Sea** uses its own fixed round music instead of a randomly selected PvP track.
 - Roblox Rocket Launcher shop purchases now grant **1,337** launchers per 300-coin purchase.
 - Fixed the recovered intro/Super Rare screen so Battle Royale rooms identify themselves as **Battle Royale** instead of **Dig + Trade**.
-
-
-## Admin fun suite
-Expanded server-authorized admin controls: god mode, fly/noclip, freeze/invisibility, player renaming, inventory viewer/removal/clear/take, fake leave/return, room-wide background switching, fake-player spawning with idle/wander/follow behavior, room PvP override, and replicated projectile combat.

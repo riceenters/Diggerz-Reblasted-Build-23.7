@@ -22549,7 +22549,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             })
         },
         playerName: function() {
-            var name = q.thisMain && q.thisMain.userName ? String(q.thisMain.userName) : "Player";
+            var adminName=this._adminDisplayName;
+            var name=adminName || (q.thisMain && q.thisMain.userName ? String(q.thisMain.userName) : "Player");
             return !name || name === "Enter Name" ? "Player" : name.slice(0, 24)
         },
         playerChat: function(text) {
@@ -23316,6 +23317,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.centerMessage(this.adminPvpEnabled ? "^1ADMIN: PVP ENABLED" : "^2ADMIN: PVP SAFE");
             return {ok:true, message:"PvP override " + (this.adminPvpEnabled ? "enabled" : "disabled") + "."}
         },
+        adminTargetConnection:function(name){name=String(name||'').trim();if(!name||name===this.playerName())return P.connectionId;var peer=this.pvpFindPeerByName(name);return peer?peer.connectionId:''},
+        adminSendEffect:function(effect,name,enabled){if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!P.joined)return {ok:false,message:'Multiplayer server required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};this.pvpSend({t:'admin-effect',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid,effect:String(effect),enabled:!!enabled});return {ok:true,message:String(effect)+' '+(enabled?'enabled':'disabled')+'.'}},
+        adminRenameLive:function(name,newName){if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!P.joined)return {ok:false,message:'Multiplayer server required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};newName=String(newName||'').replace(/[\x00-\x1F\x7F]/g,' ').trim().slice(0,24);if(!newName)return {ok:false,message:'Name is empty.'};this.pvpSend({t:'admin-rename',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid,name:newName});return {ok:true,message:'Rename requested: '+newName+'.'}},
+        adminViewInventory:function(name){if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!P.joined)return {ok:false,message:'Multiplayer server required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};this.pvpSend({t:'admin-inventory-request',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid});return {ok:true,message:'Requesting inventory…'}},
+        adminInventoryAction:function(name,action,slot,count){if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};this.pvpSend({t:'admin-inventory-action',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid,action:String(action),slot:slot|0,count:Math.max(1,count|0)});return {ok:true,message:'Inventory action requested.'}},
+        adminApplyBackground:function(background){if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!P.joined)return {ok:false,message:'Multiplayer server required.'};background=Math.max(0,Math.min(9,background|0));this.pvpSend({t:'admin-background',adminToken:window.DiggerzAdminSessionToken,background:background});this.adminApplyBackgroundLocal(background);return {ok:true,message:'Background '+background+' applied to everyone.'}},
+        adminApplyBackgroundLocal:function(background){background=Math.max(0,Math.min(9,background|0));this.adminBackground=background;try{this.enqueue(102,1,function(packet){packet.R2(background)})}catch(e){}},
         miningHashAt: function(x, y) {
             return Math.abs(((x + 17) * 73856093 ^ (y + 31) * 19349663) | 0)
         },
@@ -23510,7 +23518,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     this.markDirty();
                 }
 
-                if ((this.mode === "pvp" || (this.mode === "digtrade" && (this.adminPvpEnabled || (typeof q!=="undefined" && q.diggerzAdminPvpEnabled)))) && !impactShooter)
+                if (this.mode === "pvp" && !impactShooter)
                     this.pvpSend({t:"attack",fromX:attackX,fromY:attackY,toX:toX,toY:toY,attackType:attackType});
                 var physicsProjectile = attackType === 20 || attackType === 22 || attackType === 23 ||
                     attackType === 29 || attackType === 31 || attackType === 33 ||
@@ -115115,51 +115123,25 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
   <h3>Coins</h3>
   <label>Amount</label><input id="admin-coins" type="number" min="1" max="1000000" value="1000"><button id="admin-add-coins" type="button">Give Coins</button>
   <h3>Players</h3>
-  <label>Player Name</label><input id="admin-player" type="text" list="admin-player-names" autocomplete="off" placeholder="Type any username — online or offline…"><datalist id="admin-player-names"></datalist>
+  <label>Player Name</label><input id="admin-player" type="text" list="admin-player-names" autocomplete="off" placeholder="Type an online username…"><datalist id="admin-player-names"></datalist>
   <div class="row"><button id="admin-tp" type="button">Teleport To</button><button id="admin-kill" type="button">Kill Player</button></div>
-  <div class="row"><button id="admin-kick" type="button">Kick Player</button><button id="admin-ban" type="button">Ban Player</button></div><div style="margin-top:6px;opacity:.72;font-size:12px">Ban works by typed username even if the player is offline or inside another/private room. Kick still requires a live visible connection.</div>
+  <div class="row"><button id="admin-kick" type="button">Kick Player</button><button id="admin-ban" type="button">Ban Player</button></div>
+  <div class="row"><button id="admin-rename" type="button">Rename Live</button><button id="admin-inventory-view" type="button">View Inventory</button></div>
+  <div class="row"><button id="admin-god" type="button">Toggle God</button><button id="admin-fly" type="button">Toggle Fly</button></div>
+  <div class="row"><button id="admin-noclip" type="button">Toggle Noclip</button><button id="admin-invis" type="button">Toggle Invis</button></div>
+  <div style="margin-top:6px;opacity:.72;font-size:12px">Live effects and renames are server-broadcast. Fake players are intentionally disabled for now.</div>
+  <div id="admin-inventory" style="margin-top:8px"></div>
   <h3>Banned Players</h3>
   <button id="admin-refresh-bans" type="button">Refresh Ban List</button><div id="admin-ban-list"></div>
   <h3>On-Screen Message</h3>
   <label>Message</label><input id="admin-message" type="text" maxlength="180" placeholder="Type an announcement…">
   <label>Scope</label><select id="admin-message-scope"><option value="server">This Server</option><option value="global">Global</option></select>
   <button id="admin-send-message" type="button">Show Message</button>
+  <h3>Background For Everyone</h3>
+  <div class="row"><select id="admin-background" style="flex:1"><option value="0">Background 0</option><option value="1">Background 1</option><option value="2">Background 2</option><option value="3">Background 3</option><option value="4">Background 4</option><option value="5">Background 5</option><option value="6">Background 6</option><option value="7">Background 7</option><option value="8">Background 8</option><option value="9">Background 9</option></select><button id="admin-background-apply" type="button">Apply</button></div>
   <h3>Map Tools</h3><button id="admin-map-editor" type="button">Open Map Editor</button>
   <h3>Safe-Zone PvP Override</h3>
   <button id="admin-pvp" type="button">Enable PvP Override</button>
-
-  <h3>Admin Powers</h3>
-  <div class="row"><button id="admin-god">God Mode</button><button id="admin-fly">Fly</button></div>
-  <div class="row"><button id="admin-noclip">Noclip</button><button id="admin-freeze">Freeze</button></div>
-  <div class="row"><button id="admin-invisible">Invisible</button><button id="admin-fake-leave">Fake Leave</button></div>
-  <div class="row"><button id="admin-fake-return">Fake Return</button><button id="admin-heal">Heal / Respawn</button></div>
-  <div class="row"><button id="admin-bring">Bring To Me</button><button id="admin-launch">Launch Up</button></div>
-  <label>Rename selected player</label><input id="admin-new-name" type="text" maxlength="32" placeholder="New name…"><button id="admin-rename" type="button">Change Name</button>
-
-  <h3>Inventory Viewer</h3>
-  <button id="admin-inventory-refresh" type="button">View Selected Inventory</button>
-  <button id="admin-inventory-clear" type="button">Clear Inventory</button>
-  <div id="admin-inventory-viewer" style="max-height:220px;overflow:auto;margin-top:6px"></div>
-
-  <h3>World / Background</h3>
-  <label>In-game background</label><select id="admin-background">
-    <option value="0">Background 0</option><option value="1">Background 1</option><option value="2">Background 2</option>
-    <option value="3">Background 3</option><option value="4">Background 4</option><option value="5">Background 5</option>
-    <option value="6">Background 6</option><option value="7">Background 7</option><option value="8">Background 8</option><option value="9">Background 9</option>
-  </select><button id="admin-set-background" type="button">Change For Everyone</button>
-
-  <h3>Fake Players</h3>
-  <label>Bot name</label><input id="admin-bot-name" type="text" maxlength="32" placeholder="Fake player name…">
-  <label>Bot behavior</label><select id="admin-bot-ai"><option value="idle">Idle</option><option value="wander">Wander</option><option value="follow">Follow</option><option value="mining">Mining Bot</option></select>
-  <div class="row"><button id="admin-bot-spawn">Spawn Fake Player</button><button id="admin-bot-remove">Remove Selected Bot</button></div>
-  <label>Chat as selected fake player</label><input id="admin-bot-chat" type="text" maxlength="180" placeholder="Message from the fake player…">
-  <button id="admin-bot-send-chat" type="button">Send Fake-Player Chat</button>
-  <div class="row"><button id="admin-bot-control" type="button">Control Selected Bot</button><button id="admin-bot-stop" type="button">Stop Control</button></div>
-  <div style="margin-top:5px;opacity:.72;font-size:12px">Control moves the selected fake player with WASD, switches the camera to it, and suspends your normal player until you stop control or press Escape.</div>
-
-  <h3>Quick Chaos</h3>
-  <div class="row"><button id="admin-kill-all">Kill Everyone</button><button id="admin-fly-all">Fly Everyone</button></div>
-  <div class="row"><button id="admin-freeze-all">Freeze Everyone</button><button id="admin-unfreeze-all">Unfreeze Everyone</button></div>
   <div id="diggerz-admin-status">Waiting for the local service…</div>
 </div>
 <div id="diggerz-admin-modal"><div class="box"><h2 id="admin-modal-title">moderation</h2><div id="admin-modal-player"></div><div id="admin-ban-time"><h3>Ban length</h3><div class="times"><label>Seconds<input id="admin-ban-seconds" type="number" min="0" value="0"></label><label>Hours<input id="admin-ban-hours" type="number" min="0" value="0"></label><label>Days<input id="admin-ban-days" type="number" min="0" value="0"></label><label>Weeks<input id="admin-ban-weeks" type="number" min="0" value="0"></label><label>Months<input id="admin-ban-months" type="number" min="0" value="0"></label><label>Years<input id="admin-ban-years" type="number" min="0" value="0"></label></div><button id="admin-ban-permanent" class="permanent" type="button">Permanent</button></div><label>Reason<textarea id="admin-mod-reason" maxlength="180" placeholder="Enter the reason..."></textarea></label><div class="row"><button id="admin-mod-confirm" class="danger" type="button">Confirm</button><button id="admin-mod-cancel" type="button">Cancel</button></div></div></div>
@@ -115307,6 +115289,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
   };
   document.getElementById('admin-add-coins').onclick=function(){var s=ownerService();if(!s)return say('Admin authentication required.');say(s.adminSpawnCoins(+document.getElementById('admin-coins').value,document.getElementById('admin-player').value))};
   document.getElementById('admin-kill').onclick=function(){var s=ownerService();if(!s)return say('Admin authentication required.');say(s.adminKillPlayer(document.getElementById('admin-player').value))};
+  function selectedAdminName(){return String(document.getElementById('admin-player').value||'').trim()}
+  function toggleEffect(effect){var s=ownerService();if(!s)return say('Admin authentication required.');var name=selectedAdminName(),peer=s.pvpFindPeerByName(name),enabled=name&&name!==s.playerName()?!!(peer&&peer.adminEffects&&peer.adminEffects[effect]):!!(s.adminEffects&&s.adminEffects[effect]);say(s.adminSendEffect(effect,name,!enabled))}
+  document.getElementById('admin-rename').onclick=function(){var s=ownerService();if(!s)return say('Admin authentication required.');var name=selectedAdminName(),n=prompt('New live name:',name);if(n!==null)say(s.adminRenameLive(name,n))};
+  document.getElementById('admin-god').onclick=function(){toggleEffect('god')};document.getElementById('admin-fly').onclick=function(){toggleEffect('fly')};document.getElementById('admin-noclip').onclick=function(){toggleEffect('noclip')};document.getElementById('admin-invis').onclick=function(){toggleEffect('invis')};
+  document.getElementById('admin-inventory-view').onclick=function(){var s=ownerService();if(!s)return say('Admin authentication required.');say(s.adminViewInventory(selectedAdminName()))};
+  document.getElementById('admin-background-apply').onclick=function(){var s=ownerService();if(!s)return say('Admin authentication required.');say(s.adminApplyBackground(+document.getElementById('admin-background').value))};
   document.getElementById('admin-tp').onclick=function(){var s=ownerService();if(!s)return say('Admin authentication required.');say(s.adminTeleportTo(document.getElementById('admin-player').value.trim()))};
   document.getElementById('admin-send-message').onclick=function(){var s=ownerService();if(!s)return say('Admin authentication required.');var text=document.getElementById('admin-message').value.trim(),scope=document.getElementById('admin-message-scope').value;if(!text)return say('Type a message first.');say(s.adminScreenMessage(text,scope))};
   document.getElementById('admin-map-editor').onclick=function(){window.open('/map-editor','diggerz-map-editor')};
@@ -115480,7 +115468,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       if(m.t==='welcome'){P.joined=true;try{if(P.service)P.service._pvpAnnounceJoins=false}catch(_e){}setTimeout(function(){try{if(P.service)P.service._pvpAnnounceJoins=true}catch(_e){}},2500);P.room=m.room||'';P.connectionId=m.connectionId||'';P.maxPlayers=m.max||10;dbg('MP-021','WELCOME room='+P.room+' connectionId='+(m.connectionId||'?')+' count='+(m.count||'?')+'/'+(m.max||'?'));setStatus('Connected to '+(P.mode==='pvp'?'Battle':'Dig+Trade')+' server.');return}
       if(m.t==='player-count'){dbg('MP-022','player-count room='+(m.room||P.room||'?')+' '+m.count+'/'+m.max);P.connected=(m.count>=2);if(P.connected&&P.service){if(P.service.pvpSendHello)P.service.pvpSendHello();if(P.service.pvpSendNativeSpawn)P.service.pvpSendNativeSpawn()}return}
       if(m.t==='room-ready'){dbg('MP-023','ROOM READY room='+(m.room||P.room||'?')+' mode='+(m.mode||'?'));if(m.mode&&m.mode!==P.mode){setStatus('Server mode mismatch.');return}P.connected=true;setStatus('Native Diggerz packet link ready.');if(P.service&&P.service.pvpSendHello)P.service.pvpSendHello();if(P.service&&P.service.pvpSendNativeSpawn){P.service.pvpSendNativeSpawn();setTimeout(function(){if(P.service)P.service.pvpSendNativeSpawn()},500)}return}
-      if(m.t==='server-error'){dbg('MP-050','server-error code='+(m.code||'?')+' message='+(m.message||'?'));try{var ae=document.getElementById('diggerz-admin-status');if(ae&&String(m.code||'').indexOf('admin')===0)ae.textContent='Admin command rejected: '+String(m.message||m.code||'authentication failed')+'. Re-authenticate if needed.'}catch(_e){}P.connected=false;setStatus('Multiplayer server error: '+String(m.message||m.code||'Unknown error.'));return}
+      if(m.t==='server-error'){dbg('MP-050','server-error code='+(m.code||'?')+' message='+(m.message||'?'));P.connected=false;setStatus('Multiplayer server error: '+String(m.message||m.code||'Unknown error.'));return}
       if(m.t==='peer-left'){dbg('MP-040','peer-left '+String(m.connectionId||'?'));P.connected=((m.count||0)>=2);routeGameMessage(m);if(!P.starting&&!P.connected)setStatus('Waiting for more players…');return}
       if(m.t==='pong')return;if(m.t==='hello')dbg('MP-030','peer hello from '+String(m.name||m._serverName||'?'));routeGameMessage(m)
     };
@@ -115519,7 +115507,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     proto.pvpSendHello=function(){
       if(!isMp(this)||!this.playerId)return;
       var p=l.z39,skin=q.player&&q.player.l9?(.45+1.1*q.player.l9/100):1.44;
-      this.pvpSend({t:'hello',id:guidParts(this.playerId),name:this.playerName(),appearance:this.state.appearance.slice(0,11),appearanceText:this.state.appearanceText||'',x:p?p.b6/l._44:this.state.x,y:p?p.b7/l._44:this.state.y,skin:skin,wins:Math.max(0,this.state.wins|0),mode:P.mode})
+      this.pvpSend({t:'hello',id:guidParts(this.playerId),name:this.playerName(),appearance:this.state.appearance.slice(0,11),appearanceText:this.state.appearanceText||'',x:p?p.b6/l._44:this.state.x,y:p?p.b7/l._44:this.state.y,skin:skin,wins:Math.max(0,this.state.wins|0),mode:P.mode,adminEffects:this.adminEffects||{god:false,fly:false,noclip:false,invis:false}})
     };
     proto.pvpSendNativeSpawn=function(){
       if(!isMp(this)||!this.playerId||!P.connected||this.localDead)return false;
@@ -115556,11 +115544,22 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     proto.pvpRemoveSharedDrop=function(parts){var guid=this.guidFromParts(parts),key=this.pvpGuidKey(guid),drop=this.drops[key];if(!drop)return;delete this.drops[key];this.removeDrop(drop)};
     proto.pvpApplyRoomState=function(m){var i;if(Array.isArray(m.tiles)){this._pvpApplyingTile=true;try{for(i=0;i<m.tiles.length;i++){var t=m.tiles[i];this.setTile(t.x|0,t.y|0,t.id|0,t.variant|0)}}finally{this._pvpApplyingTile=false}}if(Array.isArray(m.drops))for(i=0;i<m.drops.length;i++)this.pvpAddSharedDrop(m.drops[i])};
     proto.pvpRemoteHitLine=function(fromX,fromY,toX,toY){var peers=this.pvpEnsurePeers(),vx=toX-fromX,vy=toY-fromY,vv=vx*vx+vy*vy,best=null,bestT=2;for(var k in peers){var peer=peers[k],e=this.pvpEntityForPeer(peer);if(!e||!e.a2)continue;var px=e.b6/l._44,py=e.b7/l._44,t=vv>0?((px-fromX)*vx+(py-fromY)*vy)/vv:0;t=Math.max(0,Math.min(1,t));var cx=fromX+vx*t,cy=fromY+vy*t;if(Math.hypot(px-cx,py-cy)<=.9&&t<bestT){best=peer;bestT=t}}return best};
+    proto.adminEffects={god:false,fly:false,noclip:false,invis:false};
+    proto.adminApplyEffects=function(effects){this.adminEffects=Object.assign({god:false,fly:false,noclip:false,invis:false},effects||{});var ent=l.z39;if(ent){try{ent.set_alp(this.adminEffects.invis?0:1);ent.set_local_alp(this.adminEffects.invis?0:1)}catch(e){}}};
+    proto.adminApplyPeerEffects=function(peer){if(!peer)return;var e=this.pvpEntityForPeer(peer);if(e){try{e.set_alp(peer.adminEffects&&peer.adminEffects.invis?0:1);e.set_local_alp(peer.adminEffects&&peer.adminEffects.invis?0:1)}catch(_e){}}};
     proto.pvpReceive=function(m){
       if(!m||!isMp(this))return;
-      if(m.t==='hello'){var cid=m._serverFrom||'';if(!cid||cid===P.connectionId)return;var peers=this.pvpEnsurePeers(),first=!peers[cid];peers[cid]={connectionId:cid,name:String(m.name||m._serverName||'Player'),id:this.guidFromParts(m.id),info:m};if(isFinite(+m.x))peers[cid].lastX=+m.x;if(isFinite(+m.y))peers[cid].lastY=+m.y;this.pvpRefreshLegacyPeer();if(first&&this._pvpAnnounceJoins)this.message('^2'+peers[cid].name+' joined the session.');if(P.connected)this.pvpSendNativeSpawn();return}
-      if(m.t==='peer-left'){var gone=this.pvpPeerForConnection(m.connectionId);if(gone)this.message('^1'+gone.name+' left the session.');this.pvpRemovePeer(m.connectionId);return}
-      if(m.t==='room-state'){this.pvpApplyRoomState(m);return}
+      if(m.t==='hello'){var cid=m._serverFrom||'';if(!cid||cid===P.connectionId)return;var peers=this.pvpEnsurePeers(),first=!peers[cid];peers[cid]={connectionId:cid,name:String(m.name||m._serverName||'Player'),id:this.guidFromParts(m.id),info:m,adminEffects:Object.assign({god:false,fly:false,noclip:false,invis:false},m.adminEffects||{})};if(isFinite(+m.x))peers[cid].lastX=+m.x;if(isFinite(+m.y))peers[cid].lastY=+m.y;this.pvpRefreshLegacyPeer();if(!first)this.adminApplyPeerEffects(peers[cid]);if(first&&this._pvpAnnounceJoins)this.message('^2'+peers[cid].name+' joined the session.');if(P.connected)this.pvpSendNativeSpawn();return}
+      if(m.t==='admin-effect'){if(String(m.connectionId||'')===String(P.connectionId||''))this.adminApplyEffects(m.effects||{});else{var ep=this.pvpPeerForConnection(m.connectionId);if(ep){ep.adminEffects=Object.assign({god:false,fly:false,noclip:false,invis:false},m.effects||{});this.adminApplyPeerEffects(ep)}}return}
+      if(m.t==='peer-rename'){var rp=this.pvpPeerForConnection(m.connectionId);if(rp){rp.name=String(m.name||'Player');if(rp.info)rp.info.name=rp.name;var re=this.pvpEntityForPeer(rp);if(re){try{re._1=rp.name}catch(_e){}try{if(re.J30&&re.J30.E32)re.J30.E32.E37(rp.name)}catch(_e){}}}if(String(m.connectionId||'')===String(P.connectionId||'')){this._adminDisplayName=String(m.name||'Player');try{q.thisMain.userName=this._adminDisplayName;q.SaveGlobals()}catch(_e){}}return}
+      if(m.t==='admin-rename'){this._adminDisplayName=String(m.name||'Player').slice(0,24);try{q.thisMain.userName=this._adminDisplayName;q.SaveGlobals()}catch(_e){};this.pvpSendHello();if(P.connected)this.pvpSendNativeSpawn();return}
+      if(m.t==='admin-background'){this.adminApplyBackgroundLocal(m.background|0);return}
+      if(m.t==='admin-inventory-request'){this.pvpSend({t:'admin-inventory-data',requestId:String(m.requestId||''),slots:(this.state&&Array.isArray(this.state.slots)?this.state.slots:[]).slice(0,127).map(itemCopy)});return}
+      if(m.t==='admin-inventory-action'){var act=String(m.action||''),slot=Math.max(0,Math.min(126,m.slot|0)),qty=Math.max(1,m.count|0),removed=[];if(this.state&&Array.isArray(this.state.slots)){if(act==='clear'){for(var ai=0;ai<this.state.slots.length;ai++){var old=this.state.slots[ai];if(old&&old.category&&old.count>0)removed.push(itemCopy(old));this.state.slots[ai]=emptyItem()}}else if(slot<this.state.slots.length){var cur=this.state.slots[slot];if(cur&&cur.category&&cur.count>0){var take=Math.min(qty,cur.count),part=itemCopy(cur);part.count=take;removed.push(part);if(cur.count<=take)this.state.slots[slot]=emptyItem();else cur.count-=take}}this.sendInventory();this.markDirty();this.save(true)}this.pvpSend({t:'admin-inventory-action-result',requestId:String(m.requestId||''),items:removed});return}
+      if(m.t==='admin-inventory-data'){var rows=Array.isArray(m.slots)?m.slots:[],box=document.getElementById('admin-inventory');if(box){box.innerHTML='';for(var ri=0;ri<rows.length;ri++){var it=rows[ri];if(!it||!it.category||!it.count)continue;var row=document.createElement('div');row.style.cssText='padding:4px 0;border-bottom:1px solid rgba(255,255,255,.12)';row.textContent=(ri+1)+'. '+this.itemName(it.category|0,it.id|0)+' × '+(it.count|0);var rem=document.createElement('button');rem.textContent='Remove';rem.style.marginLeft='6px';(function(i,c,self){rem.onclick=function(){var n=prompt('How many?',String(c));if(n)self.adminInventoryAction(document.getElementById('admin-player').value,'remove',i,Math.max(1,parseInt(n,10)||1))}})(ri,it.count|0,this);row.appendChild(rem);var take=document.createElement('button');take.textContent='Take';take.style.marginLeft='4px';(function(i,c,self){take.onclick=function(){var n=prompt('How many?',String(c));if(n)self.adminInventoryAction(document.getElementById('admin-player').value,'take',i,Math.max(1,parseInt(n,10)||1))}})(ri,it.count|0,this);row.appendChild(take);box.appendChild(row)}var clear=document.createElement('button');clear.textContent='Clear Inventory';var self=this;clear.onclick=function(){if(confirm('Clear this inventory?'))self.adminInventoryAction(document.getElementById('admin-player').value,'clear',0,1)};box.appendChild(clear)}return}
+      if(m.t==='admin-inventory-action-result'){if(m.action==='take'&&Array.isArray(m.items))for(var ti=0;ti<m.items.length;ti++){var got=m.items[ti];if(got&&got.category&&got.count)this.addItem(got.category|0,got.id|0,got.variant|0,got.count|0,got.extra|0,String(got.text||''));}this.sendInventory();this.markDirty();this.save(true);this.message('^2Inventory action completed.');return}
+      if(m.t==='peer-left'){this.pvpRemovePeer(m.connectionId);return}
+      if(m.t==='room-state'){this.pvpApplyRoomState(m);if(Number.isFinite(+m.adminBackground))this.adminApplyBackgroundLocal(+m.adminBackground);return}
       if(m.t==='chat'){var chatPeer=this.pvpPeerForConnection(m._serverFrom);if(chatPeer&&chatPeer.id){var id=chatPeer.id;this.enqueue(12,1,function(p){p.R8(id);p.R9(String(m.text||'').slice(0,180))})}return}
       if(m.t==='typing'){var typingPeer=this.pvpPeerForConnection(m._serverFrom);if(typingPeer&&typingPeer.id){var tid=typingPeer.id,active=!!m.active;this.enqueue(49,1,function(p){p.R8(tid);p.s0(active)})}return}
       if(m.t==='peer-state'){var statePeer=this.pvpPeerForConnection(m._serverFrom),se=statePeer&&this.pvpEntityForPeer(statePeer);if(se&&isFinite(+m.x)&&isFinite(+m.y)){var sx=(+m.x)*l._44,sy=(+m.y)*l._44;if(Math.hypot((se.b6-sx)/l._44,(se.b7-sy)/l._44)>1.25){try{se.l38(sx,sy)}catch(_e){se.b6=sx;se.b7=sy}}}return}
@@ -115582,7 +115581,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       if(m.t==='admin-coins'){var amount=Math.max(1,Math.min(1000000,m.amount|0));this.state.coins=Math.max(0,(this.state.coins||0)+amount);this.sendCoins();this.markDirty();this.save(true);this.message('^2Admin gave you '+amount+' coins.');return}
       if(m.t==='admin-kill'){this.hurtLocalPlayer(999,'admin');return}
     };
-    proto.pvpTick=function(){if(!isMp(this)||!P.connected)return;if(!P.service)P.attach(this);if(this.ticks%3!==0||!l.z39)return;this.pvpSendNativeMovement()};
+    proto.pvpTick=function(){if(!isMp(this)||!P.connected)return;if(!P.service)P.attach(this);if(!l.z39)return;var eff=this.adminEffects||{};if((eff.fly||eff.noclip)&&!this.localDead){var now=Date.now(),dt=Math.min(.05,Math.max(.001,(now-(this._adminFlyLast||now))/1000));this._adminFlyLast=now;var speed=eff.fly?10:7,dx=0,dy=0;try{if(q.KeyDown(65))dx-=1;if(q.KeyDown(68))dx+=1;if(q.KeyDown(87))dy-=1;if(q.KeyDown(83))dy+=1}catch(e){}if(dx||dy){var len=Math.hypot(dx,dy)||1;dx/=len;dy/=len;try{l.z39.l38(l.z39.b6+dx*speed*dt*l._44,l.z39.b7+dy*speed*dt*l._44)}catch(e){l.z39.b6+=dx*speed*dt*l._44;l.z39.b7+=dy*speed*dt*l._44}this.state.x=l.z39.b6/l._44;this.state.y=l.z39.b7/l._44}}if(this.ticks%3===0)this.pvpSendNativeMovement()};
     var oldA16=proto.A16;proto.A16=function(){var r=oldA16.call(this);if(isMp(this))this.pvpTick();return r};
     var oldA12=proto.A12;proto.A12=function(){if(isMp(this))P.detach(this);return oldA12.call(this)};
     var oldA17=proto.A17;proto.A17=function(opcode,body,c){
@@ -115607,7 +115606,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     var oldSetTile=proto.setTile;proto.setTile=function(x,y,id,variant){var r=oldSetTile.call(this,x,y,id,variant);if(r&&isMp(this)&&!this._pvpApplyingTile)this.pvpSend({t:'tile',x:x,y:y,id:id,variant:variant||0});return r};
     var oldDirect=proto.weaponDirectHit;proto.weaponDirectHit=function(fromX,fromY,toX,toY,attackType){var r=oldDirect.call(this,fromX,fromY,toX,toY,attackType);if((this.mode==='pvp'&&P.mode==='pvp')||(this.mode==='digtrade'&&P.mode==='digtrade'&&(this.adminPvpEnabled||(typeof q!=='undefined'&&q.diggerzAdminPvpEnabled)))){var peer=this.pvpRemoteHitLine(fromX,fromY,toX,toY);if(peer)this.pvpSend({t:'damage',targetConnectionId:peer.connectionId,amount:1,source:'weapon'})}return r};
     var oldImpact=proto.weaponImpactDamage;proto.weaponImpactDamage=function(x,y,impactType){var r=oldImpact.call(this,x,y,impactType);if((this.mode==='pvp'&&P.mode==='pvp')||(this.mode==='digtrade'&&P.mode==='digtrade'&&(this.adminPvpEnabled||(typeof q!=='undefined'&&q.diggerzAdminPvpEnabled)))){var peers=this.pvpEnsurePeers();for(var k in peers){var peer=peers[k],e=this.pvpEntityForPeer(peer);if(!e||!e.a2)continue;var px=e.b6/l._44,py=e.b7/l._44,dx=px-x,dy=py-y,hit=false;if(impactType===36)hit=Math.hypot(dx,dy)<=.95;else if(impactType===30)hit=Math.abs(dx)<=.9&&Math.abs(dy)<=.9;else if(impactType===24)hit=Math.abs(dx)<=1.7&&Math.abs(dy)<=1.7;else if(impactType===38)hit=Math.abs(dx)<=2.8&&Math.abs(dy)<=2.8;else if(impactType===40)hit=(Math.abs(dx)<=.8&&dy>=0&&dy<=3.4)||(Math.abs(dx)<=1.7&&Math.abs(dy-3)<=1.7);else hit=Math.hypot(dx,dy)<=2.35;if(hit)this.pvpSend({t:'damage',targetConnectionId:peer.connectionId,amount:1,source:'weapon'})}}return r};
-    var oldHurt=proto.hurtLocalPlayer;proto.hurtLocalPlayer=function(amount,source){var wasDead=!!this.localDead,r=oldHurt.call(this,amount,source);if(this.mode==='pvp'&&P.mode==='pvp'){var max=l.z39&&l.z39.N34||3,current=this.localHealth==null?(l.z39&&l.z39.N33||max):this.localHealth;this.pvpSend({t:'health',current:current,maximum:max});if(!wasDead&&this.localDead){var x=l.z39?l.z39.b6/l._44:this.state.x,y=l.z39?l.z39.b7/l._44:this.state.y;this.pvpSend({t:'death',x:x,y:y})}}return r};
+    var oldHurt=proto.hurtLocalPlayer;proto.hurtLocalPlayer=function(amount,source){if(this.adminEffects&&this.adminEffects.god)return;var wasDead=!!this.localDead,r=oldHurt.call(this,amount,source);if(this.mode==='pvp'&&P.mode==='pvp'){var max=l.z39&&l.z39.N34||3,current=this.localHealth==null?(l.z39&&l.z39.N33||max):this.localHealth;this.pvpSend({t:'health',current:current,maximum:max});if(!wasDead&&this.localDead){var x=l.z39?l.z39.b6/l._44:this.state.x,y=l.z39?l.z39.b7/l._44:this.state.y;this.pvpSend({t:'death',x:x,y:y})}}return r};
     var oldRespawn=proto.respawnLocalPlayer;proto.respawnLocalPlayer=function(){var r=oldRespawn.call(this);if(this.mode==='pvp'&&P.mode==='pvp'){var x=l.z39?l.z39.b6/l._44:this.state.x,y=l.z39?l.z39.b7/l._44:this.state.y;this.pvpSend({t:'respawn',x:x,y:y});this.pvpSendHello();if(P.connected)this.pvpSendNativeSpawn()}return r};
     var oldAdminPlayers=proto.adminPlayers;proto.adminPlayers=function(){if(!isMp(this))return oldAdminPlayers.call(this);var out=[{name:this.playerName(),local:true}],seen={};seen[this.playerName()]=1;var peers=this.pvpEnsurePeers();for(var k in peers){var name=String(peers[k].name||'Player');if(!seen[name]){seen[name]=1;out.push({name:name,local:false})}}return out};
     proto.adminSpawnItem=function(category,id,count,targetName){if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};category|=0;id|=0;count=Math.max(1,Math.min(999,count|0));if((category!==1&&category!==2)||id<=0||id>2047)return {ok:false,message:'Invalid item.'};if(!P.joined||!P.connectionId)return {ok:false,message:'Admin item grants require the multiplayer server.'};var name=this.itemName(category,id),targetConnectionId='',displayName=String(targetName||'').trim();if(!displayName||displayName===this.playerName()){targetConnectionId=P.connectionId;displayName=this.playerName()}else{var peer=this.pvpFindPeerByName(displayName);if(!peer)return {ok:false,message:'Player not found.'};targetConnectionId=peer.connectionId}this.pvpSend({t:'admin-item',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:targetConnectionId,category:category,id:id,count:count});return {ok:true,message:'Requested '+count+' × '+name+' for '+displayName+'.'}};
@@ -115760,7 +115759,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     };
 
     // Server-authoritative projectile blast notification. Old client hit guesses are ignored by 23.0 server.
-    var previousImpact=proto.weaponImpactDamage;proto.weaponImpactDamage=function(x,y,impactType){var r=previousImpact.call(this,x,y,impactType);if((this.mode==='pvp'&&P.mode==='pvp'&&(P.battle.phase==='fight'||P.battle.phase==='elimination'))||(this.mode==='digtrade'&&P.mode==='digtrade'&&(this.adminPvpEnabled||(typeof q!=='undefined'&&q.diggerzAdminPvpEnabled))))this.pvpSend({t:'impact',x:+x||0,y:+y||0,impactType:impactType|0});return r};
+    var previousImpact=proto.weaponImpactDamage;proto.weaponImpactDamage=function(x,y,impactType){var r=previousImpact.call(this,x,y,impactType);if(this.mode==='pvp'&&P.mode==='pvp'&&(P.battle.phase==='fight'||P.battle.phase==='elimination'))this.pvpSend({t:'impact',x:+x||0,y:+y||0,impactType:impactType|0});return r};
 
     // Build 23.0 weapon gates. Free Dig is non-combat, while Battle Royale
     // keeps weapons locked during the defense phase. Mining/digging attacks
@@ -116411,7 +116410,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         var r=prevSet.call(this,enabled);
         this.adminPvpEnabled=!!enabled;
         try{q.diggerzAdminPvpEnabled=!!enabled}catch(e){}
-        if(isMp(this)&&window.DiggerzAdminSessionToken)this.pvpSend({t:'admin-pvp',adminToken:window.DiggerzAdminSessionToken,enabled:!!enabled});
         return r;
       };
     }
@@ -117005,244 +117003,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 }());
 </script>
 
-
-<script>
-(function(){
-  var wired=false, viewerTarget='', viewerSlots=[];
-  function svc(){return window.Main&&window.Main.diggerzService?window.Main.diggerzService:null}
-  function token(){return window.DiggerzAdminSessionToken||''}
-  function auth(){return !!token()}
-  function say(x){var e=document.getElementById('diggerz-admin-status');if(e)e.textContent=String(x&&x.message||x||'Done.')}
-  function targetName(){return String(document.getElementById('admin-player')&&document.getElementById('admin-player').value||'').trim()}
-  function targetCid(){
-    var s=svc(),name=targetName();if(!s||!name)return '';
-    if(name===s.playerName()&&window.DiggerzPvp22&&window.DiggerzPvp22.connectionId)return window.DiggerzPvp22.connectionId;
-    var p=s.pvpFindPeerByName&&s.pvpFindPeerByName(name);return p?p.connectionId:''
-  }
-  function send(msg){var s=svc();if(!s){say('Admin service is not ready. Enter a multiplayer room first.');return false}if(!auth()){say('Admin authentication expired. Re-enter the admin code.');return false}if(!s.pvpSend){say('Multiplayer command link is not ready. Reconnect to the room.');return false}msg.adminToken=token();var ok=!!s.pvpSend(msg);if(!ok)say('Admin command could not be sent. Check that you are still connected to the server.');return ok}
-  function selectedOrSelf(){var cid=targetCid();if(cid)return cid;var p=window.DiggerzPvp22;return p&&p.connectionId||''}
-  function togglePower(power,button){
-    var cid=selectedOrSelf();if(!cid)return say('Select a player first.');
-    var on=!button.dataset.on;button.dataset.on=on?'1':'';
-    button.textContent=(on?'Disable ':'Enable ')+power.replace(/^./,function(c){return c.toUpperCase()});
-    send({t:'admin-power',targetConnectionId:cid,power:power,value:on});
-    return on
-  }
-  function itemCopy(x){return {category:x&&x.category|0,id:x&&x.id|0,variant:x&&x.variant|0,count:Math.max(0,x&&x.count|0),extra:x&&x.extra|0,text:String(x&&x.text||'')}}
-  function renderInventory(data){
-    viewerTarget=data.targetConnectionId||viewerTarget;viewerSlots=(data.slots||[]).map(itemCopy);
-    var box=document.getElementById('admin-inventory-viewer');if(!box)return;box.innerHTML='';
-    viewerSlots.forEach(function(item,i){
-      if(!item.category||!item.count)return;
-      var row=document.createElement('div');row.style.cssText='display:flex;gap:4px;align-items:center;padding:4px;border-bottom:1px solid #293746';
-      var label=document.createElement('span');label.style.flex='1';label.textContent='Slot '+i+' — '+(svc()&&svc().itemName?svc().itemName(item.category,item.id):('Item '+item.id))+' × '+item.count;
-      var take=document.createElement('button');take.textContent='Take';take.onclick=function(){send({t:'admin-inventory-command',targetConnectionId:viewerTarget,action:'take',slot:i,count:item.count});setTimeout(requestInventory,120)};
-      var rem=document.createElement('button');rem.textContent='Remove';rem.onclick=function(){send({t:'admin-inventory-command',targetConnectionId:viewerTarget,action:'remove',slot:i,count:item.count});setTimeout(requestInventory,120)};
-      row.appendChild(label);row.appendChild(take);row.appendChild(rem);box.appendChild(row)
-    });
-    if(!box.children.length)box.textContent='Inventory is empty.'
-  }
-  function requestInventory(){
-    var cid=targetCid();if(!cid)return say('Select an online player first.');
-    viewerTarget=cid;send({t:'admin-inventory-request',targetConnectionId:cid});say('Requesting inventory…')
-  }
-  function setup(){
-    if(wired)return true;var s=svc();if(!s||!window.DiggerzPvp22)return false;wired=true;
-    var buttons={god:'admin-god',fly:'admin-fly',noclip:'admin-noclip',freeze:'admin-freeze',invisible:'admin-invisible'};
-    Object.keys(buttons).forEach(function(p){var b=document.getElementById(buttons[p]);if(b)b.onclick=function(){togglePower(p,b)}});
-    document.getElementById('admin-fake-leave').onclick=function(){var cid=selectedOrSelf();if(cid)send({t:'admin-fake-leave',targetConnectionId:cid})};
-    document.getElementById('admin-fake-return').onclick=function(){var cid=selectedOrSelf();if(cid)send({t:'admin-fake-return',targetConnectionId:cid})};
-    document.getElementById('admin-heal').onclick=function(){var cid=selectedOrSelf();if(cid)send({t:'admin-power',targetConnectionId:cid,power:'heal',value:true})};
-    document.getElementById('admin-bring').onclick=function(){var cid=selectedOrSelf();if(cid)send({t:'admin-power',targetConnectionId:cid,power:'bring',value:true})};
-    document.getElementById('admin-launch').onclick=function(){var cid=selectedOrSelf();if(cid)send({t:'admin-power',targetConnectionId:cid,power:'launch',value:true})};
-    document.getElementById('admin-rename').onclick=function(){var cid=selectedOrSelf(),n=document.getElementById('admin-new-name').value.trim();if(cid&&n)send({t:'admin-name',targetConnectionId:cid,name:n})};
-    document.getElementById('admin-inventory-refresh').onclick=requestInventory;
-    document.getElementById('admin-inventory-clear').onclick=function(){if(viewerTarget)send({t:'admin-inventory-command',targetConnectionId:viewerTarget,action:'clear',slot:-1,count:0});setTimeout(requestInventory,180)};
-    document.getElementById('admin-set-background').onclick=function(){send({t:'admin-background',background:+document.getElementById('admin-background').value})};
-    document.getElementById('admin-bot-spawn').onclick=function(){var n=document.getElementById('admin-bot-name').value.trim()||'Fake Player';send({t:'admin-bot-spawn',name:n,ai:document.getElementById('admin-bot-ai').value})};
-    document.getElementById('admin-bot-remove').onclick=function(){var cid=targetCid();if(cid&&String(cid).indexOf('BOT-')===0)send({t:'admin-bot-remove',targetConnectionId:cid});else say('Select a fake player first.')};
-    document.getElementById('admin-kill-all').onclick=function(){var peers=s.adminPlayers?s.adminPlayers():[];peers.forEach(function(p){var cid=(p.local&&window.DiggerzPvp22?window.DiggerzPvp22.connectionId:(s.pvpFindPeerByName&&s.pvpFindPeerByName(p.name)||{}).connectionId);if(cid)send({t:'admin-kill',targetConnectionId:cid})})};
-    document.getElementById('admin-fly-all').onclick=function(){(s.adminPlayers?s.adminPlayers():[]).forEach(function(p){var cid=(p.local&&window.DiggerzPvp22?window.DiggerzPvp22.connectionId:(s.pvpFindPeerByName&&s.pvpFindPeerByName(p.name)||{}).connectionId);if(cid)send({t:'admin-power',targetConnectionId:cid,power:'fly',value:true})})};
-    document.getElementById('admin-freeze-all').onclick=function(){(s.adminPlayers?s.adminPlayers():[]).forEach(function(p){var cid=(p.local&&window.DiggerzPvp22?window.DiggerzPvp22.connectionId:(s.pvpFindPeerByName&&s.pvpFindPeerByName(p.name)||{}).connectionId);if(cid)send({t:'admin-power',targetConnectionId:cid,power:'freeze',value:true})})};
-    document.getElementById('admin-unfreeze-all').onclick=function(){(s.adminPlayers?s.adminPlayers():[]).forEach(function(p){var cid=(p.local&&window.DiggerzPvp22?window.DiggerzPvp22.connectionId:(s.pvpFindPeerByName&&s.pvpFindPeerByName(p.name)||{}).connectionId);if(cid)send({t:'admin-power',targetConnectionId:cid,power:'freeze',value:false})})};
-    return true
-  }
-  var oldReceive=null;
-  function install(){
-    var s=svc();if(!s||!window.DiggerzPvp22||!s.pvpReceive)return;
-    if(!s.__adminFunReceive){oldReceive=s.pvpReceive;s.pvpReceive=function(m){
-      if(m&&m.t==='admin-inventory-data'){renderInventory(m);say('Inventory loaded.');return}
-      if(m&&m.t==='admin-peer-name'){var p=this.pvpPeerForConnection&&this.pvpPeerForConnection(m.connectionId);if(p){p.name=String(m.name||'Player');if(p.info)p.info.name=p.name;var e=this.pvpEntityForPeer(p);if(e&&e.J30&&e.J30.E32)e.J30.E32.E37(p.name+' ^9'+(p.info&&p.info.wins|0||0))}return}
-      if(m&&m.t==='admin-peer-visibility'){var p=this.pvpPeerForConnection&&this.pvpPeerForConnection(m.connectionId);if(p){p._adminHidden=!!m.hidden;var e=this.pvpEntityForPeer(p);if(e){e.a2=!m.hidden;try{e.J30.a2=!m.hidden}catch(_e){}try{e.set_local_alp(m.hidden?0:1)}catch(_e2){}}}return}
-      if(m&&m.t==='admin-fake-leave'){var p=this.pvpPeerForConnection&&this.pvpPeerForConnection(m.connectionId);if(p){p._adminHidden=true;var e=this.pvpEntityForPeer(p);if(e){e.a2=false;try{e.J30.a2=false}catch(_e){}}}else if(window.DiggerzPvp22&&String(window.DiggerzPvp22.connectionId||'')===String(m.connectionId||'')&&l.z39){try{l.z39.a2=false;if(l.z39.J30)l.z39.J30.a2=false;l.z39.set_local_alp(0)}catch(_e2){}}if(this.message)this.message('^1'+String(m.name||'Player')+' left the session.');return}
-      if(m&&m.t==='admin-fake-return'){var p=this.pvpPeerForConnection&&this.pvpPeerForConnection(m.connectionId);if(p){p._adminHidden=false;var e=this.pvpEntityForPeer(p);if(e){e.a2=true;try{e.J30.a2=true}catch(_e){}}}else if(window.DiggerzPvp22&&String(window.DiggerzPvp22.connectionId||'')===String(m.connectionId||'')&&l.z39){try{l.z39.a2=true;if(l.z39.J30)l.z39.J30.a2=true;l.z39.set_local_alp(1)}catch(_e2){}}if(this.message)this.message('^2'+String(m.name||'Player')+' joined the session.');return}
-      if(m&&m.t==='room-state'){
-        if(m.backgroundOverride!=null)try{this.enqueue(102,1,function(packet){packet.R2(Math.max(0,Math.min(9,m.backgroundOverride|0)))})}catch(e){}
-        if(m.adminPvpOverride!=null){this.adminPvpEnabled=!!m.adminPvpOverride;try{q.diggerzAdminPvpEnabled=!!m.adminPvpOverride}catch(e){}}
-      }
-      if(m&&m.t==='admin-background'){try{this.enqueue(102,1,function(packet){packet.R2(Math.max(0,Math.min(9,m.background|0)))})}catch(e){}return}
-      if(m&&m.t==='admin-pvp-state'){this.adminPvpEnabled=!!m.enabled;try{q.diggerzAdminPvpEnabled=!!m.enabled}catch(e){}return}
-      if(m&&m.t==='admin-local-name'){try{if(q.thisMain)q.thisMain.userName=String(m.name||'Player')}catch(e){}this.pvpSendHello&&this.pvpSendHello();return}
-      if(m&&m.t==='admin-power'){
-        var power=String(m.power||''),v=!!m.value;this['_admin_'+power]=v;
-        if(power==='god')this._adminGodMode=v;
-        if(power==='invisible'&&l.z39){try{l.z39.a2=!v;if(l.z39.J30)l.z39.J30.a2=!v;l.z39.set_local_alp(v?0:1)}catch(e){}}
-        if(power==='heal'){try{this.respawnLocalPlayer()}catch(e){}}
-        if(power==='launch'&&l.z39){try{l.z39.l38(l.z39.b6,l.z39.b7-4*l._44)}catch(e){l.z39.b7-=4*l._44}}
-        return
-      }
-      if(m&&m.t==='admin-inventory-request'){this.pvpSend({t:'admin-inventory-data',adminConnectionId:m.adminConnectionId,slots:(this.state.slots||[]).map(itemCopy),coins:this.state.coins||0});return}
-      if(m&&m.t==='admin-inventory-command'){
-        var slot=m.slot|0,count=Math.max(1,m.count|0),action=String(m.action||'');
-        if(action==='clear'){for(var ci=0;ci<this.state.slots.length;ci++)this.state.slots[ci]=this.emptyItem()}
-        else if(slot>=0&&slot<this.state.slots.length){var it=this.state.slots[slot]||this.emptyItem();if(action==='take'||action==='remove'){var n=Math.min(count,it.count|0);if(n>0){var removed=itemCopy(it);removed.count=n;it.count-=n;if(!it.count)this.state.slots[slot]=this.emptyItem();if(action==='take'&&m.requesterConnectionId)this.pvpSend({t:'admin-inventory-return',requesterConnectionId:m.requesterConnectionId,item:removed})}}}
-        this.sendInventory();this.markDirty();this.save(true);return
-      }
-      if(m&&m.t==='admin-inventory-return'){if(m.item&&m.item.category)this.addItem(m.item.category|0,m.item.id|0,m.item.variant|0,m.item.count|0,m.item.extra|0,String(m.item.text||''));this.sendInventory();this.markDirty();this.save(true);return}
-      return oldReceive.call(this,m)
-    };s.__adminFunReceive=true}
-    setup()
-  }
-  function flyTick(){
-    var s=svc(),mp=window.DiggerzPvp22;if(!s||!mp||!s._admin_fly||!mp.connected)return;
-    var ent=window.l&&l.z39;if(!ent)return;
-    var dx=(keys.a?-1:0)+(keys.d?1:0),dy=(keys.w?-1:0)+(keys.s?1:0),len=Math.hypot(dx,dy)||1,sp=(keys.shift?0.28:0.16);
-    ent.b6+=dx/len*sp*window.l._44;ent.b7+=dy/len*sp*window.l._44;
-    s.pvpSend({t:'state',x:ent.b6/window.l._44,y:ent.b7/window.l._44});
-  }
-  var keys={w:false,a:false,s:false,d:false,shift:false};
-  document.addEventListener('keydown',function(e){var k=String(e.key||'').toLowerCase();if(k in keys)keys[k]=true});
-  document.addEventListener('keyup',function(e){var k=String(e.key||'').toLowerCase();if(k in keys)keys[k]=false});
-  setInterval(function(){install();flyTick()},50);
-})();
-</script>
-<script id="diggerz-admin-bot-possession">
-(function(){
-  var installedService=null, installedProto=false, receiveWrapped=false;
-  var keys={w:false,a:false,s:false,d:false,shift:false,space:false};
-  var mouseDown=false, controlId='';
-  function svc(){return window.Main&&window.Main.diggerzService?window.Main.diggerzService:null}
-  function say(x){var e=document.getElementById('diggerz-admin-status');if(e)e.textContent=String(x&&x.message||x||'Done.')}
-  function token(){return window.DiggerzAdminSessionToken||''}
-  function send(m){var s=svc();if(!s||!s.pvpSend)return false;m.adminToken=token();return !!s.pvpSend(m)}
-  function targetCid(){var s=svc(),input=document.getElementById('admin-player'),name=String(input&&input.value||'').trim();if(!s||!name)return '';if(window.DiggerzPvp22&&name===s.playerName())return window.DiggerzPvp22.connectionId||'';var p=s.pvpFindPeerByName&&s.pvpFindPeerByName(name);return p?p.connectionId:''}
-  function botPeer(){var s=svc();return s&&controlId&&s.pvpPeerForConnection?s.pvpPeerForConnection(controlId):null}
-  function buildBotSpawn(service,m){
-    if(!service||!m||!m.id||!service.buildNativePacket||!service.injectNativePacket)return;
-    try{
-      var id=service.guidFromParts(m.id), ap=Array.isArray(m.appearance)?m.appearance.slice(0,11):[];while(ap.length<11)ap.push(0);
-      var packet=service.buildNativePacket(5,1,function(out){
-        out.R8(id);out.R9(String(m.name||'Fake Player'));out.r8(Number(m.x)||0);out.r8(0);out.r8(Number(m.y)||2);out.r8(0);
-        out.R2(ap.length);for(var i=0;i<ap.length;i++)out.R2(ap[i]|0);out.R9(String(m.appearanceText||''));out.R2(0);out.R4(0);out.R2(0);out.s0(false);out.R2(1);out.R0(0);out.s0(false);out.R0(0);out.R2(Math.max(0,Math.min(65535,m.wins|0)));out.R8(service.zeroId);out.R4(0);out.r8(Number(m.skin)||1.44);out.r8(1);
-      });
-      var raw=packet&&packet.Q1&&packet.Q1.b;if(raw&&raw.buffer){var ab=raw.buffer.slice(raw.byteOffset||0,(raw.byteOffset||0)+raw.byteLength);service.injectNativePacket(ab)}
-    }catch(e){console.warn('Diggerz bot native spawn',e)}
-  }
-  function worldSnapshot(service){
-    if(!service||!window.DiggerzPvp22||!window.DiggerzPvp22.joined)return;
-    var roomKey=String(window.DiggerzPvp22.room||'');
-    if(service.__botSnapshotRoom!==roomKey){service.__botSnapshotRoom=roomKey;service.__botWorldSnapshotSent=false}
-    if(service.__botWorldSnapshotSent)return;
-    if(service._pvpBaseMapApplied)return;
-    var st=service.state;if(!st||!Array.isArray(st.tiles))return;
-    var w=Math.min(128,st.width|0||128),h=Math.min(80,st.height|0||80),vars=st.variants||[],packed=new Uint16Array(128*80);
-    for(var y=0;y<h;y++)for(var x=0;x<w;x++){var id=st.tiles[x+y*(st.width|0||128)]|0;packed[x+y*128]=(id&2047)|((vars[x+y*(st.width|0||128)]|0&31)<<11)}
-    var bytes='';for(var bi=0;bi<packed.length;bi++){bytes+=String.fromCharCode(packed[bi]&255,(packed[bi]>>>8)&255)}
-    var data=btoa(bytes);
-    service.__botWorldSnapshotSent=true;
-    send({t:'world-snapshot',width:128,height:80,encoding:'u16-v1',data:data});
-  }
-  function installProto(service){
-    if(installedProto||!window.DiggerzService||!window.DiggerzService.prototype)return;
-    installedProto=true;
-    var proto=window.DiggerzService.prototype;
-    var oldReceive=proto.pvpReceive;
-    proto.pvpReceive=function(m){
-      if(m&&m.t==='hello'&&String(m._serverFrom||'').indexOf('BOT-')===0){
-        var self=this;setTimeout(function(){buildBotSpawn(self,m)},0);
-      }
-      if(m&&m.t==='admin-bot-control-state'){
-        if(m.active){controlId=String(m.targetConnectionId||'');window.DiggerzPvp22.controlledBotId=controlId;say('Controlling '+String(m.name||'fake player')+'. WASD controls the bot. Escape stops control.');}
-        else {controlId='';window.DiggerzPvp22.controlledBotId='';say('Bot control stopped. Your player controls are restored.')}
-      }
-      if(m&&m.t==='admin-bot-loot'&&String(m.botConnectionId||'')===String(controlId||''))say('Mining bot coins: '+(m.coins|0));
-      var r=oldReceive.call(this,m);
-      if(m&&m.t==='peer-state'&&m._serverFrom){var peer=this.pvpPeerForConnection&&this.pvpPeerForConnection(m._serverFrom),e=peer&&this.pvpEntityForPeer(peer);if(e){if(m.face){try{if(e.i33)e.i33.b4=m.face<0?-1:1}catch(_e){}}if(peer.info&&peer.info.bot&&isFinite(+m.x)&&isFinite(+m.y)){try{e.l38((+m.x)*l._44,(+m.y)*l._44)}catch(_e2){e.b6=(+m.x)*l._44;e.b7=(+m.y)*l._44}}}}
-      return r;
-    };
-    var oldTick=proto.pvpTick;
-    proto.pvpTick=function(){
-      var P=window.DiggerzPvp22,active=!!(P&&P.controlledBotId),localX=l&&l.z39?l.z39.b6:0,localY=l&&l.z39?l.z39.b7:0;
-      var r=oldTick.call(this);
-      if(active&&P&&P.joined&&this.mode&&l&&l.z39){
-        // Undo any movement/physics that the normal player received this frame.
-        try{l.z39.l38(localX,localY)}catch(e){l.z39.b6=localX;l.z39.b7=localY}
-        try{var body=l.z39.b33&&l.z39.b33.tBJ;if(body){body.wrap_vel||body.setupVelocity();body.wrap_vel.tBJ.x=0;body.wrap_vel.tBJ.y=0}}catch(e){}
-        var peer=this.pvpPeerForConnection(P.controlledBotId),ent=peer&&this.pvpEntityForPeer(peer);
-        if(ent&&l.z38){try{l.z38.s38=ent;l.z38.t39=ent.b6;l.z38.T30=ent.b7}catch(e){}}
-        if(peer){
-          var game=this.game||l.z38,ax=peer.lastX||0,ay=peer.lastY||0;
-          try{ax=(q.mX-game.A7)/(game.a8||1)/l._44;ay=(q.mY-game.A8)/(game.a9||1)/l._44}catch(e){}
-          send({t:'admin-bot-control',action:'keys',targetConnectionId:P.controlledBotId,keys:keys,aimX:ax,aimY:ay});
-        }
-      }
-      return r;
-    };
-    var oldA17=proto.A17;
-    proto.A17=function(opcode,body,c){
-      if(window.DiggerzPvp22&&window.DiggerzPvp22.controlledBotId&&opcode===287)return;
-      return oldA17.call(this,opcode,body,c)
-    };
-    var oldDirect=proto.weaponDirectHit;
-    proto.weaponDirectHit=function(fromX,fromY,toX,toY,attackType){
-      var P=window.DiggerzPvp22;
-      if(P&&P.controlledBotId){
-        var held=null;try{held=l.z39&&l.z39.n38&&l.z39.n38.B30?l.z39.n38.B30[l.z39.n38.q43]:null}catch(e){}
-        if(held&&held.T40){send({t:'admin-bot-mine',targetConnectionId:P.controlledBotId,x:Math.round(toX),y:Math.round(toY)});return}
-        send({t:'admin-bot-attack',targetConnectionId:P.controlledBotId,fromX:Number(fromX)||0,fromY:Number(fromY)||0,toX:Number(toX)||0,toY:Number(toY)||0,attackType:attackType|0});return;
-      }
-      return oldDirect.call(this,fromX,fromY,toX,toY,attackType)
-    };
-    var oldChat=proto.playerChat;
-    proto.playerChat=function(text){
-      var P=window.DiggerzPvp22;
-      if(P&&P.controlledBotId){send({t:'admin-bot-chat',targetConnectionId:P.controlledBotId,text:String(text||'').slice(0,180)});return true}
-      return oldChat.call(this,text)
-    };
-  }
-  function wrapReceive(){
-    var s=svc();if(!s||s===installedService||!s.pvpReceive)return;
-    installedService=s;installProto(s);
-    if(s.__botPossessionReceive)return;s.__botPossessionReceive=true;
-    var old=s.pvpReceive;s.pvpReceive=function(m){
-      if(m&&m.t==='admin-bot-control-state'&&m.active)controlId=String(m.targetConnectionId||'');
-      var r=old.call(this,m);
-      if(m&&m.t==='room-state')setTimeout(function(){worldSnapshot(s)},700);
-      return r;
-    };
-  }
-  function addControls(){return true}
-  function startControl(){var cid=targetCid();if(!cid||String(cid).indexOf('BOT-')!==0)return say('Select a fake player first.');if(send({t:'admin-bot-control',action:'start',targetConnectionId:cid})){controlId=cid}}
-  function stopControl(){if(!controlId)return say('No fake player is being controlled.');send({t:'admin-bot-control',action:'stop',targetConnectionId:controlId})}
-  function bind(){
-    var c=document.getElementById('admin-bot-control'),st=document.getElementById('admin-bot-stop'),chat=document.getElementById('admin-bot-send-chat');
-    if(c&&!c.__bound){c.__bound=true;c.onclick=startControl} if(st&&!st.__bound){st.__bound=true;st.onclick=stopControl}
-    if(chat&&!chat.__bound){chat.__bound=true;chat.onclick=function(){var cid=targetCid(),input=document.getElementById('admin-bot-chat');var text=String(input&&input.value||'').trim();if(!cid||String(cid).indexOf('BOT-')!==0)return say('Select a fake player first.');if(!text)return;say('Sending chat as fake player…');if(send({t:'admin-bot-chat',targetConnectionId:cid,text:text}))input.value=''}}
-  }
-  function keyHandler(e,down){if(!controlId)return;var k=String(e.key||'').toLowerCase();if(k==='escape'){e.preventDefault();e.stopImmediatePropagation();stopControl();return}if(k in keys){keys[k]=down;e.preventDefault();e.stopImmediatePropagation()}}
-  document.addEventListener('keydown',function(e){keyHandler(e,true)},true);document.addEventListener('keyup',function(e){keyHandler(e,false)},true);
-  document.addEventListener('mousedown',function(e){
-    if(!controlId||e.button!==0)return;mouseDown=true;
-    var s=svc(),P=window.DiggerzPvp22;if(!s||!P||!P.controlledBotId)return;
-    var game=s.game||l.z38,tx=0,ty=0;try{tx=Math.round((q.mX-game.A7)/(game.a8||1)/l._44);ty=Math.round((q.mY-game.A8)/(game.a9||1)/l._44)}catch(_e){}
-    var held=null;try{held=l.z39&&l.z39.n38&&l.z39.n38.B30?l.z39.n38.B30[l.z39.n38.q43]:null}catch(_e2){}
-    if(held&&held.T40)send({t:'admin-bot-mine',targetConnectionId:P.controlledBotId,x:tx,y:ty});
-  },true);
-  document.addEventListener('mouseup',function(e){if(e.button===0)mouseDown=false},true);
-  setInterval(function(){wrapReceive();addControls();bind()},200);
-  setInterval(function(){if(controlId&&(!window.DiggerzPvp22||!window.DiggerzPvp22.joined))controlId=''},500);
-})();
-</script>
 </body>
 </html>
 <!-- Other original content may be protected by copyright. -->
