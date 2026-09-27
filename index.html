@@ -115528,7 +115528,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     if(P.hooksInstalled)return true;
     if(typeof DiggerzService==='undefined'||!DiggerzService.prototype)return false;
     var proto=DiggerzService.prototype;
-    function isMp(service){return !!(service&&(service.mode==='pvp'||service.mode==='digtrade'))}
+    function isMp(service){return window.DiggerzIsMultiplayer(service)}
     // Expose the multiplayer-mode predicate globally as a compatibility fallback.
     // Some native callbacks can outlive the hook-installation scope.
     window.DiggerzIsMultiplayer=window.DiggerzIsMultiplayer||isMp;
@@ -117189,7 +117189,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       return oldReceive.call(this,m)
     };
     // Final movement/control tick. Server is authoritative for controlled players.
-    var oldTick=proto.pvpTick;proto.pvpTick=function(){var r=oldTick.call(this);if(!isMp(this)||!P.connected)return r;
+    var oldTick=proto.pvpTick;proto.pvpTick=function(){var r=oldTick.call(this);if(!window.DiggerzIsMultiplayer(this)||!P.connected)return r;
       // Fake players have no real client/tab driving their native physics. Their server-simulated
       // position is authoritative, so keep the local native entity pinned to that position every frame.
       try{var fakePeers=this.pvpEnsurePeers();for(var fk in fakePeers){var fp=fakePeers[fk];if(fp&&fp.fake){var fe=this.pvpEntityForPeer(fp);if(fe)syncFakeEntity(this,fp,fe,false)}}}catch(_e){}
