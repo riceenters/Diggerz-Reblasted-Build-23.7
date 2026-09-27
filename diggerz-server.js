@@ -957,11 +957,9 @@ function relayBinary(client, payload) {
 }
 
 function roomSnapshot(room) {
-  return [...room.clients].filter(client => client && !client.closed).map(client => ({
-    connectionId: client.connectionId,
-    name: client.name,
-    mode: client.mode
-  }));
+  const live=[...room.clients].filter(client=>client&&!client.closed).map(client=>({connectionId:client.connectionId,name:client.name,mode:client.mode}));
+  if(room&&room.bots) for(const bot of room.bots.values()) if(!bot.hidden) live.push({connectionId:bot.connectionId,name:bot.name,mode:room.mode});
+  return live;
 }
 
 function broadcastRoster(room) {
@@ -992,6 +990,8 @@ function ensureRoomState(room) {
   if (!room.coins) room.coins = new Map();
   if (!room.cottonMachines) room.cottonMachines = new Map();
   if (!room.turretCooldowns) room.turretCooldowns = new Map();
+  if (!room.bots) room.bots = new Map();
+  if (room.adminPvpOverride === undefined) room.adminPvpOverride = false;
   if (room.speaker === undefined) room.speaker = null;
   if (room.mode === 'pvp' && !room.battle) {
     room.battle = {
@@ -1172,7 +1172,9 @@ function eliminateOrRespawn(victim, attacker, source) {
 function dealPvpDamage(attacker, victim, amount, source) {
   if (!attacker || !victim || attacker === victim || !attacker.room || attacker.room !== victim.room) return false;
   const room = attacker.room;
-  if (room.mode !== 'pvp' || !room.battle || (room.battle.phase !== 'fight' && room.battle.phase !== 'elimination')) return false;
+  if (!combatEnabled(room)) return false;
+  if (victim.godMode) return false;
+  if (room.mode === 'pvp' && (!room.battle || (room.battle.phase !== 'fight' && room.battle.phase !== 'elimination'))) return false;
   if (!victim.alive || victim.eliminated) return false;
   const damage = Math.max(1, Math.min(3, Number(amount)|0));
   victim.lastAttackerConnectionId = attacker.connectionId;
@@ -1318,7 +1320,7 @@ function tickTurrets(room,now) {
   }
 }
 
-function specialWorldTick(room,now){ tickSpeaker(room,now); tickCottonCandy(room,now); tickTurrets(room,now); }
+function specialWorldTick(room,now){ tickSpeaker(room,now); tickCottonCandy(room,now); tickTurrets(room,now); tickAdminBots(room,now); }
 
 function battleTick(room, now) {
   if (!room || room.mode !== 'pvp') return;
@@ -1371,7 +1373,7 @@ function addClientToRoom(client, room, mode, name) {
 
   sendJson(client, {
     t: 'welcome', connectionId: client.connectionId, room: room.code, mode,
-    count: room.clients.size, max: MAX_ROOM_PLAYERS, players: roomSnapshot(room)
+    count: actorCount(room), max: MAX_ROOM_PLAYERS, players: roomSnapshot(room)
   });
 
   sendJson(client, {
@@ -1380,11 +1382,17 @@ function addClientToRoom(client, room, mode, name) {
     mapName: room.map ? String(room.map.name||'Custom Map') : (room.mode==='pvp' ? battleMapName(room) : 'Default Dig+Trade'),
     mapAuthor: room.mode==='pvp' ? battleMapAuthor(room) : '',
     mapMusic: room.mode==='pvp' ? battleMapMusic(room) : '',
-    tiles: [...room.tiles.values()], drops: [...room.drops.values()], coins: [...room.coins.values()], speaker: room.speaker ? {...room.speaker} : null, serverNow: Date.now()
+    tiles: [...room.tiles.values()], drops: [...room.drops.values()], coins: [...room.coins.values()], speaker: room.speaker ? {...room.speaker} : null,
+    adminPvpOverride:!!room.adminPvpOverride, backgroundOverride:room.backgroundOverride==null?null:room.backgroundOverride, serverNow: Date.now()
   });
   if (mode === 'pvp') sendBattleState(client);
+  // Existing admin-spawned fake players are virtual peers, so replay their
+  // hello packets to a newcomer just like a real client would.
+  if (room.bots) for (const bot of room.bots.values()) if (!bot.hidden) {
+    sendJson(client,{t:'hello',id:bot._guid||randomBotGuidParts(),name:bot.name,appearance:bot.appearance,appearanceText:bot.appearanceText,x:bot.position.x,y:bot.position.y,skin:bot.skin,wins:bot.wins||0,mode:room.mode,_serverFrom:bot.connectionId,_serverName:bot.name});
+  }
 
-  broadcastRoom(room, { t:'player-count', room:room.code, count:room.clients.size, max:MAX_ROOM_PLAYERS });
+  broadcastRoom(room, { t:'player-count', room:room.code, count:actorCount(room), max:MAX_ROOM_PLAYERS });
   broadcastRoster(room);
   log(`${client.connectionId} (${name}) joined ${room.code}. ${room.clients.size}/${MAX_ROOM_PLAYERS}`);
 
@@ -1599,6 +1607,105 @@ function completeTrade(client, partner) {
   sendJson(partner,{t:'trade-complete',tradeId:id,receive:aOffer});
 }
 
+function combatEnabled(room) {
+  return !!(room && (room.mode === 'pvp' || room.adminPvpOverride));
+}
+function actorCount(room) {
+  return (room && room.clients ? room.clients.size : 0) + (room && room.bots ? room.bots.size : 0);
+}
+function randomBotGuidParts() {
+  return [crypto.randomInt(-2147483648,2147483647),crypto.randomInt(-2147483648,2147483647),crypto.randomInt(-2147483648,2147483647),crypto.randomInt(-2147483648,2147483647)];
+}
+function spawnAdminBot(room, name, options = {}) {
+  ensureRoomState(room);
+  if (room.clients.size + room.bots.size >= MAX_ROOM_PLAYERS) return null;
+  const cleanName = normalizeName(name || 'Bot').slice(0,32) || 'Bot';
+  let cid;
+  do { cid = 'BOT-' + crypto.randomBytes(6).toString('hex').toUpperCase(); } while (room.bots.has(cid));
+  const bot = {connectionId:cid,_guid:randomBotGuidParts(),name:cleanName,mode:room.mode,bot:true,closed:false,
+    position:{x:Number.isFinite(+options.x)?+options.x:randomSpawnX(room),y:Number.isFinite(+options.y)?+options.y:2},
+    appearance:Array.isArray(options.appearance)?options.appearance.slice(0,11).map(v=>Number(v)|0):[0,247,0,0,326,0,0,0,0,0,0],
+    appearanceText:String(options.appearanceText||'').slice(0,180),skin:Number(options.skin)||1.44,wins:0,kills:0,pvpHealth:3,alive:true,eliminated:false,
+    ai:String(options.ai||'idle'),hidden:false,godMode:false,fly:false,noclip:false,frozen:false,
+    phase:Math.random()*Math.PI*2,speed:.35+Math.random()*.25,
+    mining:false,mineCooldown:0,mineRowDir:Math.random()<.5?-1:1,mineSteps:0,
+    controlledBy:null,chatCooldown:0,inventory:[],coins:0};
+  room.bots.set(cid,bot);
+  broadcastRoom(room,{t:'hello',id:bot._guid,name:bot.name,appearance:bot.appearance,appearanceText:bot.appearanceText,x:bot.position.x,y:bot.position.y,skin:bot.skin,wins:0,mode:room.mode,_serverFrom:cid,_serverName:bot.name});
+  broadcastRoom(room,{t:'player-count',room:room.code,count:actorCount(room),max:MAX_ROOM_PLAYERS});
+  broadcastRoster(room);
+  return bot;
+}
+function removeAdminBot(room, bot, announce = true) {
+  if (!room || !bot) return false;
+  const cid=bot.connectionId; room.bots.delete(cid);
+  if (announce) broadcastRoom(room,{t:'peer-left',connectionId:cid,name:bot.name,count:actorCount(room)});
+  broadcastRoom(room,{t:'player-count',room:room.code,count:actorCount(room),max:MAX_ROOM_PLAYERS});
+  broadcastRoster(room); return true;
+}
+function botMineStep(room, bot, now) {
+  if (!bot || room.mode !== 'digtrade' || now < (bot.mineCooldown||0)) return;
+  const bx=Math.round(bot.position.x), by=Math.round(bot.position.y);
+  // The original public mining bot alternated long horizontal rows after
+  // moving downward. Recreate that behavior against the server's authoritative
+  // tile map, so every browser sees the same blocks disappear.
+  const candidates=[
+    [bx+bot.mineRowDir,by+1],[bx+bot.mineRowDir,by],[bx+bot.mineRowDir,by-1],
+    [bx,by+1],[bx,by-1]
+  ];
+  let picked=null;
+  for(const [x,y] of candidates){
+    const t=room.tiles.get(`${x},${y}`);
+    if(t && (t.id|0)>0 && (t.id|0)!==122 && (t.id|0)!==211 && (t.id|0)!==212){picked={x,y,t};break;}
+  }
+  if(!picked){
+    bot.mineRowDir*=-1;
+    bot.position.y=Math.min(118,bot.position.y+1);
+    bot.mineCooldown=now+180;
+    return;
+  }
+  const {x,y,t}=picked;
+  room.tiles.set(`${x},${y}`,{x,y,id:0,variant:0,ownerConnectionId:bot.connectionId});
+  broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,_serverFrom:bot.connectionId,_serverName:bot.name});
+  bot.mineSteps=(bot.mineSteps||0)+1;
+  // Keep a lightweight bot inventory for the admin inventory viewer. The
+  // browser UI can inspect/control these slots without a real browser client.
+  const existing=bot.inventory.find(it=>it.category===1&&it.id===(t.id|0));
+  if(existing) existing.count=(existing.count|0)+1;
+  else bot.inventory.push({category:1,id:t.id|0,variant:t.variant|0,count:1,extra:0,text:''});
+  bot.mineCooldown=now+260;
+  if(bot.mineSteps%18===0) bot.position.y=Math.min(118,bot.position.y+1);
+}
+
+function tickAdminBots(room, now) {
+  if (!room || !room.bots || !room.bots.size) return;
+  for (const bot of room.bots.values()) {
+    if (bot.hidden || bot.frozen) continue;
+    if (bot.controlledBy) {
+      // A possessed bot is driven by short-lived admin control packets.
+      const c=bot.controlInput||{};
+      const dx=Math.max(-1,Math.min(1,Number(c.dx)||0)), dy=Math.max(-1,Math.min(1,Number(c.dy)||0));
+      const speed=bot.fly?.22:.12;
+      if(dx||dy){bot.position.x+=dx*speed;bot.position.y+=dy*speed;}
+      if(c.expiresAt && c.expiresAt<now){bot.controlledBy=null;bot.controlInput=null;}
+    } else if (bot.ai === 'mine') {
+      bot.phase += .025;
+      bot.position.x += bot.mineRowDir*bot.speed*.045;
+      if(Math.random()<.018) bot.position.y=Math.min(118,bot.position.y+.2);
+      botMineStep(room,bot,now);
+    } else if (bot.ai === 'wander') {
+      bot.phase += .035;
+      bot.position.x += Math.cos(bot.phase)*bot.speed*.06;
+      bot.position.y += Math.sin(bot.phase*1.7)*bot.speed*.015;
+    } else if (bot.ai === 'follow' && room.clients.size) {
+      const target=[...room.clients].filter(c=>!c.closed&&c.position)[0];
+      if(target){const dx=target.position.x-bot.position.x,dy=target.position.y-bot.position.y,d=Math.hypot(dx,dy)||1;bot.position.x+=dx/d*.025;bot.position.y+=dy/d*.025;}
+    }
+    bot.position.x=Math.max(-20,Math.min(WORLD_WIDTH+20,bot.position.x));
+    bot.position.y=Math.max(-30,Math.min(120,bot.position.y));
+    broadcastRoom(room,{t:'peer-state',x:bot.position.x,y:bot.position.y,_serverFrom:bot.connectionId,_serverName:bot.name},null,true);
+  }
+}
 function relayGameMessage(client, message, rawLength) {
   if (!client.room) {
     sendJson(client, { t:'server-error', code:'not-joined', message:'Join a room before sending game data.' });
@@ -1612,9 +1719,9 @@ function relayGameMessage(client, message, rawLength) {
   if (message.t==='state') {
     let x=Number(message.x), y=Number(message.y);
     if (Number.isFinite(x)&&Number.isFinite(y)) {
-      if(room.mode==='pvp'&&room.battle&&(room.battle.phase==='fight'||room.battle.phase==='elimination')){
+      if(!client.fly && room.mode==='pvp'&&room.battle&&(room.battle.phase==='fight'||room.battle.phase==='elimination')){
         x=Math.max(room.battle.left+.45,Math.min(room.battle.right-.45,x));
-      } else x=Math.max(-20,Math.min(WORLD_WIDTH+20,x));
+      } else if(!client.fly) x=Math.max(-20,Math.min(WORLD_WIDTH+20,x));
       client.position={x,y:Math.max(-30,Math.min(120,y))};
       // Native packets remain the primary movement path, but this canonical
       // JSON fallback lets peers repair a remote player that fell behind after
@@ -1636,14 +1743,13 @@ function relayGameMessage(client, message, rawLength) {
   }
 
   if (message.t==='attack') {
-    if (room.mode==='pvp') {
+    if (room.mode==='pvp' || room.adminPvpOverride) {
       const b=room.battle;
-      if (!b || (b.phase!=='fight'&&b.phase!=='elimination') || !client.alive || client.eliminated) {
-        sendJson(client,{t:'fire-blocked'});
-        return;
+      if (room.mode==='pvp' && (!b || (b.phase!=='fight'&&b.phase!=='elimination') || !client.alive || client.eliminated)) {
+        sendJson(client,{t:'fire-blocked'}); return;
       }
       client.shots=(client.shots|0)+1;
-      broadcastRoom(room,envelope,client); // projectile / weapon visuals
+      broadcastRoom(room,envelope,client); // replicated projectile / weapon visuals
       const attackType=Number(message.attackType)|0;
       if (!PROJECTILE_ATTACKS.has(attackType)) {
         const target=lineHitTarget(client,message);
@@ -1651,18 +1757,11 @@ function relayGameMessage(client, message, rawLength) {
       }
       return;
     }
-    // Free Dig / Dig+Trade is intentionally non-combat. Do not relay weapon
-    // attacks even if an older or modified client manages to send one.
-    if (room.mode==='digtrade') {
-      sendJson(client,{t:'freedig-fire-blocked'});
-      return;
-    }
-    broadcastRoom(room,envelope,client);
-    return;
+    sendJson(client,{t:'freedig-fire-blocked'}); return;
   }
 
   if (message.t==='tool-attack') {
-    if (room.mode!=='pvp' || !room.battle || (room.battle.phase!=='fight'&&room.battle.phase!=='elimination') || !client.alive || client.eliminated) return;
+    if (!combatEnabled(room) || (room.mode==='pvp' && (!room.battle || (room.battle.phase!=='fight'&&room.battle.phase!=='elimination') || !client.alive || client.eliminated))) return;
     const itemId=Number(message.itemId)|0;
     if(itemId!==239 && !(itemId>=379&&itemId<=394) && !RGB_LIGHTSWORD_IDS.has(itemId)) return;
     const fx=Number(message.fromX),fy=Number(message.fromY),tx=Number(message.toX),ty=Number(message.toY);
@@ -1679,7 +1778,7 @@ function relayGameMessage(client, message, rawLength) {
   }
 
   if (message.t==='impact') {
-    if (room.mode!=='pvp' || !room.battle || (room.battle.phase!=='fight'&&room.battle.phase!=='elimination') || !client.alive || client.eliminated) return;
+    if (!combatEnabled(room) || (room.mode==='pvp' && (!room.battle || (room.battle.phase!=='fight'&&room.battle.phase!=='elimination') || !client.alive || client.eliminated))) return;
     const x=Number(message.x),y=Number(message.y),impactType=Number(message.impactType)|0;
     if (!Number.isFinite(x)||!Number.isFinite(y)) return;
     for (const target of room.clients) {
@@ -1814,10 +1913,164 @@ function relayGameMessage(client, message, rawLength) {
   if (message.t==='admin-item'||message.t==='admin-coins'||message.t==='admin-kill') {
     if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
     const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target)return;
-    if(message.t==='admin-kill'){
-      target.lastAttackerConnectionId=''; target.lastDamagedAt=0; target.adminKilledUntil=Date.now()+4000;
+    if(message.t==='admin-kill'){target.lastAttackerConnectionId='';target.lastDamagedAt=0;target.adminKilledUntil=Date.now()+4000;}
+    sendJson(target,Object.assign({},message,{_serverFrom:client.connectionId,_serverName:client.name}));return;
+  }
+
+  if (message.t==='admin-power') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
+    const target=findRoomActor(room,String(message.targetConnectionId||''));
+    if(!target){sendJson(client,{t:'server-error',code:'player-not-found'});return;}
+    const power=String(message.power||''); const value=!!message.value;
+    if(['god','fly','noclip','freeze','invisible'].includes(power)) target[power==='god'?'godMode':power]=value;
+    if(power==='noclip' && value) target.fly=true;
+    if(power==='heal'){
+      target.pvpHealth=3; target.alive=true; target.eliminated=false;
+      if(!target.bot && room.mode==='pvp') sendJson(target,{t:'health',current:3,maximum:3,_serverFrom:target.connectionId,_serverName:target.name});
     }
-    sendJson(target,envelope);return;
+    if(power==='launch' && target.position) { target.position.y-=4; broadcastRoom(room,{t:'peer-state',x:target.position.x,y:target.position.y,_serverFrom:target.connectionId,_serverName:target.name}); }
+    if(power==='bring' && target.position && client.position) { target.position.x=client.position.x; target.position.y=client.position.y-1; broadcastRoom(room,{t:'peer-state',x:target.position.x,y:target.position.y,_serverFrom:target.connectionId,_serverName:target.name}); }
+    if(power==='invisible'){target.hidden=value;broadcastRoom(room,{t:'admin-peer-visibility',connectionId:target.connectionId,hidden:value,name:target.name});}
+    else if(!target.bot) sendJson(target,{t:'admin-power',power,value});
+    else {
+      if(power==='god')target.godMode=value;
+      if(power==='fly')target.fly=value;
+      if(power==='noclip')target.noclip=value;
+      if(power==='freeze')target.frozen=value;
+      if(power==='invisible'){target.hidden=value;broadcastRoom(room,{t:'admin-peer-visibility',connectionId:target.connectionId,hidden:value,name:target.name});}
+      if(power==='heal'){target.alive=true;target.pvpHealth=3;}
+      if(power==='bring'){target.position={...client.position};}
+      if(power==='launch'){target.position.y=Math.max(-30,target.position.y-4);}
+      broadcastRoom(room,{t:'admin-power',power,value,_serverFrom:target.connectionId,_serverName:target.name});
+    }
+    return;
+  }
+
+  if (message.t==='admin-name') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
+    const target=findRoomActor(room,String(message.targetConnectionId||''));if(!target)return;
+    const newName=normalizeName(message.name||'Player').slice(0,32)||'Player'; const oldName=target.name; target.name=newName;
+    broadcastRoom(room,{t:'admin-peer-name',connectionId:target.connectionId,name:newName,oldName});
+    if(!target.bot) sendJson(target,{t:'admin-local-name',name:newName});
+    return;
+  }
+
+  if (message.t==='admin-fake-leave') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
+    const target=findRoomActor(room,String(message.targetConnectionId||''));if(!target)return;
+    target.hidden=true; const fakeName=target.name;
+    broadcastRoom(room,{t:'admin-fake-leave',connectionId:target.connectionId,name:fakeName});
+    if(!target.bot) sendJson(target,{t:'admin-fake-leave',connectionId:target.connectionId,name:fakeName,local:true});
+    return;
+  }
+  if (message.t==='admin-fake-return') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
+    const target=findRoomActor(room,String(message.targetConnectionId||''));if(!target)return;
+    target.hidden=false; broadcastRoom(room,{t:'admin-fake-return',connectionId:target.connectionId,name:target.name});
+    if(!target.bot) sendJson(target,{t:'admin-fake-return',connectionId:target.connectionId,name:target.name,local:true});
+    return;
+  }
+
+  if (message.t==='admin-pvp') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
+    room.adminPvpOverride=!!message.enabled;
+    broadcastRoom(room,{t:'admin-pvp-state',enabled:room.adminPvpOverride});
+    return;
+  }
+
+  if (message.t==='admin-background') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
+    const theme=Math.max(0,Math.min(9,Number(message.background)|0));
+    room.backgroundOverride=theme;
+    broadcastRoom(room,{t:'admin-background',background:theme});
+    return;
+  }
+
+  if (message.t==='admin-bot-control') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
+    const bot=room.bots&&room.bots.get(String(message.targetConnectionId||'')); if(!bot)return;
+    if(message.stop){if(String(bot.controlledBy||'')===String(client.connectionId)) {bot.controlledBy=null;bot.controlInput=null;} return;}
+    bot.controlledBy=client.connectionId;
+    bot.controlInput={dx:Number(message.dx)||0,dy:Number(message.dy)||0,expiresAt:Date.now()+700};
+    return;
+  }
+  if (message.t==='admin-bot-chat') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
+    const bot=room.bots&&room.bots.get(String(message.targetConnectionId||'')); if(!bot)return;
+    const text=String(message.message||'').replace(/[\x00-\x1F\x7F]/g,'').trim().slice(0,180); if(!text)return;
+    if(Date.now()<(bot.chatCooldown||0))return;
+    bot.chatCooldown=Date.now()+700;
+    broadcastRoom(room,{t:'chat',name:bot.name,text:text,_serverFrom:bot.connectionId,_serverName:bot.name});
+    return;
+  }
+
+  if (message.t==='admin-bot-spawn') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
+    const bot=spawnAdminBot(room,message.name,{ai:message.ai||'idle'});
+    if(!bot){sendJson(client,{t:'server-error',code:'bot-limit',message:'Room is full.'});return;}
+    sendJson(client,{t:'admin-bot-created',connectionId:bot.connectionId,name:bot.name});
+    return;
+  }
+  if (message.t==='admin-bot-remove') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
+    const bot=room.bots&&room.bots.get(String(message.targetConnectionId||'')); if(!bot)return;
+    removeAdminBot(room,bot,true); return;
+  }
+
+  if (message.t==='admin-inventory-request') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
+    const target=findRoomActor(room,String(message.targetConnectionId||''));if(!target)return;
+    if(target.bot){
+      sendJson(client,{t:'admin-inventory-data',targetConnectionId:target.connectionId,slots:Array.isArray(target.inventory)?target.inventory.slice(0,50):[],coins:Number(target.coins)||0});
+      return;
+    }
+    target._adminInventoryRequest={adminConnectionId:client.connectionId,expiresAt:Date.now()+5000};
+    sendJson(target,{t:'admin-inventory-request',adminConnectionId:client.connectionId});
+    return;
+  }
+  if (message.t==='admin-inventory-data') {
+    const req=client._adminInventoryRequest;
+    if(!req||req.expiresAt<Date.now())return;
+    const requester=findClientGlobal(req.adminConnectionId); if(!requester)return;
+    delete client._adminInventoryRequest;
+    sendJson(requester,{t:'admin-inventory-data',targetConnectionId:client.connectionId,slots:Array.isArray(message.slots)?message.slots.slice(0,50):[],coins:Number(message.coins)||0});
+    return;
+  }
+  if (message.t==='admin-inventory-command') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
+    const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target)return;
+    target._adminInventoryControl={adminConnectionId:client.connectionId,expiresAt:Date.now()+5000};
+    sendJson(target,{t:'admin-inventory-command',requesterConnectionId:client.connectionId,action:String(message.action||''),slot:Number(message.slot)|0,count:Number(message.count)|0});
+    return;
+  }
+  if (message.t==='admin-bot-inventory-command') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth'});return;}
+    const bot=room.bots&&room.bots.get(String(message.targetConnectionId||''));if(!bot)return;
+    const action=String(message.action||''),slot=Number(message.slot)|0,count=Math.max(1,Number(message.count)|0);
+    if(action==='clear') bot.inventory=[];
+    else if(slot>=0&&slot<bot.inventory.length){
+      const it=bot.inventory[slot]; const n=Math.min(count,it.count|0);
+      if(action==='remove'||action==='take'){
+        it.count-=n;
+        if(it.count<=0) bot.inventory.splice(slot,1);
+        if(action==='take'){
+          // Transfer to the admin's normal inventory through the same
+          // authenticated client-side inventory path used for real players.
+          sendJson(client,{t:'admin-inventory-return',targetConnectionId:bot.connectionId,item:Object.assign({},it,{count:n})});
+        }
+      }
+    }
+    sendJson(client,{t:'admin-inventory-data',targetConnectionId:bot.connectionId,slots:bot.inventory.slice(0,50),coins:bot.coins||0});
+    return;
+  }
+
+  if (message.t==='admin-inventory-return') {
+    const control=client._adminInventoryControl;
+    if(!control||control.expiresAt<Date.now()||String(message.requesterConnectionId||'')!==String(control.adminConnectionId))return;
+    const requester=findClientGlobal(control.adminConnectionId); if(!requester)return;
+    delete client._adminInventoryControl;
+    sendJson(requester,{t:'admin-inventory-return',targetConnectionId:client.connectionId,item:sanitizeItem(message.item)});
+    return;
   }
 
   if (message.t==='trade-request') {
