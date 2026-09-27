@@ -22176,6 +22176,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     // symbols inside its generated closure, so later <script> tags cannot see
     // them unless we deliberately bridge them onto window.
     window.q = q;
+    // Keep the recovered Main class reachable by the admin overlay and other DOM-side tools.
+    // The generated client normally keeps this namespace private, but the admin UI uses
+    // Main.diggerzService as its service bridge.
+    window.Main = q;
     window.l = l;
     window.oa = oa;
     window.DiggerzService = DiggerzService;
@@ -115155,7 +115159,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
   var ownerSequence=['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
   var ownerSequenceIndex=0;
 
-  function svc(){return window.Main&&window.Main.diggerzService?window.Main.diggerzService:null}
+  function svc(){var m=window.Main&&window.Main.diggerzService;if(m)return m;var qsvc=window.q&&window.q.diggerzService;if(qsvc)return qsvc;return null}
   function say(v){status.textContent=v&&v.message?v.message:String(v||'Done.')}
   function showToggle(){toggle.style.display='block'}
 
@@ -115201,7 +115205,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       var response=await fetch('/api/admin/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:code}),cache:'no-store'});
       var data={};try{data=await response.json()}catch(e){}
       if(!response.ok||!data.ok||!data.token){punishWrongCode();say(data.error==='too-many-attempts'?'Too many failed admin attempts. Try again later.':'Access denied.');return}
-      adminToken=String(data.token);adminRole=String(data.role||'');adminExpiresAt=+data.expiresAt||0;window.DiggerzAdminSessionToken=adminToken;
+      adminToken=String(data.token);adminRole=String(data.role||'');adminExpiresAt=+data.expiresAt||0;window.DiggerzAdminSessionToken=adminToken;window.DiggerzAdminRole=adminRole;window.DiggerzAdminExpiresAt=adminExpiresAt;
       ownerAuthenticated=adminRole==='owner';limeAuthenticated=adminRole==='lime';
       var s=authorizeCurrentService();showToggle();panel.style.display='block';refreshPlayers();refreshItemCatalog();refreshBans();
       if(ownerAuthenticated){say('Owner authenticated by server. Official OWNER tag enabled.');if(s&&s.adminApplyOwnerTag)s.adminApplyOwnerTag()}
