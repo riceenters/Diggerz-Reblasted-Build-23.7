@@ -8,6 +8,6 @@ ENV HOST=0.0.0.0
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=12 CMD wget -qO- "http://127.0.0.1:${PORT:-8080}/health" >/dev/null || exit 1
-
-CMD ["npm", "start"]
+# Railway performs the HTTP health check itself. Avoid a second Docker
+# HEALTHCHECK that can race Railway's probe during container startup.
+CMD ["node", "diggerz-server.js"]

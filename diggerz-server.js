@@ -12,7 +12,11 @@ const path = require('path');
 const zlib = require('zlib');
 
 const PORT = Number(process.env.PORT || 8080);
-const HOST = process.env.HOST || '0.0.0.0';
+// Railway routes health checks to the container over its assigned PORT.
+// Always bind to all IPv4 interfaces; a custom HOST env var can otherwise
+// make the process unreachable from Railway's health checker.
+const HOST = '0.0.0.0';
+console.log(`[Diggerz] booting HTTP/WebSocket server on ${HOST}:${PORT}`);
 // Railway supplies PORT at runtime. Keep the health endpoint independent of
 // the browser/game assets so a deployment can become healthy immediately.
 const HEALTH_PATHS = new Set(['/health', '/healthz']);
