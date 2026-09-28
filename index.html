@@ -19137,6 +19137,19 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                     for (this.U31 = e; null != e && 100 > e.h44; )
                                         c += l._44,
                                         e = this.r33(b, c);
+                                    // RECOVERED NATIVE BLOCK VARIATION PICKER:
+                                    // s34 is the game's actual white grid/block highlight.
+                                    // Only use the radial picker when that native highlight
+                                    // is active and the clicked cell contains another block.
+                                    if (!a && this.s34.a2 && null != e && null != d &&
+                                        1 == d.a4 && 1 == e.a4 && (d.h44 | 0) != (e.h44 | 0) &&
+                                        typeof e.j44 == "function") {
+                                        try {
+                                            e.j44();
+                                            q.mClicked = !1;
+                                            return;
+                                        } catch (_nativeTilePickerError) {}
+                                    }
                                     !a && null != d && 0 < d.g36 && 1 == d.a4 && null != e && this.u31(d, e) && (1 != d.a4 || 141 != d.h44) && (e = null);
                                     null != e || null == d || 1 == d.a4 && 141 == d.h44 ? null == e || a || null == d || 141 != d.h44 || e.i42 ? 0 != od.h39 && q.thisMain.isPhone() || null == e || !(20 < e.a1) || e.i42 || this.R38 || l.b43 && e.j44() : (db.getTimer() | 0) < l.z39.o34 + 1E4 ? this.R35.C46("^1Error: ^7Teleport CoolDown.") : (K.X9(l.z38, Math.round(b / l._44), Math.round(c / l._44), e.Q36),
                                     d.G6(!0),
@@ -21843,6 +21856,25 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     }
     ;
     K.z4 = function(a, b, c, d, e) {
+        // The original game uses opcode 282 for block-variant changes. In the
+        // rebuilt multiplayer path that opcode is not handled by the custom
+        // WebSocket server, so preserve the native picker locally and mirror the
+        // exact same x/y/layer/id/variant through the multiplayer room protocol.
+        try {
+            var svc = window.DiggerzPvp22 && window.DiggerzPvp22.service;
+            if (svc && window.DiggerzIsMultiplayer && window.DiggerzIsMultiplayer(svc)) {
+                svc.pvpSend({t:"block-variant",x:a|0,y:b|0,layer:c|0,id:d|0,variant:e|0});
+                try {
+                    var layer = c|0;
+                    var cell = l.z38 && l.z38.R39 && l.z38.R39[layer] ? l.z38.R39[layer].r33((a|0)*l._44,(b|0)*l._44) : null;
+                    if (cell && cell.a4 === 1) {
+                        cell.b14 = e|0;
+                        h.n7(1,cell,d|0,e|0);
+                    }
+                } catch (_localVariantVisual) {}
+                return;
+            }
+        } catch (_multiplayerVariant) {}
         var g = new tb;
         g.R2(a);
         g.R2(c);
@@ -22843,11 +22875,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 packet.R0(coins)
             })
         },
-        sendTile: function(x, y, id, variant) {
+        sendTile: function(x, y, id, variant, layer) {
+            layer = layer == null ? 0 : (layer | 0);
             this.enqueue(11, 1, function(packet) {
                 packet.R2(1);
                 packet.R0(x);
-                packet.R0(0);
+                packet.R0(layer);
                 packet.R0(y);
                 packet.R2((id & 2047) | ((variant || 0) & 31) << 11)
             })
@@ -22879,7 +22912,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             return x >= 0 && y >= 0 && x < this.state.width && y < this.state.height ?
                 this.state.tiles[x + y * this.state.width] : 0
         },
-        setTile: function(x, y, id, variant) {
+        setTile: function(x, y, id, variant, layer) {
+            layer = layer == null ? 0 : (layer | 0);
             if (x < 0 || y < 0 || x >= this.state.width || y >= this.state.height) return false;
             var index = x + y * this.state.width;
             variant = variant || 0;
@@ -22887,7 +22921,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.state.tiles[index] = id;
             if (this.state.variants) this.state.variants[index] = variant;
             if (!id) delete this.damage[x + ":" + y];
-            this.sendTile(x, y, id, variant);
+            this.sendTile(x, y, id, variant, layer);
             this.markDirty();
             // Glowing mining particles (same E.V0 WHITE_PARTICLE path as original packet 68 / X36)
             if (prevId && !id && !this._pvpApplyingTile) {
@@ -22921,7 +22955,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 p.i32 = oa.MODE_IDLE;
                 p.i33._38(p.I32, !0, 0, 1)
             }
-            if (q.mState === 0 && this.ticks - this.lastDigTick > 4 && (anim === "hit" || anim === "build")) {
+            if (q.mState === 0 && this.ticks - this.lastDigTick > 4 && anim === "hit") {
                 p.i32 = oa.MODE_IDLE;
                 p.i33.Z28 = "";
                 p.i33._38(p.I32, !0, 0, 1)
@@ -23582,22 +23616,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             // take damage, which prevents accidental radius/vein mining.
             var id = this.tileAt(targetX, targetY);
             if (!id || this.distanceToPlayer(targetX, targetY) > 3.6) return;
-            // RECOVERED NATIVE BLOCK VARIATION PICKER:
-            // The original client already has the exact spinning Sc/tilepick wheel
-            // used by the clothing/inventory UI. Do not recreate it. When the player
-            // has a different block selected, an occupied block click opens that
-            // original wheel instead of mining the block.
-            if (heldItem && heldItem.category === 1 && (heldItem.id | 0) !== (id | 0)) {
-                try {
-                    var clickedBlockNative = this.r33(targetX * l._44, targetY * l._44);
-                    if (clickedBlockNative && (clickedBlockNative.h44 | 0) === (id | 0) &&
-                        (clickedBlockNative.a4 | 0) === 1 && typeof clickedBlockNative.j44 === "function") {
-                        clickedBlockNative.j44();
-                        q.mClicked = !1;
-                        return;
-                    }
-                } catch (_nativeVariantOpen) {}
-            }
+            // Block-variation clicks are handled by the recovered native U32()
+            // click path. It requires the real s34 placement/highlight target, then
+            // opens the original F.j44() radial picker on that exact block.
             var key = targetX + ":" + targetY;
             var breakRaw=Number(this.adminModifiers&&this.adminModifiers.breakSpeed);var breakMod=isFinite(breakRaw)?Math.max(.1,Math.min(10,breakRaw)):1;var hits = (this.damage[key] || 0) + breakMod;
             var specialServerBlock = id === 211 || id === 127 || id === 212;
@@ -23632,7 +23653,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var id = packet.Q9(), x = packet.Q7(), layer = packet.Q7(), y = packet.Q7();
             var slot = packet.Q9(), variant = packet.Q9();
             packet.r6();
-            if (layer !== 0 || this.tileAt(x, y) || this.distanceToPlayer(x, y) > 5 ||
+            if (layer < 0 || layer > 2 || (layer === 0 && this.tileAt(x, y)) || this.distanceToPlayer(x, y) > 5 ||
                 y <= 0 || y >= this.state.height - 1 || this.distanceToPlayer(x, y) < 1.1) return;
             // Rapid building can queue a packet for a slot that was just emptied or
             // moved by the prior placement. Recover by finding the same block stack
@@ -23659,7 +23680,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             if (window.DiggerzIsMultiplayer && window.DiggerzIsMultiplayer(this)) {
                 if (!this._diggerzPendingPlacements) this._diggerzPendingPlacements = {};
                 if (this._diggerzPendingPlacements[placeKey]) return;
-                this._diggerzPendingPlacements[placeKey] = {id:id,variant:variant};
+                this._diggerzPendingPlacements[placeKey] = {id:id,variant:variant,layer:layer};
                 var self = this;
                 setTimeout(function(){
                     try {
@@ -23668,13 +23689,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         delete self._diggerzPendingPlacements[placeKey];
                         if (self.tileAt(x,y)) return;
                         self.state.placed++;
-                        self.setTile(x,y,pending.id,pending.variant);
+                        self.setTile(x,y,pending.id,pending.variant,pending.layer);
                         self.markDirty();
                     } catch (_placeCommit) {}
                 }, 410);
             } else {
                 this.state.placed++;
-                this.setTile(x, y, id, variant);
+                this.setTile(x, y, id, variant, layer);
                 this.markDirty();
             }
             E.v2(Vm.n7());
@@ -115666,7 +115687,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     proto.pvpDropKey=function(parts){return Array.isArray(parts)?parts.map(function(v){return v|0}).join(':'):''};
     proto.pvpAddSharedDrop=function(d){if(!d||!Array.isArray(d.guid))return;var guid=this.guidFromParts(d.guid),key=this.pvpGuidKey(guid);if(this.drops[key])return;var drop={guid:guid,category:d.category|0,id:d.id|0,count:Math.max(1,d.count|0),x:+d.x||0,y:+d.y||0,text:String(d.text||''),tier:String(d.tier||'')};this.drops[key]=drop;this.enqueue(15,1,function(packet){packet.R8(guid);packet.R4(drop.category);packet.r8(drop.x);packet.r8(0);packet.r8(drop.y);packet.r8(drop.x);packet.r8(0);packet.r8(drop.y-.35);packet.R2(drop.id);packet.R2(drop.count);packet.R0(0);packet.s0(true);packet.R9(drop.text)})};
     proto.pvpRemoveSharedDrop=function(parts){var guid=this.guidFromParts(parts),key=this.pvpGuidKey(guid),drop=this.drops[key];if(!drop)return;delete this.drops[key];this.removeDrop(drop)};
-    proto.pvpApplyRoomState=function(m){var i;if(Array.isArray(m.tiles)){this._pvpApplyingTile=true;try{for(i=0;i<m.tiles.length;i++){var t=m.tiles[i];this.setTile(t.x|0,t.y|0,t.id|0,t.variant|0)}}finally{this._pvpApplyingTile=false}}if(Array.isArray(m.drops))for(i=0;i<m.drops.length;i++)this.pvpAddSharedDrop(m.drops[i])};
+    proto.pvpApplyRoomState=function(m){var i;if(Array.isArray(m.tiles)){this._pvpApplyingTile=true;try{for(i=0;i<m.tiles.length;i++){var t=m.tiles[i];this.setTile(t.x|0,t.y|0,t.id|0,t.variant|0,t.layer|0)}}finally{this._pvpApplyingTile=false}}if(Array.isArray(m.drops))for(i=0;i<m.drops.length;i++)this.pvpAddSharedDrop(m.drops[i])};
     proto.pvpRemoteHitLine=function(fromX,fromY,toX,toY){var peers=this.pvpEnsurePeers(),vx=toX-fromX,vy=toY-fromY,vv=vx*vx+vy*vy,best=null,bestT=2;for(var k in peers){var peer=peers[k],e=this.pvpEntityForPeer(peer);if(!e||!e.a2)continue;var px=e.b6/l._44,py=e.b7/l._44,t=vv>0?((px-fromX)*vx+(py-fromY)*vy)/vv:0;t=Math.max(0,Math.min(1,t));var cx=fromX+vx*t,cy=fromY+vy*t;if(Math.hypot(px-cx,py-cy)<=.9&&t<bestT){best=peer;bestT=t}}return best};
     proto.adminEffects={god:false,fly:false,noclip:false,invis:false};
     proto.adminModifiers={speed:1,jump:1,size:1,breakSpeed:1};
@@ -115791,7 +115812,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         var tx=m.x|0,ty=m.y|0,tkey=tx+':'+ty;
         if(String(m._serverFrom||'')===String(P.connectionId||'') && this._diggerzPendingPlacements && this._diggerzPendingPlacements[tkey]) return;
         this._pvpApplyingTile=true;
-        try{this.setTile(tx,ty,m.id|0,m.variant|0)}finally{this._pvpApplyingTile=false}
+        try{this.setTile(tx,ty,m.id|0,m.variant|0,m.layer|0)}finally{this._pvpApplyingTile=false}
         return
       }
       if(m.t==='drop-spawn'){this.pvpAddSharedDrop(m.drop);return}

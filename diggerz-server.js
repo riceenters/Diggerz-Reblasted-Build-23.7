@@ -2155,14 +2155,25 @@ function relayGameMessage(client, message, rawLength) {
     const now=Date.now();
     if(now-(client.lastReplaceBlockAt||0)<55)return;
     client.lastReplaceBlockAt=now;
-    room.tiles.set(key,{x,y,id,variant,ownerConnectionId:client.connectionId});
+    room.tiles.set(key,{x,y,id,variant,layer:0,ownerConnectionId:client.connectionId});
     room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
-    broadcastRoom(room,{t:'tile',x,y,id,variant,ownerConnectionId:client.connectionId,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
+    broadcastRoom(room,{t:'tile',x,y,id,variant,layer:0,ownerConnectionId:client.connectionId,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
+    return;
+  }
+
+  if (message.t==='block-variant') {
+    const x=Number(message.x)|0,y=Number(message.y)|0,layer=Number(message.layer)|0,id=Number(message.id)|0,variant=Math.max(0,Math.min(31,Number(message.variant)|0));
+    if(x<0||x>=128||y<0||y>=80||layer<0||layer>2||!client.alive||client.eliminated)return;
+    if(Math.hypot(client.position.x-x,client.position.y-y)>5)return;
+    const key=`${x},${y}`,prior=room.tiles.get(key);
+    if(!prior || (prior.id|0)!==id)return;
+    room.tiles.set(key,{x,y,id,variant,layer,ownerConnectionId:client.connectionId});
+    broadcastRoom(room,{t:'tile',x,y,id,variant,layer,ownerConnectionId:client.connectionId,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
     return;
   }
 
   if (message.t==='tile') {
-    const tile={x:Number(message.x)|0,y:Number(message.y)|0,id:Number(message.id)|0,variant:Number(message.variant)|0,ownerConnectionId:client.connectionId};
+    const tile={x:Number(message.x)|0,y:Number(message.y)|0,id:Number(message.id)|0,variant:Number(message.variant)|0,layer:Number(message.layer)|0,ownerConnectionId:client.connectionId};
     if(tile.x<0||tile.x>=128||tile.y<0||tile.y>=80)return;
     const key=`${tile.x},${tile.y}`, prior=room.tiles.get(key);
     if(room.mode==='digtrade'&&tile.id===122){
