@@ -41,6 +41,7 @@ This restoration includes the original client and recovered assets plus reconstr
 
 	<meta id="viewport" name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 	<meta name="apple-mobile-web-app-capable" content="yes">
+	<link rel="icon" type="image/png" href="favicon.png">
 
 <script>
 var aiptag = {cmd: {display: [], player: {push: function (callback) { callback(); }}}};
@@ -86877,26 +86878,37 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.C58.a0 = 1;
         this._9.push(this.C58);
 
-        // Build 23.2 public-release branding.  These labels deliberately use
-        // MAIN_FONT_BIG, the same recovered bitmap font used by rare-item
-        // center popups, and are parented to the logo so they follow its intro.
-        this.C60 = new xa(-this.C58._5.width * .28, -this.C58._5.height * .43,
-            "^7Made by HeuFancy and Lime, Rebuilt by a clanker...", q.MAIN_FONT_BIG);
-        this.C60.D7(this.C58, !0);
-        this.C60.set_local_xScale(this.C60.set_local_yScale(.24));
+        // Build 23.7 logo branding as a real OpenFL/Lime child of the original
+        // Diggerz logo.  This is intentionally NOT a DOM overlay: the extension
+        // is loaded as an in-game display object and follows the logo animation.
+        this.C60 = z.I9();
+        this.C60.D8("reblasted.png");
+        this.C60.D7(this.C58);
+        this.C60.set_local_xScale(this.C60.set_local_yScale(.22));
         this.C60.B8 = 6;
-        this.C60._1 = "reblasted_credit";
+        this.C60._1 = "reblasted_logo_extension";
         this.C58._9.push(this.C60);
 
-        this.C61 = new xa(this.C58._5.width * .32, this.C58._5.height * .58,
-            "^7Reblasted", q.MAIN_FONT_BIG);
-        this.C61.D7(this.C58, !0);
-        // Release-branding polish: make Reblasted more readable while keeping
-        // it tucked below/right of the main Diggerz.io mark so the two never overlap.
-        this.C61.set_local_xScale(this.C61.set_local_yScale(.46));
-        this.C61.B8 = 6;
-        this.C61._1 = "reblasted_tag";
-        this.C58._9.push(this.C61);
+        // D8 loads asynchronously, so center the extension once its real
+        // dimensions are available.  The supplied artwork is transparently
+        // cropped to its visible bounds before being packaged.
+        var reblastedLogoExtension = this.C60;
+        var reblastedLogoParent = this.C58;
+        var reblastedLogoTries = 0;
+        var positionReblastedLogo = function() {
+            if (!reblastedLogoExtension._5 || !reblastedLogoExtension._5.width) {
+                if (++reblastedLogoTries < 120)
+                    window.setTimeout(positionReblastedLogo, 50);
+                return;
+            }
+            var extensionScale = .22;
+            reblastedLogoExtension.A7 =
+                (reblastedLogoParent._5.width -
+                 reblastedLogoExtension._5.width * extensionScale) / 2;
+            reblastedLogoExtension.A8 =
+                reblastedLogoParent._5.height + 8;
+        };
+        positionReblastedLogo();
 
         this.C57 = new ra;
         this.C57.X6(sa.SETTINGS_WHEEL_PNG());
