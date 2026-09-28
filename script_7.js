@@ -22772,13 +22772,15 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var px = l.z39 ? l.z39.b6 / l._44 : this.state.x;
             var py = l.z39 ? l.z39.b7 / l._44 : this.state.y;
             if (!isFinite(px) || !isFinite(py)) return false;
-            // Keep the client-side preview/rejection in lockstep with the
-            // authoritative server's small no-place zone around the player.
+            // Build 24.0.34: match the server's padded personal-space zone.
+            // Touching an edge/corner counts as blocked, with a small margin
+            // to prevent the native physics body from ever receiving a tile
+            // through a diagonal/edge click.
             var left = x - 0.5, right = x + 0.5;
             var top = y - 0.5, bottom = y + 0.5;
-            var hw = 0.48, hh = 0.78;
-            return !(right <= px - hw || left >= px + hw ||
-                     bottom <= py - hh || top >= py + hh);
+            var hw = 0.66 + 0.08, hh = 0.96 + 0.08;
+            return !(right < px - hw || left > px + hw ||
+                     bottom < py - hh || top > py + hh);
         },
         fixLocalAnimations: function() {
             var p = l.z39;

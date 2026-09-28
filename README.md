@@ -231,3 +231,15 @@ Diggerz.io and Coaster Town were originally created by **MeanDean**. Diggerz.io 
 - Clicking an occupied block while holding a different block opens the native wheel instead of breaking the clicked block.
 - The wheel lists every catalog-valid variant of that block, including recovered slope/orientation variants.
 - Variant selection is mirrored into the multiplayer tile state and broadcast through the existing tile sync path.
+
+
+## Build 24.0.33
+- Expanded the player no-placement zone with a small safety margin.
+- Edge and corner contact now counts as blocked.
+- Server-authoritative protection also covers block replacement/variant actions.
+
+## Build 24.0.34
+- Added automatic wrong-layer repair for imported/default map tiles. Backdrop/decorative block IDs are forced to layer 2 and normal blocks to layer 0.
+- Server tile placement, replacement, and block-variant actions now self-correct legacy wrong-layer tiles.
+- Mining/removal requests fall back to the actual layer when a block was stranded on the opposite layer.
+- Clients clear stale opposite-layer copies before applying an authoritative corrected tile, restoring mining and block modification behavior.

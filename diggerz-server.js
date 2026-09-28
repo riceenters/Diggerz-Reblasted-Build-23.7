@@ -748,6 +748,9 @@ knownPlayers = loadKnownPlayers();
 donations = loadDonations();
 pruneExpiredBans(true);
 
+const BACKDROP_BLOCK_IDS = new Set([118,119,143,158,159,160,161,162,189,191,213,214,272,273]);
+function expectedBlockLayer(id) { return BACKDROP_BLOCK_IDS.has(Number(id)|0) ? 2 : 0; }
+
 function sanitizeMap(raw, filename = '') {
   if (!raw || typeof raw !== 'object' || raw.format !== 'diggerz-pvp-map-v1') return null;
   if ((Number(raw.width)|0) !== 128 || (Number(raw.height)|0) !== 80 || !Array.isArray(raw.tiles)) return null;
@@ -769,7 +772,24 @@ function sanitizeMap(raw, filename = '') {
     if(!Array.isArray(row)||row.length<3)continue; const x=Number(row[0])|0,y=Number(row[1])|0,id=Number(row[2])|0,variant=(Number(row[3])|0)&31,flags=(Number(row[4])|0)&15;
     if(x<0||x>=128||y<0||y>=80||id<=0||id>2047)continue; const key=`${x},${y}`; if(seenBg.has(key))continue; seenBg.add(key); backgroundTiles.push(flags?[x,y,id,variant,flags]:[x,y,id,variant]);
   }
-  return { format:'diggerz-pvp-map-v1', name, width:128, height:80, background:Math.max(0,Math.min(9,Number(raw.background)|0)), tiles, backgroundTiles };
+  // Build 24.0.34: repair maps that contain a block in the wrong layer.
+  // The block catalog is authoritative here: backdrop/decorative IDs belong
+  // on layer 2; normal playable blocks belong on layer 0. This also makes
+  // imported maps self-healing instead of leaving an unmineable/unmodifiable
+  // tile stranded on the opposite layer.
+  const normalizedTiles=[]; const normalizedBackgroundTiles=[];
+  const seenFg=new Set(), seenBg2=new Set();
+  for(const row of tiles){
+    const x=row[0]|0,y=row[1]|0,id=row[2]|0,key=`${x},${y}`;
+    if(expectedBlockLayer(id)===2){ if(seenBg2.has(key))continue; seenBg2.add(key); normalizedBackgroundTiles.push(row); }
+    else { if(seenFg.has(key))continue; seenFg.add(key); normalizedTiles.push(row); }
+  }
+  for(const row of backgroundTiles){
+    const x=row[0]|0,y=row[1]|0,id=row[2]|0,key=`${x},${y}`;
+    if(expectedBlockLayer(id)===2){ if(seenBg2.has(key))continue; seenBg2.add(key); normalizedBackgroundTiles.push(row); }
+    else { if(seenFg.has(key))continue; seenFg.add(key); normalizedTiles.push(row); }
+  }
+  return { format:'diggerz-pvp-map-v1', name, width:128, height:80, background:Math.max(0,Math.min(9,Number(raw.background)|0)), tiles:normalizedTiles, backgroundTiles:normalizedBackgroundTiles };
 }
 
 function loadCustomMaps() {
@@ -1087,19 +1107,20 @@ function placementOverlapsPlayer(player, tileX, tileY) {
   const px=Number(player.position.x), py=Number(player.position.y);
   if (!Number.isFinite(px) || !Number.isFinite(py)) return false;
 
-  // Build 24.0.32: reserve a small grid-aligned "personal space" around the
-  // player.  It sits INSIDE the normal build range, so the player can still
-  // build right next to the zone, but no block can ever be placed into the
-  // cells occupied by/under the player's body.  This is deliberately a little
-  // larger than the old circular point check so corner cases cannot wedge a
-  // block into the character.
+  // Build 24.0.33: reserve a slightly padded, grid-aligned personal-space
+  // rectangle around the player's real physics position.  The old check used
+  // the visual-looking footprint, but tiles whose edge/corner merely touched
+  // that footprint could still get accepted by the native physics engine.
+  // Treat touching as blocked and add a small safety margin so diagonal/edge
+  // clicks cannot wedge a block into the player.
   const cellHalf=0.5;
-  const bodyHalfWidth=0.48;
-  const bodyHalfHeight=0.78;
+  const bodyHalfWidth=0.66;
+  const bodyHalfHeight=0.96;
+  const safety=0.08;
   const left=Number(tileX)-cellHalf, right=Number(tileX)+cellHalf;
   const top=Number(tileY)-cellHalf, bottom=Number(tileY)+cellHalf;
-  return !(right <= px-bodyHalfWidth || left >= px+bodyHalfWidth ||
-           bottom <= py-bodyHalfHeight || top >= py+bodyHalfHeight);
+  return !(right < px-(bodyHalfWidth+safety) || left > px+(bodyHalfWidth+safety) ||
+           bottom < py-(bodyHalfHeight+safety) || top > py+(bodyHalfHeight+safety));
 }
 
 function placementBlockedByAnyPlayer(room, tileX, tileY) {
@@ -2176,61 +2197,115 @@ function relayGameMessage(client, message, rawLength) {
 
   if (ALLOWED_RELAY_TYPES.has(message.t)) { broadcastRoom(room,envelope,client); return; }
 
+  function normalizeRoomTileAt(room,x,y){
+    const key=`${x},${y}`;
+    const fg=room.tiles.get(key)||null, bg=room.backgroundTiles.get(key)||null;
+    let corrected=false;
+    if(fg && expectedBlockLayer(fg.id)===2){
+      room.tiles.delete(key);
+      if(!room.backgroundTiles.has(key)) room.backgroundTiles.set(key,{...fg,layer:2});
+      corrected=true;
+    }
+    const bg2=room.backgroundTiles.get(key)||null;
+    if(bg2 && expectedBlockLayer(bg2.id)!==2){
+      room.backgroundTiles.delete(key);
+      if(!room.tiles.has(key)) room.tiles.set(key,{...bg2,layer:0});
+      corrected=true;
+    }
+    return {corrected,fg:room.tiles.get(key)||null,bg:room.backgroundTiles.get(key)||null};
+  }
+  function sendLayerCorrection(room,client,x,y,oldLayer,oldTile,newLayer,newTile){
+    if(oldLayer!==newLayer){
+      broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:oldLayer,_serverCorrection:true,_serverFrom:client.connectionId,_serverName:client.name});
+    }
+    if(newTile){
+      broadcastRoom(room,{t:'tile',x,y,id:newTile.id|0,variant:newTile.variant|0,layer:newLayer,_serverCorrection:true,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
+    }
+  }
+
   if (message.t==='replace-block') {
     const x=Number(message.x)|0,y=Number(message.y)|0,id=Number(message.id)|0,variant=Number(message.variant)|0;
     if(x<0||x>=128||y<0||y>=80||id<=0)return;
     if(!client.position||!client.alive||client.eliminated)return;
     if(Math.hypot(client.position.x-x,client.position.y-y)>5)return;
-    for(const other of room.clients){ if(!other.alive||other.eliminated||!other.position) continue; if(Math.hypot(other.position.x-x,other.position.y-y)<0.72)return; }
-    const key=`${x},${y}`,prior=room.tiles.get(key);
-    if(!prior || !(prior.id|0))return;
+    if(placementBlockedByAnyPlayer(room,x,y))return;
+    normalizeRoomTileAt(room,x,y);
+    const desired=expectedBlockLayer(id),key=`${x},${y}`;
+    const priorStore=desired===2?room.backgroundTiles:room.tiles, otherStore=desired===2?room.tiles:room.backgroundTiles;
+    const prior=priorStore.get(key)||otherStore.get(key);
+    if(!prior || (prior.id|0)!==id)return;
     const inv=message.inventoryItem||{};
     if((inv.category|0)!==1 || (inv.id|0)!==id)return;
     const now=Date.now();
     if(now-(client.lastReplaceBlockAt||0)<55)return;
     client.lastReplaceBlockAt=now;
-    room.tiles.set(key,{x,y,id,variant,layer:0,ownerConnectionId:client.connectionId});
+    const oldLayer=otherStore.has(key)?(desired===2?0:2):desired;
+    otherStore.delete(key);
+    const next={x,y,id,variant,layer:desired,ownerConnectionId:client.connectionId};
+    priorStore.set(key,next);
     room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
-    broadcastRoom(room,{t:'tile',x,y,id,variant,layer:0,ownerConnectionId:client.connectionId,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
+    sendLayerCorrection(room,client,x,y,oldLayer,prior,desired,next);
     return;
   }
   if (message.t==='block-variant') {
-    const x=Number(message.x)|0,y=Number(message.y)|0,rawLayer=Number(message.layer)|0,layer=rawLayer===2?2:0,id=Number(message.id)|0,variant=Math.max(0,Math.min(31,Number(message.variant)|0));
-    if(x<0||x>=128||y<0||y>=80||layer<0||layer>2||!client.alive||client.eliminated)return;
+    const x=Number(message.x)|0,y=Number(message.y)|0,id=Number(message.id)|0,variant=Math.max(0,Math.min(31,Number(message.variant)|0));
+    if(x<0||x>=128||y<0||y>=80||!client.alive||client.eliminated)return;
     if(Math.hypot(client.position.x-x,client.position.y-y)>5)return;
-    const key=`${x},${y}`,prior=room.tiles.get(key);
+    if(placementBlockedByAnyPlayer(room,x,y))return;
+    normalizeRoomTileAt(room,x,y);
+    const desired=expectedBlockLayer(id),key=`${x},${y}`,want=desired===2?room.backgroundTiles:room.tiles,other=desired===2?room.tiles:room.backgroundTiles;
+    const prior=want.get(key)||other.get(key);
     if(!prior || (prior.id|0)!==id)return;
-    room.tiles.set(key,{x,y,id,variant,layer,ownerConnectionId:client.connectionId});
-    broadcastRoom(room,{t:'tile',x,y,id,variant,layer,ownerConnectionId:client.connectionId,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
+    const oldLayer=other.has(key)?(desired===2?0:2):desired;
+    other.delete(key);
+    const next={x,y,id,variant,layer:desired,ownerConnectionId:client.connectionId};
+    want.set(key,next);
+    sendLayerCorrection(room,client,x,y,oldLayer,prior,desired,next);
     return;
   }
 
   if (message.t==='tile') {
-    let layer=Number(message.layer)|0; layer=layer===2?2:0;
-    const tile={x:Number(message.x)|0,y:Number(message.y)|0,id:Number(message.id)|0,variant:Number(message.variant)|0,layer,ownerConnectionId:client.connectionId};
-    if(tile.x<0||tile.x>=128||tile.y<0||tile.y>=80||!client.position||!client.alive||client.eliminated)return;
-    if(Math.hypot(client.position.x-tile.x,client.position.y-tile.y)>5)return;
-    // Never let a newly placed block overlap any player's body. This is
-    // deliberately authoritative so the client cannot create a bad local
-    // collision state even if it sends a stale placement packet.
-    if(tile.id!==0 && placementBlockedByAnyPlayer(room,tile.x,tile.y))return;
-    const key=`${tile.x},${tile.y}`;
-    const store=layer===2?room.backgroundTiles:room.tiles;
-    const prior=store.get(key);
-    if(room.mode==='digtrade'&&tile.id===122&&layer!==0)return;
-    if(room.mode==='digtrade'&&tile.id===122){
-      if(room.speaker && (room.speaker.x!==tile.x||room.speaker.y!==tile.y)){
-        sendJson(client,{t:'speaker-place-blocked',x:tile.x,y:tile.y,tile:prior?{id:prior.id|0,variant:prior.variant|0}:{id:0,variant:0}});return;
-      }
-      room.speaker={x:tile.x,y:tile.y,on:false,trackIndex:0,startedAt:0,ownerConnectionId:client.connectionId};
-    }
-    if(tile.id===0) store.delete(key); else store.set(key,tile);
-    if(tile.id===0 && layer===0){
-      if(prior&&prior.id===122&&room.speaker&&room.speaker.x===tile.x&&room.speaker.y===tile.y) room.speaker=null;
+    let requestedLayer=Number(message.layer)|0; requestedLayer=requestedLayer===2?2:0;
+    const x=Number(message.x)|0,y=Number(message.y)|0,id=Number(message.id)|0,variant=Number(message.variant)|0;
+    if(x<0||x>=128||y<0||y>=80||!client.position||!client.alive||client.eliminated)return;
+    if(Math.hypot(client.position.x-x,client.position.y-y)>5)return;
+    if(id!==0 && placementBlockedByAnyPlayer(room,x,y))return;
+    normalizeRoomTileAt(room,x,y);
+    const key=`${x},${y}`;
+    if(id===0){
+      // Mining should work even if an older packet/map put the block on the
+      // opposite layer. Prefer the requested layer, then fall back to the
+      // other layer, and tell every client which layer was actually removed.
+      let actualLayer=requestedLayer;
+      let prior=(requestedLayer===2?room.backgroundTiles:room.tiles).get(key)||null;
+      if(!prior){ actualLayer=requestedLayer===2?0:2; prior=(actualLayer===2?room.backgroundTiles:room.tiles).get(key)||null; }
+      if(!prior)return;
+      (actualLayer===2?room.backgroundTiles:room.tiles).delete(key);
+      if(prior.id===122&&room.speaker&&room.speaker.x===x&&room.speaker.y===y) room.speaker=null;
       room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
+      broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:actualLayer,_serverCorrection:actualLayer!==requestedLayer,_serverFrom:client.connectionId,_serverName:client.name});
+      if(prior.id===122)syncSpeaker(room);
+      return;
     }
-    broadcastRoom(room,Object.assign({t:'tile'},tile,{_serverFrom:client.connectionId,_serverName:client.name}));
-    if((prior&&prior.id===122)||tile.id===122)syncSpeaker(room);
+    const desiredLayer=expectedBlockLayer(id);
+    const store=desiredLayer===2?room.backgroundTiles:room.tiles;
+    const other=desiredLayer===2?room.tiles:room.backgroundTiles;
+    const wrong=other.get(key)||null;
+    if(wrong)other.delete(key);
+    if(room.mode==='digtrade'&&id===122&&desiredLayer!==0)return;
+    if(room.mode==='digtrade'&&id===122){
+      if(room.speaker && (room.speaker.x!==x||room.speaker.y!==y)){
+        const prior=store.get(key)||null;
+        sendJson(client,{t:'speaker-place-blocked',x,y,tile:prior?{id:prior.id|0,variant:prior.variant|0,layer:desiredLayer}:{id:0,variant:0,layer:desiredLayer}});return;
+      }
+      room.speaker={x,y,on:false,trackIndex:0,startedAt:0,ownerConnectionId:client.connectionId};
+    }
+    const tile={x,y,id,variant,layer:desiredLayer,ownerConnectionId:client.connectionId};
+    store.set(key,tile);
+    room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
+    if(wrong) broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:desiredLayer===2?0:2,_serverCorrection:true,_serverFrom:client.connectionId,_serverName:client.name});
+    broadcastRoom(room,Object.assign({t:'tile'},tile,{_serverCorrection:desiredLayer!==requestedLayer,_serverFrom:client.connectionId,_serverName:client.name,replace:true}));
+    if(id===122)syncSpeaker(room);
     return;
   }
   if(message.t==='speaker-toggle'){
