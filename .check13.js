@@ -212,10 +212,25 @@
     };
     function adminClampMod(v,min,max){v=Number(v);return isFinite(v)?Math.max(min,Math.min(max,v)):1}
     function adminApplyNoclipRadius(active){try{var ent=l.z39,body=ent&&ent.b34&&ent.b34.tBJ;if(!body)return;if(body.__diggerzOriginalRadius==null)body.__diggerzOriginalRadius=Number(body.radius)||1;body.radius=active?0:body.__diggerzOriginalRadius}catch(_e){}}
+    function installAdminPlayerSizeHook(ent){
+      try{
+        if(!ent||!ent.i33||ent.i33.__diggerzSizeHook)return;
+        var spr=ent.i33,orig=spr.set_local_xScale;
+        if(typeof orig!=='function')return;
+        spr.__diggerzBaseSetXScale=orig;
+        spr.set_local_xScale=function(v){
+          var m=Number(ent._diggerzSizeModifier);
+          if(!isFinite(m)||m<=0)m=1;
+          return orig.call(this,(Number(v)||0)*m);
+        };
+        spr.__diggerzSizeHook=true;
+      }catch(_e){}
+    }
     function installAdminPlayerModifierHooks(){
       try{
         var ent=l.z39;
         if(!ent){setTimeout(installAdminPlayerModifierHooks,100);return}
+        installAdminPlayerSizeHook(ent);
         if(ent.__diggerzModifierHooks)return;
         var originalK35=ent.k35,originalK36=ent.k36;
         if(typeof originalK35==='function'){
@@ -241,9 +256,9 @@
     proto.adminApplyModifiers=function(mods){
       this.adminModifiers={speed:adminClampMod(mods&&mods.speed,.1,10),jump:adminClampMod(mods&&mods.jump,.1,10),size:adminClampMod(mods&&mods.size,.25,4),breakSpeed:adminClampMod(mods&&mods.breakSpeed,.1,10)};
       var ent=l.z39,sz=this.adminModifiers.size;
-      try{if(ent){installAdminPlayerModifierHooks();ent._diggerzSizeModifier=sz;if(ent.i33){var face=ent.k33||1;ent.i33.set_local_xScale(face*sz);ent.i33.set_local_yScale(sz)}adminApplyNoclipRadius(!!(this.adminEffects&&this.adminEffects.noclip))}}catch(_e){}
+      try{if(ent){installAdminPlayerModifierHooks();ent._diggerzSizeModifier=sz;installAdminPlayerSizeHook(ent);if(ent.i33){var face=ent.k33||1;ent.i33.set_local_xScale(face);ent.i33.set_local_yScale(sz)}adminApplyNoclipRadius(!!(this.adminEffects&&this.adminEffects.noclip))}}catch(_e){}
     };
-    proto.adminApplyPeerModifiers=function(peer){if(!peer)return;var e=this.pvpEntityForPeer(peer),sz=Number(peer.adminModifiers&&peer.adminModifiers.size)||1;if(e){try{e._diggerzSizeModifier=sz;if(e.i33){var face=e.k33||1;e.i33.set_local_xScale(face*sz);e.i33.set_local_yScale(sz)}}catch(_e){}}};
+    proto.adminApplyPeerModifiers=function(peer){if(!peer)return;var e=this.pvpEntityForPeer(peer),sz=Number(peer.adminModifiers&&peer.adminModifiers.size)||1;if(e){try{e._diggerzSizeModifier=sz;installAdminPlayerSizeHook(e);if(e.i33){var face=e.k33||1;e.i33.set_local_xScale(face);e.i33.set_local_yScale(sz)}}catch(_e){}}};
     proto.adminApplyPeerEffects=function(peer){if(!peer)return;var e=this.pvpEntityForPeer(peer);if(e){try{e.set_alp(peer.adminEffects&&peer.adminEffects.invis?0:1);e.set_local_alp(peer.adminEffects&&peer.adminEffects.invis?0:1)}catch(_e){}}};
     proto.pvpReceive=function(m){
       if(!m||!window.DiggerzIsMultiplayer(this))return;

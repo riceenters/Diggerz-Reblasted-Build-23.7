@@ -115787,10 +115787,25 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     };
     function adminClampMod(v,min,max){v=Number(v);return isFinite(v)?Math.max(min,Math.min(max,v)):1}
     function adminApplyNoclipRadius(active){try{var ent=l.z39,body=ent&&ent.b34&&ent.b34.tBJ;if(!body)return;if(body.__diggerzOriginalRadius==null)body.__diggerzOriginalRadius=Number(body.radius)||1;body.radius=active?0:body.__diggerzOriginalRadius}catch(_e){}}
+    function installAdminPlayerSizeHook(ent){
+      try{
+        if(!ent||!ent.i33||ent.i33.__diggerzSizeHook)return;
+        var spr=ent.i33,orig=spr.set_local_xScale;
+        if(typeof orig!=='function')return;
+        spr.__diggerzBaseSetXScale=orig;
+        spr.set_local_xScale=function(v){
+          var m=Number(ent._diggerzSizeModifier);
+          if(!isFinite(m)||m<=0)m=1;
+          return orig.call(this,(Number(v)||0)*m);
+        };
+        spr.__diggerzSizeHook=true;
+      }catch(_e){}
+    }
     function installAdminPlayerModifierHooks(){
       try{
         var ent=l.z39;
         if(!ent){setTimeout(installAdminPlayerModifierHooks,100);return}
+        installAdminPlayerSizeHook(ent);
         if(ent.__diggerzModifierHooks)return;
         var originalK35=ent.k35,originalK36=ent.k36;
         if(typeof originalK35==='function'){
@@ -115816,9 +115831,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     proto.adminApplyModifiers=function(mods){
       this.adminModifiers={speed:adminClampMod(mods&&mods.speed,.1,10),jump:adminClampMod(mods&&mods.jump,.1,10),size:adminClampMod(mods&&mods.size,.25,4),breakSpeed:adminClampMod(mods&&mods.breakSpeed,.1,10)};
       var ent=l.z39,sz=this.adminModifiers.size;
-      try{if(ent){installAdminPlayerModifierHooks();ent._diggerzSizeModifier=sz;if(ent.i33){var face=ent.k33||1;ent.i33.set_local_xScale(face*sz);ent.i33.set_local_yScale(sz)}adminApplyNoclipRadius(!!(this.adminEffects&&this.adminEffects.noclip))}}catch(_e){}
+      try{if(ent){installAdminPlayerModifierHooks();ent._diggerzSizeModifier=sz;installAdminPlayerSizeHook(ent);if(ent.i33){var face=ent.k33||1;ent.i33.set_local_xScale(face);ent.i33.set_local_yScale(sz)}adminApplyNoclipRadius(!!(this.adminEffects&&this.adminEffects.noclip))}}catch(_e){}
     };
-    proto.adminApplyPeerModifiers=function(peer){if(!peer)return;var e=this.pvpEntityForPeer(peer),sz=Number(peer.adminModifiers&&peer.adminModifiers.size)||1;if(e){try{e._diggerzSizeModifier=sz;if(e.i33){var face=e.k33||1;e.i33.set_local_xScale(face*sz);e.i33.set_local_yScale(sz)}}catch(_e){}}};
+    proto.adminApplyPeerModifiers=function(peer){if(!peer)return;var e=this.pvpEntityForPeer(peer),sz=Number(peer.adminModifiers&&peer.adminModifiers.size)||1;if(e){try{e._diggerzSizeModifier=sz;installAdminPlayerSizeHook(e);if(e.i33){var face=e.k33||1;e.i33.set_local_xScale(face);e.i33.set_local_yScale(sz)}}catch(_e){}}};
     proto.adminApplyPeerEffects=function(peer){if(!peer)return;var e=this.pvpEntityForPeer(peer);if(e){try{e.set_alp(peer.adminEffects&&peer.adminEffects.invis?0:1);e.set_local_alp(peer.adminEffects&&peer.adminEffects.invis?0:1)}catch(_e){}}};
     proto.pvpReceive=function(m){
       if(!m||!window.DiggerzIsMultiplayer(this))return;
@@ -116916,6 +116931,15 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       return (q36|0)===2?2:0;
     }catch(e){return 0}
   };
+  window.DiggerzPlayerOverlapsCell=function(px,py,cx,cy,radius){
+    // A placement cell is a 1x1 world square. Reject it whenever the
+    // player's actual physics footprint intersects ANY part of that square.
+    // This is deliberately a live overlap test: as soon as the hitbox leaves
+    // the square, the square becomes placeable again.
+    var half=0.5, left=cx-half, right=cx+half, top=cy-half, bottom=cy+half;
+    var qx=Math.max(left,Math.min(px,right)), qy=Math.max(top,Math.min(py,bottom));
+    return Math.hypot(px-qx,py-qy) < radius;
+  };
   window.DiggerzCanPlaceNative=function(service,x,y,item){
     try{
       if(!service||!item||typeof l==='undefined'||!l.z39||!l._44)return false;
@@ -116923,17 +116947,20 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       var px=l.z39.b6/l._44, py=l.z39.b7/l._44;
       // Exact native-style build radius. Outside it is a complete no-op.
       if(Math.hypot(x-px,y-py)>5)return false;
-      // Never place directly in the player's occupied cell.
-      if(Math.hypot(x-px,y-py)<0.72)return false;
+      // Use the live physics body radius when available. The fallback is the
+      // normal player footprint used by the server relay.
+      var body=l.z39.b34&&l.z39.b34.tBJ, radius=body&&isFinite(body.radius)?Number(body.radius)/l._44:NaN;
+      if(!(radius>0.05&&radius<2))radius=0.72;
+      if(window.DiggerzPlayerOverlapsCell(px,py,x,y,radius))return false;
       // Reject cells occupied by known multiplayer/fake players.
       var peers=service.pvpEnsurePeers?service.pvpEnsurePeers():{};
       for(var k in peers){
         var peer=peers[k];
         var ent=service.pvpEntityForPeer?service.pvpEntityForPeer(peer):null;
         if(ent&&ent.a2!==false&&ent.b6!==undefined&&ent.b7!==undefined&&
-           Math.hypot(x-ent.b6/l._44,y-ent.b7/l._44)<0.72)return false;
+           window.DiggerzPlayerOverlapsCell(ent.b6/l._44,ent.b7/l._44,x,y,0.72))return false;
         if(peer&&isFinite(peer.lastX)&&isFinite(peer.lastY)&&
-           Math.hypot(x-peer.lastX/l._44,y-peer.lastY/l._44)<0.72)return false;
+           window.DiggerzPlayerOverlapsCell(peer.lastX/l._44,peer.lastY/l._44,x,y,0.72))return false;
       }
       // Check scene entities without touching the tile picker/highlight.
       var scene=l.z38&&l.z38._9;
@@ -116943,7 +116970,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         if(e.b6===undefined||e.b7===undefined)continue;
         // Player-like entities are allowed to expose h44/a4; avoid rejecting
         // ordinary tile renderers.  Only reject an entity with a body/actor.
-        if(e.b34&&Math.hypot(x-e.b6/l._44,y-e.b7/l._44)<0.72)return false;
+        if(e.b34&&window.DiggerzPlayerOverlapsCell(e.b6/l._44,e.b7/l._44,x,y,0.72))return false;
       }
       return true;
     }catch(e){return false}
@@ -117177,7 +117204,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 </script>
 
 	<div name="changes" id="changes">
-		<h1>Diggerz.io Reblasted - Change Log</h1><hr><a name="Build 24.0.29"></a><h2>Build 24.0.29 - Native Picker Cleanup &amp; Placement Guard Hardening</h2><ul><li>Hardened the native placement guard call so the placement handler always resolves it through the global window object, eliminating the intermittent undefined-function race.</li><li>Removed the red X entry from the native block variation wheel used for block modification.</li><li>Automatically closes the native tile variation wheel when its target block is broken, preventing an invisible menu from remaining on screen.</li></ul><hr><a name="Build 24.0.26"></a><h2>Build 24.0.26 - Strict Block Placement Rules</h2><ul><li>Block placement is now a hard no-op outside the five-tile placement range.</li><li>Placement is rejected when the target cell overlaps a player.</li><li>Normal placed blocks are forced onto the foreground block layer; only native background/decorative items using layer 2 remain on the background layer.</li><li>Multiplayer tile synchronization now preserves the placement layer and supports dynamic background tiles.</li></ul><hr><a name="Build 24.0.17"></a><h2>Build 24.0.17 - Admin Modifiers &amp; Building Polish</h2><ul><li>Added admin Speed, Size, Jump, and Break Speed modifiers.</li><li>Integrated the supplied noclip radius override while preserving normal movement.</li><li>Added a placement travel/grow/spin animation and grid placement indicator.</li><li>Added block modification popup when a block is selected and an occupied cell is clicked.</li><li>Hardened rapid placement/replacement synchronization.</li></ul>
+		<h1>Diggerz.io Reblasted - Change Log</h1><hr><a name="Build 24.0.30"></a><h2>Build 24.0.30 - Live Player-Hitbox Placement Cells</h2><ul><li>Placement cells now stay blocked for the entire time the player physics hitbox overlaps any part of the 1x1 cell.</li><li>The check uses a live player-footprint-vs-cell intersection instead of only checking the cell center.</li><li>A cell becomes placeable immediately after the hitbox exits it, including when the player moves across cell boundaries.</li><li>The same rule is enforced client-side and authoritatively by the multiplayer server.</li></ul><hr><a name="Build 24.0.29"></a><h2>Build 24.0.29 - Native Picker Cleanup &amp; Placement Guard Hardening</h2><ul><li>Hardened the native placement guard call so the placement handler always resolves it through the global window object, eliminating the intermittent undefined-function race.</li><li>Removed the red X entry from the native block variation wheel used for block modification.</li><li>Automatically closes the native tile variation wheel when its target block is broken, preventing an invisible menu from remaining on screen.</li></ul><hr><a name="Build 24.0.26"></a><h2>Build 24.0.26 - Strict Block Placement Rules</h2><ul><li>Block placement is now a hard no-op outside the five-tile placement range.</li><li>Placement is rejected when the target cell overlaps a player.</li><li>Normal placed blocks are forced onto the foreground block layer; only native background/decorative items using layer 2 remain on the background layer.</li><li>Multiplayer tile synchronization now preserves the placement layer and supports dynamic background tiles.</li></ul><hr><a name="Build 24.0.17"></a><h2>Build 24.0.17 - Admin Modifiers &amp; Building Polish</h2><ul><li>Added admin Speed, Size, Jump, and Break Speed modifiers.</li><li>Integrated the supplied noclip radius override while preserving normal movement.</li><li>Added a placement travel/grow/spin animation and grid placement indicator.</li><li>Added block modification popup when a block is selected and an occupied cell is clicked.</li><li>Hardened rapid placement/replacement synchronization.</li></ul>
 
 		<hr><a name="Build 23.7"></a>
 		<h2>Build 23.7 - Security &amp; Account Hardening</h2>

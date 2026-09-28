@@ -1078,7 +1078,7 @@ function fakeSolid(room,x,y) {
   return !!(t && (t.id|0)!==0);
 }
 
-// Build 24.0.29 placement safety: a block is a 1x1 world square and may not
+// Build 24.0.30 placement safety: a block is a 1x1 world square and may not
 // overlap a player's actual body footprint.  The old point-distance check
 // could still allow a corner/edge of a block into the player, which could
 // leave the native client with an impossible collision state.
@@ -1087,13 +1087,17 @@ function placementOverlapsPlayer(player, tileX, tileY) {
   const px=Number(player.position.x), py=Number(player.position.y);
   if (!Number.isFinite(px) || !Number.isFinite(py)) return false;
 
-  // Player coordinates are the native body center in the multiplayer relay.
-  // Keep a small margin so rounding at tile boundaries cannot create overlap.
-  const playerHalfWidth=0.43;
-  const playerHalfHeight=0.88;
-  const blockHalf=0.5;
-  return Math.abs(px-Number(tileX)) < (playerHalfWidth+blockHalf) &&
-         Math.abs(py-Number(tileY)) < (playerHalfHeight+blockHalf);
+  // Treat every placement cell as a real 1x1 square. The cell is blocked
+  // whenever the player's live physics footprint intersects ANY part of it.
+  // Once the player exits the square, placement becomes legal immediately.
+  // Multiplayer only receives the player's center, so use the same native
+  // footprint approximation consistently on the authoritative server.
+  const radius=0.72, half=0.5;
+  const left=Number(tileX)-half, right=Number(tileX)+half;
+  const top=Number(tileY)-half, bottom=Number(tileY)+half;
+  const qx=Math.max(left,Math.min(px,right));
+  const qy=Math.max(top,Math.min(py,bottom));
+  return Math.hypot(px-qx,py-qy) < radius;
 }
 
 function placementBlockedByAnyPlayer(room, tileX, tileY) {
