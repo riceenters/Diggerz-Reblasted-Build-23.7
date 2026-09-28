@@ -115161,7 +115161,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
   <h3>Map Tools</h3>
   <select id="admin-map-select"><option value="">Loading maps…</option></select>
   <div class="row"><button id="admin-map-apply" type="button">Load Map For Everyone</button><button id="admin-map-reset" type="button">Reset Map</button></div>
-  <button id="admin-map-editor" type="button">Open Map Editor</button>
+  <div class="row"><button id="admin-map-import" type="button">Import Map JSON</button><input id="admin-map-import-file" type="file" accept="application/json,.json" hidden></div>
+  <div class="hint">Example maps are loaded from the server's <code>maps</code> folder. Imported JSON replaces the current map for everyone. The map editor remains available for editing/exporting, but cannot apply changes to the current room.</div>
   <h3>Safe-Zone PvP Override</h3>
   <button id="admin-pvp" type="button">Enable PvP Override</button>
   <div id="diggerz-admin-status">Waiting for the local service…</div>
@@ -115331,10 +115332,27 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
   document.getElementById('admin-fake-remove-all').onclick=function(){var s=ownerService();if(!s)return say('Admin authentication required.');say(s.adminFakePlayerRemoveAll())};
   document.getElementById('admin-map-apply').onclick=function(){var s=ownerService(),sel=document.getElementById('admin-map-select');if(!s||!sel)return say('Admin authentication required.');say(s.adminLoadSelectedMap(sel.value))};
   document.getElementById('admin-map-reset').onclick=function(){var s=ownerService();if(!s)return say('Admin authentication required.');say(s.adminResetMap())};
+  document.getElementById('admin-map-import').onclick=function(){var s=ownerService();if(!s)return say('Admin authentication required.');document.getElementById('admin-map-import-file').click()};
+  document.getElementById('admin-map-import-file').onchange=async function(e){
+    var file=e.target.files&&e.target.files[0]; e.target.value='';
+    if(!file)return;
+    var s=ownerService(); if(!s)return say('Admin authentication required.');
+    try{
+      var text=await file.text(), map=JSON.parse(text);
+      if(!map||map.format!=='diggerz-pvp-map-v1')throw new Error('Invalid Diggerz map JSON.');
+      if((Number(map.width)|0)!==128||(Number(map.height)|0)!==80||!Array.isArray(map.tiles))throw new Error('Map must be a 128×80 Diggerz map.');
+      var room=window.DiggerzPvp22&&String(window.DiggerzPvp22.room||'').trim().toUpperCase();
+      var token=window.DiggerzAdminSessionToken;
+      if(!room||!token)throw new Error('Join a multiplayer room first.');
+      var r=await fetch('/api/admin/map/apply',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({roomCode:room,map:map})});
+      var d={};try{d=await r.json()}catch(_){}
+      if(!r.ok||!d.ok)throw new Error(d.error||'Map import failed.');
+      say('Imported '+(d.mapName||map.name||'map')+' and replaced the map for everyone.');
+    }catch(err){say('Map import failed: '+err.message)}
+  };
   async function refreshAdminMaps(){var sel=document.getElementById('admin-map-select');if(!sel)return;try{var token=window.DiggerzAdminSessionToken;if(!token)return;var r=await fetch('/api/admin/maps',{headers:{Authorization:'Bearer '+token},cache:'no-store'}),d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'map list failed');sel.innerHTML='';(d.maps||[]).forEach(function(m){var o=document.createElement('option');o.value=String(m.name||'');o.textContent=String(m.name||'Map');sel.appendChild(o)});}catch(e){sel.innerHTML='<option value="">Map list unavailable</option>';}}
   setTimeout(refreshAdminMaps,200);
 
-  document.getElementById('admin-map-editor').onclick=function(){try{if(window.DiggerzPvp22&&window.DiggerzPvp22.room)localStorage.setItem('diggerzAdminRoomCode',String(window.DiggerzPvp22.room));if(window.DiggerzAdminSessionToken)localStorage.setItem('diggerzAdminSessionToken',window.DiggerzAdminSessionToken)}catch(e){}window.open('/map-editor','diggerz-map-editor')};
   document.getElementById('admin-pvp').onclick=function(){var s=ownerService();if(!s)return say('Admin authentication required.');pvp=!pvp;say(s.adminSetPvp(pvp));this.textContent=pvp?'Disable PvP Override':'Enable PvP Override'};
 
 

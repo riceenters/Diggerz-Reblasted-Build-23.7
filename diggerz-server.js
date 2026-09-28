@@ -45,7 +45,6 @@ const RGB_LIGHTSWORD_IDS = new Set([516,517,566,567]);
 const GAME_HTML_PATH = path.join(__dirname, 'index.html');
 const BUILD239_CLIENT_PATH = path.join(__dirname, 'build239-client.js');
 const BUILD240_CLIENT_PATH = path.join(__dirname, 'build240-client.js');
-const MAP_EDITOR_PATH = path.join(__dirname, 'map-editor.html');
 const TILES_PNG_PATH = path.join(__dirname, 'tiles.png');
 const BKND_PNG_PATH = path.join(__dirname, 'bknd.png');
 const LEVELUP_OGG_PATH = path.join(__dirname, 'levelup.ogg');
@@ -395,7 +394,6 @@ function patchGameHtmlForBuild239(input) {
 let gameHtml = null;
 let build239ClientJs = null;
 let build240ClientJs = null;
-let mapEditorHtml = null;
 let tilesPng = null;
 let bkndPng = null;
 let levelupOgg = null;
@@ -408,7 +406,6 @@ let muleOgg = null;
 try { gameHtml = patchGameHtmlForBuild239(fs.readFileSync(GAME_HTML_PATH)); } catch (error) { console.warn('[Diggerz] index.html not found at startup:', error.message); }
 try { build239ClientJs = fs.readFileSync(BUILD239_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build239-client.js not found:', error.message); }
 try { build240ClientJs = fs.readFileSync(BUILD240_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build240-client.js not found:', error.message); }
-try { mapEditorHtml = fs.readFileSync(MAP_EDITOR_PATH); } catch (error) { console.warn('[Diggerz] map-editor.html not found:', error.message); }
 try { tilesPng = fs.readFileSync(TILES_PNG_PATH); } catch (error) { console.warn('[Diggerz] tiles.png not found:', error.message); }
 try { bkndPng = fs.readFileSync(BKND_PNG_PATH); } catch (error) { console.warn('[Diggerz] bknd.png not found:', error.message); }
 try { levelupOgg = fs.readFileSync(LEVELUP_OGG_PATH); } catch (error) { console.warn('[Diggerz] levelup.ogg not found:', error.message); }
@@ -2535,7 +2532,8 @@ async function handleAdminApi(req, res, urlPath) {
   }
   if (urlPath === '/api/admin/maps' && req.method === 'GET') {
     const session=adminSessionForRequest(req); if(!session){sendApiJson(res,401,{ok:false,error:'admin-auth'});return true;}
-    const maps=[{name:'Default Map',map:makeDefaultMap()}].concat(customBattleMaps.map(m=>({name:m.name,map:m})));
+    const mapsOnDisk=loadCustomMaps();
+    const maps=[{name:'Default Map',map:makeDefaultMap()}].concat(mapsOnDisk.map(m=>({name:m.name,map:m})));
     sendApiJson(res,200,{ok:true,maps}); return true;
   }
   if (urlPath === '/api/admin/map/apply' && req.method === 'POST') {
@@ -2756,7 +2754,6 @@ const server = http.createServer(async (req, res) => {
   }
   if (urlPath === '/build239-client.js') { serveBuffer(res,build239ClientJs,'application/javascript; charset=utf-8'); return; }
   if (urlPath === '/build240-client.js') { serveBuffer(res,build240ClientJs,'application/javascript; charset=utf-8'); return; }
-  if (urlPath === '/map-editor' || urlPath === '/map-editor.html') { serveBuffer(res,mapEditorHtml,'text/html; charset=utf-8'); return; }
   if (urlPath === '/tiles.png') { serveBuffer(res,tilesPng,'image/png'); return; }
   if (urlPath === '/bknd.png') { serveBuffer(res,bkndPng,'image/png'); return; }
   if (urlPath === '/levelup.ogg') { serveBuffer(res,levelupOgg,'audio/ogg'); return; }
