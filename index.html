@@ -116891,51 +116891,48 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 
 <script id="diggerz-build24-placement-guard">
 (function(){
-  function install(){
+  // These helpers MUST exist before the OpenFL client starts.  The previous
+  // version only created them after l.z39.n38.B30 existed, which could race
+  // the native mouse handler and produce "DiggerzCanPlaceNative is not defined".
+  window.DiggerzPlacementLayer=function(item){
     try{
-      if(typeof l==='undefined'||typeof K==='undefined'||!l.z39||!l.z39.n38||!l.z39.n38.B30)return setTimeout(install,100);
-      if(window.__diggerzPlacementGuardInstalled)return;
-      window.__diggerzPlacementGuardInstalled=true;
-      window.DiggerzPlacementLayer=function(item){
-        try{
-          var q36=item&&item.Q36;
-          // The engine's background/decorative layer is 2. Everything else is
-          // deliberately forced onto the normal playable block layer (0).
-          return (q36|0)===2?2:0;
-        }catch(e){return 0}
-      };
-      window.DiggerzCanPlaceNative=function(service,x,y,item){
-        try{
-          if(!service||!l.z39||!item)return false;
-          x|=0;y|=0;
-          var px=l.z39.b6/l._44,py=l.z39.b7/l._44;
-          // Hard placement range: outside five tiles is a complete no-op.
-          if(Math.hypot(x-px,y-py)>5)return false;
-          // Never place into a player/fake player. Check the local player first.
-          if(Math.hypot(x-px,y-py)<0.72)return false;
-          var peers=service.pvpEnsurePeers?service.pvpEnsurePeers():{};
-          for(var k in peers){
-            var peer=peers[k],ent=service.pvpEntityForPeer?service.pvpEntityForPeer(peer):null;
-            if(ent&&ent.a2!==false&&Math.hypot(x-ent.b6/l._44,y-ent.b7/l._44)<0.72)return false;
-            if(peer&&isFinite(peer.lastX)&&isFinite(peer.lastY)&&Math.hypot(x-peer.lastX,y-peer.lastY)<0.72)return false;
-          }
-          // Do the same for fake/native entities exposed through the scene.
-          var scene=l.z38&&l.z38._9;
-          if(scene)for(var i=0;i<scene.length;i++){
-            var e=scene[i];
-            if(!e||e===l.z39||e.a2===false)continue;
-            if(e._1==='target_dummy_marker'||e._1==='tilepick')continue;
-            if(e.Q36===undefined||e.b6===undefined||e.b7===undefined)continue;
-            var dx=x-e.b6/l._44,dy=y-e.b7/l._44;
-            if(Math.hypot(dx,dy)<0.72 && e.h44===141)return false;
-          }
-          return true;
-        }catch(e){return true}
-      };
-    }catch(e){setTimeout(install,100)}
-  }
-  install();
-}());
+      var q36=item&&item.Q36;
+      return (q36|0)===2?2:0;
+    }catch(e){return 0}
+  };
+  window.DiggerzCanPlaceNative=function(service,x,y,item){
+    try{
+      if(!service||!item||typeof l==='undefined'||!l.z39||!l._44)return false;
+      x|=0; y|=0;
+      var px=l.z39.b6/l._44, py=l.z39.b7/l._44;
+      // Exact native-style build radius. Outside it is a complete no-op.
+      if(Math.hypot(x-px,y-py)>5)return false;
+      // Never place directly in the player's occupied cell.
+      if(Math.hypot(x-px,y-py)<0.72)return false;
+      // Reject cells occupied by known multiplayer/fake players.
+      var peers=service.pvpEnsurePeers?service.pvpEnsurePeers():{};
+      for(var k in peers){
+        var peer=peers[k];
+        var ent=service.pvpEntityForPeer?service.pvpEntityForPeer(peer):null;
+        if(ent&&ent.a2!==false&&ent.b6!==undefined&&ent.b7!==undefined&&
+           Math.hypot(x-ent.b6/l._44,y-ent.b7/l._44)<0.72)return false;
+        if(peer&&isFinite(peer.lastX)&&isFinite(peer.lastY)&&
+           Math.hypot(x-peer.lastX/l._44,y-peer.lastY/l._44)<0.72)return false;
+      }
+      // Check scene entities without touching the tile picker/highlight.
+      var scene=l.z38&&l.z38._9;
+      if(scene)for(var i=0;i<scene.length;i++){
+        var e=scene[i];
+        if(!e||e===l.z39||e.a2===false||e._1==='target_dummy_marker'||e._1==='tilepick')continue;
+        if(e.b6===undefined||e.b7===undefined)continue;
+        // Player-like entities are allowed to expose h44/a4; avoid rejecting
+        // ordinary tile renderers.  Only reject an entity with a body/actor.
+        if(e.b34&&Math.hypot(x-e.b6/l._44,y-e.b7/l._44)<0.72)return false;
+      }
+      return true;
+    }catch(e){return false}
+  };
+})();
 </script>
 
 <script type="text/javascript">
