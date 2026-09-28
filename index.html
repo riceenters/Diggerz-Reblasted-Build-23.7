@@ -86905,13 +86905,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     window.setTimeout(positionReblastedLogo, 50);
                 return;
             }
-            var extensionScale = .26;
-            var gap = 25;
-            // Same horizontal center as parent
-            reblastedLogoExtension.A7 = 0;
-            // Parent bottom edge is at +parent.height/2 from parent center.
-            // Child center should sit just below that, accounting for half child height.
-            reblastedLogoExtension.A8 =
+        var extensionScale = .22;
+            var gap = 40;
+            // b6 = local X (0 = centered), b7 = local Y (positive = lower)
+            reblastedLogoExtension.b6 = 0;
+            reblastedLogoExtension.b7 =
                 reblastedLogoParent._5.height / 2
                 + (reblastedLogoExtension._5.height * extensionScale) / 2
                 + gap;
