@@ -4638,11 +4638,45 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     }
     ;
     q.SaveGlobals = function() {
-        // Build 23.7 SECURITY: credentials and email are never persisted in the legacy Globals blob.
-        var a = Kc.getLocal("Globals");
-        var b = "" + ('<globals>\n<global uid="' + q.thisMain.userUniqueID + '" un="' + q.thisMain.userName + '" game_center_enabled="' + H.string(q.player.K6) + '" simple_controls_asked="' + H.string(q.player.K1) + '" achievements="' + q.player.K2 + '" review_requested="' + q.player.k9 + '" music_volume="' + q.player.k7 + '" country_flag="' + q.player.L0 + '" skin_tone="' + q.player.l9 + '" sound_volume="' + q.player.k8 + '">\n');
-        a.data.xmlData = b + "</global>\n</globals>\n";
-        a.flush()
+        // Build 23.7+ SECURITY: credentials/email never persisted in Globals.
+        // Escape XML attribute values so names with " < & etc. do not corrupt the blob.
+        function diggerzXmlAttr(v) {
+            return String(v == null ? "" : v)
+                .replace(/&/g, "&amp;")
+                .replace(/"/g, "&quot;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+        }
+        try {
+            var a = Kc.getLocal("Globals");
+            var un = diggerzXmlAttr(q.thisMain.userName);
+            var uid = diggerzXmlAttr(q.thisMain.userUniqueID);
+            var ach = diggerzXmlAttr(q.player.K2);
+            var rev = diggerzXmlAttr(q.player.k9);
+            var b = '<globals>\n<global uid="' + uid + '" un="' + un +
+                '" game_center_enabled="' + H.string(q.player.K6) +
+                '" simple_controls_asked="' + H.string(q.player.K1) +
+                '" achievements="' + ach +
+                '" review_requested="' + rev +
+                '" music_volume="' + q.player.k7 +
+                '" country_flag="' + (q.player.L0 | 0) +
+                '" skin_tone="' + q.player.l9 +
+                '" sound_volume="' + q.player.k8 + '">\n';
+            a.data.xmlData = b + "</global>\n</globals>\n";
+            a.flush();
+        } catch (e) {}
+        // Backup name + country in plain localStorage so a corrupted Globals blob
+        // cannot wipe the player's identity on the next load.
+        try {
+            window.localStorage.setItem("diggerz.profile.v1", JSON.stringify({
+                userName: String(q.thisMain.userName || ""),
+                userUniqueID: String(q.thisMain.userUniqueID || ""),
+                country_flag: q.player.L0 | 0,
+                skin_tone: Number(q.player.l9) || 1,
+                music_volume: q.player.k7 | 0,
+                sound_volume: q.player.k8 | 0
+            }));
+        } catch (e2) {}
     }
     ;
     q.GetPlatform = function() {
@@ -4665,15 +4699,17 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     ;
     q.LoadGlobals = function() {
         q.ResetUserData();
+        var loadedOk = false;
+        try {
         var a = Kc.getLocal("Globals").data.xmlData;
-        if (null != a) {
+        if (null != a && "" != a) {
             var b = fa.parse(a).firstElement();
-            if (b.nodeType != fa.Document && b.nodeType != fa.Element)
-                throw new L("Invalid nodeType " + bc.c11(b.nodeType));
+            if (b && (b.nodeType == fa.Document || b.nodeType == fa.Element)) {
             a = 0;
             for (b = st.resolve(b, "global"); a < b.length; ) {
                 var c = b[a];
                 ++a;
+                loadedOk = true;
                 kg.resolve(c, "un") && (q.thisMain.userName = Ig.resolve(c, "un"));
                 kg.resolve(c, "uid") && (q.thisMain.userUniqueID = Ig.resolve(c, "uid"));
                 if (kg.resolve(c, "sound_volume")) {
@@ -4699,7 +4735,28 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 kg.resolve(c, "country_flag") && (c = Ig.resolve(c, "country_flag"),
                 q.player.L0 = H.parseInt(c))
             }
+            }
         }
+        } catch (loadErr) { loadedOk = false; }
+        // If Globals XML was missing/corrupt, restore from profile backup.
+        try {
+            var raw = window.localStorage.getItem("diggerz.profile.v1");
+            if (raw) {
+                var prof = JSON.parse(raw);
+                if (prof) {
+                    if ((!q.thisMain.userName || q.thisMain.userName === "") && prof.userName)
+                        q.thisMain.userName = String(prof.userName);
+                    if ((!q.thisMain.userUniqueID || q.thisMain.userUniqueID === "") && prof.userUniqueID)
+                        q.thisMain.userUniqueID = String(prof.userUniqueID);
+                    if ((q.player.L0 == null || q.player.L0 === 0 || isNaN(q.player.L0)) && prof.country_flag != null)
+                        q.player.L0 = prof.country_flag | 0;
+                    if (prof.skin_tone != null && (q.player.l9 == null || q.player.l9 === 0))
+                        q.player.l9 = Number(prof.skin_tone) || 1;
+                    if (prof.music_volume != null) q.player.k7 = prof.music_volume | 0;
+                    if (prof.sound_volume != null) q.player.k8 = prof.sound_volume | 0;
+                }
+            }
+        } catch (bakErr) {}
     }
     ;
     q.LoadGame = function() {
@@ -50690,7 +50747,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         y46: function(a) {
             this.a0 = 0;
             q.player.L0 = a;
-            this.y45()
+            this.y45();
+            try { q.SaveGlobals(); } catch (e) {}
         },
         E7: function(a) {
             return !0
@@ -87324,6 +87382,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             l.z39 = null);
             null != this.d52 && N.startsWith(this.d52.q35, "Enter Name") && "Enter Name" != this.d52.q35 && (this.d52.q35 = T.substr(this.d52.q35, 10, null),
             this.d52.E32 = this.d52.q35);
+            // Persist name while typing so a refresh before Play still keeps it.
+            if (null != this.d52 && this.d52.q35 && "Enter Name" != this.d52.q35 && 0 < this.d52.q35.length) {
+                if (q.thisMain.userName !== this.d52.q35) {
+                    q.thisMain.userName = this.d52.q35;
+                    try { q.SaveGlobals(); } catch (e) {}
+                }
+            }
             var a = z.prototype.e0.call(this);
             this.T31();
             var b = 45 * q.SCALEDOWN + q.thisMain.get_x()
@@ -116992,14 +117057,34 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       return (q36>=0&&q36<=2)?q36:0;
     }catch(e){return 0}
   };
+  // Continuous player placement shield: the player owns a floating 3-wide
+  // hitbox (left cell + body + right cell) that FOLLOWS the player and never
+  // snaps to the tile grid.  Placement into any cell that intersects this
+  // shield is rejected so blocks cannot be planted on top of a player and
+  // corrupt the native grid.
+  window.DiggerzPlayerShieldOverlapsCell=function(px,py,cx,cy){
+    if(!isFinite(px)||!isFinite(py)||!isFinite(cx)||!isFinite(cy))return false;
+    // Placement cell AABB (1x1, centered on integer tile coords).
+    var half=0.5;
+    var cellL=cx-half, cellR=cx+half, cellT=cy-half, cellB=cy+half;
+    // Player shield: ~1 block left, body, ~1 block right.  Continuous floats —
+    // NOT rounded to grid — so the shield moves exactly with the player.
+    var hw=1.45;  // horizontal half-width (~2.9 tiles total → left+center+right)
+    var hh=0.50;  // vertical half-height → 1 block tall total (matches player)
+    var margin=0.05;
+    var shL=px-hw-margin, shR=px+hw+margin, shT=py-hh-margin, shB=py+hh+margin;
+    // AABB intersection
+    if(cellR<shL||cellL>shR||cellB<shT||cellT>shB)return false;
+    return true;
+  };
+  // Back-compat alias used by older call sites.
   window.DiggerzPlayerOverlapsCell=function(px,py,cx,cy,radius){
-    // A placement cell is a 1x1 world square. Reject it whenever the
-    // player's actual physics footprint intersects ANY part of that square.
-    // This is deliberately a live overlap test: as soon as the hitbox leaves
-    // the square, the square becomes placeable again.
+    if(window.DiggerzPlayerShieldOverlapsCell(px,py,cx,cy))return true;
+    // Fallback circular test for very small entities.
+    var r=(radius>0.05&&radius<2)?radius:0.72;
     var half=0.5, left=cx-half, right=cx+half, top=cy-half, bottom=cy+half;
     var qx=Math.max(left,Math.min(px,right)), qy=Math.max(top,Math.min(py,bottom));
-    return Math.hypot(px-qx,py-qy) < radius;
+    return Math.hypot(px-qx,py-qy) < r;
   };
   window.DiggerzCanPlaceNative=function(service,x,y,item){
     try{
@@ -117007,39 +117092,29 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       x|=0; y|=0;
       var layer=window.DiggerzPlacementLayer(item);
       var px=l.z39.b6/l._44, py=l.z39.b7/l._44;
-      // Match the native engine's grid lookup: each layer owns its own cell
-      // array (R39[layer]).  A filled cell on the selected native layer is not
-      // a new placement target.
       try{
         var layerGrid=l.z38&&l.z38.R39&&l.z38.R39[layer];
         if(layerGrid&&typeof layerGrid.r33==='function'&&layerGrid.r33(x*l._44,y*l._44))return false;
       }catch(_gridCheck){}
-      // Exact native-style build radius. Outside it is a complete no-op.
       if(Math.hypot(x-px,y-py)>5)return false;
-      // Use the live physics body radius when available. The fallback is the
-      // normal player footprint used by the server relay.
-      var body=l.z39.b34&&l.z39.b34.tBJ, radius=body&&isFinite(body.radius)?Number(body.radius)/l._44:NaN;
-      if(!(radius>0.05&&radius<2))radius=0.72;
-      if(window.DiggerzPlayerOverlapsCell(px,py,x,y,radius))return false;
-      // Reject cells occupied by known multiplayer/fake players.
+      // Local player floating left+center+right shield.
+      if(window.DiggerzPlayerShieldOverlapsCell(px,py,x,y))return false;
+      // Multiplayer / fake peers — same continuous shield.
       var peers=service.pvpEnsurePeers?service.pvpEnsurePeers():{};
       for(var k in peers){
         var peer=peers[k];
         var ent=service.pvpEntityForPeer?service.pvpEntityForPeer(peer):null;
         if(ent&&ent.a2!==false&&ent.b6!==undefined&&ent.b7!==undefined&&
-           window.DiggerzPlayerOverlapsCell(ent.b6/l._44,ent.b7/l._44,x,y,0.72))return false;
+           window.DiggerzPlayerShieldOverlapsCell(ent.b6/l._44,ent.b7/l._44,x,y))return false;
         if(peer&&isFinite(peer.lastX)&&isFinite(peer.lastY)&&
-           window.DiggerzPlayerOverlapsCell(peer.lastX/l._44,peer.lastY/l._44,x,y,0.72))return false;
+           window.DiggerzPlayerShieldOverlapsCell(peer.lastX/l._44,peer.lastY/l._44,x,y))return false;
       }
-      // Check scene entities without touching the tile picker/highlight.
       var scene=l.z38&&l.z38._9;
       if(scene)for(var i=0;i<scene.length;i++){
         var e=scene[i];
         if(!e||e===l.z39||e.a2===false||e._1==='target_dummy_marker'||e._1==='tilepick')continue;
         if(e.b6===undefined||e.b7===undefined)continue;
-        // Player-like entities are allowed to expose h44/a4; avoid rejecting
-        // ordinary tile renderers.  Only reject an entity with a body/actor.
-        if(e.b34&&window.DiggerzPlayerOverlapsCell(e.b6/l._44,e.b7/l._44,x,y,0.72))return false;
+        if(e.b34&&window.DiggerzPlayerShieldOverlapsCell(e.b6/l._44,e.b7/l._44,x,y))return false;
       }
       return true;
     }catch(e){return false}

@@ -1195,27 +1195,22 @@ function placementOverlapsPlayer(player, tileX, tileY) {
   const px=Number(player.position.x), py=Number(player.position.y);
   if (!Number.isFinite(px) || !Number.isFinite(py)) return false;
 
-  // Build 24.0.36: the native player entity is also the object that owns the
-  // old Trade interaction hit area.  Build placement must reserve that same
-  // personal-space area even in PvP, where the Trade menu is intentionally
-  // disabled.  Keep a continuous (non-rounded) capsule/rectangle test so a
-  // click beside a player cannot slip through because of grid rounding.
+  // Floating player placement shield: left block + body + right block.
+  // Coordinates are continuous world-tile units that FOLLOW the player and
+  // never snap to the grid.  Any placement cell that intersects this shield
+  // is rejected so blocks cannot be planted on a player and break the grid.
   const cellHalf=0.5;
   const left=Number(tileX)-cellHalf, right=Number(tileX)+cellHalf;
   const top=Number(tileY)-cellHalf, bottom=Number(tileY)+cellHalf;
 
-  // Native player interaction footprint, expressed in world-tile units, with
-  // a tiny margin for the native sprite/physics boundary.
-  const hw=0.78, hh=1.08, margin=0.06;
+  const hw=1.45, hh=0.50, margin=0.05; // 1 block tall, left+center+right wide
   const L=px-hw-margin, R=px+hw+margin, T=py-hh-margin, B=py+hh+margin;
   if (!(right < L || left > R || bottom < T || top > B)) return true;
 
-  // Round the corners of the interaction area as a secondary continuous
-  // check. This catches the diagonal edge case without creating a huge square
-  // no-build zone.
+  // Secondary continuous corner check (slightly larger than before).
   const cx=Math.max(left,Math.min(px,right));
   const cy=Math.max(top,Math.min(py,bottom));
-  return Math.hypot(cx-px,cy-py) <= 0.92;
+  return Math.hypot(cx-px,cy-py) <= 1.35;
 }
 
 function placementBlockedByAnyPlayer(room, tileX, tileY) {
