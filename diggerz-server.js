@@ -1078,6 +1078,33 @@ function fakeSolid(room,x,y) {
   return !!(t && (t.id|0)!==0);
 }
 
+// Build 24.0.29 placement safety: a block is a 1x1 world square and may not
+// overlap a player's actual body footprint.  The old point-distance check
+// could still allow a corner/edge of a block into the player, which could
+// leave the native client with an impossible collision state.
+function placementOverlapsPlayer(player, tileX, tileY) {
+  if (!player || !player.position) return false;
+  const px=Number(player.position.x), py=Number(player.position.y);
+  if (!Number.isFinite(px) || !Number.isFinite(py)) return false;
+
+  // Player coordinates are the native body center in the multiplayer relay.
+  // Keep a small margin so rounding at tile boundaries cannot create overlap.
+  const playerHalfWidth=0.43;
+  const playerHalfHeight=0.88;
+  const blockHalf=0.5;
+  return Math.abs(px-Number(tileX)) < (playerHalfWidth+blockHalf) &&
+         Math.abs(py-Number(tileY)) < (playerHalfHeight+blockHalf);
+}
+
+function placementBlockedByAnyPlayer(room, tileX, tileY) {
+  if (!room) return false;
+  for (const other of room.clients) {
+    if (!other.alive || other.eliminated || !other.position) continue;
+    if (placementOverlapsPlayer(other,tileX,tileY)) return true;
+  }
+  return false;
+}
+
 function fakeFloorY(room,x,y,fromY=0) {
   const cols=[Math.floor(x),Math.floor(x-0.34),Math.floor(x+0.34)];
   const start=Math.max(0,Math.floor(y));
@@ -2177,7 +2204,10 @@ function relayGameMessage(client, message, rawLength) {
     const tile={x:Number(message.x)|0,y:Number(message.y)|0,id:Number(message.id)|0,variant:Number(message.variant)|0,layer,ownerConnectionId:client.connectionId};
     if(tile.x<0||tile.x>=128||tile.y<0||tile.y>=80||!client.position||!client.alive||client.eliminated)return;
     if(Math.hypot(client.position.x-tile.x,client.position.y-tile.y)>5)return;
-    for(const other of room.clients){ if(!other.alive||other.eliminated||!other.position) continue; if(Math.hypot(other.position.x-tile.x,other.position.y-tile.y)<0.72)return; }
+    // Never let a newly placed block overlap any player's body. This is
+    // deliberately authoritative so the client cannot create a bad local
+    // collision state even if it sends a stale placement packet.
+    if(tile.id!==0 && placementBlockedByAnyPlayer(room,tile.x,tile.y))return;
     const key=`${tile.x},${tile.y}`;
     const store=layer===2?room.backgroundTiles:room.tiles;
     const prior=store.get(key);
