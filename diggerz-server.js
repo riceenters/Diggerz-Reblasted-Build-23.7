@@ -3059,7 +3059,19 @@ const server = http.createServer(async (req, res) => {
   if (urlPath === '/tiles.png') { serveBuffer(res,tilesPng,'image/png'); return; }
   if (urlPath === '/bknd.png') { serveBuffer(res,bkndPng,'image/png'); return; }
   if (urlPath === '/reblasted.png') { serveBuffer(res,reblastedPng,'image/png'); return; }
-  if (urlPath === '/favicon.png' || urlPath === '/favicon.ico') { serveBuffer(res,faviconPng,'image/png'); return; }
+  if (urlPath === '/favicon.png') { serveBuffer(res,faviconPng,'image/png'); return; }
+  if (urlPath === '/favicon.ico') {
+    // Many browsers request /favicon.ico by default; serve the PNG with a
+    // compatible type so the tab icon still appears.
+    if (!faviconPng) { res.writeHead(404,{'Content-Type':'text/plain; charset=utf-8'}); res.end('Missing file.\n'); return; }
+    res.writeHead(200,{
+      'Content-Type':'image/x-icon',
+      'Content-Length':faviconPng.length,
+      'Cache-Control':'public, max-age=86400'
+    });
+    res.end(faviconPng);
+    return;
+  }
   if (urlPath === '/levelup.ogg') { serveBuffer(res,levelupOgg,'audio/ogg'); return; }
   if (urlPath === '/music_theme.ogg') { serveBuffer(res,musicOgg[0],'audio/ogg'); return; }
   if (urlPath === '/music_theme2.ogg') { serveBuffer(res,musicOgg[1],'audio/ogg'); return; }
