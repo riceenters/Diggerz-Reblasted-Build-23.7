@@ -2293,7 +2293,13 @@ function relayGameMessage(client, message, rawLength) {
   }
 
   if (message.t==='tile') {
-    let requestedLayer=Number(message.layer)|0; requestedLayer=requestedLayer===2?2:0;
+    let requestedLayer=Number(message.layer)|0;
+    // Native layer 1 belongs to players/pets and their interaction bodies.
+    // It is never a legal tile layer. Reject an explicit layer-1 packet
+    // instead of coercing it to foreground, so this invariant cannot be
+    // bypassed by an old client or malformed packet.
+    if(requestedLayer===1)return;
+    requestedLayer=requestedLayer===2?2:0;
     const x=Number(message.x)|0,y=Number(message.y)|0,id=Number(message.id)|0,variant=Number(message.variant)|0;
     if(x<0||x>=128||y<0||y>=80||!client.position||!client.alive||client.eliminated)return;
     if(Math.hypot(client.position.x-x,client.position.y-y)>5)return;

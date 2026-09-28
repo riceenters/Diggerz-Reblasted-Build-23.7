@@ -116956,6 +116956,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
   window.DiggerzPlacementLayer=function(item){
     try{
       var q36=item&&item.Q36;
+      // Layer 1 is the native player/pet interaction layer. It is never a
+      // valid block-placement layer. Do not silently turn a layer-1 request
+      // into a foreground placement; reject it at the placement gate below.
+      if((q36|0)===1)return -1;
       return (q36|0)===2?2:0;
     }catch(e){return 0}
   };
@@ -116972,6 +116976,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     try{
       if(!service||!item||typeof l==='undefined'||!l.z39||!l._44)return false;
       x|=0; y|=0;
+      // The player/pet layer (native layer 1) is reserved for actors and
+      // interaction hitboxes. Blocks are never legal there.
+      if(window.DiggerzPlacementLayer(item)===-1)return false;
       var px=l.z39.b6/l._44, py=l.z39.b7/l._44;
       // Exact native-style build radius. Outside it is a complete no-op.
       if(Math.hypot(x-px,y-py)>5)return false;
