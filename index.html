@@ -19159,7 +19159,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                     !a && null != d && 0 < d.g36 && 1 == d.a4 && null != e && this.u31(d, e) && (1 != d.a4 || 141 != d.h44) && (e = null);
                                     null != e || null == d || 1 == d.a4 && 141 == d.h44 ? null == e || a || null == d || 141 != d.h44 || e.i42 ? 0 != od.h39 && q.thisMain.isPhone() || null == e || !(20 < e.a1) || e.i42 || this.R38 || l.b43 && e.j44() : (db.getTimer() | 0) < l.z39.o34 + 1E4 ? this.R35.C46("^1Error: ^7Teleport CoolDown.") : (K.X9(l.z38, Math.round(b / l._44), Math.round(c / l._44), e.Q36),
                                     d.G6(!0),
-                                    e.i42 = !0) : 1 == d.a4 ? (DiggerzCanPlaceNative(this, Math.round(b / l._44), Math.round(c / l._44), d) ? (l.z39.O33(b, c),
+                                    e.i42 = !0) : 1 == d.a4 ? ((window.DiggerzCanPlaceNative ? window.DiggerzCanPlaceNative(this, Math.round(b / l._44), Math.round(c / l._44), d) : false) ? (l.z39.O33(b, c),
                                     K.X8(this, l.z39, l.z39.n38.q43, b, c, DiggerzPlacementLayer(d), !1),
                                     this.R38 = !0) : null) : this.R35.C46("^1You can't place this tile.")
                                 }
@@ -22939,6 +22939,20 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             if (!id) delete this.damage[x + ":" + y];
             this.sendTile(x, y, id, variant, layer);
             this.markDirty();
+            // If a native block-variation wheel is open for a block that was just
+            // broken/replaced, close it immediately. Otherwise the Sc/tilepick
+            // object can remain alive while its target renderer has disappeared,
+            // leaving an invisible/click-blocking radial menu behind.
+            if (prevId && !id) {
+                try {
+                    var openPick = l.z38 && l.z38.f2 ? l.z38.f2("tilepick") : null;
+                    if (openPick) {
+                        openPick.a0 = 1;
+                        if (l.z38 && l.z38._9 && l.z38._9.indexOf(openPick) >= 0)
+                            T.remove(l.z38._9, openPick);
+                    }
+                } catch (_closeTilePickError) {}
+            }
             // Glowing mining particles (same E.V0 WHITE_PARTICLE path as original packet 68 / X36)
             if (prevId && !id && !this._pvpApplyingTile) {
                 try {
@@ -26589,7 +26603,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             a.d34.F6(0, 0, 2 * Math.PI, 35E3, !0);
             a._9.push(a.d34);
             var b = 0;
-            this.j43(31, a, b);
+            // The red X is the cancel/close entry used by the generic tile picker.
+            // Block modification should close through the normal menu flow instead,
+            // so the native block-variation wheel contains only actual variations.
             this.j43(25, a, b);
             this.j43(26, a, b);
             this.j43(27, a, b);
@@ -117161,7 +117177,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 </script>
 
 	<div name="changes" id="changes">
-		<h1>Diggerz.io Reblasted - Change Log</h1><hr><a name="Build 24.0.26"></a><h2>Build 24.0.26 - Strict Block Placement Rules</h2><ul><li>Block placement is now a hard no-op outside the five-tile placement range.</li><li>Placement is rejected when the target cell overlaps a player.</li><li>Normal placed blocks are forced onto the foreground block layer; only native background/decorative items using layer 2 remain on the background layer.</li><li>Multiplayer tile synchronization now preserves the placement layer and supports dynamic background tiles.</li></ul><hr><a name="Build 24.0.17"></a><h2>Build 24.0.17 - Admin Modifiers &amp; Building Polish</h2><ul><li>Added admin Speed, Size, Jump, and Break Speed modifiers.</li><li>Integrated the supplied noclip radius override while preserving normal movement.</li><li>Added a placement travel/grow/spin animation and grid placement indicator.</li><li>Added block modification popup when a block is selected and an occupied cell is clicked.</li><li>Hardened rapid placement/replacement synchronization.</li></ul>
+		<h1>Diggerz.io Reblasted - Change Log</h1><hr><a name="Build 24.0.28"></a><h2>Build 24.0.28 - Native Picker Cleanup &amp; Placement Guard Hardening</h2><ul><li>Hardened the native placement guard call so the placement handler always resolves it through the global window object, eliminating the intermittent undefined-function race.</li><li>Removed the red X entry from the native block variation wheel used for block modification.</li><li>Automatically closes the native tile variation wheel when its target block is broken, preventing an invisible menu from remaining on screen.</li></ul><hr><a name="Build 24.0.26"></a><h2>Build 24.0.26 - Strict Block Placement Rules</h2><ul><li>Block placement is now a hard no-op outside the five-tile placement range.</li><li>Placement is rejected when the target cell overlaps a player.</li><li>Normal placed blocks are forced onto the foreground block layer; only native background/decorative items using layer 2 remain on the background layer.</li><li>Multiplayer tile synchronization now preserves the placement layer and supports dynamic background tiles.</li></ul><hr><a name="Build 24.0.17"></a><h2>Build 24.0.17 - Admin Modifiers &amp; Building Polish</h2><ul><li>Added admin Speed, Size, Jump, and Break Speed modifiers.</li><li>Integrated the supplied noclip radius override while preserving normal movement.</li><li>Added a placement travel/grow/spin animation and grid placement indicator.</li><li>Added block modification popup when a block is selected and an occupied cell is clicked.</li><li>Hardened rapid placement/replacement synchronization.</li></ul>
 
 		<hr><a name="Build 23.7"></a>
 		<h2>Build 23.7 - Security &amp; Account Hardening</h2>
