@@ -1044,6 +1044,11 @@ function readNativeFixedBE(buf, offset) {
   return whole + frac / 100000;
 }
 
+function readNativeFixedLE(buf, offset) {
+  if (!buf || offset < 0 || offset + 8 > buf.length) return NaN;
+  return buf.readInt32LE(offset) + buf.readInt32LE(offset + 4) / 100000;
+}
+
 function nativePlacementBlocked(client, payload) {
   // Native opcode 11 is X8(). All fields are big-endian because the client's
   // DataView writes omit the littleEndian flag: [op][actor x][actor y]
@@ -1052,26 +1057,24 @@ function nativePlacementBlocked(client, payload) {
   // so use that authoritative native position instead of waiting for a separate
   // JSON state packet. This closes the gap that let a block land inside a player
   // even though the JSON placement handler rejected it.
-  if (!client || !client.room || !payload || payload.length < 37) return true;
+  if (!client || !client.room || !payload || payload.length < 29) return true;
   try {
-    const actorX = readNativeFixedBE(payload, 2);
-    const actorY = readNativeFixedBE(payload, 10);
-    const id = payload.readUInt16BE(18);
-    const tileX = payload.readInt32BE(20);
-    const layer = payload.readInt32BE(24);
-    const tileY = payload.readInt32BE(28);
+    const actorX = readNativeFixedLE(payload, 2);
+    const actorY = readNativeFixedLE(payload, 10);
+    const id = payload.readUInt16LE(18);
+    const tileX = payload.readInt32LE(20);
+    const layer = payload.readInt32LE(24);
+    const tileY = payload.readInt32LE(28);
     if (![actorX,actorY].every(Number.isFinite) || !Number.isFinite(tileX) || !Number.isFinite(tileY)) return true;
 
     // Keep the server's canonical position synchronized with the same native
     // packet that is being relayed.
     client.position = {x:actorX,y:actorY};
 
-    // Coaster Town, the same engine family, exposes the native layer constants
-    // as BLOCK_LAYER=0, FLOATER_LAYER=1, BKND_LAYER=2. Layer 1 is therefore
-    // not the player/pet collision layer; it is the engine's floater layer.
-    // Regular blocks are still constrained to the layer dictated by their id.
+    // Coaster Town native tile constants: BLOCK_LAYER=0, FLOATER_LAYER=1,
+    // BKND_LAYER=2. Layer 1 is a real tile layer, not an actor layer.
     if (id === 0) return false;
-    if (layer !== expectedBlockLayer(id)) return true;
+    if (layer < 0 || layer > 2) return true;
 
     // Never relay a native placement that intersects any live player/pet body.
     // Test the actor's embedded position directly, then every other room client.
@@ -1091,7 +1094,7 @@ function nativePlacementBlocked(client, payload) {
 function relayBinary(client, payload) {
   if (!client.room) return;
   let opcode = 0;
-  try { if (payload.length >= 2) opcode = payload.readUInt16BE(0); } catch {}
+  try { if (payload.length >= 2) opcode = payload.readUInt16LE(0); } catch {}
 
   // Native placement bypasses the JSON t:'tile' handler entirely. Gate the
   // actual binary opcode before it is broadcast so the server enforces the
@@ -1102,8 +1105,8 @@ function relayBinary(client, payload) {
   // canonical position fresh even when the JSON fallback is throttled.
   if (opcode === 6 && payload.length >= 18) {
     try {
-      const x = readNativeFixedBE(payload, 2);
-      const y = readNativeFixedBE(payload, 10);
+      const x = readNativeFixedLE(payload, 2);
+      const y = readNativeFixedLE(payload, 10);
       if (Number.isFinite(x) && Number.isFinite(y)) client.position = {x,y};
     } catch {}
   }
@@ -2371,7 +2374,10 @@ function relayGameMessage(client, message, rawLength) {
     requestedLayer=requestedLayer===2?2:0;
     const x=Number(message.x)|0,y=Number(message.y)|0,id=Number(message.id)|0,variant=Number(message.variant)|0;
     if(x<0||x>=128||y<0||y>=80||!client.position||!client.alive||client.eliminated)return;
-    if(Math.hypot(client.position.x-x,client.position.y-y)>5)return;
+    const packetPX=Number(message.px), packetPY=Number(message.py);
+    const placementPos=(Number.isFinite(packetPX)&&Number.isFinite(packetPY))?{x:packetPX,y:packetPY}:client.position;
+    if(Math.hypot(placementPos.x-x,placementPos.y-y)>5)return;
+    if(id!==0 && placementOverlapsPlayer({position:placementPos},x,y))return;
     if(id!==0 && placementBlockedByAnyPlayer(room,x,y))return;
     normalizeRoomTileAt(room,x,y);
     const key=`${x},${y}`;
@@ -2390,7 +2396,8 @@ function relayGameMessage(client, message, rawLength) {
       if(prior.id===122)syncSpeaker(room);
       return;
     }
-    const desiredLayer=expectedBlockLayer(id);
+    const catalogLayer=expectedBlockLayer(id);
+    const desiredLayer=requestedLayer===1?1:catalogLayer;
     const store=desiredLayer===2?room.backgroundTiles:room.tiles;
     const other=desiredLayer===2?room.tiles:room.backgroundTiles;
     const wrong=other.get(key)||null;

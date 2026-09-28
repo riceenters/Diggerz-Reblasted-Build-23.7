@@ -23679,12 +23679,27 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.markDirty()
         },
         build: function(packet) {
-            packet.Q4(); packet.Q4(); packet.Q4(); packet.Q4();
+            // Match the recovered native opcode-11 packet exactly. X8() writes
+            // the actor position first as two fixed-point int32 pairs, then the
+            // tile id/x/layer/y. Keep that placement-time actor position for
+            // the collision gate instead of using a later movement sample.
+            var actorX = packet.Q4() + packet.Q4() / 100000;
+            var actorY = packet.Q4() + packet.Q4() / 100000;
             var id = packet.Q9(), x = packet.Q7(), layer = packet.Q7(), y = packet.Q7();
             var slot = packet.Q9(), variant = packet.Q9();
             packet.r6();
             if (layer < 0 || layer > 2 || (layer === 0 && this.tileAt(x, y)) || this.distanceToPlayer(x, y) > 5 ||
                 y <= 0 || y >= this.state.height - 1 || this.distanceToPlayer(x, y) < 1.1) return;
+            // CT uses the actual native player body for the placement decision.
+            // Reject the exact grid cell if it intersects the player's live
+            // physics footprint at the moment opcode 11 was generated.
+            try {
+                if (window.DiggerzPlayerOverlapsCell && window.DiggerzPlayerOverlapsCell(actorX,actorY,x,y,
+                    (l.z39&&l.z39.b34&&l.z39.b34.tBJ&&isFinite(l.z39.b34.tBJ.radius)) ? Number(l.z39.b34.tBJ.radius)/l._44 : 0.72)) return;
+            } catch (_nativeBuildOverlap) {}
+            if (window.DiggerzIsMultiplayer && window.DiggerzIsMultiplayer(this)) {
+                this._diggerzPlacementActor={x:actorX,y:actorY};
+            }
             // Rapid building can queue a packet for a slot that was just emptied or
             // moved by the prior placement. Recover by finding the same block stack
             // instead of permanently rejecting every later placement from that drag.
@@ -115901,7 +115916,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     var oldWorldName=proto.sendWorldName;proto.sendWorldName=function(){if(this.mode!=='pvp')return oldWorldName.call(this);var name=P.mode==='digtrade'?'Free Dig':'Battle Royale';this.enqueue(95,1,function(packet){packet.R9(name)})};
     var oldSendPlayer=proto.sendPlayer;proto.sendPlayer=function(){var r=oldSendPlayer.call(this);if(window.DiggerzIsMultiplayer(this)){P.attach(this);var self=this;setTimeout(function(){self.pvpSendHello()},150);setTimeout(function(){self.pvpSendHello()},1000);setTimeout(function(){self.pvpSendHello();if(P.connected)self.pvpSendNativeSpawn()},2500)}return r};
     var oldPlayerChat=proto.playerChat;proto.playerChat=function(text){var r=oldPlayerChat.call(this,text);if(window.DiggerzIsMultiplayer(this))this.pvpSend({t:'chat',text:String(text||'').slice(0,180)});return r};
-    var oldSetTile=proto.setTile;proto.setTile=function(x,y,id,variant,layer){layer=layer==null?0:(layer|0);var r=oldSetTile.call(this,x,y,id,variant,layer);if(r&&window.DiggerzIsMultiplayer(this)&&!this._pvpApplyingTile)this.pvpSend({t:'tile',x:x,y:y,id:id,variant:variant||0,layer:layer});return r};
+    var oldSetTile=proto.setTile;proto.setTile=function(x,y,id,variant,layer){layer=layer==null?0:(layer|0);var r=oldSetTile.call(this,x,y,id,variant,layer);if(r&&window.DiggerzIsMultiplayer(this)&&!this._pvpApplyingTile){var actor=this._diggerzPlacementActor||null;this.pvpSend({t:'tile',x:x,y:y,id:id,variant:variant||0,layer:layer,px:actor&&isFinite(actor.x)?actor.x:null,py:actor&&isFinite(actor.y)?actor.y:null});this._diggerzPlacementActor=null}return r};
     var oldDirect=proto.weaponDirectHit;proto.weaponDirectHit=function(fromX,fromY,toX,toY,attackType){var r=oldDirect.call(this,fromX,fromY,toX,toY,attackType);if((this.mode==='pvp'&&P.mode==='pvp')||(this.mode==='digtrade'&&P.mode==='digtrade'&&(this.adminPvpEnabled||(typeof q!=='undefined'&&q.diggerzAdminPvpEnabled)))){var peer=this.pvpRemoteHitLine(fromX,fromY,toX,toY);if(peer)this.pvpSend({t:'damage',targetConnectionId:peer.connectionId,amount:1,source:'weapon'})}return r};
     var oldImpact=proto.weaponImpactDamage;proto.weaponImpactDamage=function(x,y,impactType){var r=oldImpact.call(this,x,y,impactType);if((this.mode==='pvp'&&P.mode==='pvp')||(this.mode==='digtrade'&&P.mode==='digtrade'&&(this.adminPvpEnabled||(typeof q!=='undefined'&&q.diggerzAdminPvpEnabled)))){var peers=this.pvpEnsurePeers();for(var k in peers){var peer=peers[k],e=this.pvpEntityForPeer(peer);if(!e||!e.a2)continue;var px=e.b6/l._44,py=e.b7/l._44,dx=px-x,dy=py-y,hit=false;if(impactType===36)hit=Math.hypot(dx,dy)<=.95;else if(impactType===30)hit=Math.abs(dx)<=.9&&Math.abs(dy)<=.9;else if(impactType===24)hit=Math.abs(dx)<=1.7&&Math.abs(dy)<=1.7;else if(impactType===38)hit=Math.abs(dx)<=2.8&&Math.abs(dy)<=2.8;else if(impactType===40)hit=(Math.abs(dx)<=.8&&dy>=0&&dy<=3.4)||(Math.abs(dx)<=1.7&&Math.abs(dy-3)<=1.7);else hit=Math.hypot(dx,dy)<=2.35;if(hit)this.pvpSend({t:'damage',targetConnectionId:peer.connectionId,amount:1,source:'weapon'})}}return r};
     var oldHurt=proto.hurtLocalPlayer;proto.hurtLocalPlayer=function(amount,source){if(this.adminEffects&&this.adminEffects.god)return;var wasDead=!!this.localDead,r=oldHurt.call(this,amount,source);if(this.mode==='pvp'&&P.mode==='pvp'){var max=l.z39&&l.z39.N34||3,current=this.localHealth==null?(l.z39&&l.z39.N33||max):this.localHealth;this.pvpSend({t:'health',current:current,maximum:max});if(!wasDead&&this.localDead){var x=l.z39?l.z39.b6/l._44:this.state.x,y=l.z39?l.z39.b7/l._44:this.state.y;this.pvpSend({t:'death',x:x,y:y})}}return r};
@@ -116953,14 +116968,14 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
   // These helpers MUST exist before the OpenFL client starts.  The previous
   // version only created them after l.z39.n38.B30 existed, which could race
   // the native mouse handler and produce "DiggerzCanPlaceNative is not defined".
+  // Coaster Town native tile constants: BLOCK_LAYER=0, FLOATER_LAYER=1,
+  // BKND_LAYER=2.  Q36 is the tile's actual native layer.  Do not reinterpret
+  // layer 1 as a player/pet layer.
+  window.DiggerzTileLayers={BLOCK_LAYER:0,FLOATER_LAYER:1,BKND_LAYER:2};
   window.DiggerzPlacementLayer=function(item){
     try{
-      var q36=item&&item.Q36;
-      // The same engine family exposes layer 1 as FLOATER_LAYER, not the
-      // player/pet collision layer. Regular block items should still never use
-      // it; the server validates the final native layer against the block id.
-      if((q36|0)===1)return -1;
-      return (q36|0)===2?2:0;
+      var q36=(item&&item.Q36)|0;
+      return (q36>=0&&q36<=2)?q36:0;
     }catch(e){return 0}
   };
   window.DiggerzPlayerOverlapsCell=function(px,py,cx,cy,radius){
@@ -116976,10 +116991,15 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     try{
       if(!service||!item||typeof l==='undefined'||!l.z39||!l._44)return false;
       x|=0; y|=0;
-      // The player/pet layer (native layer 1) is reserved for actors and
-      // interaction hitboxes. Blocks are never legal there.
-      if(window.DiggerzPlacementLayer(item)===-1)return false;
+      var layer=window.DiggerzPlacementLayer(item);
       var px=l.z39.b6/l._44, py=l.z39.b7/l._44;
+      // Match the native engine's grid lookup: each layer owns its own cell
+      // array (R39[layer]).  A filled cell on the selected native layer is not
+      // a new placement target.
+      try{
+        var layerGrid=l.z38&&l.z38.R39&&l.z38.R39[layer];
+        if(layerGrid&&typeof layerGrid.r33==='function'&&layerGrid.r33(x*l._44,y*l._44))return false;
+      }catch(_gridCheck){}
       // Exact native-style build radius. Outside it is a complete no-op.
       if(Math.hypot(x-px,y-py)>5)return false;
       // Use the live physics body radius when available. The fallback is the
@@ -117239,7 +117259,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 </script>
 
 	<div name="changes" id="changes">
-		<h1>Diggerz.io Reblasted - Change Log</h1><hr><a name="Build 24.0.35"></a><h2>Build 24.0.35 - Authoritative Layer Repair</h2><ul><li>Wrong-layer blocks are now repaired on both the server and every client, not just inside the server tile maps.</li><li>Stale copies on the old layer are explicitly removed so mining and block-variation modification continue to target the real block.</li><li>Client layer repairs no longer echo correction packets back to the server.</li></ul><hr><a name="Build 24.0.30"></a><h2>Build 24.0.30 - Live Player-Hitbox Placement Cells</h2><ul><li>Placement cells now stay blocked for the entire time the player physics hitbox overlaps any part of the 1x1 cell.</li><li>The check uses a live player-footprint-vs-cell intersection instead of only checking the cell center.</li><li>A cell becomes placeable immediately after the hitbox exits it, including when the player moves across cell boundaries.</li><li>The same rule is enforced client-side and authoritatively by the multiplayer server.</li></ul><hr><a name="Build 24.0.29"></a><h2>Build 24.0.29 - Native Picker Cleanup &amp; Placement Guard Hardening</h2><ul><li>Hardened the native placement guard call so the placement handler always resolves it through the global window object, eliminating the intermittent undefined-function race.</li><li>Removed the red X entry from the native block variation wheel used for block modification.</li><li>Automatically closes the native tile variation wheel when its target block is broken, preventing an invisible menu from remaining on screen.</li></ul><hr><a name="Build 24.0.26"></a><h2>Build 24.0.26 - Strict Block Placement Rules</h2><ul><li>Block placement is now a hard no-op outside the five-tile placement range.</li><li>Placement is rejected when the target cell overlaps a player.</li><li>Normal placed blocks are forced onto the foreground block layer; only native background/decorative items using layer 2 remain on the background layer.</li><li>Multiplayer tile synchronization now preserves the placement layer and supports dynamic background tiles.</li></ul><hr><a name="Build 24.0.17"></a><h2>Build 24.0.17 - Admin Modifiers &amp; Building Polish</h2><ul><li>Added admin Speed, Size, Jump, and Break Speed modifiers.</li><li>Integrated the supplied noclip radius override while preserving normal movement.</li><li>Added a placement travel/grow/spin animation and grid placement indicator.</li><li>Added block modification popup when a block is selected and an occupied cell is clicked.</li><li>Hardened rapid placement/replacement synchronization.</li></ul>
+		<h1>Diggerz.io Reblasted - Change Log</h1><hr><a name="Build 24.0.40"></a><h2>Build 24.0.40 - Coaster Town Native Tile Semantics</h2><ul><li>Uses the recovered native tile layers exactly: BLOCK_LAYER=0, FLOATER_LAYER=1, BKND_LAYER=2.</li><li>Native opcode-11 placement now uses the placement-time player coordinates carried by the native packet for the player-overlap check.</li><li>Native binary packet parsing is little-endian, matching the engine's DataView writers.</li><li>Layer-1 tiles are no longer incorrectly rejected as an actor/player layer.</li></ul><hr><a name="Build 24.0.35"></a><h2>Build 24.0.35 - Authoritative Layer Repair</h2><ul><li>Wrong-layer blocks are now repaired on both the server and every client, not just inside the server tile maps.</li><li>Stale copies on the old layer are explicitly removed so mining and block-variation modification continue to target the real block.</li><li>Client layer repairs no longer echo correction packets back to the server.</li></ul><hr><a name="Build 24.0.30"></a><h2>Build 24.0.30 - Live Player-Hitbox Placement Cells</h2><ul><li>Placement cells now stay blocked for the entire time the player physics hitbox overlaps any part of the 1x1 cell.</li><li>The check uses a live player-footprint-vs-cell intersection instead of only checking the cell center.</li><li>A cell becomes placeable immediately after the hitbox exits it, including when the player moves across cell boundaries.</li><li>The same rule is enforced client-side and authoritatively by the multiplayer server.</li></ul><hr><a name="Build 24.0.29"></a><h2>Build 24.0.29 - Native Picker Cleanup &amp; Placement Guard Hardening</h2><ul><li>Hardened the native placement guard call so the placement handler always resolves it through the global window object, eliminating the intermittent undefined-function race.</li><li>Removed the red X entry from the native block variation wheel used for block modification.</li><li>Automatically closes the native tile variation wheel when its target block is broken, preventing an invisible menu from remaining on screen.</li></ul><hr><a name="Build 24.0.26"></a><h2>Build 24.0.26 - Strict Block Placement Rules</h2><ul><li>Block placement is now a hard no-op outside the five-tile placement range.</li><li>Placement is rejected when the target cell overlaps a player.</li><li>Normal placed blocks are forced onto the foreground block layer; only native background/decorative items using layer 2 remain on the background layer.</li><li>Multiplayer tile synchronization now preserves the placement layer and supports dynamic background tiles.</li></ul><hr><a name="Build 24.0.17"></a><h2>Build 24.0.17 - Admin Modifiers &amp; Building Polish</h2><ul><li>Added admin Speed, Size, Jump, and Break Speed modifiers.</li><li>Integrated the supplied noclip radius override while preserving normal movement.</li><li>Added a placement travel/grow/spin animation and grid placement indicator.</li><li>Added block modification popup when a block is selected and an occupied cell is clicked.</li><li>Hardened rapid placement/replacement synchronization.</li></ul>
 
 		<hr><a name="Build 23.7"></a>
 		<h2>Build 23.7 - Security &amp; Account Hardening</h2>
