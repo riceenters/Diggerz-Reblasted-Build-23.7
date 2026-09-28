@@ -1211,6 +1211,7 @@ function randomSpawnX(room) {
 function ensureRoomState(room) {
   if (!room.drops) room.drops = new Map();
   if (!room.tiles) room.tiles = new Map();
+  if (!room.backgroundTiles) room.backgroundTiles = new Map();
   if (!room.coins) room.coins = new Map();
   if (!room.cottonMachines) room.cottonMachines = new Map();
   if (!room.turretCooldowns) room.turretCooldowns = new Map();
@@ -1624,7 +1625,7 @@ function addClientToRoom(client, room, mode, name) {
     adminBackground: Number.isFinite(room.adminBackground) ? room.adminBackground : null,
     adminPvpOverride: !!room.adminPvpOverride,
     fakePlayers: room.fakePlayers ? [...room.fakePlayers.values()].map(fakePlayerSnapshot) : [],
-    tiles: [...room.tiles.values()], drops: [...room.drops.values()], coins: [...room.coins.values()], speaker: room.speaker ? {...room.speaker} : null, serverNow: Date.now()
+    tiles: [...room.tiles.values()], backgroundTiles: [...room.backgroundTiles.values()], drops: [...room.drops.values()], coins: [...room.coins.values()], speaker: room.speaker ? {...room.speaker} : null, serverNow: Date.now()
   });
   if (mode === 'pvp') sendBattleState(client);
   // Fake players are real native player entities on every browser. Send the same
@@ -1681,6 +1682,7 @@ function matchmake(client, message) {
       matchmaking: true,
       drops: new Map(),
       tiles: new Map(),
+      backgroundTiles: new Map(),
       map: mode === 'pvp' ? pickBattleMap() : (mode === 'digtrade' ? digTradeMap : null)
     };
     rooms.set(code, room);
@@ -1726,6 +1728,7 @@ function joinRoom(client, message) {
       createdAt: Date.now(),
       drops: new Map(),
       tiles: new Map(),
+      backgroundTiles: new Map(),
       map: mode === 'pvp' ? pickBattleMap() : (mode === 'digtrade' ? digTradeMap : null)
     };
     rooms.set(roomCode, room);
@@ -1925,12 +1928,12 @@ function relayGameMessage(client, message, rawLength) {
     let map=message.map===null?makeDefaultMap():sanitizeMap(message.map,'admin-upload.json');
     if(!map){sendJson(client,{t:'server-error',code:'invalid-map',message:'Invalid Diggerz map JSON.'});return;}
     room.map=map.name==='Default Map' && message.useDefault===true ? makeDefaultMap() : map;
-    room.tiles.clear();room.drops.clear();room.coins.clear();room.cottonMachines.clear();room.turretCooldowns.clear();room.adminBackground=null;
+    room.tiles.clear();room.backgroundTiles.clear();room.drops.clear();room.coins.clear();room.cottonMachines.clear();room.turretCooldowns.clear();room.adminBackground=null;
     if(room.mode==='pvp'&&room.battle){room.battle.phase='waiting';room.battle.fightAt=0;room.battle.nextShrinkAt=0;room.battle.shrinkStage=0;room.battle.warningStage=0;room.battle.inset=0;room.battle.left=BATTLE_MIN_LEFT;room.battle.right=BATTLE_MAX_RIGHT;room.battle.elimination=false;room.battle.winnerConnectionId='';room.battle.finishedAt=0;}
     for(const c of room.clients){c.alive=true;c.eliminated=false;c.pvpHealth=3;c.position={x:randomSpawnX(room),y:2};sendJson(c,{t:'force-respawn',x:c.position.x,y:c.position.y,health:3});}
     for(const f of room.fakePlayers.values()){f.x=Math.max(4,Math.min(WORLD_WIDTH-4,f.x));f.y=2;f.vy=0;}
-    broadcastRoom(room,{t:'admin-map-replaced',map:room.map,tiles:[],drops:[],coins:[],serverNow:Date.now()});
-    broadcastRoom(room,{t:'room-state',room:room.code,map:room.map,tiles:[],drops:[],coins:[],adminBackground:null,adminPvpOverride:!!room.adminPvpOverride,fakePlayers:[...room.fakePlayers.values()].map(fakePlayerSnapshot),serverNow:Date.now()});
+    broadcastRoom(room,{t:'admin-map-replaced',map:room.map,tiles:[],backgroundTiles:[],drops:[],coins:[],serverNow:Date.now()});
+    broadcastRoom(room,{t:'room-state',room:room.code,map:room.map,tiles:[],backgroundTiles:[],drops:[],coins:[],adminBackground:null,adminPvpOverride:!!room.adminPvpOverride,fakePlayers:[...room.fakePlayers.values()].map(fakePlayerSnapshot),serverNow:Date.now()});
     if(room.mode==='pvp'){broadcastBattleState(room);if(room.clients.size>=2)startBattleBuild(room);}
     return;
   }
@@ -2145,13 +2148,11 @@ function relayGameMessage(client, message, rawLength) {
     if(x<0||x>=128||y<0||y>=80||id<=0)return;
     if(!client.position||!client.alive||client.eliminated)return;
     if(Math.hypot(client.position.x-x,client.position.y-y)>5)return;
+    for(const other of room.clients){ if(!other.alive||other.eliminated||!other.position) continue; if(Math.hypot(other.position.x-x,other.position.y-y)<0.72)return; }
     const key=`${x},${y}`,prior=room.tiles.get(key);
     if(!prior || !(prior.id|0))return;
-    // Replacing an existing block uses the currently selected block stack.
-    // The browser sends the selected item id/variant so the server remains authoritative.
     const inv=message.inventoryItem||{};
     if((inv.category|0)!==1 || (inv.id|0)!==id)return;
-    // Do not allow a stale rapid-click sequence to consume a stack twice.
     const now=Date.now();
     if(now-(client.lastReplaceBlockAt||0)<55)return;
     client.lastReplaceBlockAt=now;
@@ -2160,9 +2161,8 @@ function relayGameMessage(client, message, rawLength) {
     broadcastRoom(room,{t:'tile',x,y,id,variant,layer:0,ownerConnectionId:client.connectionId,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
     return;
   }
-
   if (message.t==='block-variant') {
-    const x=Number(message.x)|0,y=Number(message.y)|0,layer=Number(message.layer)|0,id=Number(message.id)|0,variant=Math.max(0,Math.min(31,Number(message.variant)|0));
+    const x=Number(message.x)|0,y=Number(message.y)|0,rawLayer=Number(message.layer)|0,layer=rawLayer===2?2:0,id=Number(message.id)|0,variant=Math.max(0,Math.min(31,Number(message.variant)|0));
     if(x<0||x>=128||y<0||y>=80||layer<0||layer>2||!client.alive||client.eliminated)return;
     if(Math.hypot(client.position.x-x,client.position.y-y)>5)return;
     const key=`${x},${y}`,prior=room.tiles.get(key);
@@ -2173,25 +2173,30 @@ function relayGameMessage(client, message, rawLength) {
   }
 
   if (message.t==='tile') {
-    const tile={x:Number(message.x)|0,y:Number(message.y)|0,id:Number(message.id)|0,variant:Number(message.variant)|0,layer:Number(message.layer)|0,ownerConnectionId:client.connectionId};
-    if(tile.x<0||tile.x>=128||tile.y<0||tile.y>=80)return;
-    const key=`${tile.x},${tile.y}`, prior=room.tiles.get(key);
+    let layer=Number(message.layer)|0; layer=layer===2?2:0;
+    const tile={x:Number(message.x)|0,y:Number(message.y)|0,id:Number(message.id)|0,variant:Number(message.variant)|0,layer,ownerConnectionId:client.connectionId};
+    if(tile.x<0||tile.x>=128||tile.y<0||tile.y>=80||!client.position||!client.alive||client.eliminated)return;
+    if(Math.hypot(client.position.x-tile.x,client.position.y-tile.y)>5)return;
+    for(const other of room.clients){ if(!other.alive||other.eliminated||!other.position) continue; if(Math.hypot(other.position.x-tile.x,other.position.y-tile.y)<0.72)return; }
+    const key=`${tile.x},${tile.y}`;
+    const store=layer===2?room.backgroundTiles:room.tiles;
+    const prior=store.get(key);
+    if(room.mode==='digtrade'&&tile.id===122&&layer!==0)return;
     if(room.mode==='digtrade'&&tile.id===122){
       if(room.speaker && (room.speaker.x!==tile.x||room.speaker.y!==tile.y)){
         sendJson(client,{t:'speaker-place-blocked',x:tile.x,y:tile.y,tile:prior?{id:prior.id|0,variant:prior.variant|0}:{id:0,variant:0}});return;
       }
       room.speaker={x:tile.x,y:tile.y,on:false,trackIndex:0,startedAt:0,ownerConnectionId:client.connectionId};
     }
-    room.tiles.set(key,tile);
-    if(tile.id===0){
-      if(prior&&prior.id===122&&room.speaker&&room.speaker.x===tile.x&&room.speaker.y===tile.y)room.speaker=null;
+    if(tile.id===0) store.delete(key); else store.set(key,tile);
+    if(tile.id===0 && layer===0){
+      if(prior&&prior.id===122&&room.speaker&&room.speaker.x===tile.x&&room.speaker.y===tile.y) room.speaker=null;
       room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
     }
     broadcastRoom(room,Object.assign({t:'tile'},tile,{_serverFrom:client.connectionId,_serverName:client.name}));
     if((prior&&prior.id===122)||tile.id===122)syncSpeaker(room);
     return;
   }
-
   if(message.t==='speaker-toggle'){
     if(room.mode!=='digtrade'||!room.speaker)return;
     const x=Number(message.x)|0,y=Number(message.y)|0;if(room.speaker.x!==x||room.speaker.y!==y)return;
@@ -2585,12 +2590,12 @@ async function handleAdminApi(req, res, urlPath) {
     if(!room){sendApiJson(res,404,{ok:false,error:'room-not-found'});return true;}
     const map=body&&body.map===null?makeDefaultMap():sanitizeMap(body&&body.map,'admin-upload.json');
     if(!map){sendApiJson(res,400,{ok:false,error:'invalid-map'});return true;}
-    room.map=map; room.tiles.clear();room.drops.clear();room.coins.clear();room.cottonMachines.clear();room.turretCooldowns.clear();room.adminBackground=null;
+    room.map=map; room.tiles.clear();room.backgroundTiles.clear();room.drops.clear();room.coins.clear();room.cottonMachines.clear();room.turretCooldowns.clear();room.adminBackground=null;
     if(room.mode==='pvp'&&room.battle){room.battle.phase='waiting';room.battle.fightAt=0;room.battle.nextShrinkAt=0;room.battle.shrinkStage=0;room.battle.warningStage=0;room.battle.inset=0;room.battle.left=BATTLE_MIN_LEFT;room.battle.right=BATTLE_MAX_RIGHT;room.battle.elimination=false;room.battle.winnerConnectionId='';room.battle.finishedAt=0;}
     for(const c of room.clients){c.alive=true;c.eliminated=false;c.pvpHealth=3;c.position={x:randomSpawnX(room),y:2};sendJson(c,{t:'force-respawn',x:c.position.x,y:c.position.y,health:3});}
     for(const f of room.fakePlayers.values()){f.y=2;f.vy=0;}
-    broadcastRoom(room,{t:'admin-map-replaced',map:room.map,tiles:[],drops:[],coins:[],serverNow:Date.now()});
-    broadcastRoom(room,{t:'room-state',room:room.code,map:room.map,tiles:[],drops:[],coins:[],adminBackground:null,adminPvpOverride:!!room.adminPvpOverride,fakePlayers:[...room.fakePlayers.values()].map(fakePlayerSnapshot),serverNow:Date.now()});
+    broadcastRoom(room,{t:'admin-map-replaced',map:room.map,tiles:[],backgroundTiles:[],drops:[],coins:[],serverNow:Date.now()});
+    broadcastRoom(room,{t:'room-state',room:room.code,map:room.map,tiles:[],backgroundTiles:[],drops:[],coins:[],adminBackground:null,adminPvpOverride:!!room.adminPvpOverride,fakePlayers:[...room.fakePlayers.values()].map(fakePlayerSnapshot),serverNow:Date.now()});
     if(room.mode==='pvp'){broadcastBattleState(room);if(room.clients.size>=2)startBattleBuild(room);}
     log(`Admin ${session.role} replaced map in room ${room.code} with ${map.name}.`);
     sendApiJson(res,200,{ok:true,mapName:map.name,room:room.code}); return true;

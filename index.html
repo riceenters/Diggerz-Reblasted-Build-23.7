@@ -19141,9 +19141,15 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                     // s34 is the game's actual white grid/block highlight.
                                     // Only use the radial picker when that native highlight
                                     // is active and the clicked cell contains another block.
-                                    if (!a && this.s34.a2 && null != e && null != d &&
-                                        1 == d.a4 && 1 == e.a4 && (d.h44 | 0) != (e.h44 | 0) &&
-                                        typeof e.j44 == "function") {
+                                    // The original tile picker is a block-selection fallback:
+                                    // when the clicked cell contains a block and the equipped
+                                    // item is NOT a mining tool, clicking the highlighted block
+                                    // opens its native variation wheel instead of mining it.
+                                    // Do not restrict this to one block id (the old patch did,
+                                    // which is why the picker appeared only for some blocks).
+                                    var selectedCanMine = !!(d && d.T40);
+                                    if (!a && this.s34.a2 && null != e && 1 == e.a4 &&
+                                        !selectedCanMine && typeof e.j44 == "function") {
                                         try {
                                             e.j44();
                                             q.mClicked = !1;
@@ -19153,9 +19159,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                     !a && null != d && 0 < d.g36 && 1 == d.a4 && null != e && this.u31(d, e) && (1 != d.a4 || 141 != d.h44) && (e = null);
                                     null != e || null == d || 1 == d.a4 && 141 == d.h44 ? null == e || a || null == d || 141 != d.h44 || e.i42 ? 0 != od.h39 && q.thisMain.isPhone() || null == e || !(20 < e.a1) || e.i42 || this.R38 || l.b43 && e.j44() : (db.getTimer() | 0) < l.z39.o34 + 1E4 ? this.R35.C46("^1Error: ^7Teleport CoolDown.") : (K.X9(l.z38, Math.round(b / l._44), Math.round(c / l._44), e.Q36),
                                     d.G6(!0),
-                                    e.i42 = !0) : 1 == d.a4 ? (l.z39.O33(b, c),
-                                    K.X8(this, l.z39, l.z39.n38.q43, b, c, d.Q36, !1),
-                                    this.R38 = !0) : this.R35.C46("^1You can't place this tile.")
+                                    e.i42 = !0) : 1 == d.a4 ? (DiggerzCanPlaceNative(this, Math.round(b / l._44), Math.round(c / l._44), d) ? (l.z39.O33(b, c),
+                                    K.X8(this, l.z39, l.z39.n38.q43, b, c, DiggerzPlacementLayer(d), !1),
+                                    this.R38 = !0) : null) : this.R35.C46("^1You can't place this tile.")
                                 }
                                 q.mClicked = !1
                             } else
@@ -22917,9 +22923,19 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             if (x < 0 || y < 0 || x >= this.state.width || y >= this.state.height) return false;
             var index = x + y * this.state.width;
             variant = variant || 0;
-            var prevId = this.state.tiles[index] | 0;
-            this.state.tiles[index] = id;
-            if (this.state.variants) this.state.variants[index] = variant;
+            var isBackground = layer === 2;
+            if (isBackground) {
+                if (!this.state.backgroundTiles) this.state.backgroundTiles = new Array(this.state.width * this.state.height).fill(0);
+                if (!this.state.backgroundVariants) this.state.backgroundVariants = new Array(this.state.width * this.state.height).fill(0);
+            }
+            var prevId = isBackground ? (this.state.backgroundTiles[index] | 0) : (this.state.tiles[index] | 0);
+            if (isBackground) {
+                this.state.backgroundTiles[index] = id;
+                this.state.backgroundVariants[index] = variant;
+            } else {
+                this.state.tiles[index] = id;
+                if (this.state.variants) this.state.variants[index] = variant;
+            }
             if (!id) delete this.damage[x + ":" + y];
             this.sendTile(x, y, id, variant, layer);
             this.markDirty();
@@ -115687,7 +115703,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     proto.pvpDropKey=function(parts){return Array.isArray(parts)?parts.map(function(v){return v|0}).join(':'):''};
     proto.pvpAddSharedDrop=function(d){if(!d||!Array.isArray(d.guid))return;var guid=this.guidFromParts(d.guid),key=this.pvpGuidKey(guid);if(this.drops[key])return;var drop={guid:guid,category:d.category|0,id:d.id|0,count:Math.max(1,d.count|0),x:+d.x||0,y:+d.y||0,text:String(d.text||''),tier:String(d.tier||'')};this.drops[key]=drop;this.enqueue(15,1,function(packet){packet.R8(guid);packet.R4(drop.category);packet.r8(drop.x);packet.r8(0);packet.r8(drop.y);packet.r8(drop.x);packet.r8(0);packet.r8(drop.y-.35);packet.R2(drop.id);packet.R2(drop.count);packet.R0(0);packet.s0(true);packet.R9(drop.text)})};
     proto.pvpRemoveSharedDrop=function(parts){var guid=this.guidFromParts(parts),key=this.pvpGuidKey(guid),drop=this.drops[key];if(!drop)return;delete this.drops[key];this.removeDrop(drop)};
-    proto.pvpApplyRoomState=function(m){var i;if(Array.isArray(m.tiles)){this._pvpApplyingTile=true;try{for(i=0;i<m.tiles.length;i++){var t=m.tiles[i];this.setTile(t.x|0,t.y|0,t.id|0,t.variant|0,t.layer|0)}}finally{this._pvpApplyingTile=false}}if(Array.isArray(m.drops))for(i=0;i<m.drops.length;i++)this.pvpAddSharedDrop(m.drops[i])};
+    proto.pvpApplyRoomState=function(m){var i;if(Array.isArray(m.tiles)){this._pvpApplyingTile=true;try{for(i=0;i<m.tiles.length;i++){var t=m.tiles[i];this.setTile(t.x|0,t.y|0,t.id|0,t.variant|0,t.layer|0)}}finally{this._pvpApplyingTile=false}}if(Array.isArray(m.backgroundTiles)){this._pvpApplyingTile=true;try{for(i=0;i<m.backgroundTiles.length;i++){var bt=m.backgroundTiles[i];this.setTile(bt.x|0,bt.y|0,bt.id|0,bt.variant|0,2)}}finally{this._pvpApplyingTile=false}}if(Array.isArray(m.drops))for(i=0;i<m.drops.length;i++)this.pvpAddSharedDrop(m.drops[i])};
     proto.pvpRemoteHitLine=function(fromX,fromY,toX,toY){var peers=this.pvpEnsurePeers(),vx=toX-fromX,vy=toY-fromY,vv=vx*vx+vy*vy,best=null,bestT=2;for(var k in peers){var peer=peers[k],e=this.pvpEntityForPeer(peer);if(!e||!e.a2)continue;var px=e.b6/l._44,py=e.b7/l._44,t=vv>0?((px-fromX)*vx+(py-fromY)*vy)/vv:0;t=Math.max(0,Math.min(1,t));var cx=fromX+vx*t,cy=fromY+vy*t;if(Math.hypot(px-cx,py-cy)<=.9&&t<bestT){best=peer;bestT=t}}return best};
     proto.adminEffects={god:false,fly:false,noclip:false,invis:false};
     proto.adminModifiers={speed:1,jump:1,size:1,breakSpeed:1};
@@ -115809,7 +115825,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       if(m.t==='typing'){var typingPeer=this.pvpPeerForConnection(m._serverFrom);if(typingPeer&&typingPeer.id){var tid=typingPeer.id,active=!!m.active;this.enqueue(49,1,function(p){p.R8(tid);p.s0(active)})}return}
       if(m.t==='peer-state'){var statePeer=this.pvpPeerForConnection(m._serverFrom),se=statePeer&&this.pvpEntityForPeer(statePeer);if(se&&isFinite(+m.x)&&isFinite(+m.y)){var sx=(+m.x)*l._44,sy=(+m.y)*l._44;if(Math.hypot((se.b6-sx)/l._44,(se.b7-sy)/l._44)>1.25){try{se.l38(sx,sy)}catch(_e){se.b6=sx;se.b7=sy}}}return}
       if(m.t==='tile'){
-        var tx=m.x|0,ty=m.y|0,tkey=tx+':'+ty;
+        var tx=m.x|0,ty=m.y|0,tLayer=m.layer|0,tkey=tx+':'+ty+':'+tLayer;
         if(String(m._serverFrom||'')===String(P.connectionId||'') && this._diggerzPendingPlacements && this._diggerzPendingPlacements[tkey]) return;
         this._pvpApplyingTile=true;
         try{this.setTile(tx,ty,m.id|0,m.variant|0,m.layer|0)}finally{this._pvpApplyingTile=false}
@@ -115854,7 +115870,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     var oldWorldName=proto.sendWorldName;proto.sendWorldName=function(){if(this.mode!=='pvp')return oldWorldName.call(this);var name=P.mode==='digtrade'?'Free Dig':'Battle Royale';this.enqueue(95,1,function(packet){packet.R9(name)})};
     var oldSendPlayer=proto.sendPlayer;proto.sendPlayer=function(){var r=oldSendPlayer.call(this);if(window.DiggerzIsMultiplayer(this)){P.attach(this);var self=this;setTimeout(function(){self.pvpSendHello()},150);setTimeout(function(){self.pvpSendHello()},1000);setTimeout(function(){self.pvpSendHello();if(P.connected)self.pvpSendNativeSpawn()},2500)}return r};
     var oldPlayerChat=proto.playerChat;proto.playerChat=function(text){var r=oldPlayerChat.call(this,text);if(window.DiggerzIsMultiplayer(this))this.pvpSend({t:'chat',text:String(text||'').slice(0,180)});return r};
-    var oldSetTile=proto.setTile;proto.setTile=function(x,y,id,variant){var r=oldSetTile.call(this,x,y,id,variant);if(r&&window.DiggerzIsMultiplayer(this)&&!this._pvpApplyingTile)this.pvpSend({t:'tile',x:x,y:y,id:id,variant:variant||0});return r};
+    var oldSetTile=proto.setTile;proto.setTile=function(x,y,id,variant,layer){layer=layer==null?0:(layer|0);var r=oldSetTile.call(this,x,y,id,variant,layer);if(r&&window.DiggerzIsMultiplayer(this)&&!this._pvpApplyingTile)this.pvpSend({t:'tile',x:x,y:y,id:id,variant:variant||0,layer:layer});return r};
     var oldDirect=proto.weaponDirectHit;proto.weaponDirectHit=function(fromX,fromY,toX,toY,attackType){var r=oldDirect.call(this,fromX,fromY,toX,toY,attackType);if((this.mode==='pvp'&&P.mode==='pvp')||(this.mode==='digtrade'&&P.mode==='digtrade'&&(this.adminPvpEnabled||(typeof q!=='undefined'&&q.diggerzAdminPvpEnabled)))){var peer=this.pvpRemoteHitLine(fromX,fromY,toX,toY);if(peer)this.pvpSend({t:'damage',targetConnectionId:peer.connectionId,amount:1,source:'weapon'})}return r};
     var oldImpact=proto.weaponImpactDamage;proto.weaponImpactDamage=function(x,y,impactType){var r=oldImpact.call(this,x,y,impactType);if((this.mode==='pvp'&&P.mode==='pvp')||(this.mode==='digtrade'&&P.mode==='digtrade'&&(this.adminPvpEnabled||(typeof q!=='undefined'&&q.diggerzAdminPvpEnabled)))){var peers=this.pvpEnsurePeers();for(var k in peers){var peer=peers[k],e=this.pvpEntityForPeer(peer);if(!e||!e.a2)continue;var px=e.b6/l._44,py=e.b7/l._44,dx=px-x,dy=py-y,hit=false;if(impactType===36)hit=Math.hypot(dx,dy)<=.95;else if(impactType===30)hit=Math.abs(dx)<=.9&&Math.abs(dy)<=.9;else if(impactType===24)hit=Math.abs(dx)<=1.7&&Math.abs(dy)<=1.7;else if(impactType===38)hit=Math.abs(dx)<=2.8&&Math.abs(dy)<=2.8;else if(impactType===40)hit=(Math.abs(dx)<=.8&&dy>=0&&dy<=3.4)||(Math.abs(dx)<=1.7&&Math.abs(dy-3)<=1.7);else hit=Math.hypot(dx,dy)<=2.35;if(hit)this.pvpSend({t:'damage',targetConnectionId:peer.connectionId,amount:1,source:'weapon'})}}return r};
     var oldHurt=proto.hurtLocalPlayer;proto.hurtLocalPlayer=function(amount,source){if(this.adminEffects&&this.adminEffects.god)return;var wasDead=!!this.localDead,r=oldHurt.call(this,amount,source);if(this.mode==='pvp'&&P.mode==='pvp'){var max=l.z39&&l.z39.N34||3,current=this.localHealth==null?(l.z39&&l.z39.N33||max):this.localHealth;this.pvpSend({t:'health',current:current,maximum:max});if(!wasDead&&this.localDead){var x=l.z39?l.z39.b6/l._44:this.state.x,y=l.z39?l.z39.b7/l._44:this.state.y;this.pvpSend({t:'death',x:x,y:y})}}return r};
@@ -116873,6 +116889,55 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 }());
 </script>
 
+<script id="diggerz-build24-placement-guard">
+(function(){
+  function install(){
+    try{
+      if(typeof l==='undefined'||typeof K==='undefined'||!l.z39||!l.z39.n38||!l.z39.n38.B30)return setTimeout(install,100);
+      if(window.__diggerzPlacementGuardInstalled)return;
+      window.__diggerzPlacementGuardInstalled=true;
+      window.DiggerzPlacementLayer=function(item){
+        try{
+          var q36=item&&item.Q36;
+          // The engine's background/decorative layer is 2. Everything else is
+          // deliberately forced onto the normal playable block layer (0).
+          return (q36|0)===2?2:0;
+        }catch(e){return 0}
+      };
+      window.DiggerzCanPlaceNative=function(service,x,y,item){
+        try{
+          if(!service||!l.z39||!item)return false;
+          x|=0;y|=0;
+          var px=l.z39.b6/l._44,py=l.z39.b7/l._44;
+          // Hard placement range: outside five tiles is a complete no-op.
+          if(Math.hypot(x-px,y-py)>5)return false;
+          // Never place into a player/fake player. Check the local player first.
+          if(Math.hypot(x-px,y-py)<0.72)return false;
+          var peers=service.pvpEnsurePeers?service.pvpEnsurePeers():{};
+          for(var k in peers){
+            var peer=peers[k],ent=service.pvpEntityForPeer?service.pvpEntityForPeer(peer):null;
+            if(ent&&ent.a2!==false&&Math.hypot(x-ent.b6/l._44,y-ent.b7/l._44)<0.72)return false;
+            if(peer&&isFinite(peer.lastX)&&isFinite(peer.lastY)&&Math.hypot(x-peer.lastX,y-peer.lastY)<0.72)return false;
+          }
+          // Do the same for fake/native entities exposed through the scene.
+          var scene=l.z38&&l.z38._9;
+          if(scene)for(var i=0;i<scene.length;i++){
+            var e=scene[i];
+            if(!e||e===l.z39||e.a2===false)continue;
+            if(e._1==='target_dummy_marker'||e._1==='tilepick')continue;
+            if(e.Q36===undefined||e.b6===undefined||e.b7===undefined)continue;
+            var dx=x-e.b6/l._44,dy=y-e.b7/l._44;
+            if(Math.hypot(dx,dy)<0.72 && e.h44===141)return false;
+          }
+          return true;
+        }catch(e){return true}
+      };
+    }catch(e){setTimeout(install,100)}
+  }
+  install();
+}());
+</script>
+
 <script type="text/javascript">
 		if (window.gameScriptLoadsFailed()) {
     window.reportGameLoadError('A required game script is unavailable.');
@@ -117099,7 +117164,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 </script>
 
 	<div name="changes" id="changes">
-		<h1>Diggerz.io Reblasted - Change Log</h1><hr><a name="Build 24.0.17"></a><h2>Build 24.0.17 - Admin Modifiers &amp; Building Polish</h2><ul><li>Added admin Speed, Size, Jump, and Break Speed modifiers.</li><li>Integrated the supplied noclip radius override while preserving normal movement.</li><li>Added a placement travel/grow/spin animation and grid placement indicator.</li><li>Added block modification popup when a block is selected and an occupied cell is clicked.</li><li>Hardened rapid placement/replacement synchronization.</li></ul>
+		<h1>Diggerz.io Reblasted - Change Log</h1><hr><a name="Build 24.0.26"></a><h2>Build 24.0.26 - Strict Block Placement Rules</h2><ul><li>Block placement is now a hard no-op outside the five-tile placement range.</li><li>Placement is rejected when the target cell overlaps a player.</li><li>Normal placed blocks are forced onto the foreground block layer; only native background/decorative items using layer 2 remain on the background layer.</li><li>Multiplayer tile synchronization now preserves the placement layer and supports dynamic background tiles.</li></ul><hr><a name="Build 24.0.17"></a><h2>Build 24.0.17 - Admin Modifiers &amp; Building Polish</h2><ul><li>Added admin Speed, Size, Jump, and Break Speed modifiers.</li><li>Integrated the supplied noclip radius override while preserving normal movement.</li><li>Added a placement travel/grow/spin animation and grid placement indicator.</li><li>Added block modification popup when a block is selected and an occupied cell is clicked.</li><li>Hardened rapid placement/replacement synchronization.</li></ul>
 
 		<hr><a name="Build 23.7"></a>
 		<h2>Build 23.7 - Security &amp; Account Hardening</h2>
