@@ -1,4 +1,4 @@
-Diggerz Build 24.0.21
+Diggerz Build 24.0.22
 
 Fake players now use the same native player spawn/movement/despawn packets as connected players.
 # Diggerz.io Reblasted — Build 24.0
@@ -224,3 +224,10 @@ Diggerz.io and Coaster Town were originally created by **MeanDean**. Diggerz.io 
 - Enabled that existing native hover path during Battle Royale/PvP as well as Dig + Trade; it had been gated behind `l.A46`, so PvP never reached it.
 - Removed the custom per-frame block-tool overlay/click layer that could interfere with block clicks and freeze the game.
 - No new DOM/CSS block outline is used.
+
+
+## Build 24.0.22 — recovered native block variation wheel
+- Recovered the original engine `Sc`/`X` spinning radial UI used by the clothing/inventory screen for block-variation selection.
+- Clicking an occupied block while holding a different block opens the native wheel instead of breaking the clicked block.
+- The wheel lists every catalog-valid variant of that block, including recovered slope/orientation variants.
+- Variant selection is mirrored into the multiplayer tile state and broadcast through the existing tile sync path.

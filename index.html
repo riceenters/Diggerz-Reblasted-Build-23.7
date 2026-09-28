@@ -23458,6 +23458,80 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 return "Item " + id
             }
         },
+        // Recovered native block-variation wheel.  The original client already
+        // contains the Sc/X radial inventory UI used by the clothing screen;
+        // reuse those exact engine objects for block variants instead of making
+        // a DOM imitation.
+        openBlockVariantPicker: function(targetBlock, blockId, x, y) {
+            var service = this;
+            try {
+                if (!targetBlock || !blockId || !l.z38) return false;
+                var existing = l.z38.f4(Sc);
+                if (existing && existing._1 === "diggerz_block_variants") {
+                    existing.a0 = 1;
+                    try { existing.e3() } catch (_closeExisting) {}
+                }
+                var menu = new Sc();
+                menu._1 = "diggerz_block_variants";
+                menu._2 = targetBlock;
+                menu.q42 = new Ia;
+                menu.d34 = z.I9();
+                menu.d34.D7(menu);
+                menu.d34.Init(f.INV_BKND_PNG());
+                menu.d34.set_local_r(menu.d34.set_local_g(menu.d34.set_local_b(.15)));
+                menu.d34.set_local_alp(.8);
+                menu.d34.F6(0, 0, 2 * Math.PI, 35000, !0);
+                menu._9.push(menu.d34);
+
+                var count = 0, maxAbs = 0;
+                for (var variant = 0; variant < 32; variant++) {
+                    if (!h.q24(blockId, variant)) continue;
+                    var item = new X(menu, 1, blockId, variant, count, 1, 0);
+                    menu._9.push(item);
+                    menu.B30.push(item);
+                    if (item._3 == null) {
+                        T.remove(menu._9, item);
+                        menu.B30.pop();
+                        continue
+                    }
+                    count++;
+                }
+                if (!count) {
+                    menu.a0 = 1;
+                    return false
+                }
+                menu.d34.set_local_xScale(menu.d34.set_local_yScale(Math.max(1, 2 * (maxAbs + 50) / menu.d34._5.width)));
+                // Let the native radial layout calculate the actual item radius,
+                // then resize the wheel once more to fit the rendered variants.
+                menu.q46(targetBlock, !0);
+                for (var mi = 0; mi < menu.B30.length; mi++) {
+                    var abs = Math.max(Math.abs(menu.B30[mi].b6 || 0), Math.abs(menu.B30[mi].b7 || 0));
+                    if (abs > maxAbs) maxAbs = abs;
+                }
+                menu.d34.set_local_xScale(menu.d34.set_local_yScale(Math.max(1, 2 * (maxAbs + 50) / menu.d34._5.width)));
+
+                // The stock X.C39 applies the variant through the original engine
+                // path.  After that, mirror the exact id/variant into Diggerz's
+                // multiplayer tile state so everybody sees the selected shape.
+                for (var wi = 0; wi < menu.B30.length; wi++) {
+                    (function(choice) {
+                        var nativeClick = choice.C39;
+                        choice.C39 = function() {
+                            var result = nativeClick.call(choice);
+                            try {
+                                var tx = Math.round((targetBlock.b6 || 0) / l._44);
+                                var ty = Math.round((targetBlock.b7 || 0) / l._44);
+                                if (service && service.setTile) service.setTile(tx, ty, blockId, choice.b14 | 0);
+                            } catch (_syncVariant) {}
+                            return result
+                        };
+                    })(menu.B30[wi]);
+                }
+                return true
+            } catch (error) {
+                return false
+            }
+        },
         dig: function(packet) {
             this.lastDigTick = this.ticks;
             var attackX = packet.Q4(), attackY = packet.Q4();
@@ -23569,6 +23643,21 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             // take damage, which prevents accidental radius/vein mining.
             var id = this.tileAt(targetX, targetY);
             if (!id || this.distanceToPlayer(targetX, targetY) > 3.6) return;
+            // If a different block is selected, clicking an occupied block opens
+            // the recovered native spinning variation wheel instead of mining it.
+            // This is the same Sc/X radial UI used by the original clothing GUI.
+            if (heldItem && heldItem.category === 1 && (heldItem.id | 0) !== (id | 0)) {
+                var clickedBlock = null;
+                try {
+                    clickedBlock = this.r33(targetX * l._44, targetY * l._44);
+                    if (clickedBlock && (clickedBlock.h44 | 0) === (id | 0) && (clickedBlock.a4 | 0) === 1) {
+                        if (this.openBlockVariantPicker(clickedBlock, id, targetX, targetY)) {
+                            q.mClicked = !1;
+                            return;
+                        }
+                    }
+                } catch (_variantOpen) {}
+            }
             var key = targetX + ":" + targetY;
             var breakRaw=Number(this.adminModifiers&&this.adminModifiers.breakSpeed);var breakMod=isFinite(breakRaw)?Math.max(.1,Math.min(10,breakRaw)):1;var hits = (this.damage[key] || 0) + breakMod;
             var specialServerBlock = id === 211 || id === 127 || id === 212;
