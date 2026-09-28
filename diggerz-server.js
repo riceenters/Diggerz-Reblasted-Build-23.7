@@ -2464,7 +2464,7 @@ function relayGameMessage(client, message, rawLength) {
     if(requestedLayer===1)return;
     requestedLayer=requestedLayer===2?2:0;
     const x=Number(message.x)|0,y=Number(message.y)|0,id=Number(message.id)|0,variant=Number(message.variant)|0;
-    if(x<0||x>=128||y<0||y>=80||!client.position||!client.alive||client.eliminated)return;
+    if(x<0||x>=128||y<0||y>=80)return; if(!client.position)client.position={x:x,y:y}; // still allow tile sync if flags lag
     const packetPX=Number(message.px), packetPY=Number(message.py);
     const placementPos=(Number.isFinite(packetPX)&&Number.isFinite(packetPY))?{x:packetPX,y:packetPY}:client.position;
     if(Math.hypot(placementPos.x-x,placementPos.y-y)>5)return;
