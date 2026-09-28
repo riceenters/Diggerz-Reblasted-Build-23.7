@@ -210,3 +210,9 @@ Diggerz.io and Coaster Town were originally created by **MeanDean**. Diggerz.io 
 - **The Epic Sea** uses its own fixed round music instead of a randomly selected PvP track.
 - Roblox Rocket Launcher shop purchases now grant **1,337** launchers per 300-coin purchase.
 - Fixed the recovered intro/Super Rare screen so Battle Royale rooms identify themselves as **Battle Royale** instead of **Dig + Trade**.
+
+
+## Build 24.0.19 fix
+- Fixed a startup-breaking `ReferenceError: pa is not defined` caused by admin modifier prototype hooks accessing the engine-local player class from outside its scope.
+- Admin speed/jump modifiers now install safely on the local player instance after the game creates it.
+- Kept the native grid/block hover indicator changes from 24.0.18.
