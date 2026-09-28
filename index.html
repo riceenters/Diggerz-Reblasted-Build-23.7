@@ -15977,6 +15977,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             a.h4(Wc.e14(this.q7.P4) % Wc.e14(10) | 0)
         },
         m38: function(a, b) {
+            // Reset idle/walk to defaults BEFORE re-applying wear.
+            // Special shoes (ballet, robot, kpop, etc.) set I32/I36 as a
+            // side-effect of Yf.W48. Without this reset, unequipping those
+            // shoes (or applying a peer appearance that never had them)
+            // leaves everyone stuck on ballet_pose / other special idles.
+            this.I32 = "idle";
+            this.I36 = "walk";
             for (var c = !1, d = 0, e = a.length; d < e; ) {
                 var g = d++;
                 4 != g && a[g] != this.J33[g] && (c = !0)
@@ -15998,7 +16005,25 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.i33.f2("back_foot").a2 = !0,
             this.i39 = kl.Get()) : (this.m36(),
             e = 4,
-            a = 5);
+            a = 5,
+            // Partial update only refreshes the hand slot. Re-derive special
+            // idle/walk from the current shoe slot (3) so ballet etc. still
+            // apply after a hand-only refresh, without rebuilding feet wear.
+            (function(self){
+              try {
+                var shoeId = (self.J33 && self.J33[3]) | 0;
+                if (!shoeId) return;
+                switch (shoeId) {
+                  case 56: self.I32 = "kpop_dance"; break;
+                  case 116: self.I32 = "crane_pose"; break;
+                  case 149: case 150: self.I32 = "smartphone"; break;
+                  case 161: self.I32 = "ballet_pose"; break;
+                  case 163: self.I32 = "robot"; break;
+                  case 172: case 185: self.I32 = "coffee"; break;
+                  case 216: case 217: case 218: self.I36 = "roo_walk"; break;
+                }
+              } catch (_shoeIdle) {}
+            })(this));
             d = !1;
             for (c = e; c < a; ) {
                 var p = c++
@@ -16244,6 +16269,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
             this.B2 = this.B3 = !0;
             this.i33.e0()
+
+            try { if (window.DiggerzSyncShoeIdle) window.DiggerzSyncShoeIdle(this); } catch (_si) {}
         },
         m39: function(a, b, c, d) {
             null == d && (d = !1);
@@ -116192,7 +116219,20 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       if(m.t==='admin-coins'){var amount=Math.max(1,Math.min(1000000,m.amount|0));this.state.coins=Math.max(0,(this.state.coins||0)+amount);this.sendCoins();this.markDirty();this.save(true);this.message('^2Admin gave you '+amount+' coins.');return}
       if(m.t==='admin-kill'){this.hurtLocalPlayer(999,'admin');return}
     };
-    proto.pvpTick=function(){if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attach(this);if(!l.z39)return;var eff=this.adminEffects||{},mods=this.adminModifiers||{speed:1,jump:1,size:1,breakSpeed:1};if(eff.fly&&!this.localDead){adminFlyApplyState(true)}if(eff.noclip&&!this.localDead&&!eff.fly){var now=Date.now(),dt=Math.min(.05,Math.max(.001,(now-(this._adminNoclipLast||now))/1000));this._adminNoclipLast=now;var dx=0,dy=0;try{if(q.KeyDown(65))dx-=1;if(q.KeyDown(68))dx+=1;if(q.KeyDown(87))dy-=1;if(q.KeyDown(83))dy+=1}catch(e){}if(dx||dy){var len=Math.hypot(dx,dy)||1;dx/=len;dy/=len;try{l.z39.l38(l.z39.b6+dx*7*dt*l._44*(Number(mods.speed)||1),l.z39.b7+dy*7*dt*l._44*(Number(eff.speed)||1))}catch(e){l.z39.b6+=dx*7*dt*l._44;l.z39.b7+=dy*7*dt*l._44}this.state.x=l.z39.b6/l._44;this.state.y=l.z39.b7/l._44}}if(this.ticks%3===0)this.pvpSendNativeMovement()};
+    proto.pvpTick=function(){
+      try {
+        if (window.DiggerzSyncShoeIdle) {
+          if (typeof l !== "undefined" && l.z39) window.DiggerzSyncShoeIdle(l.z39);
+          var peers = this.pvpEnsurePeers && this.pvpEnsurePeers();
+          if (peers) {
+            for (var _pk in peers) {
+              var _pe = this.pvpEntityForPeer && this.pvpEntityForPeer(peers[_pk]);
+              if (_pe) window.DiggerzSyncShoeIdle(_pe);
+            }
+          }
+        }
+      } catch (_shoeTick) {}
+if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attach(this);if(!l.z39)return;var eff=this.adminEffects||{},mods=this.adminModifiers||{speed:1,jump:1,size:1,breakSpeed:1};if(eff.fly&&!this.localDead){adminFlyApplyState(true)}if(eff.noclip&&!this.localDead&&!eff.fly){var now=Date.now(),dt=Math.min(.05,Math.max(.001,(now-(this._adminNoclipLast||now))/1000));this._adminNoclipLast=now;var dx=0,dy=0;try{if(q.KeyDown(65))dx-=1;if(q.KeyDown(68))dx+=1;if(q.KeyDown(87))dy-=1;if(q.KeyDown(83))dy+=1}catch(e){}if(dx||dy){var len=Math.hypot(dx,dy)||1;dx/=len;dy/=len;try{l.z39.l38(l.z39.b6+dx*7*dt*l._44*(Number(mods.speed)||1),l.z39.b7+dy*7*dt*l._44*(Number(eff.speed)||1))}catch(e){l.z39.b6+=dx*7*dt*l._44;l.z39.b7+=dy*7*dt*l._44}this.state.x=l.z39.b6/l._44;this.state.y=l.z39.b7/l._44}}if(this.ticks%3===0)this.pvpSendNativeMovement()};
     var oldA16=proto.A16;proto.A16=function(){var r=oldA16.call(this);if(window.DiggerzIsMultiplayer(this))this.pvpTick();return r};
     var oldA12=proto.A12;proto.A12=function(){if(window.DiggerzIsMultiplayer(this))P.detach(this);return oldA12.call(this)};
     var oldA17=proto.A17;proto.A17=function(opcode,body,c){
@@ -117321,6 +117361,42 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     var qx=Math.max(left,Math.min(px,right)), qy=Math.max(top,Math.min(py,bottom));
     return Math.hypot(px-qx,py-qy) < r;
   };
+
+    // Derive idle/walk ONLY from equipped shoes (slot 3) and sabre hands (slot 4).
+    // Prevents ballet_pose (and other special idles) from applying to players who
+    // do not actually wear those items — including peers who never owned them.
+    window.DiggerzSyncShoeIdle = function(entity) {
+      try {
+        if (!entity || !entity.J33) return;
+        var shoe = (entity.J33[3] | 0);
+        var hand = (entity.J33[4] | 0);
+        var wantIdle = "idle";
+        var wantWalk = "walk";
+        switch (shoe) {
+          case 56: wantIdle = "kpop_dance"; break;
+          case 116: wantIdle = "crane_pose"; break;
+          case 149: case 150: wantIdle = "smartphone"; break;
+          case 161: wantIdle = "ballet_pose"; break;
+          case 163: wantIdle = "robot"; break;
+          case 172: case 185: wantIdle = "coffee"; break;
+          case 216: case 217: case 218: wantWalk = "roo_walk"; break;
+        }
+        // Sabre weapons override idle pose while held.
+        if (hand >= 379 && hand <= 394) wantIdle = "sabre_pose";
+        var idleChanged = entity.I32 !== wantIdle;
+        var walkChanged = entity.I36 !== wantWalk;
+        entity.I32 = wantIdle;
+        entity.I36 = wantWalk;
+        if (idleChanged && entity.i33 && typeof entity.i33._38 === "function") {
+          try {
+            if (typeof oa !== "undefined" && entity.i32 === oa.MODE_IDLE) {
+              entity.i33._38(wantIdle, !0, 0, 1);
+            }
+          } catch (_anim) {}
+        }
+      } catch (_sync) {}
+    };
+
   window.DiggerzCanPlaceNative=function(service,x,y,item){
     try{
       if(!service||!item||typeof l==='undefined'||!l.z39||!l._44)return false;
