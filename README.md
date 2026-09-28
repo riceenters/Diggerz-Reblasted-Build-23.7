@@ -1,4 +1,4 @@
-Diggerz Build 24.0.11
+Diggerz Build 24.0.21
 
 Fake players now use the same native player spawn/movement/despawn packets as connected players.
 # Diggerz.io Reblasted — Build 24.0
@@ -216,3 +216,11 @@ Diggerz.io and Coaster Town were originally created by **MeanDean**. Diggerz.io 
 - Fixed a startup-breaking `ReferenceError: pa is not defined` caused by admin modifier prototype hooks accessing the engine-local player class from outside its scope.
 - Admin speed/jump modifiers now install safely on the local player instance after the game creates it.
 - Kept the native grid/block hover indicator changes from 24.0.18.
+
+
+## Build 24.0.21 — restore existing native block hover
+- Removed the custom Build 24.0.20 block-edge renderer that was being mistaken for the game's existing outline.
+- Restored the original client hover-overlay path already present in the recovered game client.
+- Enabled that existing native hover path during Battle Royale/PvP as well as Dig + Trade; it had been gated behind `l.A46`, so PvP never reached it.
+- Removed the custom per-frame block-tool overlay/click layer that could interfere with block clicks and freeze the game.
+- No new DOM/CSS block outline is used.

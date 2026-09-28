@@ -18635,17 +18635,14 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             sl.m44 = !1;
             this.z37();
             a = z.prototype.e0.call(this);
-            if (this.i32 != Ph.MODE_CONNECTING && l.A46) {
+            if (this.i32 != Ph.MODE_CONNECTING) {
                 var hoverBlock = null;
                 if (!q.hasAModal && q.mY < q.SCREENHEIGHT - 80 && null != this.R39[l._46]) {
                     var hoverX = Math.round((q.mX - this.A7) / this.a8 / l._44);
                     var hoverY = Math.round((q.mY - this.A8) / this.a9 / l._44);
                     hoverBlock = this.R39[l._46].r33(hoverX * l._44, hoverY * l._44) || null
                 }
-                var buildSvcKey = window.DiggerzPvp22 && window.DiggerzPvp22.service, buildSelKey = "none"; try { var buildEntKey = l.z39, buildSlotsKey = buildSvcKey && buildSvcKey.state && buildSvcKey.state.slots, buildSlotKey = buildEntKey && buildEntKey.n38 && buildEntKey.n38.q43, buildItemKey = buildSlotsKey && buildSlotsKey[buildSlotKey]; if (buildItemKey && buildItemKey.category === 1 && buildItemKey.count > 0) buildSelKey = String(buildSlotKey) + ":" + String(buildItemKey.id) + ":" + String(buildItemKey.variant || 0); } catch (_e) {}
-                var hoverKey = (hoverBlock ? "b:" : "e:") + hoverX + ":" + hoverY + ":sel:" + buildSelKey;
-                var hoverChanged = this.diggerzHoverBlock !== hoverBlock || this.diggerzHoverCellKey !== hoverKey;
-                if (hoverChanged) {
+                if (this.diggerzHoverBlock !== hoverBlock) {
                     if (null != this.diggerzHoverOverlay) {
                         var hoverParent = this.diggerzHoverOverlay._2;
                         this.diggerzHoverOverlay.e3();
@@ -18654,7 +18651,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     }
                     this.diggerzHoverBlock = hoverBlock;
                     this.diggerzHoverOverlay = null;
-                    this.diggerzHoverCellKey = hoverKey;
                     q.diggerzHoverTarget = hoverBlock;
                     if (null != hoverBlock && null != hoverBlock._3 && null != hoverBlock._5) {
                         var hover = z.I9();
@@ -18670,44 +18666,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         hover._1 = "diggerz_hover";
                         hoverBlock._9.push(hover);
                         this.diggerzHoverOverlay = hover
-                    } else {
-                        // Reuse the game's existing render-layer indicator for empty grid cells.
-                        // WHITE_PARTICLE_PNG is the native 32x32 white square already used by the game.
-                        var buildSvc = window.DiggerzPvp22 && window.DiggerzPvp22.service;
-                        var selected = false;
-                        try {
-                            var ent = l.z39;
-                            var slots = buildSvc && buildSvc.state && buildSvc.state.slots;
-                            var slot = ent && ent.n38 && ent.n38.q43;
-                            var item = slots && slots[slot];
-                            selected = !!(item && item.category === 1 && item.count > 0);
-                            if (selected && buildSvc && buildSvc.state && hoverX >= 0 && hoverY >= 0 && hoverX < buildSvc.state.width && hoverY < buildSvc.state.height - 1 && null != this.R39[l._46]) {
-                                var body = ent && ent.b33 && ent.b33.tBJ;
-                                var px = Number(ent && ent.b6) / l._44;
-                                var py = Number(ent && ent.b7) / l._44;
-                                var dx = hoverX - px, dy = hoverY - py;
-                                var dist = Math.sqrt(dx * dx + dy * dy);
-                                if (!this.R39[l._46].r33(hoverX * l._44, hoverY * l._44) && dist <= 5 && dist >= 1.1) {
-                                    var emptyHover = z.I9();
-                                    emptyHover.Init(f.WHITE_PARTICLE_PNG());
-                                    emptyHover.D7(this.R39[l._46]);
-                                    emptyHover.b6 = hoverX * l._44;
-                                    emptyHover.b7 = hoverY * l._44;
-                                    var cellScale = Math.max(.1, l._44 / 32 * .88);
-                                    emptyHover.set_local_xScale(cellScale);
-                                    emptyHover.set_local_yScale(cellScale);
-                                    emptyHover.set_local_r(1.45);
-                                    emptyHover.set_local_g(1.45);
-                                    emptyHover.set_local_b(1.45);
-                                    emptyHover.set_local_alp(.42);
-                                    emptyHover.B8 = 999999;
-                                    emptyHover.c2 = 0;
-                                    emptyHover._1 = "diggerz_hover";
-                                    this.R39[l._46]._9.push(emptyHover);
-                                    this.diggerzHoverOverlay = emptyHover
-                                }
-                            }
-                        } catch (_e) {}
                     }
                 }
             }
@@ -23612,7 +23570,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var id = this.tileAt(targetX, targetY);
             if (!id || this.distanceToPlayer(targetX, targetY) > 3.6) return;
             var key = targetX + ":" + targetY;
-            var breakMod=adminClampMod(this.adminModifiers&&this.adminModifiers.breakSpeed,.1,10);var hits = (this.damage[key] || 0) + breakMod;
+            var breakRaw=Number(this.adminModifiers&&this.adminModifiers.breakSpeed);var breakMod=isFinite(breakRaw)?Math.max(.1,Math.min(10,breakRaw)):1;var hits = (this.damage[key] || 0) + breakMod;
             var specialServerBlock = id === 211 || id === 127 || id === 212;
             var durability = (id === 211 || id === 127) ? 1 : 5;
             this.damage[key] = hits;
@@ -117321,34 +117279,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
   install();
 }());
 </script>
-<script id="diggerz-build2417-block-tools">
-(function(){
-  var root=document.createElement('div');root.id='diggerz-block-tools-root';
-  var ind=document.createElement('div');ind.id='diggerz-place-indicator';
-  var menu=document.createElement('div');menu.id='diggerz-block-mod-menu';
-  menu.innerHTML='<div id="dzbm-title">Block</div><div id="dzbm-info"></div><label>Variant <input id="dzbm-variant" type="number" min="0" max="31" value="0"></label><div class="dzbm-row"><button id="dzbm-replace" type="button">Replace</button><button id="dzbm-cancel" type="button">Cancel</button></div>';
-  root.appendChild(ind);root.appendChild(menu);document.body.appendChild(root);
-  var css=document.createElement('style');css.textContent='#diggerz-place-indicator{display:none;position:fixed;z-index:2147483000;box-sizing:border-box;border:2px solid rgba(255,255,255,.95);background:rgba(255,255,255,.08);pointer-events:none;transform-origin:center;box-shadow:0 0 0 1px rgba(0,0,0,.55)}#diggerz-block-mod-menu{display:none;position:fixed;z-index:2147483001;min-width:180px;padding:9px;background:rgba(12,18,25,.97);border:1px solid rgba(255,255,255,.7);border-radius:7px;color:#fff;font:12px Arial,sans-serif;box-shadow:0 5px 20px rgba(0,0,0,.5)}#diggerz-block-mod-menu label{display:block;margin:7px 0}#diggerz-block-mod-menu input{width:65px;box-sizing:border-box;background:#091018;color:#fff;border:1px solid #607080;border-radius:4px;padding:4px}#dzbm-title{font-weight:700;font-size:14px;margin-bottom:4px}#dzbm-info{opacity:.8;margin-bottom:4px}.dzbm-row{display:flex;gap:6px}.dzbm-row button{border:0;border-radius:4px;padding:6px 9px;background:#334b60;color:#fff;font-weight:700;cursor:pointer}';document.head.appendChild(css);
-  var pending=null,lastAnim=0;
-  function svc(){return window.DiggerzPvp22&&window.DiggerzPvp22.service}
-  function game(){return window.l&&l.z38?l.z38:null}
-  function mouseWorld(){var g=game(),s=svc();if(!g||!s)return null;var scale=Number(window.l&&l._44)||1,ax=Number(g.A7)||0,ay=Number(g.A8)||0,gw=Number(g.a8)||1,gh=Number(g.a9)||1;var x=Math.round((window.q.mX-ax)/gw/scale),y=Math.round((window.q.mY-ay)/gh/scale);return {x:x,y:y,gw:gw*scale,gh:gh*scale,ax:ax,ay:ay}}
-  function selectedBlock(){var s=svc(),p=window.l&&l.z39;if(!s||!p||!s.state||!Array.isArray(s.state.slots))return null;var slot=p.n38&&typeof p.n38.q43==='number'?p.n38.q43:-1,item=slot>=0?s.state.slots[slot]:null;return item&&item.category===1&&item.count>0?{slot:slot,item:item}:null}
-  function validCell(w,b){if(!w||!b||!svc())return false;var s=svc();if(w.x<0||w.y<0||w.x>=s.state.width||w.y>=s.state.height-1)return false;if(s.tileAt(w.x,w.y))return false;if(s.distanceToPlayer(w.x,w.y)>5||s.distanceToPlayer(w.x,w.y)<1.1)return false;return true}
-  function updateIndicator(){ind.style.display='none';}
-  function animatePlace(x,y,id){var now=Date.now();if(now-lastAnim<35)return;lastAnim=now;var g=game(),w=mouseWorld();if(!g||!w)return;var scale=Number(window.l&&l._44)||1,gw=(Number(g.a8)||1)*scale,gh=(Number(g.a9)||1)*scale,ax=Number(g.A7)||0,ay=Number(g.A8)||0;var p=l.z39,sx=ax+(Number(p.b6)||0),sy=ay+(Number(p.b7)||0),tx=ax+x*gw,ty=ay+y*gh;var el=document.createElement('div');el.style.cssText='position:fixed;z-index:2147482999;width:'+Math.max(5,gw*.82)+'px;height:'+Math.max(5,gh*.82)+'px;left:'+(sx-gw*.41)+'px;top:'+(sy-gh*.41)+'px;background:rgba(255,255,255,.55);border:2px solid rgba(255,255,255,.95);box-sizing:border-box;pointer-events:none;transform-origin:center;opacity:.95;transition:transform .24s cubic-bezier(.2,.8,.2,1),opacity .24s ease,left .24s cubic-bezier(.2,.8,.2,1),top .24s cubic-bezier(.2,.8,.2,1);';document.body.appendChild(el);requestAnimationFrame(function(){el.style.left=(tx-gw*.41)+'px';el.style.top=(ty-gh*.41)+'px';el.style.transform='scale(1) rotate(360deg)';el.style.opacity='.15'});setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el)},280)}
-  function openMenu(w,b){pending={x:w.x,y:w.y,id:b.item.id|0,variant:b.item.variant|0,slot:b.slot};menu.style.display='block';menu.style.left=Math.min(window.innerWidth-210,Math.max(6,w.ax+w.x*w.gw+w.gw+6))+'px';menu.style.top=Math.min(window.innerHeight-150,Math.max(6,w.ay+w.y*w.gh))+'px';document.getElementById('dzbm-title').textContent='Modify block';document.getElementById('dzbm-info').textContent='Cell '+w.x+', '+w.y+' • block '+b.item.id+' selected';document.getElementById('dzbm-variant').value=String(b.item.variant|0)}
-  function closeMenu(){pending=null;menu.style.display='none'}
-  document.getElementById('dzbm-cancel').onclick=closeMenu;
-  document.getElementById('dzbm-replace').onclick=function(){var p=pending,s=svc();if(!p||!s)return closeMenu();var variant=Math.max(0,Math.min(31,parseInt(document.getElementById('dzbm-variant').value,10)||0));var item=s.state.slots[p.slot];if(!item||item.category!==1||item.id!==p.id||item.count<=0)return closeMenu();if(window.DiggerzPvp22&&window.DiggerzPvp22.joined){s.pvpSend({t:'replace-block',x:p.x,y:p.y,id:p.id,variant:variant,inventoryItem:{category:1,id:p.id,variant:variant}});return closeMenu()}s.setTile(p.x,p.y,p.id,variant);item.count--;if(item.count<=0)s.state.slots[p.slot]=s.emptyItem();s.sendInventory();s.markDirty();closeMenu()};
-  window.addEventListener('mousemove',updateIndicator,true);
-  window.addEventListener('mousedown',function(e){if(e.button!==0)return;var b=selectedBlock(),w=mouseWorld();if(!b||!w||!svc())return;if(svc().tileAt(w.x,w.y)){openMenu(w,b);e.preventDefault();e.stopImmediatePropagation()}},true);
-  setInterval(updateIndicator,40);
-  var oldSet=window.DiggerzService&&window.DiggerzService.prototype&&window.DiggerzService.prototype.setTile;
-  function hook(){var D=window.DiggerzService;if(!D||!D.prototype||D.prototype.__dzBlockTools)return;var old=D.prototype.setTile;D.prototype.setTile=function(x,y,id,variant){var prev=this.tileAt(x,y);var r=old.apply(this,arguments);if(r&&prev===0&&(id|0)!==0&&!this._pvpApplyingTile)animatePlace(x|0,y|0,id|0);return r};D.prototype.__dzBlockTools=true}
-  var tries=0;var timer=setInterval(function(){hook();if(++tries>100)clearInterval(timer)},100);
-})();
-</script>
+
 </body>
 </html>
 <!-- Other original content may be protected by copyright. -->
