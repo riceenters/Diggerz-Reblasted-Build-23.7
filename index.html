@@ -116590,10 +116590,28 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.addItem(1,122,0,1,0,'');this.sendInventory();chat(this,'^9Someone has allreaddy placed a bluetooth speaker!');return
       }
       if(m.t==='tile'&&m._serverCorrection){
-        // Server may repair a legacy wrong-layer block. Clear both local layers
-        // first, then apply the authoritative corrected layer so mining and the
-        // native block-variation picker continue to see the block normally.
-        this._pvpApplyingTile=true;try{this.setTile(m.x|0,m.y|0,0,0,0);this.setTile(m.x|0,m.y|0,0,0,2);if((m.id|0)!==0)this.setTile(m.x|0,m.y|0,m.id|0,m.variant|0,m.layer|0)}finally{this._pvpApplyingTile=false}return;
+        // Server-side layer repair must update the local arrays WITHOUT sending
+        // the repair back to the server. The old code called setTile(), which
+        // emitted another tile packet while applying a correction and could leave
+        // a stale copy on the opposite layer.
+        try{
+          var cx=m.x|0,cy=m.y|0,ci=cx+cy*(this.state.width|0),cl=m.layer|0;
+          if(cx<0||cy<0||cx>=this.state.width||cy>=this.state.height)return;
+          if(!this.state.backgroundTiles)this.state.backgroundTiles=new Array(this.state.width*this.state.height).fill(0);
+          if(!this.state.backgroundVariants)this.state.backgroundVariants=new Array(this.state.width*this.state.height).fill(0);
+          if(!this.state.variants)this.state.variants=new Array(this.state.width*this.state.height).fill(0);
+          if(cl===2){
+            this.state.backgroundTiles[ci]=m.id|0;this.state.backgroundVariants[ci]=m.variant|0;
+          }else{
+            this.state.tiles[ci]=m.id|0;this.state.variants[ci]=m.variant|0;
+          }
+          if((m.id|0)===0){
+            // A removal is authoritative for the specified layer only. Do not
+            // erase a legitimate block that occupies the other layer.
+          }
+          this.markDirty();
+        }catch(_layerRepair){}
+        return;
       }
       if(m.t==='world-sound'){var path=m.sound==='balloon_pop'?'/balloon_pop.ogg':m.sound==='swap'?'/swap.ogg':'';if(path)positionalSound(path,m.x,m.y,11);return}
       if(m.t==='cotton-item-award'){if(this.addItem(m.category|0,m.id|0,0,Math.max(1,m.count|0),0,'')>=0){this.markDirty();this.save(true)}return}
@@ -117214,7 +117232,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 </script>
 
 	<div name="changes" id="changes">
-		<h1>Diggerz.io Reblasted - Change Log</h1><hr><a name="Build 24.0.30"></a><h2>Build 24.0.30 - Live Player-Hitbox Placement Cells</h2><ul><li>Placement cells now stay blocked for the entire time the player physics hitbox overlaps any part of the 1x1 cell.</li><li>The check uses a live player-footprint-vs-cell intersection instead of only checking the cell center.</li><li>A cell becomes placeable immediately after the hitbox exits it, including when the player moves across cell boundaries.</li><li>The same rule is enforced client-side and authoritatively by the multiplayer server.</li></ul><hr><a name="Build 24.0.29"></a><h2>Build 24.0.29 - Native Picker Cleanup &amp; Placement Guard Hardening</h2><ul><li>Hardened the native placement guard call so the placement handler always resolves it through the global window object, eliminating the intermittent undefined-function race.</li><li>Removed the red X entry from the native block variation wheel used for block modification.</li><li>Automatically closes the native tile variation wheel when its target block is broken, preventing an invisible menu from remaining on screen.</li></ul><hr><a name="Build 24.0.26"></a><h2>Build 24.0.26 - Strict Block Placement Rules</h2><ul><li>Block placement is now a hard no-op outside the five-tile placement range.</li><li>Placement is rejected when the target cell overlaps a player.</li><li>Normal placed blocks are forced onto the foreground block layer; only native background/decorative items using layer 2 remain on the background layer.</li><li>Multiplayer tile synchronization now preserves the placement layer and supports dynamic background tiles.</li></ul><hr><a name="Build 24.0.17"></a><h2>Build 24.0.17 - Admin Modifiers &amp; Building Polish</h2><ul><li>Added admin Speed, Size, Jump, and Break Speed modifiers.</li><li>Integrated the supplied noclip radius override while preserving normal movement.</li><li>Added a placement travel/grow/spin animation and grid placement indicator.</li><li>Added block modification popup when a block is selected and an occupied cell is clicked.</li><li>Hardened rapid placement/replacement synchronization.</li></ul>
+		<h1>Diggerz.io Reblasted - Change Log</h1><hr><a name="Build 24.0.35"></a><h2>Build 24.0.35 - Authoritative Layer Repair</h2><ul><li>Wrong-layer blocks are now repaired on both the server and every client, not just inside the server tile maps.</li><li>Stale copies on the old layer are explicitly removed so mining and block-variation modification continue to target the real block.</li><li>Client layer repairs no longer echo correction packets back to the server.</li></ul><hr><a name="Build 24.0.30"></a><h2>Build 24.0.30 - Live Player-Hitbox Placement Cells</h2><ul><li>Placement cells now stay blocked for the entire time the player physics hitbox overlaps any part of the 1x1 cell.</li><li>The check uses a live player-footprint-vs-cell intersection instead of only checking the cell center.</li><li>A cell becomes placeable immediately after the hitbox exits it, including when the player moves across cell boundaries.</li><li>The same rule is enforced client-side and authoritatively by the multiplayer server.</li></ul><hr><a name="Build 24.0.29"></a><h2>Build 24.0.29 - Native Picker Cleanup &amp; Placement Guard Hardening</h2><ul><li>Hardened the native placement guard call so the placement handler always resolves it through the global window object, eliminating the intermittent undefined-function race.</li><li>Removed the red X entry from the native block variation wheel used for block modification.</li><li>Automatically closes the native tile variation wheel when its target block is broken, preventing an invisible menu from remaining on screen.</li></ul><hr><a name="Build 24.0.26"></a><h2>Build 24.0.26 - Strict Block Placement Rules</h2><ul><li>Block placement is now a hard no-op outside the five-tile placement range.</li><li>Placement is rejected when the target cell overlaps a player.</li><li>Normal placed blocks are forced onto the foreground block layer; only native background/decorative items using layer 2 remain on the background layer.</li><li>Multiplayer tile synchronization now preserves the placement layer and supports dynamic background tiles.</li></ul><hr><a name="Build 24.0.17"></a><h2>Build 24.0.17 - Admin Modifiers &amp; Building Polish</h2><ul><li>Added admin Speed, Size, Jump, and Break Speed modifiers.</li><li>Integrated the supplied noclip radius override while preserving normal movement.</li><li>Added a placement travel/grow/spin animation and grid placement indicator.</li><li>Added block modification popup when a block is selected and an occupied cell is clicked.</li><li>Hardened rapid placement/replacement synchronization.</li></ul>
 
 		<hr><a name="Build 23.7"></a>
 		<h2>Build 23.7 - Security &amp; Account Hardening</h2>

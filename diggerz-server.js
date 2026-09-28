@@ -2200,19 +2200,40 @@ function relayGameMessage(client, message, rawLength) {
   function normalizeRoomTileAt(room,x,y){
     const key=`${x},${y}`;
     const fg=room.tiles.get(key)||null, bg=room.backgroundTiles.get(key)||null;
-    let corrected=false;
+    const repairs=[];
     if(fg && expectedBlockLayer(fg.id)===2){
       room.tiles.delete(key);
-      if(!room.backgroundTiles.has(key)) room.backgroundTiles.set(key,{...fg,layer:2});
-      corrected=true;
+      if(!room.backgroundTiles.has(key)){
+        const moved={...fg,layer:2};
+        room.backgroundTiles.set(key,moved);
+        repairs.push({fromLayer:0,toLayer:2,tile:moved});
+      } else {
+        // A canonical background tile already exists at this coordinate.
+        // The stale foreground copy still has to be removed from every client.
+        repairs.push({fromLayer:0,toLayer:2,tile:null});
+      }
     }
     const bg2=room.backgroundTiles.get(key)||null;
     if(bg2 && expectedBlockLayer(bg2.id)!==2){
       room.backgroundTiles.delete(key);
-      if(!room.tiles.has(key)) room.tiles.set(key,{...bg2,layer:0});
-      corrected=true;
+      if(!room.tiles.has(key)){
+        const moved={...bg2,layer:0};
+        room.tiles.set(key,moved);
+        repairs.push({fromLayer:2,toLayer:0,tile:moved});
+      } else {
+        repairs.push({fromLayer:2,toLayer:0,tile:null});
+      }
     }
-    return {corrected,fg:room.tiles.get(key)||null,bg:room.backgroundTiles.get(key)||null};
+    // IMPORTANT: the previous build repaired only the server's Maps. That left
+    // the client's old layer intact, so the block could become visible but
+    // unmineable/unmodifiable. Push the actual layer repair to every client.
+    for(const repair of repairs){
+      broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:repair.fromLayer,_serverCorrection:true,_serverLayerRepair:true});
+      if(repair.tile){
+        broadcastRoom(room,{t:'tile',x,y,id:repair.tile.id|0,variant:repair.tile.variant|0,layer:repair.toLayer,_serverCorrection:true,_serverLayerRepair:true,replace:true});
+      }
+    }
+    return {corrected:repairs.length>0,repairs,fg:room.tiles.get(key)||null,bg:room.backgroundTiles.get(key)||null};
   }
   function sendLayerCorrection(room,client,x,y,oldLayer,oldTile,newLayer,newTile){
     if(oldLayer!==newLayer){
