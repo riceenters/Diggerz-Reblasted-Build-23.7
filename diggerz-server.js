@@ -1147,34 +1147,19 @@ function makeFakePlayer(room, name, sourceClient) {
 }
 
 function tickFakePlayers(room, now) {
-  if(!room || !room.fakePlayers || !room.fakePlayers.size) return;
-  const dt=0.05, GRAVITY=18, MAX_FALL=15;
-  for(const fake of room.fakePlayers.values()) {
-    if(fake.controlledBy){
-      if(now-(fake._lastBroadcastAt||0)>=50){fake._lastBroadcastAt=now;sendFakeNativeMove(room,fake);broadcastRoom(room,{t:'admin-fake-player-state',connectionId:fake.connectionId,x:fake.x,y:fake.y,vx:fake.vx||0,vy:fake.vy||0,name:fake.name,botState:'controlled'},undefined,true);}
-      continue;
-    }
-    const prevY=fake.y;
-    const floor=fakeFloorY(room,fake.x,fake.y);
-    const grounded=floor!=null && fake.y>=floor-0.35 && fake.y<=floor+0.08 && fake.vy>=0;
-    fake.grounded=grounded;
-    const land=(ny)=>{const nf=fakeFloorY(room,fake.x,ny);if(nf!=null&&ny>=nf){fake.y=nf;fake.vy=0;return true;}fake.y=ny;return false;};
-    if(fake.botState==='falling') {
-      if(grounded){fake.y=floor;fake.vy=0;fake.botState='imitate';fake.botStartedAt=now;fake.botPhaseUntil=now+2500+Math.random()*5000;fakeBotChat(room,fake,'hi');}
-      else{fake.vy=Math.min(MAX_FALL,(fake.vy||0)+GRAVITY*dt);if(land(fake.y+fake.vy*dt)){fake.botState='imitate';fake.botPhaseUntil=now+2500+Math.random()*5000;}}
-    } else if(fake.botState==='imitate') {
-      if(!grounded){fake.vy=Math.min(MAX_FALL,(fake.vy||0)+GRAVITY*dt);land(fake.y+fake.vy*dt);}
-      else{fake.y=floor;fake.vy=0;if(now>=fake.botNextActionAt){fake.botNextActionAt=now+350+Math.random()*900;if(Math.random()<0.35)fake.vy=-7;fake.botDir=Math.random()<0.5?-1:1;}fake.vx=fake.botDir*(2+Math.random()*2.5);fake.x=Math.max(1.5,Math.min(126.5,fake.x+fake.vx*dt));if(fake.vy<0)land(fake.y+fake.vy*dt);if(now>=fake.botPhaseUntil){fake.botState='walk-left';fake.botDir=-1;fake.vx=0;fakeBotChat(room,fake,'going to dig');}}
-    } else if(fake.botState==='walk-left') {
-      const f=fakeFloorY(room,fake.x,fake.y);if(f!=null&&fake.y>=f-0.35){fake.y=f;fake.vy=0;}else{fake.vy=Math.min(MAX_FALL,(fake.vy||0)+GRAVITY*dt);land(fake.y+fake.vy*dt);}fake.vx=-3.2;fake.x=Math.max(1.5,fake.x+fake.vx*dt);if(fake.x<=2.5){fake.x=2.5;fake.vx=0;fake.botState='dig-down';fake.botPhaseUntil=now+26300;fakeBotChat(room,fake,'digging');}
-    } else if(fake.botState==='dig-down') {
-      const x=Math.max(0,Math.min(127,Math.floor(fake.x)));const below=Math.max(18,Math.floor(fake.y));if(now-(fake.botLastMineAt||0)>360){fakeBreakTile(room,fake,x,below);fake.botLastMineAt=now;}const f=fakeFloorY(room,fake.x,fake.y);if(f!=null&&fake.y<f-0.15){fake.vy=Math.min(MAX_FALL,(fake.vy||0)+GRAVITY*dt);land(fake.y+fake.vy*dt);}else if(f!=null){fake.y=f;fake.vy=0;}if(now>=fake.botPhaseUntil||fake.y>44){fake.botState='dig-row';fake.botRow++;fake.botDir=1;fake.botDigSide=1;fakeBotChat(room,fake,'starting to dig rows');}
-    } else if(fake.botState==='dig-row') {
-      const x=Math.max(0,Math.min(127,Math.floor(fake.x)));const f=fakeFloorY(room,fake.x,fake.y);if(f!=null&&fake.y<f-0.15){fake.vy=Math.min(MAX_FALL,(fake.vy||0)+GRAVITY*dt);land(fake.y+fake.vy*dt);}else if(f!=null){fake.y=f;fake.vy=0;}fake.vx=fake.botDir*2.8;fake.x=Math.max(1.5,Math.min(126.5,fake.x+fake.vx*dt));if(now-(fake.botLastMineAt||0)>360){const mineY=Math.max(18,Math.floor(fake.y));fakeBreakTile(room,fake,x,mineY);if(Math.random()<0.35)fakeBreakTile(room,fake,x,mineY+1);fake.botLastMineAt=now;}if(fake.x<=2){fake.x=2;fake.botDir=1;fake.botRow++;}if(fake.x>=126){fake.x=126;fake.botDir=-1;fake.botRow++;}if(fake.botRow>=21){fake.botState='dig-down';fake.botPhaseUntil=now+26300;fake.botRow=0;fakeBotChat(room,fake,'digging deeper');}
-    }
-    if(fake.y>82){fake.x=Math.max(4,Math.min(WORLD_WIDTH-4,fake.x));fake.y=2;fake.vx=0;fake.vy=0;fake.botState='falling';fake.botPhaseUntil=now+2500;}
-    if(fake.y<0){fake.y=0;fake.vy=0;}if(!Number.isFinite(fake.x))fake.x=16;if(!Number.isFinite(fake.y))fake.y=2;
-    if(Math.abs(fake.y-prevY)>0.0001||Math.abs(fake.vx)>0.001||Math.abs(fake.vy)>0.001||now-(fake._lastBroadcastAt||0)>=50){fake._lastBroadcastAt=now;sendFakeNativeMove(room,fake);broadcastRoom(room,{t:'admin-fake-player-state',connectionId:fake.connectionId,x:fake.x,y:fake.y,vx:fake.vx||0,vy:fake.vy||0,name:fake.name,botState:fake.botState},undefined,true);}
+  // Fake players are intentionally NOT simulated by the server.
+  // They are spawned through the same native player-spawn path as real
+  // players, so each client creates the normal dynamic player body and
+  // runs the game's normal gravity/collision physics on it.
+  // Do not send periodic position/velocity corrections here: those would
+  // fight the native physics and can make the player fall through terrain.
+  if (!room || !room.fakePlayers || !room.fakePlayers.size) return;
+  for (const fake of room.fakePlayers.values()) {
+    if (!Number.isFinite(fake.x)) fake.x = randomSpawnX(room);
+    if (!Number.isFinite(fake.y)) fake.y = 2;
+    fake.vx = 0;
+    fake.vy = 0;
+    fake.grounded = false;
   }
 }
 
