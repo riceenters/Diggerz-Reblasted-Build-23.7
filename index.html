@@ -23727,6 +23727,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 return;
             }
             this.setTile(targetX, targetY, 0);
+            // Guarantee multiplayer peers see the hole even if setTile net path missed.
+            try{
+              if(window.DiggerzIsMultiplayer&&window.DiggerzIsMultiplayer(this)&&window.DiggerzPvp22&&window.DiggerzPvp22.joined){
+                this.pvpSend({t:'tile',x:targetX,y:targetY,id:0,variant:0,layer:0});
+              }
+            }catch(_digNet){}
             this.state.mined++;
             this.addItem(1, id, 0, 1, 0, "");
             // Bonus items are tied to the mined coordinate and cannot be
@@ -115796,7 +115802,90 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     proto.pvpIsPeerGuid=function(id){return !!this.pvpFindPeerByGuid(id)};
     proto.pvpEntityForPeer=function(peer){if(!peer||!peer.id||!this.game||!this.game.V31)return null;try{return this.game.V31(peer.id)}catch(e){return null}};
     proto.pvpRefreshLegacyPeer=function(){var peers=this.pvpEnsurePeers();this.peerId=null;this.peerInfo=null;for(var k in peers){if(peers[k]&&peers[k].id){this.peerId=peers[k].id;this.peerInfo=peers[k].info||null;break}}};
-    proto.pvpRemovePeer=function(cid){var peers=this.pvpEnsurePeers(),peer=peers[cid];if(!peer)return false;var id=peer.id;delete peers[cid];var self=this;function despawn(guid){if(!guid)return;try{self.enqueue(3,1,function(out){out.R8(guid)})}catch(e){}try{var ent=self.game&&self.game.V31?self.game.V31(guid):null;if(ent){try{if(ent.a0!=null)ent.a0=1}catch(_e){}try{if(typeof ent.e3==='function')ent.e3()}catch(_e){}}}catch(e){}}despawn(id);setTimeout(function(){despawn(id)},80);setTimeout(function(){despawn(id)},300);if(this.pvpTrade&&this.pvpTrade.partnerConnectionId===cid)this.pvpCancelTradeLocal('Player disconnected.');this.pvpRefreshLegacyPeer();return true};
+    proto.pvpRemovePeer=function(cid){
+      var peers=this.pvpEnsurePeers(),peer=peers[cid];
+      if(!peer)return false;
+      var id=peer.id;
+      delete peers[cid];
+      var self=this;
+      function scrubEntity(ent){
+        if(!ent)return;
+        try{ent.a2=false}catch(_e){}
+        try{ent.set_local_alp(0)}catch(_e){}
+        try{ent.set_alp(0)}catch(_e){}
+        try{if(ent.J30){ent.J30.a2=false;try{ent.J30.set_local_alp(0)}catch(_e2){}}}catch(_e){}
+        try{if(ent.i33)ent.i33.a2=false}catch(_e){}
+        // Move off-world so minimap/leaderboard scans skip them.
+        try{ent.b6=-99999;ent.b7=-99999}catch(_e){}
+        try{if(ent.A7!=null)ent.A7=-99999;if(ent.A8!=null)ent.A8=-99999}catch(_e){}
+        try{if(typeof oa!=='undefined'&&oa.MODE_DEAD!=null)ent.i32=oa.MODE_DEAD}catch(_e){}
+        try{if(ent.a0!=null)ent.a0=1}catch(_e){}
+        try{if(typeof ent.e3==='function')ent.e3()}catch(_e){}
+        // Detach from the live scene list so leaderboard/minimap cannot see them.
+        try{
+          var scene=l.z38&&l.z38._9;
+          if(scene){
+            for(var i=scene.length-1;i>=0;i--){
+              if(scene[i]===ent)scene.splice(i,1);
+            }
+          }
+        }catch(_e){}
+        try{
+          var gameKids=self.game&&self.game._9;
+          if(gameKids){
+            for(var j=gameKids.length-1;j>=0;j--){
+              if(gameKids[j]===ent)gameKids.splice(j,1);
+            }
+          }
+        }catch(_e){}
+      }
+      function despawn(guid){
+        if(!guid)return;
+        try{self.enqueue(3,1,function(out){out.R8(guid)})}catch(e){}
+        try{
+          var ent=self.game&&self.game.V31?self.game.V31(guid):null;
+          scrubEntity(ent);
+        }catch(e){}
+      }
+      despawn(id);
+      // Also scrub any entity that still matches the peer name (guid may be missing).
+      try{
+        var scene=l.z38&&l.z38._9;
+        if(scene&&peer.name){
+          for(var si=scene.length-1;si>=0;si--){
+            var se=scene[si];
+            if(!se||se===l.z39)continue;
+            try{
+              if(se._1&&String(se._1).split(' ')[0]===String(peer.name))scrubEntity(se);
+            }catch(_e){}
+          }
+        }
+      }catch(_e){}
+      [80,200,500,1000].forEach(function(delay){setTimeout(function(){despawn(id);try{self.pvpRefreshLeaderboard&&self.pvpRefreshLeaderboard()}catch(_e){}},delay)});
+      if(this.pvpTrade&&this.pvpTrade.partnerConnectionId===cid)this.pvpCancelTradeLocal('Player disconnected.');
+      this.pvpRefreshLegacyPeer();
+      try{this.pvpRefreshLeaderboard&&this.pvpRefreshLeaderboard()}catch(_e){}
+      return true
+    };
+    proto.pvpRefreshLeaderboard=function(){
+      try{if(l.z38&&l.z38.R37&&l.z38.R37.Z44)l.z38.R37.Z44()}catch(e){}
+      try{var board=this.game&&this.game.f4?this.game.f4(window.Ao):null;if(board&&board.Z44)board.Z44()}catch(e){}
+      // Force minimap rebuild next tick by clearing non-local spark kids.
+      try{
+        var mm=null;
+        if(this.game&&this.game._9){
+          for(var i=0;i<this.game._9.length;i++){
+            var c=this.game._9[i];
+            if(c&&c.d34&&c.h2){mm=c;break}
+          }
+        }
+        if(mm&&mm._9){
+          for(var k=mm._9.length-1;k>=0;k--){
+            if(mm._9[k]!==mm.d34){try{mm._9[k].a0=1}catch(_e){}mm._9.splice(k,1)}
+          }
+        }
+      }catch(e){}
+    };
     proto.pvpSend=function(m){return window.DiggerzIsMultiplayer(this)&&P.send(m)};
     proto.pvpSendHello=function(){
       if(!window.DiggerzIsMultiplayer(this)||!this.playerId)return;
@@ -116023,30 +116112,35 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       if(m.t==='typing'){var typingPeer=this.pvpPeerForConnection(m._serverFrom);if(typingPeer&&typingPeer.id){var tid=typingPeer.id,active=!!m.active;this.enqueue(49,1,function(p){p.R8(tid);p.s0(active)})}return}
       if(m.t==='peer-state'){var statePeer=this.pvpPeerForConnection(m._serverFrom),se=statePeer&&this.pvpEntityForPeer(statePeer);if(se&&isFinite(+m.x)&&isFinite(+m.y)){var sx=(+m.x)*l._44,sy=(+m.y)*l._44;if(Math.hypot((se.b6-sx)/l._44,(se.b7-sy)/l._44)>1.25){try{se.l38(sx,sy)}catch(_e){se.b6=sx;se.b7=sy}}}return}
       if(m.t==='tile'){
-        var tx=m.x|0,ty=m.y|0,tLayer=m.layer|0,tkey=tx+':'+ty+':'+tLayer;
+        var tx=m.x|0,ty=m.y|0,tLayer=m.layer|0,tid=m.id|0,tvar=(m.variant|0)&31;
+        var tkey=tx+':'+ty+':'+tLayer;
         // Skip echo of our own optimistic placement if still pending.
         if(String(m._serverFrom||'')===String(P.connectionId||'') && this._diggerzPendingPlacements && this._diggerzPendingPlacements[tkey]) return;
         this._pvpApplyingTile=true;
         try{
-          // Always force the visual/world update for remote place & mine.
-          this.setTile(tx,ty,m.id|0,m.variant|0,tLayer);
-          // Keep service state mirrors in sync for late logic.
+          // Apply twice if needed: state + explicit native visual packet.
+          this.setTile(tx,ty,tid,tvar,tLayer);
           try{
-            if(this.state&&this.state.tiles&&tLayer!==2){
-              var at=tx+ty*128;
-              if(at>=0&&at<this.state.tiles.length){
-                this.state.tiles[at]=m.id|0;
-                if(this.state.variants)this.state.variants[at]=(m.variant|0)&31;
+            // Direct native visual commit (opcode 11 tile-update form).
+            this.sendTile(tx,ty,tid,tvar,tLayer);
+          }catch(_vis){}
+          // Also poke the live world grid if present.
+          try{
+            if(typeof l!=='undefined'&&l.z38&&l.z38.R39){
+              var grid=l.z38.R39[tLayer];
+              if(grid){
+                var px=tx*l._44, py=ty*l._44;
+                if(!tid){
+                  try{if(typeof grid.r34==='function')grid.r34(px,py)}catch(_e){}
+                  try{if(typeof grid.r32==='function')grid.r32(px,py)}catch(_e){}
+                  try{
+                    var obj=typeof grid.r33==='function'?grid.r33(px,py):null;
+                    if(obj){try{obj.a0=1}catch(_e){}try{obj.a2=false}catch(_e){}}
+                  }catch(_e){}
+                }
               }
             }
-            if(this.state&&this.state.backgroundTiles&&tLayer===2){
-              var at2=tx+ty*128;
-              if(at2>=0&&at2<this.state.backgroundTiles.length){
-                this.state.backgroundTiles[at2]=m.id|0;
-                if(this.state.backgroundVariants)this.state.backgroundVariants[at2]=(m.variant|0)&31;
-              }
-            }
-          }catch(_st){}
+          }catch(_grid){}
         }finally{this._pvpApplyingTile=false}
         return
       }
@@ -116251,7 +116345,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       }
       if(m.t==='peer-left'){
         var gone=this.pvpPeerForConnection(m.connectionId),name=String(gone&&gone.name||m.name||'Player'),saved2=this.message;this.message=function(){};try{oldReceive.call(this,m)}finally{this.message=saved2}
-        // Single exit message for everyone.
+        try{this.pvpRemovePeer(m.connectionId)}catch(_e){}
+        try{this.pvpRefreshLeaderboard&&this.pvpRefreshLeaderboard()}catch(_e){}
         chat('^1'+name+' has exited this area.');
         return
       }
@@ -117118,6 +117213,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             try{this.pvpRemovePeer(key)}catch(e){}
           }
         }
+        try{this.pvpRefreshLeaderboard&&this.pvpRefreshLeaderboard()}catch(e){}
         return;
       }
       // Only weapon-tagged cursor aim should rotate another player's arm.

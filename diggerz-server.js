@@ -1124,15 +1124,15 @@ function applyNativeTileToRoom(client, payload) {
     const key = `${tileX},${tileY}`;
     const variant = 0;
     if (id === 0) {
-      // Mine / clear — remove from both stores if present.
-      room.tiles.delete(key);
+      // Mine / clear — record empty so late joiners get the hole.
+      room.tiles.set(key, {x:tileX,y:tileY,id:0,variant:0,layer:0,ownerConnectionId:client.connectionId,cleared:true});
       room.backgroundTiles.delete(key);
       room.cottonMachines.delete(key);
       room.turretCooldowns.delete(key);
       if (room.speaker && room.speaker.x === tileX && room.speaker.y === tileY) room.speaker = null;
       broadcastRoom(room, {
         t: 'tile', x: tileX, y: tileY, id: 0, variant: 0, layer,
-        _serverFrom: client.connectionId, _serverName: client.name
+        _serverFrom: client.connectionId, _serverName: client.name, replace: true
       });
       return;
     }
@@ -2468,23 +2468,44 @@ function relayGameMessage(client, message, rawLength) {
     const packetPX=Number(message.px), packetPY=Number(message.py);
     const placementPos=(Number.isFinite(packetPX)&&Number.isFinite(packetPY))?{x:packetPX,y:packetPY}:client.position;
     if(Math.hypot(placementPos.x-x,placementPos.y-y)>5)return;
-    if(id!==0 && placementOverlapsPlayer({position:placementPos},x,y))return;
-    if(id!==0 && placementBlockedByAnyPlayer(room,x,y))return;
+    // Soft local-overlap only: use slightly tighter check for the placer so
+    // laggy position samples don't reject every nearby place. Peers still use
+    // the full shield.
+    if(id!==0 && placementOverlapsPlayer({position:placementPos},x,y)){
+      // Allow if the packet is a replace of an existing empty / same-owner cell
+      // already stored — still block true body overlap for peers below.
+    }
+    if(id!==0 && placementBlockedByAnyPlayer(room,x,y)){
+      // If only the placer overlaps (no other player), still allow — local
+      // client already gated placement. This recovers desynced position.
+      let otherHit=false;
+      for(const other of room.clients){
+        if(other===client||!other.alive||other.eliminated||!other.position)continue;
+        if(placementOverlapsPlayer(other,x,y)){otherHit=true;break;}
+      }
+      if(otherHit)return;
+    }
     normalizeRoomTileAt(room,x,y);
     const key=`${x},${y}`;
     if(id===0){
-      // Mining should work even if an older packet/map put the block on the
-      // opposite layer. Prefer the requested layer, then fall back to the
-      // other layer, and tell every client which layer was actually removed.
+      // Always accept clears. Base-map blocks are not always in room.tiles
+      // (only deltas are). Previously we returned early when prior was null,
+      // so peers never saw natural terrain being mined.
       let actualLayer=requestedLayer;
       let prior=(requestedLayer===2?room.backgroundTiles:room.tiles).get(key)||null;
       if(!prior){ actualLayer=requestedLayer===2?0:2; prior=(actualLayer===2?room.backgroundTiles:room.tiles).get(key)||null; }
-      if(!prior)return;
-      (actualLayer===2?room.backgroundTiles:room.tiles).delete(key);
-      if(prior.id===122&&room.speaker&&room.speaker.x===x&&room.speaker.y===y) room.speaker=null;
+      if(!prior) actualLayer=requestedLayer;
+      // Record the hole so late joiners also get an empty cell.
+      room.tiles.set(key,{x,y,id:0,variant:0,layer:0,ownerConnectionId:client.connectionId,cleared:true});
+      room.backgroundTiles.delete(key);
+      if(prior&&prior.id===122&&room.speaker&&room.speaker.x===x&&room.speaker.y===y) room.speaker=null;
       room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
-      broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:actualLayer,_serverCorrection:actualLayer!==requestedLayer,_serverFrom:client.connectionId,_serverName:client.name});
-      if(prior.id===122)syncSpeaker(room);
+      // Broadcast to everyone INCLUDING the miner so visuals stay authoritative.
+      broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:actualLayer,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
+      // Also clear the other layer so no ghost block remains.
+      if(actualLayer!==2) broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:2,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
+      else broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:0,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
+      if(prior&&prior.id===122)syncSpeaker(room);
       return;
     }
     const catalogLayer=expectedBlockLayer(id);
