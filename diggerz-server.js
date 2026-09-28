@@ -1107,20 +1107,27 @@ function placementOverlapsPlayer(player, tileX, tileY) {
   const px=Number(player.position.x), py=Number(player.position.y);
   if (!Number.isFinite(px) || !Number.isFinite(py)) return false;
 
-  // Build 24.0.33: reserve a slightly padded, grid-aligned personal-space
-  // rectangle around the player's real physics position.  The old check used
-  // the visual-looking footprint, but tiles whose edge/corner merely touched
-  // that footprint could still get accepted by the native physics engine.
-  // Treat touching as blocked and add a small safety margin so diagonal/edge
-  // clicks cannot wedge a block into the player.
+  // Build 24.0.36: the native player entity is also the object that owns the
+  // old Trade interaction hit area.  Build placement must reserve that same
+  // personal-space area even in PvP, where the Trade menu is intentionally
+  // disabled.  Keep a continuous (non-rounded) capsule/rectangle test so a
+  // click beside a player cannot slip through because of grid rounding.
   const cellHalf=0.5;
-  const bodyHalfWidth=0.66;
-  const bodyHalfHeight=0.96;
-  const safety=0.08;
   const left=Number(tileX)-cellHalf, right=Number(tileX)+cellHalf;
   const top=Number(tileY)-cellHalf, bottom=Number(tileY)+cellHalf;
-  return !(right < px-(bodyHalfWidth+safety) || left > px+(bodyHalfWidth+safety) ||
-           bottom < py-(bodyHalfHeight+safety) || top > py+(bodyHalfHeight+safety));
+
+  // Native player interaction footprint, expressed in world-tile units, with
+  // a tiny margin for the native sprite/physics boundary.
+  const hw=0.78, hh=1.08, margin=0.06;
+  const L=px-hw-margin, R=px+hw+margin, T=py-hh-margin, B=py+hh+margin;
+  if (!(right < L || left > R || bottom < T || top > B)) return true;
+
+  // Round the corners of the interaction area as a secondary continuous
+  // check. This catches the diagonal edge case without creating a huge square
+  // no-build zone.
+  const cx=Math.max(left,Math.min(px,right));
+  const cy=Math.max(top,Math.min(py,bottom));
+  return Math.hypot(cx-px,cy-py) <= 0.92;
 }
 
 function placementBlockedByAnyPlayer(room, tileX, tileY) {

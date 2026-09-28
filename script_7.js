@@ -22772,15 +22772,18 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var px = l.z39 ? l.z39.b6 / l._44 : this.state.x;
             var py = l.z39 ? l.z39.b7 / l._44 : this.state.y;
             if (!isFinite(px) || !isFinite(py)) return false;
-            // Build 24.0.34: match the server's padded personal-space zone.
-            // Touching an edge/corner counts as blocked, with a small margin
-            // to prevent the native physics body from ever receiving a tile
-            // through a diagonal/edge click.
+            // Build 24.0.36: mirror the native player Trade interaction
+            // footprint for placement safety. PvP has no Trade GUI, but the
+            // player still needs the same no-build interaction area. Use the
+            // continuous player position rather than rounded grid coordinates.
             var left = x - 0.5, right = x + 0.5;
             var top = y - 0.5, bottom = y + 0.5;
-            var hw = 0.66 + 0.08, hh = 0.96 + 0.08;
-            return !(right < px - hw || left > px + hw ||
-                     bottom < py - hh || top > py + hh);
+            var hw = 0.78 + 0.06, hh = 1.08 + 0.06;
+            if (!(right < px - hw || left > px + hw ||
+                  bottom < py - hh || top > py + hh)) return true;
+            var cx = Math.max(left, Math.min(px, right));
+            var cy = Math.max(top, Math.min(py, bottom));
+            return Math.hypot(cx - px, cy - py) <= 0.92;
         },
         fixLocalAnimations: function() {
             var p = l.z39;
