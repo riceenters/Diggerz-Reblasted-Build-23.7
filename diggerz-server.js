@@ -1107,6 +1107,57 @@ function nativePlacementBlocked(client, payload) {
   }
 }
 
+function applyNativeTileToRoom(client, payload) {
+  // Mirror native opcode-11 place/mine into the authoritative room tile maps
+  // and broadcast a JSON tile so every client (and late joiners) see the change.
+  if (!client || !client.room || !payload || payload.length < 53) return;
+  try {
+    const id = payload.readUInt16BE(34);
+    const tileX = payload.readInt32BE(36);
+    let layer = payload.readInt32BE(40);
+    const tileY = payload.readInt32BE(44);
+    if (!Number.isFinite(tileX) || !Number.isFinite(tileY)) return;
+    if (tileX < 0 || tileX >= 128 || tileY < 0 || tileY >= 80) return;
+    if (layer < 0 || layer > 2) layer = 0;
+    const room = client.room;
+    ensureRoomState(room);
+    const key = `${tileX},${tileY}`;
+    const variant = 0;
+    if (id === 0) {
+      // Mine / clear — remove from both stores if present.
+      room.tiles.delete(key);
+      room.backgroundTiles.delete(key);
+      room.cottonMachines.delete(key);
+      room.turretCooldowns.delete(key);
+      if (room.speaker && room.speaker.x === tileX && room.speaker.y === tileY) room.speaker = null;
+      broadcastRoom(room, {
+        t: 'tile', x: tileX, y: tileY, id: 0, variant: 0, layer,
+        _serverFrom: client.connectionId, _serverName: client.name
+      });
+      return;
+    }
+    // Place — prefer catalog layer (backdrop ids go to layer 2).
+    const BACKDROP = new Set([118,119,143,158,159,160,161,162,189,191,213,214,272,273]);
+    const desiredLayer = BACKDROP.has(id) ? 2 : (layer === 2 ? 2 : 0);
+    const store = desiredLayer === 2 ? room.backgroundTiles : room.tiles;
+    const other = desiredLayer === 2 ? room.tiles : room.backgroundTiles;
+    other.delete(key);
+    const tile = {
+      x: tileX, y: tileY, id: id | 0, variant, layer: desiredLayer,
+      ownerConnectionId: client.connectionId
+    };
+    store.set(key, tile);
+    broadcastRoom(room, Object.assign({
+      t: 'tile',
+      _serverFrom: client.connectionId,
+      _serverName: client.name,
+      replace: true
+    }, tile));
+  } catch (e) {
+    console.warn('[Diggerz] native tile room apply failed:', e.message);
+  }
+}
+
 function relayBinary(client, payload) {
   if (!client.room) return;
   let opcode = 0;
@@ -1116,6 +1167,8 @@ function relayBinary(client, payload) {
   // actual binary opcode before it is broadcast so the server enforces the
   // same no-place-on-player rule for the real game input path.
   if (opcode === 11 && nativePlacementBlocked(client, payload)) return;
+  // Persist + JSON-broadcast so peers and late joiners always see the change.
+  if (opcode === 11) applyNativeTileToRoom(client, payload);
 
   // Native movement packets also carry the player's position. Keep the
   // canonical position fresh even when the JSON fallback is throttled.
@@ -1203,7 +1256,7 @@ function placementOverlapsPlayer(player, tileX, tileY) {
   const left=Number(tileX)-cellHalf, right=Number(tileX)+cellHalf;
   const top=Number(tileY)-cellHalf, bottom=Number(tileY)+cellHalf;
 
-  const hw=1.45, hh=0.50, margin=0.05; // 1 block tall, left+center+right wide
+  const hw=0.50, hh=0.50, margin=0.05; // tight 1x1 player shield
   const L=px-hw-margin, R=px+hw+margin, T=py-hh-margin, B=py+hh+margin;
   if (!(right < L || left > R || bottom < T || top > B)) return true;
 
@@ -1323,6 +1376,15 @@ function roomSnapshot(room) {
     connectionId: client.connectionId,
     name: client.name,
     mode: client.mode,
+    alive: client.alive !== false && !client.eliminated,
+    eliminated: !!client.eliminated,
+    x: client.position && Number.isFinite(client.position.x) ? client.position.x : 0,
+    y: client.position && Number.isFinite(client.position.y) ? client.position.y : 2,
+    wins: Math.max(0, client.wins | 0),
+    kills: Math.max(0, client.kills | 0),
+    appearance: Array.isArray(client.appearance) ? client.appearance.slice(0, 11) : [],
+    appearanceText: String(client.appearanceText || ''),
+    skin: Number.isFinite(client.skin) ? client.skin : 1.44,
     adminEffects: client.adminEffects ? {...client.adminEffects} : {god:false,fly:false,noclip:false,invis:false},
     adminModifiers: client.adminModifiers ? {...client.adminModifiers} : {speed:1,jump:1,size:1,breakSpeed:1}
   }));
@@ -1768,6 +1830,10 @@ function addClientToRoom(client, room, mode, name) {
     mapMusic: room.mode==='pvp' ? battleMapMusic(room) : '',
     adminBackground: Number.isFinite(room.adminBackground) ? room.adminBackground : null,
     adminPvpOverride: !!room.adminPvpOverride,
+    // Full peer roster with positions so the joiner can spawn everyone
+    // before their local player is considered "ready".
+    peers: roomSnapshot(room).filter(p => p.connectionId !== client.connectionId),
+    players: roomSnapshot(room),
     fakePlayers: room.fakePlayers ? [...room.fakePlayers.values()].map(fakePlayerSnapshot) : [],
     tiles: [...room.tiles.values()], backgroundTiles: [...room.backgroundTiles.values()], drops: [...room.drops.values()], coins: [...room.coins.values()], speaker: room.speaker ? {...room.speaker} : null, serverNow: Date.now()
   });
@@ -1778,6 +1844,18 @@ function addClientToRoom(client, room, mode, name) {
 
   broadcastRoom(room, { t:'player-count', room:room.code, count:room.clients.size, max:MAX_ROOM_PLAYERS });
   broadcastRoster(room);
+  // One join line for EVERYONE including the joiner: "Name is now here."
+  broadcastRoom(room, {
+    t: 'player-joined',
+    connectionId: client.connectionId,
+    name: client.name,
+    room: room.code,
+    count: room.clients.size,
+    max: MAX_ROOM_PLAYERS,
+    _serverFrom: client.connectionId,
+    _serverName: client.name,
+    serverNow: Date.now()
+  });
   log(`${client.connectionId} (${name}) joined ${room.code}. ${room.clients.size}/${MAX_ROOM_PLAYERS}`);
 
   // room-ready is a one-time transition. Broadcasting it again for player 3,
@@ -2009,6 +2087,8 @@ function relayGameMessage(client, message, rawLength) {
     client.appearance=Array.isArray(message.appearance)?message.appearance.slice(0,11):client.appearance||[0,247,0,0,326,0,0,0,0,0,0];
     client.appearanceText=String(message.appearanceText||client.appearanceText||'').slice(0,180);
     client.skin=Number.isFinite(Number(message.skin))?Number(message.skin):1.44;
+    if(Number.isFinite(Number(message.wins))) client.wins=Math.max(0,Number(message.wins)|0);
+    if(Number.isFinite(Number(message.x))&&Number.isFinite(Number(message.y))) client.position={x:Number(message.x),y:Number(message.y)};
     if(changed){rememberPlayer(client,client.name,client.clientId);broadcastRoom(room,{t:'peer-rename',connectionId:client.connectionId,name:client.name,oldName:message.oldName||'',_serverFrom:client.connectionId,_serverName:client.name});broadcastRoster(room);}
     broadcastRoom(room,{t:'hello',id:message.id,name:client.name,appearance:message.appearance,appearanceText:message.appearanceText||'',x:client.position.x,y:client.position.y,skin:message.skin,wins:message.wins||0,mode:client.mode,adminEffects:{...client.adminEffects},adminModifiers:{...client.adminModifiers},_serverFrom:client.connectionId,_serverName:client.name},client);
     return;
