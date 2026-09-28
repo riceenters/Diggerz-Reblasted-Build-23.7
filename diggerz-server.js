@@ -1127,11 +1127,11 @@ function makeFakePlayer(room, name, sourceClient) {
     x:Math.max(4,Math.min(WORLD_WIDTH-4,Number(sourceClient&&sourceClient.position&&sourceClient.position.x)||16)),
     y:2,vx:0,vy:0,grounded:false,
     id,
-    appearance:[0,247,0,0,139,0,0,0,0,0,0],
+    appearance:[0,247,0,0,604,0,0,0,0,0,0],
     appearanceText:'',
     skin:1.44,
-    inventory:[{category:2,id:139,count:1},{category:2,id:240,count:1},{category:2,id:247,count:1}],
-    equippedWeapon:139,
+    inventory:[{category:2,id:604,count:1},{category:2,id:240,count:1},{category:2,id:247,count:1}],
+    equippedWeapon:604,
     miningTool:240,
     wins:0,createdAt:Date.now(),
     botState:'falling',botStartedAt:Date.now(),botPhaseUntil:Date.now()+3500,
@@ -1179,7 +1179,8 @@ function roomSnapshot(room) {
     connectionId: client.connectionId,
     name: client.name,
     mode: client.mode,
-    adminEffects: client.adminEffects ? {...client.adminEffects} : {god:false,fly:false,noclip:false,invis:false}
+    adminEffects: client.adminEffects ? {...client.adminEffects} : {god:false,fly:false,noclip:false,invis:false},
+    adminModifiers: client.adminModifiers ? {...client.adminModifiers} : {speed:1,jump:1,size:1,breakSpeed:1}
   }));
   const fakes=room.fakePlayers ? [...room.fakePlayers.values()].map(fakePlayerSnapshot) : [];
   return real.concat(fakes);
@@ -1862,7 +1863,7 @@ function relayGameMessage(client, message, rawLength) {
     client.appearanceText=String(message.appearanceText||client.appearanceText||'').slice(0,180);
     client.skin=Number.isFinite(Number(message.skin))?Number(message.skin):1.44;
     if(changed){rememberPlayer(client,client.name,client.clientId);broadcastRoom(room,{t:'peer-rename',connectionId:client.connectionId,name:client.name,oldName:message.oldName||'',_serverFrom:client.connectionId,_serverName:client.name});broadcastRoster(room);}
-    broadcastRoom(room,{t:'hello',id:message.id,name:client.name,appearance:message.appearance,appearanceText:message.appearanceText||'',x:client.position.x,y:client.position.y,skin:message.skin,wins:message.wins||0,mode:client.mode,adminEffects:{...client.adminEffects},_serverFrom:client.connectionId,_serverName:client.name},client);
+    broadcastRoom(room,{t:'hello',id:message.id,name:client.name,appearance:message.appearance,appearanceText:message.appearanceText||'',x:client.position.x,y:client.position.y,skin:message.skin,wins:message.wins||0,mode:client.mode,adminEffects:{...client.adminEffects},adminModifiers:{...client.adminModifiers},_serverFrom:client.connectionId,_serverName:client.name},client);
     return;
   }
   if (message.t==='admin-control-start') {
@@ -1934,6 +1935,15 @@ function relayGameMessage(client, message, rawLength) {
     return;
   }
 
+  if (message.t==='admin-modifiers') {
+    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
+    const target=findRoomClient(room,String(message.targetConnectionId||'')); if(!target){sendJson(client,{t:'server-error',code:'player-not-found',message:'Player not found.'});return;}
+    const old=target.adminModifiers||{speed:1,jump:1,size:1,breakSpeed:1};
+    const clamp=(v,min,max)=>Math.max(min,Math.min(max,Number.isFinite(Number(v))?Number(v):1));
+    target.adminModifiers={speed:clamp(message.speed,.1,10),jump:clamp(message.jump,.1,10),size:clamp(message.size,.25,4),breakSpeed:clamp(message.breakSpeed,.1,10)};
+    broadcastRoom(room,{t:'admin-modifiers',connectionId:target.connectionId,modifiers:{...target.adminModifiers},previous:{...old}});
+    return;
+  }
   if (message.t==='admin-effect') {
     if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
     const target=findRoomTarget(room,String(message.targetConnectionId||'')); if(!target){sendJson(client,{t:'server-error',code:'player-not-found',message:'Player not found.'});return;}
@@ -2129,6 +2139,27 @@ function relayGameMessage(client, message, rawLength) {
   }
 
   if (ALLOWED_RELAY_TYPES.has(message.t)) { broadcastRoom(room,envelope,client); return; }
+
+  if (message.t==='replace-block') {
+    const x=Number(message.x)|0,y=Number(message.y)|0,id=Number(message.id)|0,variant=Number(message.variant)|0;
+    if(x<0||x>=128||y<0||y>=80||id<=0)return;
+    if(!client.position||!client.alive||client.eliminated)return;
+    if(Math.hypot(client.position.x-x,client.position.y-y)>5)return;
+    const key=`${x},${y}`,prior=room.tiles.get(key);
+    if(!prior || !(prior.id|0))return;
+    // Replacing an existing block uses the currently selected block stack.
+    // The browser sends the selected item id/variant so the server remains authoritative.
+    const inv=message.inventoryItem||{};
+    if((inv.category|0)!==1 || (inv.id|0)!==id)return;
+    // Do not allow a stale rapid-click sequence to consume a stack twice.
+    const now=Date.now();
+    if(now-(client.lastReplaceBlockAt||0)<55)return;
+    client.lastReplaceBlockAt=now;
+    room.tiles.set(key,{x,y,id,variant,ownerConnectionId:client.connectionId});
+    room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
+    broadcastRoom(room,{t:'tile',x,y,id,variant,ownerConnectionId:client.connectionId,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
+    return;
+  }
 
   if (message.t==='tile') {
     const tile={x:Number(message.x)|0,y:Number(message.y)|0,id:Number(message.id)|0,variant:Number(message.variant)|0,ownerConnectionId:client.connectionId};
@@ -2865,6 +2896,7 @@ server.on('upgrade', (req, socket) => {
     trade: null,
     pvpHealth: 3, alive: true, eliminated: false, kills: 0, shots: 0, hits: 0,
     adminEffects: {god:false,fly:false,noclip:false,invis:false},
+    adminModifiers: {speed:1,jump:1,size:1,breakSpeed:1},
     position: {x:12,y:2}, aim: {x:12,y:16}, lastAttackerConnectionId: '', lastDamagedAt: 0
   };
 

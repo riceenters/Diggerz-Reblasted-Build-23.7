@@ -18642,7 +18642,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     var hoverY = Math.round((q.mY - this.A8) / this.a9 / l._44);
                     hoverBlock = this.R39[l._46].r33(hoverX * l._44, hoverY * l._44) || null
                 }
-                if (this.diggerzHoverBlock !== hoverBlock) {
+                var buildSvcKey = window.DiggerzPvp22 && window.DiggerzPvp22.service, buildSelKey = "none"; try { var buildEntKey = l.z39, buildSlotsKey = buildSvcKey && buildSvcKey.state && buildSvcKey.state.slots, buildSlotKey = buildEntKey && buildEntKey.n38 && buildEntKey.n38.q43, buildItemKey = buildSlotsKey && buildSlotsKey[buildSlotKey]; if (buildItemKey && buildItemKey.category === 1 && buildItemKey.count > 0) buildSelKey = String(buildSlotKey) + ":" + String(buildItemKey.id) + ":" + String(buildItemKey.variant || 0); } catch (_e) {}
+                var hoverKey = (hoverBlock ? "b:" : "e:") + hoverX + ":" + hoverY + ":sel:" + buildSelKey;
+                var hoverChanged = this.diggerzHoverBlock !== hoverBlock || this.diggerzHoverCellKey !== hoverKey;
+                if (hoverChanged) {
                     if (null != this.diggerzHoverOverlay) {
                         var hoverParent = this.diggerzHoverOverlay._2;
                         this.diggerzHoverOverlay.e3();
@@ -18651,6 +18654,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     }
                     this.diggerzHoverBlock = hoverBlock;
                     this.diggerzHoverOverlay = null;
+                    this.diggerzHoverCellKey = hoverKey;
                     q.diggerzHoverTarget = hoverBlock;
                     if (null != hoverBlock && null != hoverBlock._3 && null != hoverBlock._5) {
                         var hover = z.I9();
@@ -18666,6 +18670,44 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         hover._1 = "diggerz_hover";
                         hoverBlock._9.push(hover);
                         this.diggerzHoverOverlay = hover
+                    } else {
+                        // Reuse the game's existing render-layer indicator for empty grid cells.
+                        // WHITE_PARTICLE_PNG is the native 32x32 white square already used by the game.
+                        var buildSvc = window.DiggerzPvp22 && window.DiggerzPvp22.service;
+                        var selected = false;
+                        try {
+                            var ent = l.z39;
+                            var slots = buildSvc && buildSvc.state && buildSvc.state.slots;
+                            var slot = ent && ent.n38 && ent.n38.q43;
+                            var item = slots && slots[slot];
+                            selected = !!(item && item.category === 1 && item.count > 0);
+                            if (selected && buildSvc && buildSvc.state && hoverX >= 0 && hoverY >= 0 && hoverX < buildSvc.state.width && hoverY < buildSvc.state.height - 1 && null != this.R39[l._46]) {
+                                var body = ent && ent.b33 && ent.b33.tBJ;
+                                var px = Number(ent && ent.b6) / l._44;
+                                var py = Number(ent && ent.b7) / l._44;
+                                var dx = hoverX - px, dy = hoverY - py;
+                                var dist = Math.sqrt(dx * dx + dy * dy);
+                                if (!this.R39[l._46].r33(hoverX * l._44, hoverY * l._44) && dist <= 5 && dist >= 1.1) {
+                                    var emptyHover = z.I9();
+                                    emptyHover.Init(f.WHITE_PARTICLE_PNG());
+                                    emptyHover.D7(this.R39[l._46]);
+                                    emptyHover.b6 = hoverX * l._44;
+                                    emptyHover.b7 = hoverY * l._44;
+                                    var cellScale = Math.max(.1, l._44 / 32 * .88);
+                                    emptyHover.set_local_xScale(cellScale);
+                                    emptyHover.set_local_yScale(cellScale);
+                                    emptyHover.set_local_r(1.45);
+                                    emptyHover.set_local_g(1.45);
+                                    emptyHover.set_local_b(1.45);
+                                    emptyHover.set_local_alp(.42);
+                                    emptyHover.B8 = 999999;
+                                    emptyHover.c2 = 0;
+                                    emptyHover._1 = "diggerz_hover";
+                                    this.R39[l._46]._9.push(emptyHover);
+                                    this.diggerzHoverOverlay = emptyHover
+                                }
+                            }
+                        } catch (_e) {}
                     }
                 }
             }
@@ -23323,6 +23365,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             return {ok:true, message:"PvP override " + (this.adminPvpEnabled ? "enabled" : "disabled") + "."}
         },
         adminTargetConnection:function(name){var mp=window.DiggerzPvp22;name=String(name||'').trim();if(!mp)return '';if(!name||name===this.playerName())return mp.connectionId||'';var peer=this.pvpFindPeerByName(name);return peer?peer.connectionId:''},
+        adminSetModifiers:function(name,mods){var mp=window.DiggerzPvp22;if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!mp||!mp.joined)return {ok:false,message:'Multiplayer server required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};mods=mods||{};this.pvpSend({t:'admin-modifiers',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid,speed:Math.max(.1,Math.min(10,Number(mods.speed)||1)),jump:Math.max(.1,Math.min(10,Number(mods.jump)||1)),size:Math.max(.25,Math.min(4,Number(mods.size)||1)),breakSpeed:Math.max(.1,Math.min(10,Number(mods.breakSpeed)||1))});return {ok:true,message:'Player modifiers applied to '+String(name||'player')+'.'}},
         adminSendEffect:function(effect,name,enabled){var mp=window.DiggerzPvp22;if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!mp||!mp.joined)return {ok:false,message:'Multiplayer server required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};this.pvpSend({t:'admin-effect',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid,effect:String(effect),enabled:!!enabled});return {ok:true,message:String(effect)+' '+(enabled?'enabled':'disabled')+'.'}},
         adminRenameLive:function(name,newName){var mp=window.DiggerzPvp22;if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!mp||!mp.joined)return {ok:false,message:'Multiplayer server required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};newName=String(newName||'').replace(/[\x00-\x1F\x7F]/g,' ').trim().slice(0,24);if(!newName)return {ok:false,message:'Name is empty.'};this.pvpSend({t:'admin-rename',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid,name:newName});return {ok:true,message:'Rename requested: '+newName+'.'}},
         adminBringToMe:function(name){var mp=window.DiggerzPvp22;if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!mp||!mp.joined)return {ok:false,message:'Multiplayer server required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};if(cid===mp.connectionId)return {ok:true,message:'You are already here.'};this.pvpSend({t:'admin-bring',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid});return {ok:true,message:'Bring requested for '+String(name||'player')+'.'}},
@@ -23569,7 +23612,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var id = this.tileAt(targetX, targetY);
             if (!id || this.distanceToPlayer(targetX, targetY) > 3.6) return;
             var key = targetX + ":" + targetY;
-            var hits = (this.damage[key] || 0) + 1;
+            var breakMod=adminClampMod(this.adminModifiers&&this.adminModifiers.breakSpeed,.1,10);var hits = (this.damage[key] || 0) + breakMod;
             var specialServerBlock = id === 211 || id === 127 || id === 212;
             var durability = (id === 211 || id === 127) ? 1 : 5;
             this.damage[key] = hits;
@@ -115163,6 +115206,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
   <div class="row"><button id="admin-map-apply" type="button">Load Map For Everyone</button><button id="admin-map-reset" type="button">Reset Map</button></div>
   <div class="row"><button id="admin-map-import" type="button">Import Map JSON</button><input id="admin-map-import-file" type="file" accept="application/json,.json" hidden></div>
   <div class="hint">Example maps are loaded from the server's <code>maps</code> folder. Imported JSON replaces the current map for everyone. The map editor remains available for editing/exporting, but cannot apply changes to the current room.</div>
+  <h3>Player Modifiers</h3>
+  <label>Speed <input id="admin-speed-mod" type="number" min="0.1" max="10" step="0.1" value="1"></label>
+  <label>Size <input id="admin-size-mod" type="number" min="0.25" max="4" step="0.05" value="1"></label>
+  <label>Jump <input id="admin-jump-mod" type="number" min="0.1" max="10" step="0.1" value="1"></label>
+  <label>Break Speed <input id="admin-break-mod" type="number" min="0.1" max="10" step="0.1" value="1"></label>
+  <button id="admin-modifiers-apply" type="button">Apply Modifiers To Selected</button>
+
   <h3>Safe-Zone PvP Override</h3>
   <button id="admin-pvp" type="button">Enable PvP Override</button>
   <div id="diggerz-admin-status">Waiting for the local service…</div>
@@ -115354,6 +115404,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
   async function refreshAdminMaps(){var sel=document.getElementById('admin-map-select');if(!sel)return;try{var token=window.DiggerzAdminSessionToken;if(!token)return;var r=await fetch('/api/admin/maps',{headers:{Authorization:'Bearer '+token},cache:'no-store'}),d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'map list failed');sel.innerHTML='';(d.maps||[]).forEach(function(m){var o=document.createElement('option');o.value=String(m.name||'');o.textContent=String(m.name||'Map');sel.appendChild(o)});}catch(e){sel.innerHTML='<option value="">Map list unavailable</option>';}}
   setTimeout(refreshAdminMaps,200);
 
+  document.getElementById('admin-modifiers-apply').onclick=function(){var s=ownerService();if(!s)return say('Admin authentication required.');var name=selectedAdminName();var mods={speed:Math.max(.1,Math.min(10,Number(document.getElementById('admin-speed-mod').value)||1)),size:Math.max(.25,Math.min(4,Number(document.getElementById('admin-size-mod').value)||1)),jump:Math.max(.1,Math.min(10,Number(document.getElementById('admin-jump-mod').value)||1)),breakSpeed:Math.max(.1,Math.min(10,Number(document.getElementById('admin-break-mod').value)||1))};say(s.adminSetModifiers(name,mods));};
   document.getElementById('admin-pvp').onclick=function(){var s=ownerService();if(!s)return say('Admin authentication required.');pvp=!pvp;say(s.adminSetPvp(pvp));this.textContent=pvp?'Disable PvP Override':'Enable PvP Override'};
 
 
@@ -115606,6 +115657,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     proto.pvpApplyRoomState=function(m){var i;if(Array.isArray(m.tiles)){this._pvpApplyingTile=true;try{for(i=0;i<m.tiles.length;i++){var t=m.tiles[i];this.setTile(t.x|0,t.y|0,t.id|0,t.variant|0)}}finally{this._pvpApplyingTile=false}}if(Array.isArray(m.drops))for(i=0;i<m.drops.length;i++)this.pvpAddSharedDrop(m.drops[i])};
     proto.pvpRemoteHitLine=function(fromX,fromY,toX,toY){var peers=this.pvpEnsurePeers(),vx=toX-fromX,vy=toY-fromY,vv=vx*vx+vy*vy,best=null,bestT=2;for(var k in peers){var peer=peers[k],e=this.pvpEntityForPeer(peer);if(!e||!e.a2)continue;var px=e.b6/l._44,py=e.b7/l._44,t=vv>0?((px-fromX)*vx+(py-fromY)*vy)/vv:0;t=Math.max(0,Math.min(1,t));var cx=fromX+vx*t,cy=fromY+vy*t;if(Math.hypot(px-cx,py-cy)<=.9&&t<bestT){best=peer;bestT=t}}return best};
     proto.adminEffects={god:false,fly:false,noclip:false,invis:false};
+    proto.adminModifiers={speed:1,jump:1,size:1,breakSpeed:1};
 
     // Build 24.0.5: use the supplied original fly behavior instead of the
     // approximate WASD velocity hack.  The original script works by reaching
@@ -115665,12 +115717,31 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       this.adminEffects=Object.assign({god:false,fly:false,noclip:false,invis:false},effects||{});
       var ent=l.z39;if(ent){try{ent.set_alp(this.adminEffects.invis?0:1);ent.set_local_alp(this.adminEffects.invis?0:1)}catch(e){}}
       adminFlyApplyState(!!this.adminEffects.fly);
+      adminApplyNoclipRadius(!!this.adminEffects.noclip);
+      if(this.adminModifiers)this.adminApplyModifiers(this.adminModifiers);
     };
+    function adminClampMod(v,min,max){v=Number(v);return isFinite(v)?Math.max(min,Math.min(max,v)):1}
+    var _playerE0mod=pa.prototype.e0;pa.prototype.e0=function(){var r=_playerE0mod.apply(this,arguments);try{var sz=Number(this._diggerzSizeModifier)||1;if(this.i33){this.i33.set_local_xScale((this.k33||1)*sz);this.i33.set_local_yScale(sz)}}catch(_e){}return r};
+    function adminApplyNoclipRadius(active){try{var ent=l.z39,body=ent&&ent.b34&&ent.b34.tBJ;if(!body)return;if(body.__diggerzOriginalRadius==null)body.__diggerzOriginalRadius=Number(body.radius)||1;body.radius=active?0:body.__diggerzOriginalRadius}catch(_e){}}
+    proto.adminApplyModifiers=function(mods){
+      this.adminModifiers={speed:adminClampMod(mods&&mods.speed,.1,10),jump:adminClampMod(mods&&mods.jump,.1,10),size:adminClampMod(mods&&mods.size,.25,4),breakSpeed:adminClampMod(mods&&mods.breakSpeed,.1,10)};
+      var ent=l.z39,sz=this.adminModifiers.size;
+      try{if(ent){ent._diggerzSizeModifier=sz;if(ent.i33){var face=ent.k33||1;ent.i33.set_local_xScale(face*sz);ent.i33.set_local_yScale(sz)}adminApplyNoclipRadius(!!(this.adminEffects&&this.adminEffects.noclip))}}catch(_e){}
+    };
+    proto.adminApplyPeerModifiers=function(peer){if(!peer)return;var e=this.pvpEntityForPeer(peer),sz=Number(peer.adminModifiers&&peer.adminModifiers.size)||1;if(e){try{e._diggerzSizeModifier=sz;if(e.i33){var face=e.k33||1;e.i33.set_local_xScale(face*sz);e.i33.set_local_yScale(sz)}}catch(_e){}}};
+    if(!pa.prototype.__diggerzModifierHooks){
+      pa.prototype.__diggerzModifierHooks=true;
+      var _k35mod=pa.prototype.k35;
+      pa.prototype.k35=function(){var svc=window.DiggerzPvp22&&window.DiggerzPvp22.service,mod=svc&&svc.adminModifiers;var old=this.N39;this.N39=adminClampMod(mod&&mod.speed,0.1,10);var r=_k35mod.apply(this,arguments);this.N39=old;return r};
+      var _k36mod=pa.prototype.k36;
+      pa.prototype.k36=function(){var beforeY=0,body=this.b33&&this.b33.tBJ,svc=window.DiggerzPvp22&&window.DiggerzPvp22.service,mod=svc&&svc.adminModifiers,jm=adminClampMod(mod&&mod.jump,0.1,10);try{if(body&&body.wrap_vel){body.setupVelocity();beforeY=body.wrap_vel.tBJ.y}}catch(_e){}var r=_k36mod.apply(this,arguments);try{if(body&&body.wrap_vel&&jm!==1&&body.wrap_vel.tBJ.y<beforeY-1){body.wrap_vel.tBJ.y=beforeY+(body.wrap_vel.tBJ.y-beforeY)*jm}}catch(_e){}return r};
+    }
     proto.adminApplyPeerEffects=function(peer){if(!peer)return;var e=this.pvpEntityForPeer(peer);if(e){try{e.set_alp(peer.adminEffects&&peer.adminEffects.invis?0:1);e.set_local_alp(peer.adminEffects&&peer.adminEffects.invis?0:1)}catch(_e){}}};
     proto.pvpReceive=function(m){
       if(!m||!window.DiggerzIsMultiplayer(this))return;
-      if(m.t==='hello'){var cid=m._serverFrom||'';if(!cid||cid===P.connectionId)return;var peers=this.pvpEnsurePeers(),first=!peers[cid];peers[cid]={connectionId:cid,name:String(m.name||m._serverName||'Player'),id:this.guidFromParts(m.id),info:m,adminEffects:Object.assign({god:false,fly:false,noclip:false,invis:false},m.adminEffects||{})};if(isFinite(+m.x))peers[cid].lastX=+m.x;if(isFinite(+m.y))peers[cid].lastY=+m.y;this.pvpRefreshLegacyPeer();if(!first)this.adminApplyPeerEffects(peers[cid]);if(first&&this._pvpAnnounceJoins)this.message('^2'+peers[cid].name+' joined the session.');if(P.connected)this.pvpSendNativeSpawn();return}
+      if(m.t==='hello'){var cid=m._serverFrom||'';if(!cid||cid===P.connectionId)return;var peers=this.pvpEnsurePeers(),first=!peers[cid];peers[cid]={connectionId:cid,name:String(m.name||m._serverName||'Player'),id:this.guidFromParts(m.id),info:m,adminEffects:Object.assign({god:false,fly:false,noclip:false,invis:false},m.adminEffects||{}),adminModifiers:Object.assign({speed:1,jump:1,size:1,breakSpeed:1},m.adminModifiers||{})};if(isFinite(+m.x))peers[cid].lastX=+m.x;if(isFinite(+m.y))peers[cid].lastY=+m.y;this.pvpRefreshLegacyPeer();if(!first)this.adminApplyPeerEffects(peers[cid]);if(first&&this._pvpAnnounceJoins)this.message('^2'+peers[cid].name+' joined the session.');if(P.connected)this.pvpSendNativeSpawn();return}
       if(m.t==='admin-effect'){if(String(m.connectionId||'')===String(P.connectionId||''))this.adminApplyEffects(m.effects||{});else{var ep=this.pvpPeerForConnection(m.connectionId);if(ep){ep.adminEffects=Object.assign({god:false,fly:false,noclip:false,invis:false},m.effects||{});this.adminApplyPeerEffects(ep)}}return}
+      if(m.t==='admin-modifiers'){var mods=Object.assign({speed:1,jump:1,size:1,breakSpeed:1},m.modifiers||{});if(String(m.connectionId||'')===String(P.connectionId||'')){this.adminModifiers=mods;this.adminApplyModifiers(mods)}else{var mp=this.pvpPeerForConnection(m.connectionId);if(mp){mp.adminModifiers=mods;this.adminApplyPeerModifiers(mp)}}return}
       if(m.t==='peer-rename'){var rp=this.pvpPeerForConnection(m.connectionId);var renamed=String(m.name||'Player').slice(0,24);if(rp){rp.name=renamed;if(rp.info)rp.info.name=renamed;var re=this.pvpEntityForPeer(rp);if(re){try{re._1=renamed}catch(_e){}try{if(re.J30&&re.J30.E32)re.J30.E32.E37(renamed)}catch(_e){}}}if(String(m.connectionId||'')===String(P.connectionId||'')){this._adminDisplayName=renamed;try{q.thisMain.userName=renamed;q.SaveGlobals()}catch(_e){}try{if(l.z39){l.z39._1=renamed;if(l.z39.J30&&l.z39.J30.E32)l.z39.J30.E32.E37(renamed)}}catch(_e){}try{this.pvpSendHello();if(P.connected)this.pvpSendNativeSpawn()}catch(_e){}}return}
       if(m.t==='admin-rename'){this._adminDisplayName=String(m.name||'Player').slice(0,24);try{q.thisMain.userName=this._adminDisplayName;q.SaveGlobals()}catch(_e){}try{if(l.z39){l.z39._1=this._adminDisplayName;if(l.z39.J30&&l.z39.J30.E32)l.z39.J30.E32.E37(this._adminDisplayName)}}catch(_e){};this.pvpSendHello();if(P.connected)this.pvpSendNativeSpawn();return}
       if(m.t==='admin-pvp-state'){this.adminPvpEnabled=!!m.enabled;try{q.diggerzAdminPvpEnabled=!!m.enabled}catch(_e){};return}
@@ -115704,7 +115775,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       if(m.t==='admin-coins'){var amount=Math.max(1,Math.min(1000000,m.amount|0));this.state.coins=Math.max(0,(this.state.coins||0)+amount);this.sendCoins();this.markDirty();this.save(true);this.message('^2Admin gave you '+amount+' coins.');return}
       if(m.t==='admin-kill'){this.hurtLocalPlayer(999,'admin');return}
     };
-    proto.pvpTick=function(){if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attach(this);if(!l.z39)return;var eff=this.adminEffects||{};if(eff.fly&&!this.localDead){adminFlyApplyState(true)}if(eff.noclip&&!this.localDead&&!eff.fly){var now=Date.now(),dt=Math.min(.05,Math.max(.001,(now-(this._adminNoclipLast||now))/1000));this._adminNoclipLast=now;var dx=0,dy=0;try{if(q.KeyDown(65))dx-=1;if(q.KeyDown(68))dx+=1;if(q.KeyDown(87))dy-=1;if(q.KeyDown(83))dy+=1}catch(e){}if(dx||dy){var len=Math.hypot(dx,dy)||1;dx/=len;dy/=len;try{l.z39.l38(l.z39.b6+dx*7*dt*l._44,l.z39.b7+dy*7*dt*l._44)}catch(e){l.z39.b6+=dx*7*dt*l._44;l.z39.b7+=dy*7*dt*l._44}this.state.x=l.z39.b6/l._44;this.state.y=l.z39.b7/l._44}}if(this.ticks%3===0)this.pvpSendNativeMovement()};
+    proto.pvpTick=function(){if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attach(this);if(!l.z39)return;var eff=this.adminEffects||{},mods=this.adminModifiers||{speed:1,jump:1,size:1,breakSpeed:1};if(eff.fly&&!this.localDead){adminFlyApplyState(true)}if(eff.noclip&&!this.localDead&&!eff.fly){var now=Date.now(),dt=Math.min(.05,Math.max(.001,(now-(this._adminNoclipLast||now))/1000));this._adminNoclipLast=now;var dx=0,dy=0;try{if(q.KeyDown(65))dx-=1;if(q.KeyDown(68))dx+=1;if(q.KeyDown(87))dy-=1;if(q.KeyDown(83))dy+=1}catch(e){}if(dx||dy){var len=Math.hypot(dx,dy)||1;dx/=len;dy/=len;try{l.z39.l38(l.z39.b6+dx*7*dt*l._44*(Number(mods.speed)||1),l.z39.b7+dy*7*dt*l._44*(Number(eff.speed)||1))}catch(e){l.z39.b6+=dx*7*dt*l._44;l.z39.b7+=dy*7*dt*l._44}this.state.x=l.z39.b6/l._44;this.state.y=l.z39.b7/l._44}}if(this.ticks%3===0)this.pvpSendNativeMovement()};
     var oldA16=proto.A16;proto.A16=function(){var r=oldA16.call(this);if(window.DiggerzIsMultiplayer(this))this.pvpTick();return r};
     var oldA12=proto.A12;proto.A12=function(){if(window.DiggerzIsMultiplayer(this))P.detach(this);return oldA12.call(this)};
     var oldA17=proto.A17;proto.A17=function(opcode,body,c){
@@ -116971,7 +117042,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 </script>
 
 	<div name="changes" id="changes">
-		<h1>Diggerz.io Reblasted - Change Log</h1>
+		<h1>Diggerz.io Reblasted - Change Log</h1><hr><a name="Build 24.0.17"></a><h2>Build 24.0.17 - Admin Modifiers &amp; Building Polish</h2><ul><li>Added admin Speed, Size, Jump, and Break Speed modifiers.</li><li>Integrated the supplied noclip radius override while preserving normal movement.</li><li>Added a placement travel/grow/spin animation and grid placement indicator.</li><li>Added block modification popup when a block is selected and an occupied cell is clicked.</li><li>Hardened rapid placement/replacement synchronization.</li></ul>
 
 		<hr><a name="Build 23.7"></a>
 		<h2>Build 23.7 - Security &amp; Account Hardening</h2>
@@ -117231,6 +117302,34 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
   }
   install();
 }());
+</script>
+<script id="diggerz-build2417-block-tools">
+(function(){
+  var root=document.createElement('div');root.id='diggerz-block-tools-root';
+  var ind=document.createElement('div');ind.id='diggerz-place-indicator';
+  var menu=document.createElement('div');menu.id='diggerz-block-mod-menu';
+  menu.innerHTML='<div id="dzbm-title">Block</div><div id="dzbm-info"></div><label>Variant <input id="dzbm-variant" type="number" min="0" max="31" value="0"></label><div class="dzbm-row"><button id="dzbm-replace" type="button">Replace</button><button id="dzbm-cancel" type="button">Cancel</button></div>';
+  root.appendChild(ind);root.appendChild(menu);document.body.appendChild(root);
+  var css=document.createElement('style');css.textContent='#diggerz-place-indicator{display:none;position:fixed;z-index:2147483000;box-sizing:border-box;border:2px solid rgba(255,255,255,.95);background:rgba(255,255,255,.08);pointer-events:none;transform-origin:center;box-shadow:0 0 0 1px rgba(0,0,0,.55)}#diggerz-block-mod-menu{display:none;position:fixed;z-index:2147483001;min-width:180px;padding:9px;background:rgba(12,18,25,.97);border:1px solid rgba(255,255,255,.7);border-radius:7px;color:#fff;font:12px Arial,sans-serif;box-shadow:0 5px 20px rgba(0,0,0,.5)}#diggerz-block-mod-menu label{display:block;margin:7px 0}#diggerz-block-mod-menu input{width:65px;box-sizing:border-box;background:#091018;color:#fff;border:1px solid #607080;border-radius:4px;padding:4px}#dzbm-title{font-weight:700;font-size:14px;margin-bottom:4px}#dzbm-info{opacity:.8;margin-bottom:4px}.dzbm-row{display:flex;gap:6px}.dzbm-row button{border:0;border-radius:4px;padding:6px 9px;background:#334b60;color:#fff;font-weight:700;cursor:pointer}';document.head.appendChild(css);
+  var pending=null,lastAnim=0;
+  function svc(){return window.DiggerzPvp22&&window.DiggerzPvp22.service}
+  function game(){return window.l&&l.z38?l.z38:null}
+  function mouseWorld(){var g=game(),s=svc();if(!g||!s)return null;var scale=Number(window.l&&l._44)||1,ax=Number(g.A7)||0,ay=Number(g.A8)||0,gw=Number(g.a8)||1,gh=Number(g.a9)||1;var x=Math.round((window.q.mX-ax)/gw/scale),y=Math.round((window.q.mY-ay)/gh/scale);return {x:x,y:y,gw:gw*scale,gh:gh*scale,ax:ax,ay:ay}}
+  function selectedBlock(){var s=svc(),p=window.l&&l.z39;if(!s||!p||!s.state||!Array.isArray(s.state.slots))return null;var slot=p.n38&&typeof p.n38.q43==='number'?p.n38.q43:-1,item=slot>=0?s.state.slots[slot]:null;return item&&item.category===1&&item.count>0?{slot:slot,item:item}:null}
+  function validCell(w,b){if(!w||!b||!svc())return false;var s=svc();if(w.x<0||w.y<0||w.x>=s.state.width||w.y>=s.state.height-1)return false;if(s.tileAt(w.x,w.y))return false;if(s.distanceToPlayer(w.x,w.y)>5||s.distanceToPlayer(w.x,w.y)<1.1)return false;return true}
+  function updateIndicator(){ind.style.display='none';}
+  function animatePlace(x,y,id){var now=Date.now();if(now-lastAnim<35)return;lastAnim=now;var g=game(),w=mouseWorld();if(!g||!w)return;var scale=Number(window.l&&l._44)||1,gw=(Number(g.a8)||1)*scale,gh=(Number(g.a9)||1)*scale,ax=Number(g.A7)||0,ay=Number(g.A8)||0;var p=l.z39,sx=ax+(Number(p.b6)||0),sy=ay+(Number(p.b7)||0),tx=ax+x*gw,ty=ay+y*gh;var el=document.createElement('div');el.style.cssText='position:fixed;z-index:2147482999;width:'+Math.max(5,gw*.82)+'px;height:'+Math.max(5,gh*.82)+'px;left:'+(sx-gw*.41)+'px;top:'+(sy-gh*.41)+'px;background:rgba(255,255,255,.55);border:2px solid rgba(255,255,255,.95);box-sizing:border-box;pointer-events:none;transform-origin:center;opacity:.95;transition:transform .24s cubic-bezier(.2,.8,.2,1),opacity .24s ease,left .24s cubic-bezier(.2,.8,.2,1),top .24s cubic-bezier(.2,.8,.2,1);';document.body.appendChild(el);requestAnimationFrame(function(){el.style.left=(tx-gw*.41)+'px';el.style.top=(ty-gh*.41)+'px';el.style.transform='scale(1) rotate(360deg)';el.style.opacity='.15'});setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el)},280)}
+  function openMenu(w,b){pending={x:w.x,y:w.y,id:b.item.id|0,variant:b.item.variant|0,slot:b.slot};menu.style.display='block';menu.style.left=Math.min(window.innerWidth-210,Math.max(6,w.ax+w.x*w.gw+w.gw+6))+'px';menu.style.top=Math.min(window.innerHeight-150,Math.max(6,w.ay+w.y*w.gh))+'px';document.getElementById('dzbm-title').textContent='Modify block';document.getElementById('dzbm-info').textContent='Cell '+w.x+', '+w.y+' • block '+b.item.id+' selected';document.getElementById('dzbm-variant').value=String(b.item.variant|0)}
+  function closeMenu(){pending=null;menu.style.display='none'}
+  document.getElementById('dzbm-cancel').onclick=closeMenu;
+  document.getElementById('dzbm-replace').onclick=function(){var p=pending,s=svc();if(!p||!s)return closeMenu();var variant=Math.max(0,Math.min(31,parseInt(document.getElementById('dzbm-variant').value,10)||0));var item=s.state.slots[p.slot];if(!item||item.category!==1||item.id!==p.id||item.count<=0)return closeMenu();if(window.DiggerzPvp22&&window.DiggerzPvp22.joined){s.pvpSend({t:'replace-block',x:p.x,y:p.y,id:p.id,variant:variant,inventoryItem:{category:1,id:p.id,variant:variant}});return closeMenu()}s.setTile(p.x,p.y,p.id,variant);item.count--;if(item.count<=0)s.state.slots[p.slot]=s.emptyItem();s.sendInventory();s.markDirty();closeMenu()};
+  window.addEventListener('mousemove',updateIndicator,true);
+  window.addEventListener('mousedown',function(e){if(e.button!==0)return;var b=selectedBlock(),w=mouseWorld();if(!b||!w||!svc())return;if(svc().tileAt(w.x,w.y)){openMenu(w,b);e.preventDefault();e.stopImmediatePropagation()}},true);
+  setInterval(updateIndicator,40);
+  var oldSet=window.DiggerzService&&window.DiggerzService.prototype&&window.DiggerzService.prototype.setTile;
+  function hook(){var D=window.DiggerzService;if(!D||!D.prototype||D.prototype.__dzBlockTools)return;var old=D.prototype.setTile;D.prototype.setTile=function(x,y,id,variant){var prev=this.tileAt(x,y);var r=old.apply(this,arguments);if(r&&prev===0&&(id|0)!==0&&!this._pvpApplyingTile)animatePlace(x|0,y|0,id|0);return r};D.prototype.__dzBlockTools=true}
+  var tries=0;var timer=setInterval(function(){hook();if(++tries>100)clearInterval(timer)},100);
+})();
 </script>
 </body>
 </html>
