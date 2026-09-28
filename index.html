@@ -116948,7 +116948,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 }());
 </script>
 
-<script id="diggerz-build24-placement-guard">
+<script id="diggerz-build24-placement-guard-v38">
 (function(){
   // These helpers MUST exist before the OpenFL client starts.  The previous
   // version only created them after l.z39.n38.B30 existed, which could race
@@ -116956,9 +116956,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
   window.DiggerzPlacementLayer=function(item){
     try{
       var q36=item&&item.Q36;
-      // Layer 1 is the native player/pet interaction layer. It is never a
-      // valid block-placement layer. Do not silently turn a layer-1 request
-      // into a foreground placement; reject it at the placement gate below.
+      // The same engine family exposes layer 1 as FLOATER_LAYER, not the
+      // player/pet collision layer. Regular block items should still never use
+      // it; the server validates the final native layer against the block id.
       if((q36|0)===1)return -1;
       return (q36|0)===2?2:0;
     }catch(e){return 0}

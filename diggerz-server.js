@@ -1035,10 +1035,79 @@ function sendFakeNativeDespawn(room,fake){
   for(const c of room.clients)sendBinary(c,payload);
 }
 
+function readNativeFixedBE(buf, offset) {
+  // The game's tb/DataView writer uses the default big-endian byte order.
+  // r8() writes two signed int32 values: whole units, then 1e-5 fractional units.
+  if (!buf || offset < 0 || offset + 8 > buf.length) return NaN;
+  const whole = buf.readInt32BE(offset);
+  const frac = buf.readInt32BE(offset + 4);
+  return whole + frac / 100000;
+}
+
+function nativePlacementBlocked(client, payload) {
+  // Native opcode 11 is X8(). All fields are big-endian because the client's
+  // DataView writes omit the littleEndian flag: [op][actor x][actor y]
+  // [tile id][tile x][layer][tile y][block seed][block variant][flags]...
+  // The client already sends its current actor position in the placement packet,
+  // so use that authoritative native position instead of waiting for a separate
+  // JSON state packet. This closes the gap that let a block land inside a player
+  // even though the JSON placement handler rejected it.
+  if (!client || !client.room || !payload || payload.length < 37) return true;
+  try {
+    const actorX = readNativeFixedBE(payload, 2);
+    const actorY = readNativeFixedBE(payload, 10);
+    const id = payload.readUInt16BE(18);
+    const tileX = payload.readInt32BE(20);
+    const layer = payload.readInt32BE(24);
+    const tileY = payload.readInt32BE(28);
+    if (![actorX,actorY].every(Number.isFinite) || !Number.isFinite(tileX) || !Number.isFinite(tileY)) return true;
+
+    // Keep the server's canonical position synchronized with the same native
+    // packet that is being relayed.
+    client.position = {x:actorX,y:actorY};
+
+    // Coaster Town, the same engine family, exposes the native layer constants
+    // as BLOCK_LAYER=0, FLOATER_LAYER=1, BKND_LAYER=2. Layer 1 is therefore
+    // not the player/pet collision layer; it is the engine's floater layer.
+    // Regular blocks are still constrained to the layer dictated by their id.
+    if (id === 0) return false;
+    if (layer !== expectedBlockLayer(id)) return true;
+
+    // Never relay a native placement that intersects any live player/pet body.
+    // Test the actor's embedded position directly, then every other room client.
+    const actor = {position:{x:actorX,y:actorY},alive:client.alive,eliminated:client.eliminated};
+    if (placementOverlapsPlayer(actor,tileX,tileY)) return true;
+    for (const other of client.room.clients) {
+      if (other === client || !other.alive || other.eliminated || !other.position) continue;
+      if (placementOverlapsPlayer(other,tileX,tileY)) return true;
+    }
+    return false;
+  } catch {
+    // Malformed native placement packets are dropped rather than relayed.
+    return true;
+  }
+}
+
 function relayBinary(client, payload) {
   if (!client.room) return;
   let opcode = 0;
-  try { if (payload.length >= 2) opcode = payload.readUInt16LE(0); } catch {}
+  try { if (payload.length >= 2) opcode = payload.readUInt16BE(0); } catch {}
+
+  // Native placement bypasses the JSON t:'tile' handler entirely. Gate the
+  // actual binary opcode before it is broadcast so the server enforces the
+  // same no-place-on-player rule for the real game input path.
+  if (opcode === 11 && nativePlacementBlocked(client, payload)) return;
+
+  // Native movement packets also carry the player's position. Keep the
+  // canonical position fresh even when the JSON fallback is throttled.
+  if (opcode === 6 && payload.length >= 18) {
+    try {
+      const x = readNativeFixedBE(payload, 2);
+      const y = readNativeFixedBE(payload, 10);
+      if (Number.isFinite(x) && Number.isFinite(y)) client.position = {x,y};
+    } catch {}
+  }
+
   const now = Date.now();
   if (opcode === 6) {
     if (now - (client.lastNativeMovementRelayAt || 0) < NATIVE_MOVEMENT_RELAY_MS) return;
