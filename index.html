@@ -22999,6 +22999,16 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             if (!id) delete this.damage[x + ":" + y];
             this.sendTile(x, y, id, variant, layer);
             this.markDirty();
+            // Multiplayer: always notify the server of local place/mine so peers
+            // see map changes. Skip when we are applying a server-authoritative
+            // tile (avoids echo loops).
+            try {
+                if (!this._pvpApplyingTile && window.DiggerzIsMultiplayer && window.DiggerzIsMultiplayer(this) && window.DiggerzPvp22 && window.DiggerzPvp22.joined) {
+                    var px = this.state.x, py = this.state.y;
+                    try { if (l.z39) { px = l.z39.b6 / l._44; py = l.z39.b7 / l._44; } } catch (_p) {}
+                    this.pvpSend({t:'tile',x:x|0,y:y|0,id:id|0,variant:(variant||0)|0,layer:layer|0,px:px,py:py});
+                }
+            } catch (_tileNet) {}
             // If a native block-variation wheel is open for a block that was just
             // broken/replaced, close it immediately. Otherwise the Sc/tilepick
             // object can remain alive while its target renderer has disappeared,
@@ -115676,59 +115686,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
   var P=window.DiggerzPvp22={socket:null,service:null,queue:[],nativeQueue:[],connected:false,joined:false,starting:false,mode:'pvp',menu:null,hooksInstalled:false,room:'',requested:false,everOpened:false,intentionalClose:false,nativeSpawnSeen:false,nativeMoveSeen:false,debugLines:[],connectionId:'',maxPlayers:10};
   // Global fallback used by prototype callbacks during multiplayer startup.
   window.DiggerzIsMultiplayer=window.DiggerzIsMultiplayer||function(service){return !!(service&&(service.mode==='pvp'||service.mode==='digtrade'))};
-  // Coaster Town visual tile apply — shared by socket router and pvpReceive.
-  window.DiggerzApplyWorldTile=function(x,y,id,variant,layer){
-    x=x|0;y=y|0;id=id|0;variant=(variant|0)&31;layer=(layer===2)?2:0;
-    try{
-      var svc=window.DiggerzPvp22&&window.DiggerzPvp22.service;
-      if(svc){
-        var prev=svc._pvpApplyingTile;
-        svc._pvpApplyingTile=true;
-        try{
-          if(typeof svc.setTile==='function')svc.setTile(x,y,id,variant,layer);
-          if(typeof svc.sendTile==='function')svc.sendTile(x,y,id,variant,layer);
-        }finally{svc._pvpApplyingTile=prev}
-      }
-    }catch(_e){}
-    try{
-      if(typeof l!=='undefined'&&l.z38&&typeof l.z38.U37==='function'&&typeof tb!=='undefined'){
-        var pkt=new tb;
-        pkt.R2(1);
-        pkt.R0(x);
-        pkt.R0(layer);
-        pkt.R0(y);
-        pkt.R2((id&2047)|(variant<<11));
-        var readable=new tb;
-        readable.s4(pkt.Q1);
-        readable.s1();
-        l.z38.U37(readable);
-      }
-    }catch(_e2){}
-    try{
-      if(typeof l!=='undefined'&&l.z38&&l.z38.R39&&l.z38.R39[layer]&&typeof h!=='undefined'&&h.n7){
-        var grid=l.z38.R39[layer];
-        if(grid.Q35&&grid.Q35[x]){
-          var existing=grid.Q35[x][y];
-          if(existing){
-            try{if(typeof existing.J46==='function')existing.J46()}catch(_e){}
-            try{if(typeof existing.e3==='function')existing.e3()}catch(_e){}
-            try{existing.a0=1;existing.a2=false}catch(_e){}
-            try{grid.Q35[x][y]=null}catch(_e){}
-            try{if(grid._9){for(var i=grid._9.length-1;i>=0;i--)if(grid._9[i]===existing)grid._9.splice(i,1)}}catch(_e){}
-          }
-          if(id){
-            var created=h.n7(1,null,id,variant,x*l._44,y*l._44,l.z38,grid);
-            if(created){
-              try{grid.Q35[x][y]=created}catch(_e){}
-              try{grid._9.push(created)}catch(_e){}
-              try{if(typeof created.e0==='function')created.e0()}catch(_e){}
-            }
-          }
-        }
-      }
-    }catch(_e3){}
-  };
-
   var overlay=document.getElementById('diggerz-pvp22'),status=document.getElementById('diggerz-pvp22-status');
   var serverInput=document.getElementById('pvp22-server-url');
   var debugBox=document.getElementById('diggerz-mp-debug'),debugLog=document.getElementById('diggerz-mp-debug-log'),debugSummary=document.getElementById('diggerz-mp-debug-summary');
@@ -115820,11 +115777,402 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         return}
       if(m.t==='server-error'){dbg('MP-050','server-error code='+(m.code||'?')+' message='+(m.message||'?'));P.connected=false;setStatus('Multiplayer server error: '+String(m.message||m.code||'Unknown error.'));return}
       if(m.t==='peer-left'){dbg('MP-040','peer-left '+String(m.connectionId||'?'));P.connected=((m.count||0)>=2);routeGameMessage(m);if(!P.starting&&!P.connected)setStatus('Waiting for more players…');return}
-      if(m.t==='pong')return;
+      if(m.t==='pong')return;if(m.t==='hello')dbg('MP-030','peer hello from '+String(m.name||m._serverName||'?'));routeGameMessage(m)
+    };
+    ws.onerror=function(event){dbg('MP-060','WebSocket error; state='+socketState());if(P.socket===ws&&P.requested&&!P.everOpened)setStatus('Could not reach the Diggerz multiplayer server. If you opened the downloaded HTML directly, the multiplayer server must be running locally; the hosted Render version connects automatically.')};
+    ws.onclose=function(event){
+      if(P.socket!==ws)return;
+      var hadOpened=P.everOpened,hadJoined=P.joined,hadMatch=P.connected,intentional=P.intentionalClose;dbg('MP-061','socket CLOSED code='+event.code+' reason='+(event.reason||'none')+' opened='+hadOpened+' joined='+hadJoined+' paired='+hadMatch);
+      P.socket=null;P.connected=false;P.joined=false;P.everOpened=false;
+      if(intentional||!P.requested)return;
+      if(!hadOpened)setStatus('Could not reach the Diggerz multiplayer server. No match was joined.');
+      else if(!hadJoined)setStatus('The multiplayer server connection closed before matchmaking started. No match was joined.');
+      else if(!hadMatch)setStatus('Lost the multiplayer server connection. You can keep playing locally, but another player cannot join until the connection returns.');
+      else {setStatus('Disconnected from the multiplayer server.');try{if(P.service&&P.service.message)P.service.message('^1DISCONNECTED FROM MULTIPLAYER SERVER.')}catch(e){}}
+    };
+    setTimeout(function(){if(P.socket===ws&&P.requested&&!P.joined)setStatus('Still trying to reach the Diggerz server… Server state='+socketState()+'.')},10000)
+  }
+  function installRuntimeHooks(){
+    if(P.hooksInstalled)return true;
+    if(typeof DiggerzService==='undefined'||!DiggerzService.prototype)return false;
+    var proto=DiggerzService.prototype;
+    function isMp(service){return window.DiggerzIsMultiplayer(service)}
+    // Expose the multiplayer-mode predicate globally as a compatibility fallback.
+    // Some native callbacks can outlive the hook-installation scope.
+    window.DiggerzIsMultiplayer=window.DiggerzIsMultiplayer||isMp;
+    function itemCopy(item){return {category:(item&&item.category)|0,id:(item&&item.id)|0,variant:(item&&item.variant)|0,count:Math.max(0,(item&&item.count)|0),extra:(item&&item.extra)|0,text:String(item&&item.text||'')}}
+    function emptyItem(){return {category:0,id:0,variant:0,count:0,extra:0,text:''}}
+    function guidParts(id){return id?[id.P4|0,id.P5|0,id.P6|0,id.P7|0]:[0,0,0,0]}
+    proto.guidFromParts=function(parts){return this.guid((parts&&parts[0])|0,(parts&&parts[1])|0,(parts&&parts[2])|0,(parts&&parts[3])|0)};
+    proto.pvpGuidKey=function(id){return id?[id.P4|0,id.P5|0,id.P6|0,id.P7|0].join(':'):''};
+    proto.pvpEnsurePeers=function(){if(!this.pvpPeers)this.pvpPeers={};return this.pvpPeers};
+    proto.pvpPeerForConnection=function(cid){return cid&&this.pvpEnsurePeers()[cid]||null};
+    proto.pvpFindPeerByName=function(name){name=String(name||'');var peers=this.pvpEnsurePeers();for(var k in peers)if(peers[k]&&peers[k].name===name)return peers[k];return null};
+    proto.pvpFindPeerByGuid=function(id){if(!id)return null;var peers=this.pvpEnsurePeers();for(var k in peers){var p=peers[k];if(p&&p.id&&p.id.q2(id))return p}return null};
+    proto.pvpIsPeerGuid=function(id){return !!this.pvpFindPeerByGuid(id)};
+    proto.pvpEntityForPeer=function(peer){if(!peer||!peer.id||!this.game||!this.game.V31)return null;try{return this.game.V31(peer.id)}catch(e){return null}};
+    proto.pvpRefreshLegacyPeer=function(){var peers=this.pvpEnsurePeers();this.peerId=null;this.peerInfo=null;for(var k in peers){if(peers[k]&&peers[k].id){this.peerId=peers[k].id;this.peerInfo=peers[k].info||null;break}}};
+    proto.pvpRemovePeer=function(cid){
+      var peers=this.pvpEnsurePeers(),peer=peers[cid];
+      if(!peer)return false;
+      var id=peer.id;
+      delete peers[cid];
+      var self=this;
+      function scrubEntity(ent){
+        if(!ent)return;
+        try{ent.a2=false}catch(_e){}
+        try{ent.set_local_alp(0)}catch(_e){}
+        try{ent.set_alp(0)}catch(_e){}
+        try{if(ent.J30){ent.J30.a2=false;try{ent.J30.set_local_alp(0)}catch(_e2){}}}catch(_e){}
+        try{if(ent.i33)ent.i33.a2=false}catch(_e){}
+        // Move off-world so minimap/leaderboard scans skip them.
+        try{ent.b6=-99999;ent.b7=-99999}catch(_e){}
+        try{if(ent.A7!=null)ent.A7=-99999;if(ent.A8!=null)ent.A8=-99999}catch(_e){}
+        try{if(typeof oa!=='undefined'&&oa.MODE_DEAD!=null)ent.i32=oa.MODE_DEAD}catch(_e){}
+        try{if(ent.a0!=null)ent.a0=1}catch(_e){}
+        try{if(typeof ent.e3==='function')ent.e3()}catch(_e){}
+        // Detach from the live scene list so leaderboard/minimap cannot see them.
+        try{
+          var scene=l.z38&&l.z38._9;
+          if(scene){
+            for(var i=scene.length-1;i>=0;i--){
+              if(scene[i]===ent)scene.splice(i,1);
+            }
+          }
+        }catch(_e){}
+        try{
+          var gameKids=self.game&&self.game._9;
+          if(gameKids){
+            for(var j=gameKids.length-1;j>=0;j--){
+              if(gameKids[j]===ent)gameKids.splice(j,1);
+            }
+          }
+        }catch(_e){}
+      }
+      function despawn(guid){
+        if(!guid)return;
+        try{self.enqueue(3,1,function(out){out.R8(guid)})}catch(e){}
+        try{
+          var ent=self.game&&self.game.V31?self.game.V31(guid):null;
+          scrubEntity(ent);
+        }catch(e){}
+      }
+      despawn(id);
+      // Also scrub any entity that still matches the peer name (guid may be missing).
+      try{
+        var scene=l.z38&&l.z38._9;
+        if(scene&&peer.name){
+          for(var si=scene.length-1;si>=0;si--){
+            var se=scene[si];
+            if(!se||se===l.z39)continue;
+            try{
+              if(se._1&&String(se._1).split(' ')[0]===String(peer.name))scrubEntity(se);
+            }catch(_e){}
+          }
+        }
+      }catch(_e){}
+      [80,200,500,1000].forEach(function(delay){setTimeout(function(){despawn(id);try{self.pvpRefreshLeaderboard&&self.pvpRefreshLeaderboard()}catch(_e){}},delay)});
+      if(this.pvpTrade&&this.pvpTrade.partnerConnectionId===cid)this.pvpCancelTradeLocal('Player disconnected.');
+      this.pvpRefreshLegacyPeer();
+      try{this.pvpRefreshLeaderboard&&this.pvpRefreshLeaderboard()}catch(_e){}
+      return true
+    };
+    proto.pvpRefreshLeaderboard=function(){
+      try{if(l.z38&&l.z38.R37&&l.z38.R37.Z44)l.z38.R37.Z44()}catch(e){}
+      try{var board=this.game&&this.game.f4?this.game.f4(window.Ao):null;if(board&&board.Z44)board.Z44()}catch(e){}
+      // Force minimap rebuild next tick by clearing non-local spark kids.
+      try{
+        var mm=null;
+        if(this.game&&this.game._9){
+          for(var i=0;i<this.game._9.length;i++){
+            var c=this.game._9[i];
+            if(c&&c.d34&&c.h2){mm=c;break}
+          }
+        }
+        if(mm&&mm._9){
+          for(var k=mm._9.length-1;k>=0;k--){
+            if(mm._9[k]!==mm.d34){try{mm._9[k].a0=1}catch(_e){}mm._9.splice(k,1)}
+          }
+        }
+      }catch(e){}
+    };
+    proto.pvpSend=function(m){return window.DiggerzIsMultiplayer(this)&&P.send(m)};
+    proto.pvpSendHello=function(){
+      if(!window.DiggerzIsMultiplayer(this)||!this.playerId)return;
+      var p=l.z39,skin=q.player&&q.player.l9?(.45+1.1*q.player.l9/100):1.44;
+      this.pvpSend({t:'hello',id:guidParts(this.playerId),name:this.playerName(),appearance:this.state.appearance.slice(0,11),appearanceText:this.state.appearanceText||'',x:p?p.b6/l._44:this.state.x,y:p?p.b7/l._44:this.state.y,skin:skin,wins:Math.max(0,this.state.wins|0),mode:P.mode,adminEffects:this.adminEffects||{god:false,fly:false,noclip:false,invis:false}})
+    };
+    proto.pvpSendNativeSpawn=function(){
+      if(!window.DiggerzIsMultiplayer(this)||!this.playerId||!P.connected||this.localDead)return false;
+      var self=this,s=this.state,p=l.z39,ap=(s.appearance||[]).slice(0,11);while(ap.length<11)ap.push(0);
+      var packet=this.buildNativePacket(5,1,function(out){
+        var name=self.playerName();
+        out.R8(self.playerId);out.R9(name);out.r8(p?p.b6/l._44:s.x);out.r8(0);out.r8(p?p.b7/l._44:s.y);out.r8(0);
+        out.R2(ap.length);for(var i=0;i<ap.length;i++)out.R2(ap[i]||0);out.R9(s.appearanceText||'');out.R2(0);out.R4(0);out.R2(q.player&&q.player.L0||0);out.s0(false);out.R2(1);out.R0(0);out.s0(false);out.R0(0);out.R2(Math.max(0,Math.min(65535,s.wins|0)));out.R8(self.zeroId);out.R4(0);
+        var skin=q.player?(.45+1.1*(q.player.l9||90)/100):1.44;out.r8(skin);out.r8(1)
+      });
+      return P.sendNative(packet)
+    };
+    proto.pvpReceiveNative=function(buffer){if(!window.DiggerzIsMultiplayer(this))return;var op=0;try{op=new DataView(buffer).getUint16(0,true)}catch(e){}if(op===5)P.nativeSpawnSeen=true;if(op===6)P.nativeMoveSeen=true;this.injectNativePacket(buffer)};
+    proto.pvpSendNativeMovement=function(){
+      if(!window.DiggerzIsMultiplayer(this)||!P.connected||!l.z39||this.localDead)return false;
+      var self=this,p=l.z39,vx=0,vy=0,anim=0,face=1;
+      try{var body=p.b33.tBJ;body.wrap_vel||body.setupVelocity();vx=body.wrap_vel.tBJ.x;vy=body.wrap_vel.tBJ.y}catch(e){}
+      try{if(p.i33){anim=p.i33._32(p.i33.Z28);if(anim<0)anim=0;face=p.i33.b4||1}}catch(e){anim=0;face=1}
+      var xt=p.b6/l._44,yt=p.b7/l._44;
+      var packet=this.buildNativePacket(6,1,function(out){out.R8(self.playerId);out.r8(xt);out.r8(yt);out.r8(vx);out.r8(vy);out.r8(anim);out.r8(face);out.R2(0);out.R4(0);out.R4(0);out.R2(Math.max(0,Math.min(65535,Math.round(xt))));out.R2(Math.max(0,Math.min(65535,Math.round(yt))))});
+      return P.sendNative(packet)
+    };
+    proto.pvpEchoPeerAttack=function(m){var peer=this.pvpPeerForConnection(m&&m._serverFrom);if(!peer||!peer.id)return;var self=this;function one(tx,ty){self.enqueue(287,1,function(packet){packet.r8(m.fromX);packet.r8(m.fromY);packet.r8(tx);packet.r8(ty);packet.R0(m.attackType|0);packet.R8(peer.id)})}if((m.attackType|0)===31){var dx=m.toX-m.fromX,dy=m.toY-m.fromY,ox=-dy*.14,oy=dx*.14;one(m.toX+ox,m.toY+oy);one(m.toX,m.toY);one(m.toX-ox,m.toY-oy)}else one(m.toX,m.toY)};
+    proto.pvpWriteContainer=function(id,slots){var self=this;slots=slots||[];this.enqueue(14,1,function(packet){packet.R8(id);packet.R4(0);packet.R4(Math.min(127,slots.length));var texts=[];for(var i=0;i<slots.length&&i<127;i++){var item=slots[i]||emptyItem();packet.R4(item.category|0);packet.R2(((item.id|0)&2047)|(((item.variant|0)&31)<<11));packet.R2(Math.max(0,item.count|0));packet.R2(item.extra|0);if(item.text)texts.push([i,String(item.text)])}packet.R2(texts.length);for(i=0;i<texts.length;i++){packet.R2(texts[i][0]);packet.R9(texts[i][1])}})};
+    proto.pvpTradeGuid=function(text,salt){text=String(text||'')+'|'+String(salt||'');function h(seed){var x=seed|0;for(var i=0;i<text.length;i++){x^=text.charCodeAt(i);x=Math.imul(x,16777619)}return x|0}return this.guid(h(2166136261),h(0x6d2b79f5),h(0x1b873593),h(0x85ebca6b))};
+    proto.pvpStartTrade=function(m){if(!m||!m.tradeId)return;if(this.pvpTrade)this.pvpCancelTradeLocal('New trade started.');var session=this.pvpTradeGuid(m.tradeId,'session-'+P.connectionId),localId=this.pvpTradeGuid(m.tradeId,'local-'+P.connectionId),remoteId=this.pvpTradeGuid(m.tradeId,'remote-'+P.connectionId);this.pvpTrade={id:m.tradeId,partnerConnectionId:m.partnerConnectionId||'',partnerName:String(m.partnerName||'Player'),sessionGuid:session,localGuid:localId,remoteGuid:remoteId,localSlots:[emptyItem(),emptyItem(),emptyItem()],remoteSlots:[emptyItem(),emptyItem(),emptyItem()],locked:false,localAccepted:false,partnerAccepted:false};var self=this;this.enqueue(168,1,function(packet){packet.R9(self.pvpTrade.partnerName);packet.R8(session);packet.R8(localId);packet.R8(remoteId)});this.pvpWriteContainer(localId,this.pvpTrade.localSlots);this.pvpWriteContainer(remoteId,this.pvpTrade.remoteSlots)};
+    proto.pvpTradeOffer=function(){var tr=this.pvpTrade;if(!tr)return;this.pvpWriteContainer(tr.localGuid,tr.localSlots);this.pvpSend({t:'trade-offer',tradeId:tr.id,offer:tr.localSlots.map(itemCopy)})};
+    proto.pvpRestoreTradeItems=function(){var tr=this.pvpTrade;if(!tr)return;for(var i=0;i<tr.localSlots.length;i++){var item=tr.localSlots[i];if(item&&item.category&&item.count>0){if(this.addItem(item.category,item.id,item.variant,item.count,item.extra,item.text)<0){var x=l.z39?l.z39.b6/l._44:this.state.x,y=l.z39?l.z39.b7/l._44-.5:this.state.y;this.spawnDrop(item.category,item.id,item.count,x,y,item.text,'trade')}}}this.sendInventory()};
+    proto.pvpCloseTradeWindow=function(cancelled){var tr=this.pvpTrade;if(!tr)return;var id=tr.sessionGuid;if(cancelled)this.enqueue(171,1,function(packet){packet.R8(id)});else this.enqueue(172,1,function(packet){packet.R8(id);packet.R9('')})};
+    proto.pvpCancelTradeLocal=function(reason){if(!this.pvpTrade)return;this.pvpRestoreTradeItems();this.pvpCloseTradeWindow(true);this.pvpTrade=null;if(reason)this.message('^1Trade cancelled: ^7'+String(reason))};
+    proto.pvpCompleteTrade=function(receive){var tr=this.pvpTrade;if(!tr)return;var items=Array.isArray(receive)?receive:[];for(var i=0;i<items.length;i++){var item=itemCopy(items[i]);if(item.category&&item.count>0&&this.addItem(item.category,item.id,item.variant,item.count,item.extra,item.text)<0){var x=l.z39?l.z39.b6/l._44:this.state.x,y=l.z39?l.z39.b7/l._44-.5:this.state.y;this.spawnDrop(item.category,item.id,item.count,x,y,item.text,'trade')}}this.pvpCloseTradeWindow(false);this.pvpTrade=null;this.sendInventory();this.markDirty();this.save(true);this.message('^2Trade complete.')};
+    proto.pvpDropKey=function(parts){return Array.isArray(parts)?parts.map(function(v){return v|0}).join(':'):''};
+    proto.pvpAddSharedDrop=function(d){if(!d||!Array.isArray(d.guid))return;var guid=this.guidFromParts(d.guid),key=this.pvpGuidKey(guid);if(this.drops[key])return;var drop={guid:guid,category:d.category|0,id:d.id|0,count:Math.max(1,d.count|0),x:+d.x||0,y:+d.y||0,text:String(d.text||''),tier:String(d.tier||'')};this.drops[key]=drop;this.enqueue(15,1,function(packet){packet.R8(guid);packet.R4(drop.category);packet.r8(drop.x);packet.r8(0);packet.r8(drop.y);packet.r8(drop.x);packet.r8(0);packet.r8(drop.y-.35);packet.R2(drop.id);packet.R2(drop.count);packet.R0(0);packet.s0(true);packet.R9(drop.text)})};
+    proto.pvpRemoveSharedDrop=function(parts){var guid=this.guidFromParts(parts),key=this.pvpGuidKey(guid),drop=this.drops[key];if(!drop)return;delete this.drops[key];this.removeDrop(drop)};
+    proto.pvpApplyRoomState=function(m){var i;if(Array.isArray(m.tiles)){this._pvpApplyingTile=true;try{for(i=0;i<m.tiles.length;i++){var t=m.tiles[i];this.setTile(t.x|0,t.y|0,t.id|0,t.variant|0,t.layer|0)}}finally{this._pvpApplyingTile=false}}if(Array.isArray(m.backgroundTiles)){this._pvpApplyingTile=true;try{for(i=0;i<m.backgroundTiles.length;i++){var bt=m.backgroundTiles[i];this.setTile(bt.x|0,bt.y|0,bt.id|0,bt.variant|0,2)}}finally{this._pvpApplyingTile=false}}if(Array.isArray(m.drops))for(i=0;i<m.drops.length;i++)this.pvpAddSharedDrop(m.drops[i])};
+    proto.pvpRemoteHitLine=function(fromX,fromY,toX,toY){var peers=this.pvpEnsurePeers(),vx=toX-fromX,vy=toY-fromY,vv=vx*vx+vy*vy,best=null,bestT=2;for(var k in peers){var peer=peers[k],e=this.pvpEntityForPeer(peer);if(!e||!e.a2)continue;var px=e.b6/l._44,py=e.b7/l._44,t=vv>0?((px-fromX)*vx+(py-fromY)*vy)/vv:0;t=Math.max(0,Math.min(1,t));var cx=fromX+vx*t,cy=fromY+vy*t;if(Math.hypot(px-cx,py-cy)<=.9&&t<bestT){best=peer;bestT=t}}return best};
+    proto.adminEffects={god:false,fly:false,noclip:false,invis:false};
+    proto.adminModifiers={speed:1,jump:1,size:1,breakSpeed:1};
+
+    // Build 24.0.5: use the supplied original fly behavior instead of the
+    // approximate WASD velocity hack.  The original script works by reaching
+    // the local character controller (Main.children[7].s38.b33.tBJ), setting
+    // its gravity mass while W is held, and switching the animation state.
+    // It is gated by the server-authoritative adminEffects.fly flag so a normal
+    // player cannot activate it just by pressing W.
+    var adminFlyMc7=null,adminFlyTbj=null,adminFlyW=true,adminFlyBound=false;
+    function defineAdminFlyController(){
+      try{
+        var MainRef=window.Main||q;
+        adminFlyMc7=MainRef&&MainRef.children?MainRef.children[7]:null;
+        if(!adminFlyMc7||adminFlyMc7.s38===null||!adminFlyMc7.s38||!adminFlyMc7.s38.b33||!adminFlyMc7.s38.b33.tBJ){
+          setTimeout(defineAdminFlyController,50);
+          return;
+        }
+        adminFlyTbj=adminFlyMc7.s38.b33.tBJ;
+      }catch(_e){setTimeout(defineAdminFlyController,50)}
+    }
+    defineAdminFlyController();
+    function adminFlyKey(e){
+      if(!e||e.code!=='KeyW')return;
+      adminFlyW=e.type==='keydown';
+      var Pnow=window.DiggerzPvp22;
+      if(!Pnow||!Pnow.service)return;
+      var active=!!(Pnow.service.adminEffects&&Pnow.service.adminEffects.fly);
+      if(!active)return;
+      if(!adminFlyTbj){defineAdminFlyController();return}
+      try{
+        if(adminFlyW){
+          adminFlyTbj.gravMass=-1;
+          if(adminFlyMc7&&adminFlyMc7.s38)adminFlyMc7.s38.I32='jump__in';
+        }else{
+          adminFlyTbj.gravMass=2;
+          if(adminFlyMc7&&adminFlyMc7.s38)adminFlyMc7.s38.I32='idle';
+        }
+      }catch(_e){}
+    }
+    if(!adminFlyBound){
+      adminFlyBound=true;
+      window.addEventListener('keydown',adminFlyKey);
+      window.addEventListener('keyup',adminFlyKey);
+    }
+    function adminFlyApplyState(enabled){
+      if(!adminFlyTbj){defineAdminFlyController();return}
+      try{
+        if(enabled&&adminFlyW){
+          adminFlyTbj.gravMass=-1;
+          if(adminFlyMc7&&adminFlyMc7.s38)adminFlyMc7.s38.I32='jump__in';
+        }else{
+          adminFlyTbj.gravMass=2;
+          if(adminFlyMc7&&adminFlyMc7.s38)adminFlyMc7.s38.I32='idle';
+        }
+      }catch(_e){}
+    }
+    proto.adminApplyEffects=function(effects){
+      this.adminEffects=Object.assign({god:false,fly:false,noclip:false,invis:false},effects||{});
+      var ent=l.z39;if(ent){try{ent.set_alp(this.adminEffects.invis?0:1);ent.set_local_alp(this.adminEffects.invis?0:1)}catch(e){}}
+      adminFlyApplyState(!!this.adminEffects.fly);
+      adminApplyNoclipRadius(!!this.adminEffects.noclip);
+      if(this.adminModifiers)this.adminApplyModifiers(this.adminModifiers);
+    };
+    function adminClampMod(v,min,max){v=Number(v);return isFinite(v)?Math.max(min,Math.min(max,v)):1}
+    function adminApplyNoclipRadius(active){try{var ent=l.z39,body=ent&&ent.b34&&ent.b34.tBJ;if(!body)return;if(body.__diggerzOriginalRadius==null)body.__diggerzOriginalRadius=Number(body.radius)||1;body.radius=active?0:body.__diggerzOriginalRadius}catch(_e){}}
+    function installAdminPlayerSizeHook(ent){
+      try{
+        if(!ent||!ent.i33||ent.i33.__diggerzSizeHook)return;
+        var spr=ent.i33,orig=spr.set_local_xScale;
+        if(typeof orig!=='function')return;
+        spr.__diggerzBaseSetXScale=orig;
+        spr.set_local_xScale=function(v){
+          var m=Number(ent._diggerzSizeModifier);
+          if(!isFinite(m)||m<=0)m=1;
+          return orig.call(this,(Number(v)||0)*m);
+        };
+        spr.__diggerzSizeHook=true;
+      }catch(_e){}
+    }
+    function installAdminPlayerModifierHooks(){
+      try{
+        var ent=l.z39;
+        if(!ent){setTimeout(installAdminPlayerModifierHooks,100);return}
+        installAdminPlayerSizeHook(ent);
+        if(ent.__diggerzModifierHooks)return;
+        var originalK35=ent.k35,originalK36=ent.k36;
+        if(typeof originalK35==='function'){
+          ent.k35=function(){
+            var svc=window.DiggerzPvp22&&window.DiggerzPvp22.service,mod=svc&&svc.adminModifiers,old=this.N39;
+            this.N39=adminClampMod(mod&&mod.speed,.1,10);
+            try{return originalK35.apply(this,arguments)}finally{this.N39=old}
+          };
+        }
+        if(typeof originalK36==='function'){
+          ent.k36=function(){
+            var beforeY=0,body=this.b33&&this.b33.tBJ,svc=window.DiggerzPvp22&&window.DiggerzPvp22.service,mod=svc&&svc.adminModifiers,jm=adminClampMod(mod&&mod.jump,.1,10);
+            try{if(body&&body.wrap_vel){body.setupVelocity();beforeY=body.wrap_vel.tBJ.y}}catch(_e){}
+            var r=originalK36.apply(this,arguments);
+            try{if(body&&body.wrap_vel&&jm!==1&&body.wrap_vel.tBJ.y<beforeY-1){body.wrap_vel.tBJ.y=beforeY+(body.wrap_vel.tBJ.y-beforeY)*jm}}catch(_e){}
+            return r;
+          };
+        }
+        ent.__diggerzModifierHooks=true;
+      }catch(_e){setTimeout(installAdminPlayerModifierHooks,250);return}
+    }
+    installAdminPlayerModifierHooks();
+    proto.adminApplyModifiers=function(mods){
+      this.adminModifiers={speed:adminClampMod(mods&&mods.speed,.1,10),jump:adminClampMod(mods&&mods.jump,.1,10),size:adminClampMod(mods&&mods.size,.25,4),breakSpeed:adminClampMod(mods&&mods.breakSpeed,.1,10)};
+      var ent=l.z39,sz=this.adminModifiers.size;
+      try{if(ent){installAdminPlayerModifierHooks();ent._diggerzSizeModifier=sz;installAdminPlayerSizeHook(ent);if(ent.i33){var face=ent.k33||1;ent.i33.set_local_xScale(face);ent.i33.set_local_yScale(sz)}adminApplyNoclipRadius(!!(this.adminEffects&&this.adminEffects.noclip))}}catch(_e){}
+    };
+    proto.adminApplyPeerModifiers=function(peer){if(!peer)return;var e=this.pvpEntityForPeer(peer),sz=Number(peer.adminModifiers&&peer.adminModifiers.size)||1;if(e){try{e._diggerzSizeModifier=sz;installAdminPlayerSizeHook(e);if(e.i33){var face=e.k33||1;e.i33.set_local_xScale(face);e.i33.set_local_yScale(sz)}}catch(_e){}}};
+    proto.adminApplyPeerEffects=function(peer){if(!peer)return;var e=this.pvpEntityForPeer(peer);if(e){try{e.set_alp(peer.adminEffects&&peer.adminEffects.invis?0:1);e.set_local_alp(peer.adminEffects&&peer.adminEffects.invis?0:1)}catch(_e){}}};
+    proto.pvpReceive=function(m){
+      if(!m||!window.DiggerzIsMultiplayer(this))return;
+      if(m.t==='hello'){var cid=m._serverFrom||'';if(!cid||cid===P.connectionId)return;var peers=this.pvpEnsurePeers(),prev=peers[cid],first=!prev;var fromRoster=!!(prev&&prev._fromRoster);peers[cid]={connectionId:cid,name:String(m.name||m._serverName||'Player'),id:this.guidFromParts(m.id),info:m,_fromRoster:fromRoster,adminEffects:Object.assign({god:false,fly:false,noclip:false,invis:false},m.adminEffects||{}),adminModifiers:Object.assign({speed:1,jump:1,size:1,breakSpeed:1},m.adminModifiers||{})};if(isFinite(+m.x))peers[cid].lastX=+m.x;if(isFinite(+m.y))peers[cid].lastY=+m.y;this.pvpRefreshLegacyPeer();if(!first)this.adminApplyPeerEffects(peers[cid]);
+        // Do NOT announce existing roster peers as "joined" on the local joiner.
+        // Server sends a single player-joined for everyone else.
+        if(P.connected)this.pvpSendNativeSpawn();return}
+      if(m.t==='admin-effect'){if(String(m.connectionId||'')===String(P.connectionId||''))this.adminApplyEffects(m.effects||{});else{var ep=this.pvpPeerForConnection(m.connectionId);if(ep){ep.adminEffects=Object.assign({god:false,fly:false,noclip:false,invis:false},m.effects||{});this.adminApplyPeerEffects(ep)}}return}
+      if(m.t==='admin-modifiers'){var mods=Object.assign({speed:1,jump:1,size:1,breakSpeed:1},m.modifiers||{});if(String(m.connectionId||'')===String(P.connectionId||'')){this.adminModifiers=mods;this.adminApplyModifiers(mods)}else{var mp=this.pvpPeerForConnection(m.connectionId);if(mp){mp.adminModifiers=mods;this.adminApplyPeerModifiers(mp)}}return}
+      if(m.t==='peer-rename'){var rp=this.pvpPeerForConnection(m.connectionId);var renamed=String(m.name||'Player').slice(0,24);if(rp){rp.name=renamed;if(rp.info)rp.info.name=renamed;var re=this.pvpEntityForPeer(rp);if(re){try{re._1=renamed}catch(_e){}try{if(re.J30&&re.J30.E32)re.J30.E32.E37(renamed)}catch(_e){}}}if(String(m.connectionId||'')===String(P.connectionId||'')){this._adminDisplayName=renamed;try{q.thisMain.userName=renamed;q.SaveGlobals()}catch(_e){}try{if(l.z39){l.z39._1=renamed;if(l.z39.J30&&l.z39.J30.E32)l.z39.J30.E32.E37(renamed)}}catch(_e){}try{this.pvpSendHello();if(P.connected)this.pvpSendNativeSpawn()}catch(_e){}}return}
+      if(m.t==='admin-rename'){this._adminDisplayName=String(m.name||'Player').slice(0,24);try{q.thisMain.userName=this._adminDisplayName;q.SaveGlobals()}catch(_e){}try{if(l.z39){l.z39._1=this._adminDisplayName;if(l.z39.J30&&l.z39.J30.E32)l.z39.J30.E32.E37(this._adminDisplayName)}}catch(_e){};this.pvpSendHello();if(P.connected)this.pvpSendNativeSpawn();return}
+      if(m.t==='admin-pvp-state'){this.adminPvpEnabled=!!m.enabled;try{q.diggerzAdminPvpEnabled=!!m.enabled}catch(_e){};return}
+      if(m.t==='admin-background'){this.adminApplyBackgroundLocal(m.background|0);return}
+      if(m.t==='admin-fake-leave'){var fp=this.pvpPeerForConnection(m.connectionId);if(fp){fp._adminHidden=true;var fe=this.pvpEntityForPeer(fp);if(fe){try{fe.a2=false}catch(_e){}try{if(fe.J30)fe.J30.a2=false}catch(_e){}try{fe.set_local_alp(0)}catch(_e){}}}else if(String(m.connectionId||'')===String(P.connectionId||'')&&l.z39){try{l.z39.a2=false;if(l.z39.J30)l.z39.J30.a2=false;l.z39.set_local_alp(0)}catch(_e){}}chat('^1'+String(m.name||'Player')+' has exited this area.');return}
+      if(m.t==='admin-fake-return'){var fp2=this.pvpPeerForConnection(m.connectionId);if(fp2){fp2._adminHidden=false;var fe2=this.pvpEntityForPeer(fp2);if(fe2){try{fe2.a2=true}catch(_e){}try{if(fe2.J30)fe2.J30.a2=true}catch(_e){}try{fe2.set_local_alp(1)}catch(_e){}}}else if(String(m.connectionId||'')===String(P.connectionId||'')&&l.z39){try{l.z39.a2=true;if(l.z39.J30)l.z39.J30.a2=true;l.z39.set_local_alp(1)}catch(_e){}}chat('^2'+String(m.name||'Player')+'^7 is now here.');return}
+      if(m.t==='admin-inventory-request'){this.pvpSend({t:'admin-inventory-data',requestId:String(m.requestId||''),slots:(this.state&&Array.isArray(this.state.slots)?this.state.slots:[]).slice(0,127).map(itemCopy)});return}
+      if(m.t==='admin-inventory-action'){var act=String(m.action||''),slot=Math.max(0,Math.min(126,m.slot|0)),qty=Math.max(1,m.count|0),removed=[];if(this.state&&Array.isArray(this.state.slots)){if(act==='clear'){for(var ai=0;ai<this.state.slots.length;ai++){var old=this.state.slots[ai];if(old&&old.category&&old.count>0)removed.push(itemCopy(old));this.state.slots[ai]=emptyItem()}}else if(slot<this.state.slots.length){var cur=this.state.slots[slot];if(cur&&cur.category&&cur.count>0){var take=Math.min(qty,cur.count),part=itemCopy(cur);part.count=take;removed.push(part);if(cur.count<=take)this.state.slots[slot]=emptyItem();else cur.count-=take}}this.sendInventory();this.markDirty();this.save(true)}this.pvpSend({t:'admin-inventory-action-result',requestId:String(m.requestId||''),items:removed});return}
+      if(m.t==='admin-inventory-data'){var rows=Array.isArray(m.slots)?m.slots:[],box=document.getElementById('admin-inventory');if(box){box.innerHTML='';for(var ri=0;ri<rows.length;ri++){var it=rows[ri];if(!it||!it.category||!it.count)continue;var row=document.createElement('div');row.style.cssText='padding:4px 0;border-bottom:1px solid rgba(255,255,255,.12)';row.textContent=(ri+1)+'. '+this.itemName(it.category|0,it.id|0)+' × '+(it.count|0);var rem=document.createElement('button');rem.textContent='Remove';rem.style.marginLeft='6px';(function(i,c,self){rem.onclick=function(){var n=prompt('How many?',String(c));if(n)self.adminInventoryAction(document.getElementById('admin-player').value,'remove',i,Math.max(1,parseInt(n,10)||1))}})(ri,it.count|0,this);row.appendChild(rem);var take=document.createElement('button');take.textContent='Take';take.style.marginLeft='4px';(function(i,c,self){take.onclick=function(){var n=prompt('How many?',String(c));if(n)self.adminInventoryAction(document.getElementById('admin-player').value,'take',i,Math.max(1,parseInt(n,10)||1))}})(ri,it.count|0,this);row.appendChild(take);box.appendChild(row)}var clear=document.createElement('button');clear.textContent='Clear Inventory';var self=this;clear.onclick=function(){if(confirm('Clear this inventory?'))self.adminInventoryAction(document.getElementById('admin-player').value,'clear',0,1)};box.appendChild(clear)}return}
+      if(m.t==='admin-inventory-action-result'){if(m.action==='take'&&Array.isArray(m.items))for(var ti=0;ti<m.items.length;ti++){var got=m.items[ti];if(got&&got.category&&got.count)this.addItem(got.category|0,got.id|0,got.variant|0,got.count|0,got.extra|0,String(got.text||''));}this.sendInventory();this.markDirty();this.save(true);this.message('^2Inventory action completed.');return}
+      if(m.t==='peer-left'){this.pvpRemovePeer(m.connectionId);return}
+      if(m.t==='room-state'){
+        // Stash the full snapshot so we can re-apply once the local world exists.
+        this._pvpPendingRoomState=m;
+        this._pvpWorldSynced=false;
+        // Seed peer roster BEFORE local spawn so other players exist in the world first.
+        try{
+          var peerList=Array.isArray(m.peers)?m.peers:(Array.isArray(m.players)?m.players:[]);
+          var peers=this.pvpEnsurePeers();
+          for(var pi=0;pi<peerList.length;pi++){
+            var pr=peerList[pi];
+            if(!pr||!pr.connectionId||pr.connectionId===P.connectionId)continue;
+            if(pr.fake)continue;
+            var existing=peers[pr.connectionId];
+            peers[pr.connectionId]={
+              connectionId:pr.connectionId,
+              name:String(pr.name||'Player'),
+              id:existing&&existing.id?existing.id:null,
+              info:pr,
+              _fromRoster:true,
+              adminEffects:Object.assign({god:false,fly:false,noclip:false,invis:false},pr.adminEffects||{}),
+              adminModifiers:Object.assign({speed:1,jump:1,size:1,breakSpeed:1},pr.adminModifiers||{}),
+              lastX:isFinite(+pr.x)?+pr.x:(existing&&existing.lastX),
+              lastY:isFinite(+pr.y)?+pr.y:(existing&&existing.lastY)
+            };
+          }
+          this.pvpRefreshLegacyPeer();
+        }catch(_peerSeed){}
+        this.pvpApplyRoomState(m);
+        if(Number.isFinite(+m.adminBackground))this.adminApplyBackgroundLocal(+m.adminBackground);
+        if(m.adminPvpOverride!=null){this.adminPvpEnabled=!!m.adminPvpOverride;try{q.diggerzAdminPvpEnabled=!!m.adminPvpOverride}catch(_e){}}
+        // Retry applying the map a few times until the native world is ready.
+        var self=this, tries=0;
+        function retryWorldSync(){
+          tries++;
+          try{
+            if(m.map&&(self.mode==='pvp'||self.mode==='digtrade'))self.pvpApplyBaseMap(m.map);
+            if(Array.isArray(m.tiles)||Array.isArray(m.backgroundTiles)||Array.isArray(m.drops))self.pvpApplyRoomState(m);
+            self._pvpWorldSynced=true;
+            // Now that the map/items/peers are in, announce ourselves.
+            try{if(self.pvpSendHello)self.pvpSendHello()}catch(_h){}
+            try{if(P.connected&&self.pvpSendNativeSpawn)self.pvpSendNativeSpawn()}catch(_s){}
+          }catch(_retry){
+            if(tries<25)setTimeout(retryWorldSync,80);
+          }
+        }
+        setTimeout(retryWorldSync,0);
+        return
+      }
+      if(m.t==='chat'){var chatPeer=this.pvpPeerForConnection(m._serverFrom);if(chatPeer&&chatPeer.id){var id=chatPeer.id;this.enqueue(12,1,function(p){p.R8(id);p.R9(String(m.text||'').slice(0,180))})}return}
+      if(m.t==='typing'){var typingPeer=this.pvpPeerForConnection(m._serverFrom);if(typingPeer&&typingPeer.id){var tid=typingPeer.id,active=!!m.active;this.enqueue(49,1,function(p){p.R8(tid);p.s0(active)})}return}
+      if(m.t==='peer-state'){var statePeer=this.pvpPeerForConnection(m._serverFrom),se=statePeer&&this.pvpEntityForPeer(statePeer);if(se&&isFinite(+m.x)&&isFinite(+m.y)){var sx=(+m.x)*l._44,sy=(+m.y)*l._44;if(Math.hypot((se.b6-sx)/l._44,(se.b7-sy)/l._44)>1.25){try{se.l38(sx,sy)}catch(_e){se.b6=sx;se.b7=sy}}}return}
       if(m.t==='tile'){
-        var tkey=(m.x|0)+':'+(m.y|0)+':'+(m.layer|0);
+        var tx=m.x|0,ty=m.y|0,tLayer=m.layer|0,tid=m.id|0,tvar=(m.variant|0)&31;
+        var tkey=tx+':'+ty+':'+tLayer;
+        // Skip only while our local place animation is still pending that cell.
         if(String(m._serverFrom||'')===String(P.connectionId||'') && this._diggerzPendingPlacements && this._diggerzPendingPlacements[tkey]) return;
-        try{window.DiggerzApplyWorldTile(m.x|0,m.y|0,m.id|0,m.variant|0,m.layer|0)}catch(_e){}
+        this._pvpApplyingTile=true;
+        try{
+          // 1) Service state + enqueued opcode-11 for the local net reader.
+          try{this.setTile(tx,ty,tid,tvar,tLayer)}catch(_e){}
+          try{this.sendTile(tx,ty,tid,tvar,tLayer)}catch(_e){}
+          // 2) Direct Coaster Town world apply (same as R33.U37).
+          try{
+            if(typeof l!=='undefined'&&l.z38&&typeof l.z38.U37==='function'&&typeof tb!=='undefined'){
+              var pkt=new tb;
+              pkt.R2(1); // count
+              pkt.R0(tx);
+              pkt.R0(tLayer===2?2:0);
+              pkt.R0(ty);
+              pkt.R2((tid&2047)|((tvar&31)<<11));
+              var readable=new tb;
+              readable.s4(pkt.Q1);
+              readable.s1();
+              l.z38.U37(readable);
+            }
+          }catch(_u37){}
+          // 3) Fallback: manually clear/create on R39 grid like U37 does.
+          try{
+            if(typeof l!=='undefined'&&l.z38&&l.z38.R39){
+              var layerIdx=tLayer===2?2:0;
+              var grid=l.z38.R39[layerIdx];
+              if(grid&&grid.Q35&&grid.Q35[tx]){
+                var existing=grid.Q35[tx][ty];
+                if(existing){
+                  try{if(existing.b33&&existing.b33.tBJ){/* physics detach best-effort */}}catch(_e){}
+                  try{if(typeof existing.J46==='function')existing.J46()}catch(_e){}
+                  try{if(typeof existing.e3==='function')existing.e3()}catch(_e){}
+                  try{existing.a0=1;existing.a2=false}catch(_e){}
+                  try{grid.Q35[tx][ty]=null}catch(_e){}
+                  try{if(grid._9){for(var gi=grid._9.length-1;gi>=0;gi--)if(grid._9[gi]===existing)grid._9.splice(gi,1)}}catch(_e){}
+                }
+                if(tid&&typeof h!=='undefined'&&typeof h.n7==='function'){
+                  var created=h.n7(1,null,tid,tvar,tx*l._44,ty*l._44,l.z38,grid);
+                  if(created){
+                    try{grid.Q35[tx][ty]=created}catch(_e){}
+                    try{grid._9.push(created)}catch(_e){}
+                    try{if(typeof created.e0==='function')created.e0()}catch(_e){}
+                  }
+                }
+              }
+            }
+          }catch(_grid){}
+        }finally{this._pvpApplyingTile=false}
         return
       }
       if(m.t==='drop-spawn'){this.pvpAddSharedDrop(m.drop);return}
@@ -116570,20 +116918,27 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.addItem(1,122,0,1,0,'');this.sendInventory();chat(this,'^9Someone has allreaddy placed a bluetooth speaker!');return
       }
       if(m.t==='tile'&&m._serverCorrection){
-        // Authoritative server tile — update state WITHOUT echoing, but MUST
-        // still update the visible Coaster Town world (U37 / sendTile).
+        // Server-side layer repair must update the local arrays WITHOUT sending
+        // the repair back to the server. The old code called setTile(), which
+        // emitted another tile packet while applying a correction and could leave
+        // a stale copy on the opposite layer.
         try{
           var cx=m.x|0,cy=m.y|0,ci=cx+cy*(this.state.width|0),cl=m.layer|0;
-          if(cx>=0&&cy>=0&&cx<this.state.width&&cy<this.state.height){
-            if(!this.state.backgroundTiles)this.state.backgroundTiles=new Array(this.state.width*this.state.height).fill(0);
-            if(!this.state.backgroundVariants)this.state.backgroundVariants=new Array(this.state.width*this.state.height).fill(0);
-            if(!this.state.variants)this.state.variants=new Array(this.state.width*this.state.height).fill(0);
-            if(cl===2){this.state.backgroundTiles[ci]=m.id|0;this.state.backgroundVariants[ci]=m.variant|0;}
-            else{this.state.tiles[ci]=m.id|0;this.state.variants[ci]=m.variant|0;}
-            this.markDirty();
+          if(cx<0||cy<0||cx>=this.state.width||cy>=this.state.height)return;
+          if(!this.state.backgroundTiles)this.state.backgroundTiles=new Array(this.state.width*this.state.height).fill(0);
+          if(!this.state.backgroundVariants)this.state.backgroundVariants=new Array(this.state.width*this.state.height).fill(0);
+          if(!this.state.variants)this.state.variants=new Array(this.state.width*this.state.height).fill(0);
+          if(cl===2){
+            this.state.backgroundTiles[ci]=m.id|0;this.state.backgroundVariants[ci]=m.variant|0;
+          }else{
+            this.state.tiles[ci]=m.id|0;this.state.variants[ci]=m.variant|0;
           }
+          if((m.id|0)===0){
+            // A removal is authoritative for the specified layer only. Do not
+            // erase a legitimate block that occupies the other layer.
+          }
+          this.markDirty();
         }catch(_layerRepair){}
-        try{window.DiggerzApplyWorldTile&&window.DiggerzApplyWorldTile(m.x|0,m.y|0,m.id|0,m.variant|0,m.layer|0)}catch(_v){}
         return;
       }
       if(m.t==='world-sound'){var path=m.sound==='balloon_pop'?'/balloon_pop.ogg':m.sound==='swap'?'/swap.ogg':'';if(path)positionalSound(path,m.x,m.y,11);return}

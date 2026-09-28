@@ -1167,14 +1167,8 @@ function relayBinary(client, payload) {
   // actual binary opcode before it is broadcast so the server enforces the
   // same no-place-on-player rule for the real game input path.
   if (opcode === 11 && nativePlacementBlocked(client, payload)) return;
-  // Persist + JSON-broadcast. Do NOT binary-relay opcode 11 place packets:
-  // their payload layout is the local place form (actor x/y + tile), which
-  // remote U37 mis-parses as a tile-update and can corrupt the world.
-  // JSON {t:'tile'} is the only cross-client tile path.
-  if (opcode === 11) {
-    applyNativeTileToRoom(client, payload);
-    return;
-  }
+  // Persist + JSON-broadcast so peers and late joiners always see the change.
+  if (opcode === 11) applyNativeTileToRoom(client, payload);
 
   // Native movement packets also carry the player's position. Keep the
   // canonical position fresh even when the JSON fallback is throttled.
@@ -2471,9 +2465,27 @@ function relayGameMessage(client, message, rawLength) {
     requestedLayer=requestedLayer===2?2:0;
     const x=Number(message.x)|0,y=Number(message.y)|0,id=Number(message.id)|0,variant=Number(message.variant)|0;
     if(x<0||x>=128||y<0||y>=80)return; if(!client.position)client.position={x:x,y:y}; // still allow tile sync if flags lag
+    // Prefer live packet position, else last known server position.
     const packetPX=Number(message.px), packetPY=Number(message.py);
-    const placementPos=(Number.isFinite(packetPX)&&Number.isFinite(packetPY))?{x:packetPX,y:packetPY}:client.position;
-    if(Math.hypot(placementPos.x-x,placementPos.y-y)>5)return;
+    if(Number.isFinite(packetPX)&&Number.isFinite(packetPY)){
+      client.position={x:packetPX,y:packetPY};
+    }
+    const placementPos=client.position||{x:x,y:y};
+    // Same radii as the client block zone:
+    //   place max 5 tiles, mine max 3.6 tiles, place min ~1.1 (body).
+    // Anything outside that player's own radius is rejected server-side so
+    // broken clients cannot place far outside the zone.
+    const dist=Math.hypot(placementPos.x-x,placementPos.y-y);
+    const isMine=(id===0);
+    const maxReach=isMine?3.6:5;
+    if(dist>maxReach){
+      try{console.log('tile REJECT out-of-reach',isMine?'MINE':'PLACE','id='+id,'@'+x+','+y,'dist='+dist.toFixed(2),'from',client.name||client.connectionId)}catch(_){}
+      return;
+    }
+    if(!isMine && dist<1.05){
+      try{console.log('tile REJECT too-close PLACE @'+x+','+y,'dist='+dist.toFixed(2),client.name||client.connectionId)}catch(_){}
+      return;
+    }
     // Soft local-overlap only: use slightly tighter check for the placer so
     // laggy position samples don't reject every nearby place. Peers still use
     // the full shield.
@@ -2508,6 +2520,7 @@ function relayGameMessage(client, message, rawLength) {
       room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
       // Broadcast to everyone INCLUDING the miner so visuals stay authoritative.
       broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:actualLayer,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
+      try{console.log('tile CLEAR @'+x+','+y+' layer='+actualLayer+' by '+(client.name||client.connectionId))}catch(_){}
       // Also clear the other layer so no ghost block remains.
       if(actualLayer!==2) broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:2,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
       else broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:0,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
@@ -2532,7 +2545,8 @@ function relayGameMessage(client, message, rawLength) {
     store.set(key,tile);
     room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
     if(wrong) broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:desiredLayer===2?0:2,_serverCorrection:true,_serverFrom:client.connectionId,_serverName:client.name});
-    broadcastRoom(room,Object.assign({t:'tile'},tile,{_serverFrom:client.connectionId,_serverName:client.name,replace:true}));
+    broadcastRoom(room,Object.assign({t:'tile'},tile,{_serverCorrection:desiredLayer!==requestedLayer,_serverFrom:client.connectionId,_serverName:client.name,replace:true}));
+    try{console.log('tile PLACE id='+id+' @'+x+','+y+' layer='+desiredLayer+' by '+(client.name||client.connectionId))}catch(_){}
     if(id===122)syncSpeaker(room);
     return;
   }
