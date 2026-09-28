@@ -2738,6 +2738,22 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (urlPath === '/banned') { const body=Buffer.from(banPageHtml(),'utf8'); res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Content-Length':body.length,'Cache-Control':'no-store'}); res.end(body); return; }
+  if (urlPath === '/map-editor') {
+    try {
+      const editorPath = path.join(__dirname, 'map-editor.html');
+      const body = fs.readFileSync(editorPath);
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Length': body.length,
+        'Cache-Control': 'no-store'
+      });
+      res.end(body);
+    } catch (error) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+      res.end('Diggerz map editor is missing on the server.\n');
+    }
+    return;
+  }
   if (urlPath === '/') {
     if (!gameHtml) {
       res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
