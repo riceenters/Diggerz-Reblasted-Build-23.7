@@ -1087,17 +1087,19 @@ function placementOverlapsPlayer(player, tileX, tileY) {
   const px=Number(player.position.x), py=Number(player.position.y);
   if (!Number.isFinite(px) || !Number.isFinite(py)) return false;
 
-  // Treat every placement cell as a real 1x1 square. The cell is blocked
-  // whenever the player's live physics footprint intersects ANY part of it.
-  // Once the player exits the square, placement becomes legal immediately.
-  // Multiplayer only receives the player's center, so use the same native
-  // footprint approximation consistently on the authoritative server.
-  const radius=0.72, half=0.5;
-  const left=Number(tileX)-half, right=Number(tileX)+half;
-  const top=Number(tileY)-half, bottom=Number(tileY)+half;
-  const qx=Math.max(left,Math.min(px,right));
-  const qy=Math.max(top,Math.min(py,bottom));
-  return Math.hypot(px-qx,py-qy) < radius;
+  // Build 24.0.32: reserve a small grid-aligned "personal space" around the
+  // player.  It sits INSIDE the normal build range, so the player can still
+  // build right next to the zone, but no block can ever be placed into the
+  // cells occupied by/under the player's body.  This is deliberately a little
+  // larger than the old circular point check so corner cases cannot wedge a
+  // block into the character.
+  const cellHalf=0.5;
+  const bodyHalfWidth=0.48;
+  const bodyHalfHeight=0.78;
+  const left=Number(tileX)-cellHalf, right=Number(tileX)+cellHalf;
+  const top=Number(tileY)-cellHalf, bottom=Number(tileY)+cellHalf;
+  return !(right <= px-bodyHalfWidth || left >= px+bodyHalfWidth ||
+           bottom <= py-bodyHalfHeight || top >= py+bodyHalfHeight);
 }
 
 function placementBlockedByAnyPlayer(room, tileX, tileY) {

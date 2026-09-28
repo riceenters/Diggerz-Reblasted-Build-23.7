@@ -22768,6 +22768,18 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var dx = x - px, dy = y - py;
             return Math.sqrt(dx * dx + dy * dy)
         },
+        placementBlockedByLocalPlayer: function(x, y) {
+            var px = l.z39 ? l.z39.b6 / l._44 : this.state.x;
+            var py = l.z39 ? l.z39.b7 / l._44 : this.state.y;
+            if (!isFinite(px) || !isFinite(py)) return false;
+            // Keep the client-side preview/rejection in lockstep with the
+            // authoritative server's small no-place zone around the player.
+            var left = x - 0.5, right = x + 0.5;
+            var top = y - 0.5, bottom = y + 0.5;
+            var hw = 0.48, hh = 0.78;
+            return !(right <= px - hw || left >= px + hw ||
+                     bottom <= py - hh || top >= py + hh);
+        },
         fixLocalAnimations: function() {
             var p = l.z39;
             if (!p || !p.i33) return;
@@ -23463,7 +23475,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var slot = packet.Q9(), variant = packet.Q9();
             packet.r6();
             if (layer !== 0 || this.tileAt(x, y) || this.distanceToPlayer(x, y) > 5 ||
-                y <= 0 || y >= this.state.height - 1 || this.distanceToPlayer(x, y) < 1.1) return;
+                y <= 0 || y >= this.state.height - 1 || this.placementBlockedByLocalPlayer(x, y) ||
+                this.distanceToPlayer(x, y) < 1.1) return;
             // Rapid building can queue a packet for a slot that was just emptied or
             // moved by the prior placement. Recover by finding the same block stack
             // instead of permanently rejecting every later placement from that drag.
