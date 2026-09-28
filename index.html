@@ -117069,7 +117069,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     var cellL=cx-half, cellR=cx+half, cellT=cy-half, cellB=cy+half;
     // Player shield: ~1 block left, body, ~1 block right.  Continuous floats —
     // NOT rounded to grid — so the shield moves exactly with the player.
-    var hw=0.50;  // horizontal half-width (~2.9 tiles total → left+center+right)
+    var hw=0.25;  // horizontal half-width (~2.9 tiles total → left+center+right)
     var hh=0.50;  // vertical half-height → 1 block tall total (matches player)
     var margin=0.05;
     var shL=px-hw-margin, shR=px+hw+margin, shT=py-hh-margin, shB=py+hh+margin;
