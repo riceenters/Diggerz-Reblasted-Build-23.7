@@ -1,3 +1,6 @@
+Diggerz Build 24.0.11
+
+Fake players now use the same native player spawn/movement/despawn packets as connected players.
 # Diggerz.io Reblasted — Build 24.0
 
 ## Build 24.0 — patches, PvP polish, and RGB Weekend

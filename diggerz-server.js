@@ -942,6 +942,82 @@ function sendBinary(client, payload, transient = false) {
   catch (error) { closeClient(client, 1011, 'binary send failed'); return false; }
 }
 
+function nativeWriteFixed(parts, value) {
+  value = Number(value) || 0;
+  const whole = Math.floor(value);
+  const frac = Math.floor(100000 * (value - whole));
+  const b = Buffer.allocUnsafe(8);
+  b.writeInt32LE(whole, 0);
+  b.writeInt32LE(frac, 4);
+  parts.push(b);
+}
+function nativeWriteGuid(parts, id) {
+  const a = Array.isArray(id) ? id : [0,0,0,0];
+  const b = Buffer.allocUnsafe(16);
+  for (let i=0;i<4;i++) b.writeInt32LE(a[i]|0, i*4);
+  parts.push(b);
+}
+function nativeWriteString(parts, value) {
+  const text = String(value == null ? '' : value);
+  const bytes = Buffer.from(text, 'utf8');
+  const len = Buffer.allocUnsafe(4);
+  // Match the recovered client's R9 framing: UTF-16 string length + null terminator.
+  len.writeInt32LE(text.length + 1, 0);
+  parts.push(len, bytes, Buffer.from([0]));
+}
+function buildFakeNativeSpawn(fake) {
+  const parts=[Buffer.from([5,0,1,0])];
+  nativeWriteGuid(parts,fake.id);
+  nativeWriteString(parts,String(fake.name||'Fake Player').slice(0,24));
+  nativeWriteFixed(parts,fake.x); nativeWriteFixed(parts,0);
+  nativeWriteFixed(parts,fake.y); nativeWriteFixed(parts,0);
+  const ap=Array.isArray(fake.appearance)?fake.appearance.slice(0,11):[0,247,0,0,326,0,0,0,0,0,0];
+  const n=Buffer.allocUnsafe(2); n.writeUInt16LE(ap.length,0); parts.push(n);
+  for(const v of ap){const b=Buffer.allocUnsafe(2);b.writeUInt16LE((v|0)&65535,0);parts.push(b);}
+  nativeWriteString(parts,String(fake.appearanceText||''));
+  let b=Buffer.allocUnsafe(2);b.writeUInt16LE(0,0);parts.push(b);
+  parts.push(Buffer.from([0]));
+  b=Buffer.allocUnsafe(2);b.writeUInt16LE(0,0);parts.push(b);
+  parts.push(Buffer.from([0]));
+  b=Buffer.allocUnsafe(2);b.writeUInt16LE(Math.max(0,Math.min(65535,fake.wins|0)),0);parts.push(b);
+  nativeWriteGuid(parts,[0,0,0,0]);
+  parts.push(Buffer.from([0]));
+  nativeWriteFixed(parts,Number(fake.skin)||1.44);
+  nativeWriteFixed(parts,1);
+  return Buffer.concat(parts);
+}
+function buildFakeNativeMove(fake) {
+  const parts=[Buffer.from([6,0,1,0])];
+  nativeWriteGuid(parts,fake.id);
+  nativeWriteFixed(parts,fake.x); nativeWriteFixed(parts,fake.y);
+  nativeWriteFixed(parts,fake.vx||0); nativeWriteFixed(parts,fake.vy||0);
+  nativeWriteFixed(parts,0); nativeWriteFixed(parts,1);
+  let b=Buffer.allocUnsafe(2);b.writeUInt16LE(0,0);parts.push(b);
+  b=Buffer.allocUnsafe(4);b.writeInt32LE(0,0);parts.push(b);
+  b=Buffer.allocUnsafe(4);b.writeInt32LE(0,0);parts.push(b);
+  b=Buffer.allocUnsafe(2);b.writeUInt16LE(Math.max(0,Math.min(65535,Math.round(fake.x||0))),0);parts.push(b);
+  b=Buffer.allocUnsafe(2);b.writeUInt16LE(Math.max(0,Math.min(65535,Math.round(fake.y||0))),0);parts.push(b);
+  return Buffer.concat(parts);
+}
+function buildFakeNativeDespawn(fake) {
+  return Buffer.concat([Buffer.from([3,0,1,0]), (()=>{const b=Buffer.allocUnsafe(16);const a=fake&&Array.isArray(fake.id)?fake.id:[0,0,0,0];for(let i=0;i<4;i++)b.writeInt32LE(a[i]|0,i*4);return b;})()]);
+}
+function sendFakeNativeSpawn(room,fake,onlyClient=null){
+  if(!room||!fake)return;
+  const payload=buildFakeNativeSpawn(fake);
+  for(const c of room.clients){if(onlyClient&&c!==onlyClient)continue;sendBinary(c,payload);}
+}
+function sendFakeNativeMove(room,fake){
+  if(!room||!fake)return;
+  const payload=buildFakeNativeMove(fake);
+  for(const c of room.clients)sendBinary(c,payload,true);
+}
+function sendFakeNativeDespawn(room,fake){
+  if(!room||!fake)return;
+  const payload=buildFakeNativeDespawn(fake);
+  for(const c of room.clients)sendBinary(c,payload);
+}
+
 function relayBinary(client, payload) {
   if (!client.room) return;
   let opcode = 0;
@@ -1143,6 +1219,7 @@ function tickFakePlayers(room, now) {
 
     if(Math.abs(fake.y-prevY)>0.001 || Math.abs(fake.vx)>0.001 || Math.abs(fake.vy)>0.001 || now-(fake._lastBroadcastAt||0)>=400){
       fake._lastBroadcastAt=now;
+      sendFakeNativeMove(room,fake);
       broadcastRoom(room,{t:'admin-fake-player-state',connectionId:fake.connectionId,x:fake.x,y:fake.y,vx:fake.vx||0,vy:fake.vy||0,name:fake.name,botState:fake.botState},undefined,true);
     }
   }
@@ -1614,6 +1691,9 @@ function addClientToRoom(client, room, mode, name) {
     tiles: [...room.tiles.values()], drops: [...room.drops.values()], coins: [...room.coins.values()], speaker: room.speaker ? {...room.speaker} : null, serverNow: Date.now()
   });
   if (mode === 'pvp') sendBattleState(client);
+  // Fake players are real native player entities on every browser. Send the same
+  // recovered opcode-5 spawn packet used by an actual connected player.
+  if (room.fakePlayers) for (const fake of room.fakePlayers.values()) sendFakeNativeSpawn(room,fake,client);
 
   broadcastRoom(room, { t:'player-count', room:room.code, count:room.clients.size, max:MAX_ROOM_PLAYERS });
   broadcastRoster(room);
@@ -1891,17 +1971,18 @@ function relayGameMessage(client, message, rawLength) {
     if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
     const fake=makeFakePlayer(room,message.name,client);
     broadcastRoom(room,{t:'admin-fake-player-add',player:fakePlayerSnapshot(fake)});
+    sendFakeNativeSpawn(room,fake);
     broadcastRoster(room);
     return;
   }
   if (message.t==='admin-fake-player-remove') {
     if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
     const id=String(message.targetConnectionId||''); const fake=room.fakePlayers && room.fakePlayers.get(id); if(!fake)return;
-    room.fakePlayers.delete(id); broadcastRoom(room,{t:'admin-fake-player-remove',connectionId:id,name:fake.name}); broadcastRoster(room); return;
+    room.fakePlayers.delete(id); sendFakeNativeDespawn(room,fake); broadcastRoom(room,{t:'admin-fake-player-remove',connectionId:id,name:fake.name}); broadcastRoster(room); return;
   }
   if (message.t==='admin-fake-player-remove-all') {
     if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const removed=[...room.fakePlayers.values()].map(f=>({connectionId:f.connectionId,name:f.name})); room.fakePlayers.clear(); for(const f of removed)broadcastRoom(room,{t:'admin-fake-player-remove',connectionId:f.connectionId,name:f.name}); broadcastRoster(room); return;
+    const removed=[...room.fakePlayers.values()]; room.fakePlayers.clear(); for(const f of removed){sendFakeNativeDespawn(room,f);broadcastRoom(room,{t:'admin-fake-player-remove',connectionId:f.connectionId,name:f.name});} broadcastRoster(room); return;
   }
   if (message.t==='admin-map-apply') {
     if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}

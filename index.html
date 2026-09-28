@@ -117166,9 +117166,23 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       if(hard){try{e.l38(x,y)}catch(_e){try{e.b6=x;e.b7=y}catch(__e){}}}
       try{e.i32=(Number(p.vx)||0)?oa.MODE_WALKING:((Number(p.vy)||0)<-0.1?oa.MODE_JUMPING:oa.MODE_IDLE)}catch(_e){}
     }
-    function fakeAdd(self,player){if(!player||!player.connectionId)return;var peers=self.pvpEnsurePeers(),p=peers[player.connectionId];if(!p){p={connectionId:String(player.connectionId),name:String(player.name||'Fake Player'),id:self.guidFromParts(player.id||[0,0,0,0]),info:player,fake:true,adminEffects:{god:false,fly:false,noclip:false,invis:false},lastX:+player.x||0,lastY:+player.y||2};peers[p.connectionId]=p}else{p.name=String(player.name||p.name);p.info=player;p.fake=true;p.lastX=Number.isFinite(+player.x)?+player.x:p.lastX;p.lastY=Number.isFinite(+player.y)?+player.y:p.lastY}self.pvpRefreshLegacyPeer();
-      function spawn(){try{var ap=Array.isArray(player.appearance)?player.appearance.slice(0,11):[0,247,0,0,326,0,0,0,0,0,0];while(ap.length<11)ap.push(0);var packet=self.buildNativePacket(5,1,function(out){out.R8(p.id);out.R9(p.name);out.r8(p.lastX||0);out.r8(0);out.r8(p.lastY||2);out.r8(0);out.R2(ap.length);for(var i=0;i<ap.length;i++)out.R2(ap[i]||0);out.R9(String(player.appearanceText||''));out.R2(0);out.R4(0);out.R2(0);out.s0(false);out.R2(1);out.R0(0);out.s0(false);out.R0(0);out.R2(Math.max(0,Math.min(65535,player.wins|0)));out.R8(self.zeroId);out.R4(0);out.r8(Number(player.skin)||1.44);out.r8(1)});var b=packet.Q1&&packet.Q1.b;if(b)self.injectNativePacket(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength));}catch(e){console.warn('fake player spawn failed',e)}}
-      spawn();setTimeout(spawn,120);setTimeout(spawn,500);setTimeout(function(){syncFakeEntity(self,p,self.pvpEntityForPeer(p),true)},50);setTimeout(function(){syncFakeEntity(self,p,self.pvpEntityForPeer(p),true)},150);setTimeout(function(){syncFakeEntity(self,p,self.pvpEntityForPeer(p),true)},550);}
+    function fakeAdd(self,player){
+      if(!player||!player.connectionId)return;
+      var peers=self.pvpEnsurePeers(),p=peers[player.connectionId];
+      if(!p){
+        p={connectionId:String(player.connectionId),name:String(player.name||'Fake Player'),id:self.guidFromParts(player.id||[0,0,0,0]),info:player,fake:true,adminEffects:{god:false,fly:false,noclip:false,invis:false},lastX:+player.x||0,lastY:+player.y||2};
+        peers[p.connectionId]=p;
+      }else{
+        p.name=String(player.name||p.name);p.info=player;p.fake=true;
+        p.lastX=Number.isFinite(+player.x)?+player.x:p.lastX;
+        p.lastY=Number.isFinite(+player.y)?+player.y:p.lastY;
+        if(player.id)p.id=self.guidFromParts(player.id);
+      }
+      self.pvpRefreshLegacyPeer();
+      // The server now sends the exact native opcode-5 spawn packet used for a real
+      // player. Do NOT manufacture/inject a second local spawn here; that caused the
+      // old fake implementation to create duplicate/invisible entities.
+    }
     function fakeRemove(self,cid){var peers=self.pvpEnsurePeers(),p=peers[cid];if(!p)return;try{if(p.id)self.enqueue(3,1,function(out){out.R8(p.id)})}catch(_e){}delete peers[cid];self.pvpRefreshLegacyPeer()}
     var oldRoom=proto.pvpApplyRoomState;proto.pvpApplyRoomState=function(m){var r=oldRoom.call(this,m);if(m&&Array.isArray(m.fakePlayers))for(var i=0;i<m.fakePlayers.length;i++)fakeAdd(this,m.fakePlayers[i]);return r};
     var oldReceive=proto.pvpReceive;proto.pvpReceive=function(m){
@@ -117176,7 +117190,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       if(m.t==='hello'){var hr=oldReceive.call(this,m);var hp=this.pvpPeerForConnection(m._serverFrom);if(hp){this.adminApplyPeerEffects(hp)}return hr}
       if(m.t==='admin-fake-player-add'){fakeAdd(this,m.player||{});return}
       if(m.t==='admin-fake-player-remove'){fakeRemove(this,String(m.connectionId||''));return}
-      if(m.t==='admin-fake-player-state'){var fp=this.pvpPeerForConnection(m.connectionId);if(fp){fp.lastX=Number.isFinite(+m.x)?+m.x:fp.lastX;fp.lastY=Number.isFinite(+m.y)?+m.y:fp.lastY;var fe=this.pvpEntityForPeer(fp);if(fe)syncFakeEntity(this,fp,fe,true)}return}
+      if(m.t==='admin-fake-player-state'){var fp=this.pvpPeerForConnection(m.connectionId);if(fp){fp.lastX=Number.isFinite(+m.x)?+m.x:fp.lastX;fp.lastY=Number.isFinite(+m.y)?+m.y:fp.lastY;if(fp.info){fp.info.x=fp.lastX;fp.info.y=fp.lastY;fp.info.vx=Number(m.vx)||0;fp.info.vy=Number(m.vy)||0;}}return}
       if(m.t==='admin-map-replaced'){try{if(m.map)this.pvpApplyBaseMap(m.map)}catch(_e){}return}
       if(m.t==='admin-fake-leave'||m.t==='admin-fake-return'){var fl=this.pvpPeerForConnection(m.connectionId);var fle=fl&&this.pvpEntityForPeer(fl);if(fl){fl._adminHidden=m.t==='admin-fake-leave';setEntityHidden(fle,fl._adminHidden)}if(String(m.connectionId||'')===String(P.connectionId||''))setEntityHidden(l.z39,m.t==='admin-fake-leave');return}
       if(m.t==='admin-being-controlled'){this._beingControlled=true;this.message('^6You are being controlled by '+String(m.controllerName||'an administrator')+'.');return}
@@ -117190,9 +117204,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     };
     // Final movement/control tick. Server is authoritative for controlled players.
     var oldTick=proto.pvpTick;proto.pvpTick=function(){var r=oldTick.call(this);if(!window.DiggerzIsMultiplayer(this)||!P.connected)return r;
-      // Fake players have no real client/tab driving their native physics. Their server-simulated
-      // position is authoritative, so keep the local native entity pinned to that position every frame.
-      try{var fakePeers=this.pvpEnsurePeers();for(var fk in fakePeers){var fp=fakePeers[fk];if(fp&&fp.fake){var fe=this.pvpEntityForPeer(fp);if(fe)syncFakeEntity(this,fp,fe,false)}}}catch(_e){}
       if(this._beingControlled&&l.z39){try{var b=l.z39.b33&&l.z39.b33.tBJ;if(b){b.wrap_vel||b.setupVelocity();b.wrap_vel.tBJ.x=0;b.wrap_vel.tBJ.y=0}}catch(_e){}}
       var c=this._adminControl;if(c){var peer=this.pvpPeerForConnection(c.connectionId),ent=peer&&this.pvpEntityForPeer(peer);if(!ent){return r}var dt=Math.min(.05,Math.max(.001,(Date.now()-(this._adminControlLast||Date.now()))/1000));this._adminControlLast=Date.now();var ax=0;try{if(q.KeyDown(65))ax-=1;if(q.KeyDown(68))ax+=1}catch(_e){}var speed=7;c.x=Number(ent.b6)/l._44;c.y=Number(ent.b7)/l._44;c.x+=ax*speed*dt;var grounded=c.y>=17.5;if(grounded&&c.y<18)c.y=18;if(!c.jumpLatch&&q.KeyDown(87)&&grounded){c.vy=-8;c.jumpLatch=true}if(!q.KeyDown(87))c.jumpLatch=false;c.vy=(Number(c.vy)||0)+18*dt;c.y+=c.vy*dt;if(c.y>34){c.y=1;c.vy=0}if(q.KeyDown(83)&&!grounded)c.vy+=10*dt;c.x=Math.max(1,Math.min((this.state.width||128)-1,c.x));try{ent.l38(c.x*l._44,c.y*l._44)}catch(_e){ent.b6=c.x*l._44;ent.b7=c.y*l._44}try{ent.i32=ax?oa.MODE_WALKING:oa.MODE_IDLE}catch(_e){}try{if(l.z38){l.z38.s38=ent;l.z38.t39=ent.b6;l.z38.T30=ent.b7}}catch(_e){}if(Date.now()-(c.lastSent||0)>50){c.lastSent=Date.now();this.pvpSend({t:'admin-control-state',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:c.connectionId,x:c.x,y:c.y,vx:ax*speed,vy:c.vy})}}
       return r};
