@@ -1049,7 +1049,10 @@ function fakePlayerSnapshot(fake) {
     skin: Number.isFinite(fake.skin) ? fake.skin : 1.44,
     wins: Number(fake.wins) || 0,
     adminEffects: {god:false,fly:false,noclip:false,invis:false},
-    bot: true
+    bot: true,
+    inventory:Array.isArray(fake.inventory)?fake.inventory.map(item=>({category:item.category|0,id:item.id|0,count:item.count|0})):[],
+    equippedWeapon:fake.equippedWeapon|0,
+    miningTool:fake.miningTool|0
   };
 }
 
@@ -1079,9 +1082,16 @@ function fakeSolid(room,x,y) {
 }
 
 function fakeFloorY(room,x,y,fromY=0) {
+  const cols=[Math.floor(x),Math.floor(x-0.34),Math.floor(x+0.34)];
   const start=Math.max(0,Math.floor(y));
-  for(let ty=start;ty<80;ty++) if(fakeSolid(room,x,ty)) return ty;
-  return 79;
+  let best=Infinity;
+  for(const cx of cols){
+    if(cx<0||cx>=128) continue;
+    for(let ty=start;ty<80;ty++){
+      if(fakeSolid(room,cx,ty)){best=Math.min(best,ty);break;}
+    }
+  }
+  return Number.isFinite(best)?best:null;
 }
 
 function fakeBreakTile(room,fake,x,y) {
@@ -1120,9 +1130,12 @@ function makeFakePlayer(room, name, sourceClient) {
     x:Math.max(4,Math.min(WORLD_WIDTH-4,Number(sourceClient&&sourceClient.position&&sourceClient.position.x)||16)),
     y:2,vx:0,vy:0,grounded:false,
     id,
-    appearance:Array.isArray(sourceClient&&sourceClient.appearance)?sourceClient.appearance.slice(0,11):[0,247,0,0,326,0,0,0,0,0,0],
-    appearanceText:String(sourceClient&&sourceClient.appearanceText||''),
-    skin:Number.isFinite(sourceClient&&sourceClient.skin)?sourceClient.skin:1.44,
+    appearance:[0,247,0,0,139,0,0,0,0,0,0],
+    appearanceText:'',
+    skin:1.44,
+    inventory:[{category:2,id:139,count:1},{category:2,id:240,count:1},{category:2,id:247,count:1}],
+    equippedWeapon:139,
+    miningTool:240,
     wins:0,createdAt:Date.now(),
     botState:'falling',botStartedAt:Date.now(),botPhaseUntil:Date.now()+3500,
     botDir:Math.random()<.5?-1:1,botRow:0,botDigSide:Math.random()<.5?-1:1,
@@ -1135,93 +1148,33 @@ function makeFakePlayer(room, name, sourceClient) {
 
 function tickFakePlayers(room, now) {
   if(!room || !room.fakePlayers || !room.fakePlayers.size) return;
-  const dt=0.2, GRAVITY=18, MAX_FALL=15, GROUND_EPS=0.05;
+  const dt=0.05, GRAVITY=18, MAX_FALL=15;
   for(const fake of room.fakePlayers.values()) {
     if(fake.controlledBy){
-      if(now-(fake._lastBroadcastAt||0)>=100){fake._lastBroadcastAt=now;broadcastRoom(room,{t:'admin-fake-player-state',connectionId:fake.connectionId,x:fake.x,y:fake.y,vx:fake.vx||0,vy:fake.vy||0,name:fake.name,botState:'controlled'},undefined,true);}
+      if(now-(fake._lastBroadcastAt||0)>=50){fake._lastBroadcastAt=now;sendFakeNativeMove(room,fake);broadcastRoom(room,{t:'admin-fake-player-state',connectionId:fake.connectionId,x:fake.x,y:fake.y,vx:fake.vx||0,vy:fake.vy||0,name:fake.name,botState:'controlled'},undefined,true);}
       continue;
     }
     const prevY=fake.y;
-    const footX=Math.max(0,Math.min(127,Math.floor(fake.x)));
-    const floor=fakeFloorY(room,footX,fake.y);
-    const grounded=Number.isFinite(floor) && fake.y <= floor+GROUND_EPS && fake.y >= floor-0.8 && fake.vy>=0;
+    const floor=fakeFloorY(room,fake.x,fake.y);
+    const grounded=floor!=null && fake.y>=floor-0.35 && fake.y<=floor+0.08 && fake.vy>=0;
     fake.grounded=grounded;
-
+    const land=(ny)=>{const nf=fakeFloorY(room,fake.x,ny);if(nf!=null&&ny>=nf){fake.y=nf;fake.vy=0;return true;}fake.y=ny;return false;};
     if(fake.botState==='falling') {
-      if(grounded) {
-        fake.y=floor; fake.vy=0; fake.botState='imitate';
-        fake.botStartedAt=now; fake.botPhaseUntil=now+2500+Math.random()*5000;
-        fakeBotChat(room,fake,'hi');
-      } else {
-        fake.vy=Math.min(MAX_FALL,(fake.vy||0)+GRAVITY*dt);
-        fake.y+=fake.vy*dt;
-      }
+      if(grounded){fake.y=floor;fake.vy=0;fake.botState='imitate';fake.botStartedAt=now;fake.botPhaseUntil=now+2500+Math.random()*5000;fakeBotChat(room,fake,'hi');}
+      else{fake.vy=Math.min(MAX_FALL,(fake.vy||0)+GRAVITY*dt);if(land(fake.y+fake.vy*dt)){fake.botState='imitate';fake.botPhaseUntil=now+2500+Math.random()*5000;}}
     } else if(fake.botState==='imitate') {
-      if(!fake.grounded) {
-        fake.vy=Math.min(MAX_FALL,(fake.vy||0)+GRAVITY*dt); fake.y+=fake.vy*dt;
-      } else {
-        fake.vy=0;
-        if(now>=fake.botNextActionAt) {
-          fake.botNextActionAt=now+350+Math.random()*900;
-          if(Math.random()<0.35) { fake.vy=-7; }
-          fake.botDir=Math.random()<0.5?-1:1;
-        }
-        fake.vx=fake.botDir*(2.0+Math.random()*2.5);
-        fake.x+=fake.vx*dt;
-        if(fake.x<2){fake.x=2;fake.botDir=1} if(fake.x>126){fake.x=126;fake.botDir=-1}
-        if(fake.vy<0 || !fake.grounded) { fake.vy=Math.min(MAX_FALL,fake.vy+GRAVITY*dt); fake.y+=fake.vy*dt; }
-        else fake.y=floor;
-        if(now>=fake.botPhaseUntil){fake.botState='walk-left';fake.botDir=-1;fake.vx=0;fakeBotChat(room,fake,'going to dig');}
-      }
+      if(!grounded){fake.vy=Math.min(MAX_FALL,(fake.vy||0)+GRAVITY*dt);land(fake.y+fake.vy*dt);}
+      else{fake.y=floor;fake.vy=0;if(now>=fake.botNextActionAt){fake.botNextActionAt=now+350+Math.random()*900;if(Math.random()<0.35)fake.vy=-7;fake.botDir=Math.random()<0.5?-1:1;}fake.vx=fake.botDir*(2+Math.random()*2.5);fake.x=Math.max(1.5,Math.min(126.5,fake.x+fake.vx*dt));if(fake.vy<0)land(fake.y+fake.vy*dt);if(now>=fake.botPhaseUntil){fake.botState='walk-left';fake.botDir=-1;fake.vx=0;fakeBotChat(room,fake,'going to dig');}}
     } else if(fake.botState==='walk-left') {
-      const f=fakeFloorY(room,Math.floor(fake.x),fake.y);
-      if(fake.y < f-0.4 || fake.vy>0) { fake.vy=Math.min(MAX_FALL,(fake.vy||0)+GRAVITY*dt); fake.y+=fake.vy*dt; }
-      else { fake.y=f; fake.vy=0; }
-      fake.vx=-3.2; fake.x=Math.max(1.5,fake.x+fake.vx*dt);
-      if(fake.x<=2.5){fake.x=2.5;fake.vx=0;fake.botState='dig-down';fake.botPhaseUntil=now+26300;fakeBotChat(room,fake,'digging');}
+      const f=fakeFloorY(room,fake.x,fake.y);if(f!=null&&fake.y>=f-0.35){fake.y=f;fake.vy=0;}else{fake.vy=Math.min(MAX_FALL,(fake.vy||0)+GRAVITY*dt);land(fake.y+fake.vy*dt);}fake.vx=-3.2;fake.x=Math.max(1.5,fake.x+fake.vx*dt);if(fake.x<=2.5){fake.x=2.5;fake.vx=0;fake.botState='dig-down';fake.botPhaseUntil=now+26300;fakeBotChat(room,fake,'digging');}
     } else if(fake.botState==='dig-down') {
-      // Mirrors the supplied bot's long downward hold: remove the block under the player,
-      // let normal gravity pull the player through the hole, and repeat.
-      const x=Math.max(0,Math.min(127,Math.floor(fake.x)));
-      const below=Math.max(18,Math.floor(fake.y));
-      if(now-(fake.botLastMineAt||0)>360){
-        fakeBreakTile(room,fake,x,below);
-        fake.botLastMineAt=now;
-      }
-      const f=fakeFloorY(room,x,fake.y);
-      if(f<=79 && fake.y < f-0.2) { fake.vy=Math.min(MAX_FALL,(fake.vy||0)+GRAVITY*dt); fake.y+=fake.vy*dt; }
-      else { fake.y=f; fake.vy=0; }
-      if(now>=fake.botPhaseUntil || fake.y>44){fake.botState='dig-row';fake.botRow++;fake.botDir=1;fake.botDigSide=1;fakeBotChat(room,fake,'starting to dig rows');}
+      const x=Math.max(0,Math.min(127,Math.floor(fake.x)));const below=Math.max(18,Math.floor(fake.y));if(now-(fake.botLastMineAt||0)>360){fakeBreakTile(room,fake,x,below);fake.botLastMineAt=now;}const f=fakeFloorY(room,fake.x,fake.y);if(f!=null&&fake.y<f-0.15){fake.vy=Math.min(MAX_FALL,(fake.vy||0)+GRAVITY*dt);land(fake.y+fake.vy*dt);}else if(f!=null){fake.y=f;fake.vy=0;}if(now>=fake.botPhaseUntil||fake.y>44){fake.botState='dig-row';fake.botRow++;fake.botDir=1;fake.botDigSide=1;fakeBotChat(room,fake,'starting to dig rows');}
     } else if(fake.botState==='dig-row') {
-      const x=Math.max(0,Math.min(127,Math.floor(fake.x)));
-      const f=fakeFloorY(room,x,fake.y);
-      if(fake.y < f-0.2){fake.vy=Math.min(MAX_FALL,(fake.vy||0)+GRAVITY*dt);fake.y+=fake.vy*dt;}
-      else {fake.y=f;fake.vy=0;}
-      fake.vx=fake.botDir*2.8; fake.x+=fake.vx*dt;
-      if(now-(fake.botLastMineAt||0)>360){
-        const mineY=Math.max(18,Math.floor(fake.y));
-        fakeBreakTile(room,fake,x,mineY);
-        // Also break the block one level down occasionally, matching a held dig while moving.
-        if(Math.random()<0.35) fakeBreakTile(room,fake,x,mineY+1);
-        fake.botLastMineAt=now;
-      }
-      if(fake.x<=2){fake.x=2;fake.botDir=1;fake.botRow++;}
-      if(fake.x>=126){fake.x=126;fake.botDir=-1;fake.botRow++;}
-      if(fake.botRow>=21){fake.botState='dig-down';fake.botPhaseUntil=now+26300;fake.botRow=0;fakeBotChat(room,fake,'digging deeper');}
+      const x=Math.max(0,Math.min(127,Math.floor(fake.x)));const f=fakeFloorY(room,fake.x,fake.y);if(f!=null&&fake.y<f-0.15){fake.vy=Math.min(MAX_FALL,(fake.vy||0)+GRAVITY*dt);land(fake.y+fake.vy*dt);}else if(f!=null){fake.y=f;fake.vy=0;}fake.vx=fake.botDir*2.8;fake.x=Math.max(1.5,Math.min(126.5,fake.x+fake.vx*dt));if(now-(fake.botLastMineAt||0)>360){const mineY=Math.max(18,Math.floor(fake.y));fakeBreakTile(room,fake,x,mineY);if(Math.random()<0.35)fakeBreakTile(room,fake,x,mineY+1);fake.botLastMineAt=now;}if(fake.x<=2){fake.x=2;fake.botDir=1;fake.botRow++;}if(fake.x>=126){fake.x=126;fake.botDir=-1;fake.botRow++;}if(fake.botRow>=21){fake.botState='dig-down';fake.botPhaseUntil=now+26300;fake.botRow=0;fakeBotChat(room,fake,'digging deeper');}
     }
-
-    // Natural world bounds / respawn behavior. Unlike the previous version, this is not
-    // a teleport-to-top loop: the bot only respawns after actually falling below the world.
-    if(fake.y>80){fake.x=Math.max(4,Math.min(WORLD_WIDTH-4,fake.x));fake.y=2;fake.vx=0;fake.vy=0;fake.botState='falling';fake.botPhaseUntil=now+2500;}
-    if(fake.y<0){fake.y=0;fake.vy=0;}
-    if(!Number.isFinite(fake.x))fake.x=16;
-    if(!Number.isFinite(fake.y))fake.y=2;
-
-    if(Math.abs(fake.y-prevY)>0.001 || Math.abs(fake.vx)>0.001 || Math.abs(fake.vy)>0.001 || now-(fake._lastBroadcastAt||0)>=400){
-      fake._lastBroadcastAt=now;
-      sendFakeNativeMove(room,fake);
-      broadcastRoom(room,{t:'admin-fake-player-state',connectionId:fake.connectionId,x:fake.x,y:fake.y,vx:fake.vx||0,vy:fake.vy||0,name:fake.name,botState:fake.botState},undefined,true);
-    }
+    if(fake.y>82){fake.x=Math.max(4,Math.min(WORLD_WIDTH-4,fake.x));fake.y=2;fake.vx=0;fake.vy=0;fake.botState='falling';fake.botPhaseUntil=now+2500;}
+    if(fake.y<0){fake.y=0;fake.vy=0;}if(!Number.isFinite(fake.x))fake.x=16;if(!Number.isFinite(fake.y))fake.y=2;
+    if(Math.abs(fake.y-prevY)>0.0001||Math.abs(fake.vx)>0.001||Math.abs(fake.vy)>0.001||now-(fake._lastBroadcastAt||0)>=50){fake._lastBroadcastAt=now;sendFakeNativeMove(room,fake);broadcastRoom(room,{t:'admin-fake-player-state',connectionId:fake.connectionId,x:fake.x,y:fake.y,vx:fake.vx||0,vy:fake.vy||0,name:fake.name,botState:fake.botState},undefined,true);}
   }
 }
 
