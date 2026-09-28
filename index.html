@@ -86885,17 +86885,14 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         // Build 23.7 logo branding as a real OpenFL/Lime child of the original
         // Diggerz logo.  This is intentionally NOT a DOM overlay: the extension
         // is loaded as an in-game display object and follows the logo animation.
-        this.C60 = z.I9();
+                this.C60 = z.I9();
         this.C60.D8("reblasted.png");
         this.C60.D7(this.C58);
-        this.C60.set_local_xScale(this.C60.set_local_yScale(.26));
+        this.C60.set_local_xScale(this.C60.set_local_yScale(.27));
         this.C60.B8 = 6;
         this.C60._1 = "reblasted_logo_extension";
         this.C58._9.push(this.C60);
 
-        // D8 loads asynchronously. Sprites use CENTER origin, so local (0,0)
-        // is the center of the child relative to the center of the parent logo.
-        // Place REBLASTED just below the logo (not overlapping inside it).
         var reblastedLogoExtension = this.C60;
         var reblastedLogoParent = this.C58;
         var reblastedLogoTries = 0;
@@ -86905,9 +86902,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     window.setTimeout(positionReblastedLogo, 50);
                 return;
             }
-        var extensionScale = .22;
-            var gap = 0;
-            // b6 = local X (0 = centered), b7 = local Y (positive = lower)
+            var extensionScale = .27;
+            var gap = 10;
             reblastedLogoExtension.b6 = 0;
             reblastedLogoExtension.b7 =
                 reblastedLogoParent._5.height / 2
