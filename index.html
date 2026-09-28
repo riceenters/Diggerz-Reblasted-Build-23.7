@@ -23463,74 +23463,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         // reuse those exact engine objects for block variants instead of making
         // a DOM imitation.
         openBlockVariantPicker: function(targetBlock, blockId, x, y) {
-            var service = this;
             try {
-                if (!targetBlock || !blockId || !l.z38) return false;
-                var existing = l.z38.f4(Sc);
-                if (existing && existing._1 === "diggerz_block_variants") {
-                    existing.a0 = 1;
-                    try { existing.e3() } catch (_closeExisting) {}
+                if (targetBlock && typeof targetBlock.j44 === "function") {
+                    targetBlock.j44();
+                    return true;
                 }
-                var menu = new Sc();
-                menu._1 = "diggerz_block_variants";
-                menu._2 = targetBlock;
-                menu.q42 = new Ia;
-                menu.d34 = z.I9();
-                menu.d34.D7(menu);
-                menu.d34.Init(f.INV_BKND_PNG());
-                menu.d34.set_local_r(menu.d34.set_local_g(menu.d34.set_local_b(.15)));
-                menu.d34.set_local_alp(.8);
-                menu.d34.F6(0, 0, 2 * Math.PI, 35000, !0);
-                menu._9.push(menu.d34);
-
-                var count = 0, maxAbs = 0;
-                for (var variant = 0; variant < 32; variant++) {
-                    if (!h.q24(blockId, variant)) continue;
-                    var item = new X(menu, 1, blockId, variant, count, 1, 0);
-                    menu._9.push(item);
-                    menu.B30.push(item);
-                    if (item._3 == null) {
-                        T.remove(menu._9, item);
-                        menu.B30.pop();
-                        continue
-                    }
-                    count++;
-                }
-                if (!count) {
-                    menu.a0 = 1;
-                    return false
-                }
-                menu.d34.set_local_xScale(menu.d34.set_local_yScale(Math.max(1, 2 * (maxAbs + 50) / menu.d34._5.width)));
-                // Let the native radial layout calculate the actual item radius,
-                // then resize the wheel once more to fit the rendered variants.
-                menu.q46(targetBlock, !0);
-                for (var mi = 0; mi < menu.B30.length; mi++) {
-                    var abs = Math.max(Math.abs(menu.B30[mi].b6 || 0), Math.abs(menu.B30[mi].b7 || 0));
-                    if (abs > maxAbs) maxAbs = abs;
-                }
-                menu.d34.set_local_xScale(menu.d34.set_local_yScale(Math.max(1, 2 * (maxAbs + 50) / menu.d34._5.width)));
-
-                // The stock X.C39 applies the variant through the original engine
-                // path.  After that, mirror the exact id/variant into Diggerz's
-                // multiplayer tile state so everybody sees the selected shape.
-                for (var wi = 0; wi < menu.B30.length; wi++) {
-                    (function(choice) {
-                        var nativeClick = choice.C39;
-                        choice.C39 = function() {
-                            var result = nativeClick.call(choice);
-                            try {
-                                var tx = Math.round((targetBlock.b6 || 0) / l._44);
-                                var ty = Math.round((targetBlock.b7 || 0) / l._44);
-                                if (service && service.setTile) service.setTile(tx, ty, blockId, choice.b14 | 0);
-                            } catch (_syncVariant) {}
-                            return result
-                        };
-                    })(menu.B30[wi]);
-                }
-                return true
-            } catch (error) {
-                return false
-            }
+            } catch (_nativePicker) {}
+            return false;
         },
         dig: function(packet) {
             this.lastDigTick = this.ticks;
@@ -23643,20 +23582,21 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             // take damage, which prevents accidental radius/vein mining.
             var id = this.tileAt(targetX, targetY);
             if (!id || this.distanceToPlayer(targetX, targetY) > 3.6) return;
-            // If a different block is selected, clicking an occupied block opens
-            // the recovered native spinning variation wheel instead of mining it.
-            // This is the same Sc/X radial UI used by the original clothing GUI.
+            // RECOVERED NATIVE BLOCK VARIATION PICKER:
+            // The original client already has the exact spinning Sc/tilepick wheel
+            // used by the clothing/inventory UI. Do not recreate it. When the player
+            // has a different block selected, an occupied block click opens that
+            // original wheel instead of mining the block.
             if (heldItem && heldItem.category === 1 && (heldItem.id | 0) !== (id | 0)) {
-                var clickedBlock = null;
                 try {
-                    clickedBlock = this.r33(targetX * l._44, targetY * l._44);
-                    if (clickedBlock && (clickedBlock.h44 | 0) === (id | 0) && (clickedBlock.a4 | 0) === 1) {
-                        if (this.openBlockVariantPicker(clickedBlock, id, targetX, targetY)) {
-                            q.mClicked = !1;
-                            return;
-                        }
+                    var clickedBlockNative = this.r33(targetX * l._44, targetY * l._44);
+                    if (clickedBlockNative && (clickedBlockNative.h44 | 0) === (id | 0) &&
+                        (clickedBlockNative.a4 | 0) === 1 && typeof clickedBlockNative.j44 === "function") {
+                        clickedBlockNative.j44();
+                        q.mClicked = !1;
+                        return;
                     }
-                } catch (_variantOpen) {}
+                } catch (_nativeVariantOpen) {}
             }
             var key = targetX + ":" + targetY;
             var breakRaw=Number(this.adminModifiers&&this.adminModifiers.breakSpeed);var breakMod=isFinite(breakRaw)?Math.max(.1,Math.min(10,breakRaw)):1;var hits = (this.damage[key] || 0) + breakMod;
@@ -23710,8 +23650,33 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             if (!item) return;
             item.count--;
             if (!item.count) this.state.slots[slot] = this.emptyItem();
-            this.state.placed++;
-            this.setTile(x, y, id, variant);
+            // In the recovered client O33() starts the real 400ms placement animation.
+            // The old multiplayer rebuild applied the tile immediately, which caused
+            // the renderer's tile refresh to delete the native "fx" object on the same
+            // frame, making the placement animation appear to never play. Keep the game
+            // state authoritative, but commit the visible tile after the native animation.
+            var placeKey = x + ":" + y;
+            if (window.DiggerzIsMultiplayer && window.DiggerzIsMultiplayer(this)) {
+                if (!this._diggerzPendingPlacements) this._diggerzPendingPlacements = {};
+                if (this._diggerzPendingPlacements[placeKey]) return;
+                this._diggerzPendingPlacements[placeKey] = {id:id,variant:variant};
+                var self = this;
+                setTimeout(function(){
+                    try {
+                        var pending = self._diggerzPendingPlacements && self._diggerzPendingPlacements[placeKey];
+                        if (!pending) return;
+                        delete self._diggerzPendingPlacements[placeKey];
+                        if (self.tileAt(x,y)) return;
+                        self.state.placed++;
+                        self.setTile(x,y,pending.id,pending.variant);
+                        self.markDirty();
+                    } catch (_placeCommit) {}
+                }, 410);
+            } else {
+                this.state.placed++;
+                this.setTile(x, y, id, variant);
+                this.markDirty();
+            }
             E.v2(Vm.n7());
             this.sendInventory();
             this.markDirty()
@@ -115822,7 +115787,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       if(m.t==='chat'){var chatPeer=this.pvpPeerForConnection(m._serverFrom);if(chatPeer&&chatPeer.id){var id=chatPeer.id;this.enqueue(12,1,function(p){p.R8(id);p.R9(String(m.text||'').slice(0,180))})}return}
       if(m.t==='typing'){var typingPeer=this.pvpPeerForConnection(m._serverFrom);if(typingPeer&&typingPeer.id){var tid=typingPeer.id,active=!!m.active;this.enqueue(49,1,function(p){p.R8(tid);p.s0(active)})}return}
       if(m.t==='peer-state'){var statePeer=this.pvpPeerForConnection(m._serverFrom),se=statePeer&&this.pvpEntityForPeer(statePeer);if(se&&isFinite(+m.x)&&isFinite(+m.y)){var sx=(+m.x)*l._44,sy=(+m.y)*l._44;if(Math.hypot((se.b6-sx)/l._44,(se.b7-sy)/l._44)>1.25){try{se.l38(sx,sy)}catch(_e){se.b6=sx;se.b7=sy}}}return}
-      if(m.t==='tile'){this._pvpApplyingTile=true;try{this.setTile(m.x|0,m.y|0,m.id|0,m.variant|0)}finally{this._pvpApplyingTile=false}return}
+      if(m.t==='tile'){
+        var tx=m.x|0,ty=m.y|0,tkey=tx+':'+ty;
+        if(String(m._serverFrom||'')===String(P.connectionId||'') && this._diggerzPendingPlacements && this._diggerzPendingPlacements[tkey]) return;
+        this._pvpApplyingTile=true;
+        try{this.setTile(tx,ty,m.id|0,m.variant|0)}finally{this._pvpApplyingTile=false}
+        return
+      }
       if(m.t==='drop-spawn'){this.pvpAddSharedDrop(m.drop);return}
       if(m.t==='drop-remove'){this.pvpRemoveSharedDrop(m.guid);return}
       if(m.t==='drop-award'){var d=m.drop||{};if(this.addItem(d.category|0,d.id|0,d.variant|0,Math.max(1,d.count|0),d.extra|0,String(d.text||''))<0){var x=l.z39?l.z39.b6/l._44:this.state.x,y=l.z39?l.z39.b7/l._44-.5:this.state.y;this.spawnDrop(d.category|0,d.id|0,Math.max(1,d.count|0),x,y,String(d.text||''),String(d.tier||''))}else{if(d.tier==='super'){var sn=this.itemName(d.category|0,d.id|0);this.message('^3SUPER RARE! ^7'+this.playerName()+' found '+sn+'!');this.centerMessage('^3SUPER RARE!\n^7'+sn)}else if(d.tier==='rare'){var rn=this.itemName(d.category|0,d.id|0);this.message('^9RARE ITEM! ^7'+this.playerName()+' found '+rn+'!');this.centerMessage('^9RARE ITEM!\n^7'+rn)}this.markDirty()}return}
