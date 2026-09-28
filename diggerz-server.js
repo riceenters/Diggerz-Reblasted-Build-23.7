@@ -1167,8 +1167,14 @@ function relayBinary(client, payload) {
   // actual binary opcode before it is broadcast so the server enforces the
   // same no-place-on-player rule for the real game input path.
   if (opcode === 11 && nativePlacementBlocked(client, payload)) return;
-  // Persist + JSON-broadcast so peers and late joiners always see the change.
-  if (opcode === 11) applyNativeTileToRoom(client, payload);
+  // Persist + JSON-broadcast. Do NOT binary-relay opcode 11 place packets:
+  // their payload layout is the local place form (actor x/y + tile), which
+  // remote U37 mis-parses as a tile-update and can corrupt the world.
+  // JSON {t:'tile'} is the only cross-client tile path.
+  if (opcode === 11) {
+    applyNativeTileToRoom(client, payload);
+    return;
+  }
 
   // Native movement packets also carry the player's position. Keep the
   // canonical position fresh even when the JSON fallback is throttled.
@@ -2526,7 +2532,7 @@ function relayGameMessage(client, message, rawLength) {
     store.set(key,tile);
     room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
     if(wrong) broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:desiredLayer===2?0:2,_serverCorrection:true,_serverFrom:client.connectionId,_serverName:client.name});
-    broadcastRoom(room,Object.assign({t:'tile'},tile,{_serverCorrection:desiredLayer!==requestedLayer,_serverFrom:client.connectionId,_serverName:client.name,replace:true}));
+    broadcastRoom(room,Object.assign({t:'tile'},tile,{_serverFrom:client.connectionId,_serverName:client.name,replace:true}));
     if(id===122)syncSpeaker(room);
     return;
   }
