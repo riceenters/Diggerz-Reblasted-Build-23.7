@@ -15,9 +15,9 @@ const PORT = Number(process.env.PORT || 8080);
 const HOST = process.env.HOST || '0.0.0.0';
 const MAX_ROOM_PLAYERS = 10;
 const MAX_MESSAGE_BYTES = 64 * 1024;
-const MAX_MESSAGES_PER_SECOND = 120;
-const MAX_SOCKET_BACKLOG_BYTES = 256 * 1024;
-const MAX_SOCKET_HARD_BACKLOG_BYTES = 1024 * 1024;
+const MAX_MESSAGES_PER_SECOND = 400;
+const MAX_SOCKET_BACKLOG_BYTES = 512 * 1024;
+const MAX_SOCKET_HARD_BACKLOG_BYTES = 4 * 1024 * 1024;
 const NATIVE_MOVEMENT_RELAY_MS = 66;
 const ADMIN_SESSION_MS = 8 * 60 * 60 * 1000;
 const ADMIN_FAIL_WINDOW_MS = 10 * 60 * 1000;
@@ -917,8 +917,10 @@ function serveBuffer(res, buffer, contentType) {
 function writeFrame(client, frame, transient = false) {
   if (!client || client.closed || !client.socket.writable) return false;
   const backlog = Number(client.socket.writableLength || 0);
+  // Never kick for backlog — drop the frame instead. Constant kicks were
+  // coming from "client too slow" under tile/position traffic spikes.
   if (backlog > MAX_SOCKET_HARD_BACKLOG_BYTES) {
-    closeClient(client, 1013, 'client too slow');
+    client.droppedHard = (client.droppedHard || 0) + 1;
     return false;
   }
   if (transient && backlog > MAX_SOCKET_BACKLOG_BYTES) {
@@ -926,7 +928,15 @@ function writeFrame(client, frame, transient = false) {
     return false;
   }
   try { client.socket.write(frame); return true; }
-  catch (error) { closeClient(client, 1011, 'send failed'); return false; }
+  catch (error) {
+    // Only close on real socket death, not transient write errors
+    try {
+      if (client.socket && (client.socket.destroyed || !client.socket.writable)) {
+        closeClient(client, 1011, 'send failed');
+      }
+    } catch (_) {}
+    return false;
+  }
 }
 
 function sendJson(client, payload, transient = false) {
@@ -1245,13 +1255,12 @@ function fakeSolid(room,x,y) {
 // leave the native client with an impossible collision state.
 function placementOverlapsPlayer(player, tileX, tileY) {
   if (!player || !player.position) return false;
-  const px=Number(player.position.x), py=Number(player.position.y);
+  let px=Number(player.position.x), py=Number(player.position.y);
   if (!Number.isFinite(px) || !Number.isFinite(py)) return false;
-  // Exactly 1x1 block body (half 0.5) vs the target tile square.
-  const hw=0.5, hh=0.5;
-  const cellL=tileX|0, cellR=cellL+1, cellT=tileY|0, cellB=cellT+1;
-  const pL=px-hw, pR=px+hw, pT=py-hh, pB=py+hh;
-  return !(cellR<=pL || cellL>=pR || cellB<=pT || cellT>=pB);
+  // Same-cell only = exactly 1 block. Convert pixels → tiles if needed.
+  if (Math.abs(px) > 256 || Math.abs(py) > 256) { px/=30; py/=30; }
+  const ptx=Math.floor(px), pty=Math.floor(py);
+  return ptx===(tileX|0) && pty===(tileY|0);
 }
 
 function placementBlockedByAnyPlayer(room, tileX, tileY) {
@@ -2657,7 +2666,8 @@ function onTextMessage(client, text) {
   }
   client.rateCount++;
   if (client.rateCount > MAX_MESSAGES_PER_SECOND) {
-    closeClient(client, 1008, 'rate limit');
+    // Drop excess packets instead of kicking (was disconnecting everyone under load).
+    client.droppedRate = (client.droppedRate || 0) + 1;
     return;
   }
 
@@ -2829,7 +2839,7 @@ function parseFrames(client, chunk) {
       const now=Date.now();
       if(now-client.binaryRateWindow>=1000){client.binaryRateWindow=now;client.binaryRateCount=0;}
       client.binaryRateCount++;
-      if(client.binaryRateCount>MAX_MESSAGES_PER_SECOND){closeClient(client,1008,'binary rate limit');return;}
+      if(client.binaryRateCount>MAX_MESSAGES_PER_SECOND){client.droppedBinaryRate=(client.droppedBinaryRate||0)+1;return;}
       if (!client.room) { sendJson(client, { t: 'server-error', code: 'not-joined', message: 'Join matchmaking before sending Diggerz packets.' }); continue; }
       relayBinary(client, payload);
       continue;

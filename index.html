@@ -22277,9 +22277,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.incoming = [];
         // Service must be ready so MODE_CONNECTING can run A18 and build the world.
         // Room-state still applies the shared map/tiles afterward (_pvpWorldSynced).
-        // Connecting screen: stay not-ready until room-state arrives (white highlight / features depend on this).
-        // R8/q2 are null-safe so missing guids no longer crash with P4.
-        this.ready = !(this.mode === "pvp" || this.mode === "digtrade");
+        // No connecting gate — ready immediately so players are not stuck / kicked
+        // during room-state races. Features still apply via room-state as usual.
+        this.ready = true;
         this._pvpWorldSynced = false;
         this.closed = false;
         this.ticks = 0;
@@ -23018,11 +23018,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             })
         },
         sendTile: function(x, y, id, variant, layer) {
-            layer = layer == null ? 0 : (layer | 0);
+            // Build 23.7 native opcode-11 write (layer not in original packet).
             this.enqueue(11, 1, function(packet) {
                 packet.R2(1);
                 packet.R0(x);
-                packet.R0(layer);
+                packet.R0(0);
                 packet.R0(y);
                 packet.R2((id & 2047) | ((variant || 0) & 31) << 11)
             })
@@ -23055,164 +23055,18 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 this.state.tiles[x + y * this.state.width] : 0
         },
 
-                forcePurgeTileEntity: function(x, y, layer) {
-            // Destroy every native tile sprite + nape body at (x,y) so a mine
-            // cannot leave an invisible collider after place→break.
-            try {
-                if (typeof l === "undefined" || !l.z38 || !l.z38.R39) return;
-                var tx = x | 0, ty = y | 0;
-                var layerList = [0, 1, 2, 3, 4];
-                try {
-                    if (typeof l._46 === "number") layerList = [l._46, l._47, l._48, l.a40, l._49];
-                } catch (_ly) {}
-                var seen = {};
-                for (var li = 0; li < layerList.length; li++) {
-                    var layerIdx = layerList[li];
-                    if (layerIdx == null || seen[layerIdx]) continue;
-                    seen[layerIdx] = true;
-                    var grid = l.z38.R39[layerIdx];
-                    if (!grid) continue;
-                    var tile = null;
-                    try {
-                        if (grid.Q35 && grid.Q35[tx]) tile = grid.Q35[tx][ty];
-                    } catch (_q) {}
-                    if (!tile) {
-                        try {
-                            if (grid.r33) tile = grid.r33(tx * l._44, ty * l._44);
-                        } catch (_r) {}
-                    }
-                    if (!tile) continue;
-                    // Remove physics body from world
-                    try {
-                        var body = tile.b33 || tile.S33 || null;
-                        if (body && body.tBJ) {
-                            try { if (body.tBJ.component) body.tBJ.component.woken = !1; } catch (_w) {}
-                            try {
-                                var sp = body.tBJ.space;
-                                var outer = sp ? sp.outer : null;
-                                if (outer && outer.tBJ && outer.tBJ.wrap_bodies) outer.tBJ.wrap_bodies.remove(body);
-                            } catch (_rm) {}
-                            try {
-                                // Alternate nape path used by some tile types
-                                if (body.tBJ.space && body.tBJ.space.outer && body.tBJ.space.outer.bodies)
-                                    body.tBJ.space.outer.bodies.remove(body);
-                            } catch (_rm2) {}
-                        }
-                    } catch (_phys) {}
-                    try { if (tile.J46) tile.J46(); } catch (_j) {}
-                    try { if (tile.e3) tile.e3(); } catch (_e3) {}
-                    try { tile.a0 = 1; } catch (_a0) {}
-                    try { tile.a2 = !1; } catch (_a2) {}
-                    try { if (grid.Q35 && grid.Q35[tx]) grid.Q35[tx][ty] = null; } catch (_qn) {}
-                    try {
-                        if (grid._9) {
-                            if (typeof T !== "undefined" && T.remove) T.remove(grid._9, tile);
-                            else {
-                                var ix = grid._9.indexOf(tile);
-                                if (ix >= 0) grid._9.splice(ix, 1);
-                            }
-                        }
-                    } catch (_arr) {}
-                    try { if (typeof h !== "undefined" && h.q21) h.q21(0, 0, 0, tile); } catch (_h) {}
-                }
-                // Kill placement-animation fx claiming this cell
-                try {
-                    if (l.z39 && l.z39._9) {
-                        var kids = l.z39._9.slice();
-                        for (var ki = 0; ki < kids.length; ki++) {
-                            var fx = kids[ki];
-                            if (!fx || fx._1 !== "fx") continue;
-                            var fxX = Math.round(fx.b6 / l._44), fxY = Math.round(fx.b7 / l._44);
-                            try {
-                                if (fx._8 && fx._8[1] && isFinite(fx._8[1].W0)) fxX = Math.round(fx._8[1].W0 / l._44);
-                                if (fx._8 && fx._8[2] && isFinite(fx._8[2].W0)) fxY = Math.round(fx._8[2].W0 / l._44);
-                            } catch (_c) {}
-                            if (fxX === tx && fxY === ty) {
-                                try { if (fx.e3) fx.e3(); } catch (_fe) {}
-                                try { fx.a0 = 1; } catch (_fa) {}
-                                try { fx.a2 = !1; } catch (_fb) {}
-                            }
-                        }
-                    }
-                } catch (_fx) {}
-            } catch (_purge) {}
-        },
-        setTile: function(x, y, id, variant, layer) {
-            layer = layer == null ? 0 : (layer | 0);
+                setTile: function(x, y, id, variant, layer) {
+            // Build 23.7 block break/place core (layer arg ignored for state; kept for callers).
             if (x < 0 || y < 0 || x >= this.state.width || y >= this.state.height) return false;
             var index = x + y * this.state.width;
             variant = variant || 0;
-            var isBackground = layer === 2;
-            if (isBackground) {
-                if (!this.state.backgroundTiles) this.state.backgroundTiles = new Array(this.state.width * this.state.height).fill(0);
-                if (!this.state.backgroundVariants) this.state.backgroundVariants = new Array(this.state.width * this.state.height).fill(0);
-            }
-            var prevId = isBackground ? (this.state.backgroundTiles[index] | 0) : (this.state.tiles[index] | 0);
-            if (isBackground) {
-                this.state.backgroundTiles[index] = id;
-                this.state.backgroundVariants[index] = variant;
-            } else {
-                this.state.tiles[index] = id;
-                if (this.state.variants) this.state.variants[index] = variant;
-            }
-            if (!id) {
-                delete this.damage[x + ":" + y];
-                // Cancel delayed place-commit so a mine within ~410ms cannot
-                // resurrect the block as an invisible / ghost tile.
-                try {
-                    if (this._diggerzPendingPlacements) {
-                        delete this._diggerzPendingPlacements[x + ":" + y];
-                        delete this._diggerzPendingPlacements[x + ":" + y + ":" + layer];
-                        delete this._diggerzPendingPlacements[x + ":" + y + ":0"];
-                    }
-                    if (!this._diggerzClearedCells) this._diggerzClearedCells = {};
-                    this._diggerzClearedCells[x + ":" + y] = Date.now();
-                } catch (_clr) {}
-            } else {
-                // A real place undoes a prior clear mark for this cell.
-                try { if (this._diggerzClearedCells) delete this._diggerzClearedCells[x + ":" + y]; } catch (_pc) {}
-            }
+            layer = layer || 0;
+            var prevId = this.state.tiles[index] | 0;
+            this.state.tiles[index] = id;
+            if (this.state.variants) this.state.variants[index] = variant;
+            if (!id) delete this.damage[x + ":" + y];
             this.sendTile(x, y, id, variant, layer);
-            // Extra visual clear: if mining, enqueue a second clear packet so the
-            // native tile layer cannot leave a ghost collider after a place→mine race.
-            if (!id) {
-                try { this.sendTile(x, y, 0, 0, layer); } catch (_st2) {}
-                if (layer !== 2) {
-                    try { this.sendTile(x, y, 0, 0, 0); } catch (_st3) {}
-                }
-                try { this.forcePurgeTileEntity(x, y, layer); } catch (_fp) {}
-                // Re-purge after native place-anim / U37 can race a ghost body back in.
-                var selfPurge = this, px = x | 0, py = y | 0, pl = layer;
-                try {
-                    setTimeout(function(){ try { selfPurge.forcePurgeTileEntity(px, py, pl); } catch (_p1) {} }, 50);
-                    setTimeout(function(){ try { selfPurge.forcePurgeTileEntity(px, py, pl); if (selfPurge.state && selfPurge.state.tiles) { var idx = px + py * selfPurge.state.width; if (selfPurge.state.tiles[idx]) { /* keep mined empty */ selfPurge.state.tiles[idx] = 0; } } } catch (_p2) {} }, 420);
-                } catch (_t) {}
-            }
             this.markDirty();
-            // Multiplayer: always notify the server of local place/mine so peers
-            // see map changes. Skip when we are applying a server-authoritative
-            // tile (avoids echo loops).
-            try {
-                if (!this._pvpApplyingTile && window.DiggerzIsMultiplayer && window.DiggerzIsMultiplayer(this) && window.DiggerzPvp22 && window.DiggerzPvp22.joined) {
-                    var px = this.state.x, py = this.state.y;
-                    try { if (l.z39) { px = l.z39.b6 / l._44; py = l.z39.b7 / l._44; } } catch (_p) {}
-                    this.pvpSend({t:'tile',x:x|0,y:y|0,id:id|0,variant:(variant||0)|0,layer:layer|0,px:px,py:py});
-                }
-            } catch (_tileNet) {}
-            // If a native block-variation wheel is open for a block that was just
-            // broken/replaced, close it immediately. Otherwise the Sc/tilepick
-            // object can remain alive while its target renderer has disappeared,
-            // leaving an invisible/click-blocking radial menu behind.
-            if (prevId && !id) {
-                try {
-                    var openPick = l.z38 && l.z38.f2 ? l.z38.f2("tilepick") : null;
-                    if (openPick) {
-                        openPick.a0 = 1;
-                        if (l.z38 && l.z38._9 && l.z38._9.indexOf(openPick) >= 0)
-                            T.remove(l.z38._9, openPick);
-                    }
-                } catch (_closeTilePickError) {}
-            }
             // Glowing mining particles (same E.V0 WHITE_PARTICLE path as original packet 68 / X36)
             if (prevId && !id && !this._pvpApplyingTile) {
                 try {
@@ -23224,6 +23078,22 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     }
                 } catch (mineFxErr) {}
             }
+            // Multiplayer: notify peers (server-authoritative path still applies for sync)
+            try {
+                if (window.DiggerzIsMultiplayer && window.DiggerzIsMultiplayer(this) && !this._pvpApplyingTile) {
+                    var actor = this._diggerzPlacementActor || null;
+                    this.pvpSend && this.pvpSend({
+                        t: "tile",
+                        x: x | 0,
+                        y: y | 0,
+                        id: id | 0,
+                        variant: variant | 0,
+                        layer: layer | 0,
+                        actorX: actor && isFinite(actor.x) ? actor.x : undefined,
+                        actorY: actor && isFinite(actor.y) ? actor.y : undefined
+                    });
+                }
+            } catch (_mp) {}
             return true
         },
         distanceToPlayer: function(x, y) {
@@ -23235,8 +23105,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         // Radius around a tile center that counts as "too close to build".
         // Exactly ONE block: the 1x1 cell the player occupies (not a circle — circles
         // also blocked left/above). Half-size 0.5 = full width/height of 1 tile.
-        diggerzBuildHalfW: 0.5,
+        diggerzBuildHalfW: 0.5,  // only used if you switch back to AABB mode
         diggerzBuildHalfH: 0.5,
+        // "1 block" = the single grid cell the player is standing in.
+        // (Half-width 0.5 felt like ~4 blocks when actor coords were wrong scale.)
         diggerzTooCloseBuildMsg: function() {
             try {
                 var now = Date.now();
@@ -23248,22 +23120,33 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 else if (typeof l !== "undefined" && l.z38 && l.z38.R35) l.z38.R35.C46(msg);
             } catch (_m) {}
         },
+        diggerzPlayerTile: function(px, py) {
+            // Convert continuous position → the one grid cell the player occupies.
+            // Positions from the game are in TILE units (b6/l._44). If a value looks
+            // like pixels (>> map size), convert down by l._44.
+            if (!isFinite(px) || !isFinite(py)) return null;
+            try {
+                if (typeof l !== "undefined" && l._44 && (Math.abs(px) > 256 || Math.abs(py) > 256)) {
+                    px = px / l._44;
+                    py = py / l._44;
+                }
+            } catch (_u) {}
+            // floor maps the cell the feet/body center sits in
+            return [Math.floor(px), Math.floor(py)];
+        },
         diggerzSomeoneTooCloseToBuild: function(tileX, tileY, actorX, actorY) {
-            // Block only if the target TILE overlaps a player's 1x1 body box.
-            var hw = this.diggerzBuildHalfW != null ? this.diggerzBuildHalfW : 0.5;
-            var hh = this.diggerzBuildHalfH != null ? this.diggerzBuildHalfH : 0.5;
-            var cellL = (tileX | 0), cellR = cellL + 1, cellT = (tileY | 0), cellB = cellT + 1;
-            function overlaps(px, py) {
-                if (!isFinite(px) || !isFinite(py)) return false;
-                // Player AABB: (px-hw .. px+hw) x (py-hh .. py+hh)
-                var pL = px - hw, pR = px + hw, pT = py - hh, pB = py + hh;
-                return !(cellR <= pL || cellL >= pR || cellB <= pT || cellT >= pB);
+            var tx = tileX | 0, ty = tileY | 0;
+            function sameCell(px, py) {
+                var cell = this.diggerzPlayerTile(px, py);
+                if (!cell) return false;
+                return cell[0] === tx && cell[1] === ty;
             }
+            var self = this;
             var lpx = isFinite(actorX) ? actorX : (l.z39 ? l.z39.b6 / l._44 : this.state.x);
             var lpy = isFinite(actorY) ? actorY : (l.z39 ? l.z39.b7 / l._44 : this.state.y);
-            if (overlaps(lpx, lpy)) return true;
+            if (sameCell.call(self, lpx, lpy)) return true;
             try {
-                if (l && l.z39 && overlaps(l.z39.b6 / l._44, l.z39.b7 / l._44)) return true;
+                if (l && l.z39 && sameCell.call(self, l.z39.b6 / l._44, l.z39.b7 / l._44)) return true;
             } catch (_s) {}
             try {
                 var peers = this.pvpEnsurePeers && this.pvpEnsurePeers();
@@ -23272,8 +23155,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         var peer = peers[k];
                         if (!peer) continue;
                         var ent = this.pvpEntityForPeer && this.pvpEntityForPeer(peer);
-                        if (ent && overlaps(ent.b6 / l._44, ent.b7 / l._44)) return true;
-                        if (isFinite(peer.lastX) && isFinite(peer.lastY) && overlaps(peer.lastX, peer.lastY)) return true;
+                        if (ent && sameCell.call(self, ent.b6 / l._44, ent.b7 / l._44)) return true;
+                        if (isFinite(peer.lastX) && isFinite(peer.lastY) && sameCell.call(self, peer.lastX, peer.lastY)) return true;
                     }
                 }
             } catch (_p) {}
@@ -24090,23 +23973,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             // state authoritative, but commit the visible tile after the native animation.
             var placeKey = x + ":" + y;
             if (window.DiggerzIsMultiplayer && window.DiggerzIsMultiplayer(this)) {
-                if (!this._diggerzPendingPlacements) this._diggerzPendingPlacements = {};
-                if (this._diggerzPendingPlacements[placeKey]) return;
-                this._diggerzPendingPlacements[placeKey] = {id:id,variant:variant,layer:layer};
+                // (23.7-style: no pending-placement ghost tracking)
                 var self = this;
-                setTimeout(function(){
-                    try {
-                        var pending = self._diggerzPendingPlacements && self._diggerzPendingPlacements[placeKey];
-                        if (!pending) return;
-                        delete self._diggerzPendingPlacements[placeKey];
-                        // Mined/cleared after the place packet — do NOT resurrect the block.
-                        if (self._diggerzClearedCells && self._diggerzClearedCells[placeKey]) return;
-                        if (self.tileAt(x,y)) return;
-                        self.state.placed++;
-                        self.setTile(x,y,pending.id,pending.variant,pending.layer);
-                        self.markDirty();
-                    } catch (_placeCommit) {}
-                }, 410);
+                /* pending place timeout removed — 23.7 break path */
             } else {
                 this.state.placed++;
                 this.setTile(x, y, id, variant, layer);
@@ -116439,7 +116308,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         // Skip only while our local place animation is still pending that cell.
         // Never skip a clear (id=0). Skipping self-echo during pending place is
         // only for place confirms — mining must always remove the tile visually.
-        if(tid!==0 && String(m._serverFrom||'')===String(P.connectionId||'') && this._diggerzPendingPlacements && (this._diggerzPendingPlacements[tkey]||this._diggerzPendingPlacements[tx+':'+ty])) return;
+        /* no pending skip */
         if(tid===0){
           try{
             if(this._diggerzPendingPlacements){
@@ -117638,16 +117507,17 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return _rShoe;if(!P.service)
   // shield is rejected so blocks cannot be planted on top of a player and
   // corrupt the native grid.
   window.DiggerzPlayerShieldOverlapsCell=function(px,py,cx,cy){
-    // 1x1 player body vs 1x1 tile (cx,cy = integer tile coords).
+    // Exactly the one grid cell the player is in — not a radius, not a wide AABB.
     if(!isFinite(px)||!isFinite(py)||!isFinite(cx)||!isFinite(cy))return false;
-    var hw=0.5, hh=0.5;
-    var tx=Math.floor(cx), ty=Math.floor(cy);
-    if (Math.abs(cx-Math.round(cx))>1e-6) tx=Math.floor(cx); // already int-ish
-    tx = cx|0; ty = cy|0;
-    var cellL=tx, cellR=tx+1, cellT=ty, cellB=ty+1;
-    var pL=px-hw, pR=px+hw, pT=py-hh, pB=py+hh;
-    return !(cellR<=pL || cellL>=pR || cellB<=pT || cellT>=pB);
-  };;;
+    try {
+      if (typeof l !== "undefined" && l._44 && (Math.abs(px)>256||Math.abs(py)>256)) {
+        px/=l._44; py/=l._44;
+      }
+    } catch(_u){}
+    var ptx=Math.floor(px), pty=Math.floor(py);
+    var ttx=cx|0, tty=cy|0;
+    return ptx===ttx && pty===tty;
+  };;;;
   // Back-compat alias used by older call sites.
   window.DiggerzPlayerOverlapsCell=function(px,py,cx,cy,radius){
     if(window.DiggerzPlayerShieldOverlapsCell(px,py,cx,cy))return true;
