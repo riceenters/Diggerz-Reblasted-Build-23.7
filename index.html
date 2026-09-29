@@ -116300,7 +116300,15 @@ return true
       });
       return P.sendNative(packet)
     };
-    proto.pvpReceiveNative=function(buffer){if(!window.DiggerzIsMultiplayer(this))return;var op=0;try{op=new DataView(buffer).getUint16(0,true)}catch(e){}if(op===5)P.nativeSpawnSeen=true;if(op===6)P.nativeMoveSeen=true;this.injectNativePacket(buffer)};
+    proto.pvpReceiveNative=function(buffer){
+      // DIAGNOSTIC: keep WebSocket/multiplayer JSON online, but block incoming native
+      // entity packets. The UI-safe scrub test proved direct native entity destruction
+      // is involved; this isolates the remaining native-packet injection path.
+      if(!window.DiggerzIsMultiplayer(this))return;
+      var op=0;try{op=new DataView(buffer).getUint16(0,true)}catch(e){}
+      if(op===5)P.nativeSpawnSeen=true;if(op===6)P.nativeMoveSeen=true;
+      return;
+    };
     proto.pvpSendNativeMovement=function(){
       if(!window.DiggerzIsMultiplayer(this)||!P.connected||!l.z39||this.localDead)return false;
       var self=this,p=l.z39,vx=0,vy=0,anim=0,face=1;
