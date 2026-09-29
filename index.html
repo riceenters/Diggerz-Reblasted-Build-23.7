@@ -51649,17 +51649,26 @@ return true
         this.A8 = q.CENTERY - 50;
         this.c0 = !0;
         E.u4(this, 0, 300, 0, .5, 1, 0, 1);
-        var c = -177
-          , d = l.A47 || l.A48 ? "^9Private Game" : "^9Battle Royale";
-        (!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && (!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && "Free Dig" == l.a42 && (d = "^9Dig & Trade");
+        var c = -177;
+        var isPrivateGame = !!(l.A47 || l.A48);
+        var isPvpMode = !!(window.DiggerzPvp22 && window.DiggerzPvp22.mode === "pvp") || !!(window.P && P.mode === "pvp");
+        var isDigTradeMode = !isPvpMode && !isPrivateGame && (
+            (window.DiggerzPvp22 && window.DiggerzPvp22.mode === "digtrade") ||
+            (window.P && P.mode === "digtrade") ||
+            (window.P && P.service && P.service.mode === "digtrade") ||
+            (window.P && P.joined && window.P.mode !== "pvp") ||
+            "Free Dig" == l.a42
+        );
+        var d = isPrivateGame ? "^9Private Game" : (isDigTradeMode ? "^9Dig & Trade" : "^9Battle Royale");
         d = new xa(0,c,d,q.MAIN_FONT_BIG);
         d.D7(this, !0);
         this._9.push(d);
         c += 65;
         d = "^7The last player remaining is the winner! Use your pickaxe to dig for more weapons or, if you're lucky, a ^3RARE ITEM!";
-        if (l.A47 || l.A48)
+        if (isPrivateGame)
             d = "^7This is a private game. Only you and friends can join. Copy the url for them to use to join!";
-        (!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && (!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && "Free Dig" == l.a42 && (d = "^7Click on other players to trade with them. ^9ALL TRADES ARE FINAL! ^7Be smart, don't get scammed! You can also dig for ^3RARE ITEMS!");
+        if (isDigTradeMode)
+            d = "^7Click on other players to trade with them. ^9ALL TRADES ARE FINAL! ^7Be smart, don't get scammed! You can also dig for ^3RARE ITEMS!";
         d = new xa(0,c,d,q.MAIN_FONT);
         d.f30(500);
         d.D7(this, !0);
@@ -51737,7 +51746,7 @@ return true
                 d += 150
             }
             c += 100;
-            (!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && (!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && "Free Dig" == l.a42 && (a = new xa(0,c,"^0(Click on another player to trade.)",q.MAIN_FONT),
+            (window.DiggerzPvp22 && window.DiggerzPvp22.mode === "digtrade" || window.P && P.mode === "digtrade" || window.P && P.service && P.service.mode === "digtrade" || "Free Dig" == l.a42) && (a = new xa(0,c,"^0(Click on another player to trade.)",q.MAIN_FONT),
             a.D7(this, !0),
             this._9.push(a),
             c += 65)
@@ -51771,6 +51780,7 @@ return true
             return !0
         },
         C39: function() {
+            // Click anywhere (outside locked child UI) to hide — same as before.
             null != this._8[3] || this.d34.E7() || (this.a0 = 1,
             E.u4(this, 0, 300, 1, .5, 0, 1, 0))
         },
@@ -117414,37 +117424,50 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
       if(!UI||!UI.ja||!UI.xa||!UI.ob||!UI.q) return;
       digMusicClosePanel();
       try{
-        var panel=new UI.ja(380,380,!0);
+        var panel=new UI.ja(420,420,!0);
         panel._1='diggerz_music_panel';
         panel.c0=!0;
         panel.A7=UI.q.CENTERX;
         panel.A8=UI.q.CENTERY;
         try{ UI.E.u4(panel,0,300,0,.5,1,0,1);}catch(e){}
-        var title=new UI.xa(0,-140,'^9MUSIC',UI.q.MAIN_FONT_BIG);
+        var title=new UI.xa(0,-155,'^9MUSIC',UI.q.MAIN_FONT_BIG);
         title.D7(panel,!0); panel._9.push(title);
-        var y=-70;
+        var y=-85;
         for(var ti=0;ti<4;ti++){
           (function(trackIndex, yy){
             var bg=new UI.z;
             try{ bg.Init(UI.u.YELLOWBUTTON_PNG()); }catch(e){}
-            bg.D7(panel,!0); bg.b7=yy; bg.set_local_xScale(bg.set_local_yScale(.5)); panel._9.push(bg);
-            var lbl=new UI.ob(0,yy,TRACK_NAMES[trackIndex],UI.q.MAIN_FONT_BIG);
-            lbl.D7(panel,!0); lbl.b7=2;
+            bg.D7(panel,!0);
+            bg.b6=0; bg.b7=yy;
+            bg.set_local_xScale(bg.set_local_yScale(.55));
+            panel._9.push(bg);
+            // Label is child of the button so text sits ON the sprite
+            var lbl=new UI.ob(0,0,TRACK_NAMES[trackIndex],UI.q.MAIN_FONT_BIG);
+            lbl.D7(bg,!0);
+            lbl.b6=0; lbl.b7=2;
+            try{ lbl.set_local_xScale(lbl.set_local_yScale(.7)); }catch(eS){}
             lbl.C33=function(){
               digSetTrack(trackIndex,true);
               digMusicClosePanel();
             };
-            panel._9.push(lbl);
+            if(!bg._9) bg._9=[];
+            bg._9.push(lbl);
           })(ti, y);
-          y+=55;
+          y+=60;
         }
         var closeBg=new UI.z;
         try{ closeBg.Init(UI.u.REDBUTTON_PNG()); }catch(e){}
-        closeBg.D7(panel,!0); closeBg.b7=y+10; closeBg.set_local_xScale(closeBg.set_local_yScale(.42)); panel._9.push(closeBg);
-        var closeLbl=new UI.ob(0,y+10,'Close',UI.q.MAIN_FONT_BIG);
-        closeLbl.D7(panel,!0); closeLbl.b7=2;
+        closeBg.D7(panel,!0);
+        closeBg.b6=0; closeBg.b7=y+15;
+        closeBg.set_local_xScale(closeBg.set_local_yScale(.48));
+        panel._9.push(closeBg);
+        var closeLbl=new UI.ob(0,0,'Close',UI.q.MAIN_FONT_BIG);
+        closeLbl.D7(closeBg,!0);
+        closeLbl.b6=0; closeLbl.b7=2;
+        try{ closeLbl.set_local_xScale(closeLbl.set_local_yScale(.7)); }catch(eC){}
         closeLbl.C33=function(){ digMusicClosePanel(); };
-        panel._9.push(closeLbl);
+        if(!closeBg._9) closeBg._9=[];
+        closeBg._9.push(closeLbl);
         var root=null;
         try{ if(window.l&&l.z38) root=l.z38; }catch(e){}
         if(!root) try{ if(UI.q.thisMain) root=UI.q.thisMain; }catch(e2){}
@@ -117462,18 +117485,18 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
       if(!UI||!UI.ja||!UI.ob||!UI.z||!UI.q) return;
       if(digMusicBtn&&!digMusicBtn.a0) return;
       try{
-        // Small button under the top-left X area
+        // Smaller button under the top-left X
         var wrap=new UI.z;
         try{ wrap.Init(UI.u.YELLOWBUTTON_PNG()); }catch(e){}
         wrap._1='diggerz_music_btn';
         wrap.c0=!0;
-        wrap.A7=70;
-        wrap.A8=95;
-        wrap.set_local_xScale(wrap.set_local_yScale(.35));
-        var lbl=new UI.ob(0,0,'Music',UI.q.MAIN_FONT_BIG);
+        wrap.A7=55;
+        wrap.A8=88;
+        wrap.set_local_xScale(wrap.set_local_yScale(.22));
+        var lbl=new UI.ob(0,0,'Music',UI.q.MAIN_FONT);
         lbl.D7(wrap,!0);
-        lbl.b7=2;
-        try{ lbl.set_local_xScale(lbl.set_local_yScale(.85)); }catch(e){}
+        lbl.b6=0; lbl.b7=1;
+        try{ lbl.set_local_xScale(lbl.set_local_yScale(.55)); }catch(e){}
         lbl.C33=function(){ digMusicOpenPanel(); };
         wrap._9=wrap._9||[]; wrap._9.push(lbl);
         var root=null;
@@ -117979,6 +118002,25 @@ function addSupportUI(){
     } catch (e2) {}
   }
 
+  function addButton(panel, UI, y, label, r, g, b, onClick, useRed) {
+    var bg = new UI.z;
+    try { bg.Init(useRed ? UI.u.REDBUTTON_PNG() : UI.u.REDBUTTON_PNG()); } catch (e1) {}
+    bg.D7(panel, !0);
+    bg.b6 = 0;
+    bg.b7 = y;
+    bg.set_local_xScale(bg.set_local_yScale(0.72));
+    if (!useRed) tint(bg, r, g, b);
+    panel._9.push(bg);
+    var lbl = new UI.ob(0, y, label, UI.q.MAIN_FONT_BIG);
+    lbl.D7(panel, !0);
+    lbl.b6 = 0;
+    lbl.b7 = 3;
+    try { lbl.set_local_xScale(lbl.set_local_yScale(0.95)); } catch (e2) {}
+    lbl.C33 = onClick;
+    panel._9.push(lbl);
+    return lbl;
+  }
+
   function openDonateNative(menu) {
     var UI = window.DiggerzNativeUI;
     if (!UI || !UI.ja || !UI.xa || !UI.ob || !UI.z || !UI.u || !UI.q) {
@@ -117987,66 +118029,36 @@ function addSupportUI(){
     }
     closePanel();
     try {
-      var panel = new UI.ja(420, 360, !0);
+      // Bigger panel, screen center
+      var panel = new UI.ja(560, 520, !0);
       panel._1 = 'diggerz_donate_panel';
       panel.c0 = !0;
       panel.A7 = UI.q.CENTERX;
       panel.A8 = UI.q.CENTERY;
       try { UI.E.u4(panel, 0, 300, 0, .5, 1, 0, 1); } catch (e) {}
 
-      var title = new UI.xa(0, -120, '^9Donate', UI.q.MAIN_FONT_BIG);
+      var title = new UI.xa(0, -190, '^9Donate', UI.q.MAIN_FONT_BIG);
       title.D7(panel, !0);
+      try { title.set_local_xScale(title.set_local_yScale(1.15)); } catch (eT) {}
       panel._9.push(title);
 
-      var hint = new UI.xa(0, -70, '^7Support Diggerz multiplayer', UI.q.MAIN_FONT);
+      var hint = new UI.xa(0, -130, '^7Support Diggerz multiplayer', UI.q.MAIN_FONT);
       hint.D7(panel, !0);
-      try { hint.set_local_xScale(hint.set_local_yScale(.85)); } catch (eH) {}
+      try { hint.set_local_xScale(hint.set_local_yScale(0.9)); } catch (eH) {}
       panel._9.push(hint);
 
-      // Lime — green
-      var limeBg = new UI.z;
-      try { limeBg.Init(UI.u.REDBUTTON_PNG()); } catch (e1) {}
-      limeBg.D7(panel, !0);
-      limeBg.b7 = -10;
-      limeBg.set_local_xScale(limeBg.set_local_yScale(.55));
-      tint(limeBg, 0.15, 0.85, 0.25);
-      panel._9.push(limeBg);
-      var limeLbl = new UI.ob(0, -10, 'Lime', UI.q.MAIN_FONT_BIG);
-      limeLbl.D7(panel, !0);
-      limeLbl.b7 = 2;
-      limeLbl.C33 = function() {
+      // Lime — green (spaced)
+      addButton(panel, UI, -40, 'Lime', 0.12, 0.9, 0.28, function() {
         try { window.open(LIME_URL, '_blank', 'noopener,noreferrer'); } catch (e) { location.href = LIME_URL; }
-      };
-      panel._9.push(limeLbl);
+      }, false);
 
-      // Heu — blue
-      var heuBg = new UI.z;
-      try { heuBg.Init(UI.u.REDBUTTON_PNG()); } catch (e2) {}
-      heuBg.D7(panel, !0);
-      heuBg.b7 = 70;
-      heuBg.set_local_xScale(heuBg.set_local_yScale(.55));
-      tint(heuBg, 0.15, 0.45, 0.95);
-      panel._9.push(heuBg);
-      var heuLbl = new UI.ob(0, 70, 'Heu', UI.q.MAIN_FONT_BIG);
-      heuLbl.D7(panel, !0);
-      heuLbl.b7 = 2;
-      heuLbl.C33 = function() {
+      // Heu — blue (more space below Lime)
+      addButton(panel, UI, 70, 'Heu', 0.12, 0.42, 0.98, function() {
         try { window.open(HEU_URL, '_blank', 'noopener,noreferrer'); } catch (e) { location.href = HEU_URL; }
-      };
-      panel._9.push(heuLbl);
+      }, false);
 
-      // Close
-      var closeBg = new UI.z;
-      try { closeBg.Init(UI.u.REDBUTTON_PNG()); } catch (e3) {}
-      closeBg.D7(panel, !0);
-      closeBg.b7 = 140;
-      closeBg.set_local_xScale(closeBg.set_local_yScale(.4));
-      panel._9.push(closeBg);
-      var closeLbl = new UI.ob(0, 140, 'Close', UI.q.MAIN_FONT_BIG);
-      closeLbl.D7(panel, !0);
-      closeLbl.b7 = 2;
-      closeLbl.C33 = function() { closePanel(); };
-      panel._9.push(closeLbl);
+      // Close — plain red, label centered on button
+      addButton(panel, UI, 180, 'Close', 1, 1, 1, function() { closePanel(); }, true);
 
       var root = menu || null;
       try { if (!root && UI.q.thisMain) root = UI.q.thisMain; } catch (e4) {}
@@ -118067,40 +118079,13 @@ function addSupportUI(){
 
 <script id="diggerz-mobile-chat-enter">
 (function(){
-  var btn = null;
+  var enterBtn = null;
 
   function getOpenChat() {
     try {
       if (window.__diggerzChatOpen && !window.__diggerzChatOpen.a0)
         return window.__diggerzChatOpen;
     } catch (e) {}
-    try {
-      if (!window.q) return null;
-      function findChat(list, depth) {
-        if (!list || depth > 16) return null;
-        for (var i = 0; i < list.length; i++) {
-          var o = list[i];
-          if (!o) continue;
-          if (o._1 === 'chat_local' && !o.a0) return o;
-          if (o._9) {
-            var f = findChat(o._9, depth + 1);
-            if (f) return f;
-          }
-        }
-        return null;
-      }
-      var roots = [];
-      try { if (q.thisMain && q.thisMain._9) roots.push(q.thisMain._9); } catch (e1) {}
-      try { if (window.l && l.z38 && l.z38._9) roots.push(l.z38._9); } catch (e2) {}
-      try { if (window.l && l.z38 && l.z38.R35 && l.z38.R35._9) roots.push(l.z38.R35._9); } catch (e3) {}
-      for (var r = 0; r < roots.length; r++) {
-        var c = findChat(roots[r], 0);
-        if (c) {
-          try { window.__diggerzChatOpen = c; } catch (e4) {}
-          return c;
-        }
-      }
-    } catch (e5) {}
     return null;
   }
 
@@ -118133,56 +118118,62 @@ function addSupportUI(){
     } catch (e2) {}
   }
 
-  function ensureBtn() {
-    if (btn && document.body.contains(btn)) return btn;
-    if (!document.getElementById('diggerz-chat-enter-style')) {
-      var style = document.createElement('style');
-      style.id = 'diggerz-chat-enter-style';
-      style.textContent = [
-        '#diggerz-chat-enter-btn{display:none;position:fixed;z-index:2147483647;left:50%;',
-        'transform:translateX(-50%);min-width:130px;height:44px;padding:0 20px;',
-        'border:3px solid #111;border-radius:6px;cursor:pointer;pointer-events:auto;',
-        'background:#d94a38;color:#fff;font:800 18px Arial Black,Arial,sans-serif;',
-        'text-transform:uppercase;letter-spacing:1px;box-shadow:0 4px 0 #8a281c;',
-        'touch-action:manipulation;-webkit-tap-highlight-color:transparent;}',
-        '#diggerz-chat-enter-btn.show{display:block !important;visibility:visible !important;opacity:1 !important;}',
-        '#diggerz-chat-enter-btn:active{transform:translateX(-50%) translateY(2px);box-shadow:0 2px 0 #8a281c;}'
-      ].join('');
-      document.head.appendChild(style);
-    }
-    btn = document.createElement('button');
-    btn.id = 'diggerz-chat-enter-btn';
-    btn.type = 'button';
-    btn.textContent = 'Enter';
-    function fire(ev) {
-      try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {}
-      sendChat();
-    }
-    btn.addEventListener('click', fire);
-    btn.addEventListener('touchend', fire, { passive: false });
-    document.body.appendChild(btn);
-    return btn;
+  function destroyEnter() {
+    try {
+      if (enterBtn) {
+        enterBtn.a0 = 1;
+        enterBtn = null;
+      }
+    } catch (e) {}
+    // Hide any leftover HTML button from older builds
+    try {
+      var old = document.getElementById('diggerz-chat-enter-btn');
+      if (old) old.style.display = 'none';
+    } catch (e2) {}
   }
 
-  function positionBtn() {
-    var el = ensureBtn();
-    var canvas = document.querySelector('canvas');
-    var rect = canvas ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
-    el.style.left = Math.round(rect.left + rect.width * 0.5) + 'px';
-    // Just under the top chat bar
-    el.style.top = Math.round(rect.top + Math.min(110, Math.max(64, rect.height * 0.12)) + 28) + 'px';
-  }
-
-  function tick() {
+  function ensureNativeEnter() {
     var chat = getOpenChat();
-    var el = ensureBtn();
-    if (chat) {
-      positionBtn();
-      el.classList.add('show');
-      el.style.display = 'block';
-    } else {
-      el.classList.remove('show');
-      el.style.display = 'none';
+    var UI = window.DiggerzNativeUI;
+    if (!chat) {
+      destroyEnter();
+      return;
+    }
+    if (!UI || !UI.z || !UI.ob || !UI.u || !UI.q) return;
+    if (enterBtn && !enterBtn.a0) {
+      // keep under chat
+      try {
+        enterBtn.A7 = UI.q.CENTERX;
+        enterBtn.A8 = 105;
+      } catch (e) {}
+      return;
+    }
+    try {
+      var wrap = new UI.z;
+      try { wrap.Init(UI.u.REDBUTTON_PNG()); } catch (e1) {}
+      wrap._1 = 'diggerz_chat_enter';
+      wrap.c0 = !0;
+      wrap.A7 = UI.q.CENTERX;
+      wrap.A8 = 105;
+      wrap.set_local_xScale(wrap.set_local_yScale(0.42));
+      var lbl = new UI.ob(0, 0, 'Enter', UI.q.MAIN_FONT_BIG);
+      lbl.D7(wrap, !0);
+      lbl.b6 = 0;
+      lbl.b7 = 2;
+      try { lbl.set_local_xScale(lbl.set_local_yScale(0.65)); } catch (e2) {}
+      lbl.C33 = function() { sendChat(); };
+      wrap._9 = wrap._9 || [];
+      wrap._9.push(lbl);
+      var root = null;
+      try { if (window.l && l.z38) root = l.z38; } catch (e3) {}
+      if (!root) try { if (UI.q.thisMain) root = UI.q.thisMain; } catch (e4) {}
+      if (root && root._9) {
+        root._9.push(wrap);
+        wrap._2 = root;
+        enterBtn = wrap;
+      }
+    } catch (err) {
+      console.warn('[Diggerz Chat] native Enter failed', err);
     }
   }
 
@@ -118195,11 +118186,7 @@ function addSupportUI(){
   }
   document.addEventListener('keydown', onKey, true);
   document.addEventListener('keypress', onKey, true);
-  setInterval(tick, 150);
-  window.addEventListener('resize', function(){ if (btn && btn.classList.contains('show')) positionBtn(); });
-  // Create button node early so it exists in DOM
-  if (document.body) ensureBtn();
-  else document.addEventListener('DOMContentLoaded', ensureBtn);
+  setInterval(ensureNativeEnter, 150);
 })();
 </script>
 
