@@ -22314,7 +22314,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         getIo:function(){ return Io }, getZ:function(){ return z }, getF:function(){ return f },
         getE:function(){ return E }, getXa:function(){ return xa }, getOb:function(){ return ob },
         getFc:function(){ return Fc }, getK:function(){ return K }, getU:function(){ return u },
-        getAi:function(){ return ai }, getH:function(){ return h }, getCg:function(){ return cg }, getYf:function(){ return Yf }, getF:function(){ return f }
+        getAi:function(){ return ai }, getH:function(){ return h }, getCg:function(){ return cg }, getYf:function(){ return Yf }, getF:function(){ return f }, getYf:function(){ return Yf }, getF:function(){ return f }
     };
     // Version 3 starts clean so unrestricted catalog rewards from the earlier
     // reconstruction cannot carry into the corrected rarity economy.
@@ -23339,6 +23339,7 @@ return true
             // Dragon Pack resolves only after the player has enough coins. Every
             // dragon has equal odds and the resolved dragon is what gets saved.
             var purchaseItemId = item.itemId | 0;
+            var purchaseQuantity = Math.max(1, Math.min(65535, Number(item.quantity || 1) | 0));
             var purchaseQuantity = Math.max(1, Math.min(65535, Number(item.quantity || 1) | 0));
             if (item.randomIds && item.randomIds.length)
                 purchaseItemId = item.randomIds[Math.floor(Math.random() * item.randomIds.length)] | 0;
@@ -51556,7 +51557,7 @@ return true
         E.u4(this, 0, 300, 0, .5, 1, 0, 1);
         var c = -177
           , d = l.A47 || l.A48 ? "^9Private Game" : "^9Battle Royale";
-        (!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && "Free Dig" == l.a42 && (d = "^9Dig & Trade");
+        (!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && (!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && "Free Dig" == l.a42 && (d = "^9Dig & Trade");
         d = new xa(0,c,d,q.MAIN_FONT_BIG);
         d.D7(this, !0);
         this._9.push(d);
@@ -51564,7 +51565,7 @@ return true
         d = "^7The last player remaining is the winner! Use your pickaxe to dig for more weapons or, if you're lucky, a ^3RARE ITEM!";
         if (l.A47 || l.A48)
             d = "^7This is a private game. Only you and friends can join. Copy the url for them to use to join!";
-        (!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && "Free Dig" == l.a42 && (d = "^7Click on other players to trade with them. ^9ALL TRADES ARE FINAL! ^7Be smart, don't get scammed! You can also dig for ^3RARE ITEMS!");
+        (!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && (!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && "Free Dig" == l.a42 && (d = "^7Click on other players to trade with them. ^9ALL TRADES ARE FINAL! ^7Be smart, don't get scammed! You can also dig for ^3RARE ITEMS!");
         d = new xa(0,c,d,q.MAIN_FONT);
         d.f30(500);
         d.D7(this, !0);
@@ -51642,7 +51643,7 @@ return true
                 d += 150
             }
             c += 100;
-            (!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && "Free Dig" == l.a42 && (a = new xa(0,c,"^0(Click on another player to trade.)",q.MAIN_FONT),
+            (!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && (!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && "Free Dig" == l.a42 && (a = new xa(0,c,"^0(Click on another player to trade.)",q.MAIN_FONT),
             a.D7(this, !0),
             this._9.push(a),
             c += 65)
@@ -87248,7 +87249,7 @@ return true
             this.d51.b7 = 2;
             this.d51.C33 = A(this, this.e54);
             this._9.push(this.d51);
-            var d = q.SCREENHEIGHT / 2 - 250;
+            var d = q.SCREENHEIGHT / 2 - 380;
             b = new z;
             b.Init(u.REDBUTTON_PNG());
             b.D7(this);
@@ -87294,7 +87295,7 @@ return true
             this.d51.C34 = "shop",
             this.d51._1 = "welcome message",
             this._9.push(this.d51),
-            c = new xa(0,-70,"Passwordless email sign-in"),
+            c = new xa(0,-70,"Sign in with Google"),
             c.D7(b, !0),
             c.set_local_xScale(c.set_local_yScale(1.25)),
             this._9.push(c)) : 0 < q.thisMain.userPW.length && (b = new z,
@@ -87394,11 +87395,71 @@ return true
         },
         D54: null,
         D55: function() {
-            // Firebase Google login panel (passwordless).
-            if (window.DiggerzAuth237 && window.DiggerzAuth237.openLoginPanel)
+            // Native Diggerz UI panel (same system as Game Settings) + Google button overlay only.
+            try {
+                for (var li = this._9.length - 1; li >= 0; li--) {
+                    var ch = this._9[li];
+                    if (ch && ch._1 === "diggerz_login_panel") {
+                        try { ch.a0 = 1; E.u4(ch, 0, 300, 1, .5, 0, 1, 0); } catch (e0) {}
+                    }
+                }
+            } catch (e1) {}
+            var panel = new ja(480, 400, !0);
+            panel._1 = "diggerz_login_panel";
+            panel.c0 = !0;
+            panel.A7 = q.CENTERX;
+            panel.A8 = q.CENTERY;
+            panel.B8 = 8;
+            try { E.u4(panel, 0, 300, 0, .5, 1, 0, 1); } catch (e2) {}
+            var title = new xa(0, -150, "^9LOGIN", q.MAIN_FONT_BIG);
+            title.D7(panel, !0);
+            panel._9.push(title);
+            var hint = new xa(0, -100, "^7Save items, coins, name & skin", q.MAIN_FONT);
+            hint.D7(panel, !0);
+            try { hint.set_local_xScale(hint.set_local_yScale(.85)); } catch (e3) {}
+            panel._9.push(hint);
+            // Empty band in the middle — Google HTML button is overlaid here
+            var gap = new xa(0, -10, "^8 ", q.MAIN_FONT);
+            gap.D7(panel, !0);
+            panel._9.push(gap);
+            var future = new xa(0, 55, "^8More sign-in options coming soon", q.MAIN_FONT);
+            future.D7(panel, !0);
+            try { future.set_local_xScale(future.set_local_yScale(.75)); } catch (e4) {}
+            panel._9.push(future);
+            // Close — same red button style as the rest of the menu
+            var closeBg = new z;
+            closeBg.Init(u.REDBUTTON_PNG());
+            closeBg.D7(panel, !0);
+            closeBg.b7 = 145;
+            closeBg.set_local_xScale(closeBg.set_local_yScale(.42));
+            panel._9.push(closeBg);
+            var closeLbl = new ob(0, 145, "Close", q.MAIN_FONT_BIG);
+            closeLbl.D7(panel, !0);
+            closeLbl.b7 = 2;
+            closeLbl._1 = "diggerz_login_close";
+            closeLbl.C33 = A(this, function() {
+                try {
+                    if (panel) {
+                        panel.a0 = 1;
+                        E.u4(panel, 0, 300, 1, .5, 0, 1, 0);
+                    }
+                } catch (e5) {}
+                try {
+                    if (window.DiggerzAuth237 && window.DiggerzAuth237.hideGoogleButton)
+                        window.DiggerzAuth237.hideGoogleButton();
+                } catch (e6) {}
+            });
+            panel._9.push(closeLbl);
+            this._9.push(panel);
+            panel._2 = this;
+            window.__diggerzLoginMenu = this;
+            window.__diggerzLoginPanel = panel;
+            if (window.DiggerzAuth237 && window.DiggerzAuth237.showGoogleButton)
+                window.DiggerzAuth237.showGoogleButton();
+            else if (window.DiggerzAuth237 && window.DiggerzAuth237.openLoginPanel)
                 window.DiggerzAuth237.openLoginPanel(this);
             else
-                this._9.push(new vb(this,"","^1Login is not ready yet. Refresh the page.",new Cd,vb.F39))
+                this._9.push(new vb(this, "", "^1Login is not ready yet. Refresh the page.", new Cd, vb.F39));
         },
         D56: function(a) {
             // Build 23.7: account lookup/password prompts are retired. Email magic-link only.
@@ -117924,12 +117985,13 @@ function addSupportUI(){
     saveTimer = setTimeout(function(){ pushCloudSave(false); }, 2500);
   }
 
-  function applySession(user) {
+  function applySession(user, skipPull) {
     if (user) {
       state.authenticated = true;
       state.uid = user.uid || '';
       state.email = (user.email || '').toLowerCase();
       state.username = cleanName(user.displayName || '');
+      saveLocal();
       try {
         if (window.q && q.thisMain) {
           q.thisMain.userPW = AUTH_MARKER;
@@ -117941,105 +118003,131 @@ function addSupportUI(){
           if (typeof q.SaveGlobals === 'function') q.SaveGlobals();
         }
       } catch (e) {}
-      // Load cloud data; upload local inventory if cloud missing it
-      pullCloudSave().then(function(data){
-        var localInv = collectInventory();
-        var cloudHasInv = data && data.inventory && Array.isArray(data.inventory.slots) && data.inventory.slots.length;
-        if (!data) {
-          pushCloudSave(true);
-        } else if (!cloudHasInv && localInv) {
-          pushCloudSave(true);
-        } else {
-          scheduleCloudSave();
-        }
-      });
+      if (!skipPull) {
+        pullCloudSave().then(function(data){
+          var localInv = collectInventory();
+          var cloudHasInv = data && data.inventory && Array.isArray(data.inventory.slots) && data.inventory.slots.length;
+          if (!data) {
+            pushCloudSave(true);
+          } else if (!cloudHasInv && localInv) {
+            pushCloudSave(true);
+          } else {
+            scheduleCloudSave();
+          }
+          try {
+            if (sessionStorage.getItem('diggerz.cloud.reload') === '1') {
+              sessionStorage.removeItem('diggerz.cloud.reload');
+              console.log('[Diggerz Cloud] applied after login reload');
+            }
+          } catch (e2) {}
+        });
+      }
     } else {
       state.authenticated = false;
       state.uid = '';
       state.email = '';
       state.username = '';
+      saveLocal();
       try {
         if (window.q && q.thisMain) {
+          q.thisMain.userPW = '';
           q.thisMain.userEmail = '';
-          q.thisMain.userPW = 'NOPASSWORD_' + String(q.thisMain.userUniqueID || '');
-          if (typeof q.SaveGlobals === 'function') q.SaveGlobals();
         }
       } catch (e) {}
     }
-    saveLocal();
-    try { sessionStorage.setItem('diggerz.auth.active.v1', state.authenticated ? '1' : '0'); } catch (e) {}
-    updatePanel();
-    return state;
+    try { updatePanel(); } catch (e3) {}
   }
+  
 
-  function ensurePanel() {
-    var el = document.getElementById('diggerz-login-panel');
+  function ensureGoogleButton() {
+    var el = document.getElementById('diggerz-google-only');
     if (el) return el;
-    el = document.createElement('div');
-    el.id = 'diggerz-login-panel';
-    el.innerHTML = [
-      '<div class="dz-login-backdrop"></div>',
-      '<div class="dz-login-card">',
-      '  <div class="dz-login-title">LOGIN</div>',
-      '  <div class="dz-login-status" id="diggerz-login-status">Sign in to keep your account across devices.</div>',
-      '  <button type="button" class="dz-login-btn" id="diggerz-login-google">Login with Google</button>',
-      '  <button type="button" class="dz-login-btn dz-login-secondary" id="diggerz-login-logout" style="display:none">Log Out</button>',
-      '  <button type="button" class="dz-login-close" id="diggerz-login-close">Close</button>',
-      '</div>'
-    ].join('');
     var style = document.createElement('style');
+    style.id = 'diggerz-google-only-style';
     style.textContent = [
-      '#diggerz-login-panel{display:none;position:fixed;inset:0;z-index:99999;font-family:Arial,Helvetica,sans-serif;}',
-      '#diggerz-login-panel.open{display:block;}',
-      '.dz-login-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);}',
-      '.dz-login-card{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,92vw);',
-      'background:#1a1f2e;border:2px solid #f0f0f0;border-radius:8px;padding:28px 24px 20px;box-shadow:0 12px 40px rgba(0,0,0,.5);',
-      'text-align:center;color:#eee;}',
-      '.dz-login-title{font-size:28px;font-weight:700;color:#f5c542;margin-bottom:12px;letter-spacing:1px;}',
-      '.dz-login-status{font-size:14px;line-height:1.4;color:#ccc;min-height:40px;margin-bottom:18px;}',
-      '.dz-login-btn{display:block;width:100%;margin:0 0 12px;padding:12px 16px;font-size:16px;font-weight:700;',
-      'border:2px solid #fff;border-radius:6px;cursor:pointer;background:#c43c3c;color:#fff;}',
-      '.dz-login-btn:hover{filter:brightness(1.08);}',
-      '.dz-login-btn:disabled{opacity:.55;cursor:wait;}',
-      '.dz-login-secondary{background:#444;}',
-      '.dz-login-close{background:transparent;border:none;color:#aaa;cursor:pointer;font-size:14px;margin-top:4px;text-decoration:underline;}'
+      '#diggerz-google-only{display:none;position:fixed;z-index:100000;transform:translate(-50%,-50%);',
+      'font-family:Roboto,Arial,Helvetica,sans-serif;}',
+      '#diggerz-google-only.show{display:block;}',
+      '#diggerz-google-only .dz-google-official{display:inline-flex;align-items:center;justify-content:center;gap:12px;',
+      'height:44px;padding:0 14px 0 12px;min-width:240px;box-sizing:border-box;',
+      'background:#fff;border:1px solid #4285F4;border-radius:4px;cursor:pointer;',
+      'color:#4285F4;font-size:15px;font-weight:600;',
+      'box-shadow:0 1px 3px rgba(0,0,0,.18);}',
+      '#diggerz-google-only .dz-google-official:hover{background:#f8f9fa;}',
+      '#diggerz-google-only .dz-google-official:disabled{opacity:.65;cursor:wait;}'
     ].join('');
     document.head.appendChild(style);
+    el = document.createElement('div');
+    el.id = 'diggerz-google-only';
+    el.innerHTML = [
+      '<button type="button" class="dz-google-official" id="diggerz-login-google">',
+      '  <span aria-hidden="true" style="display:inline-flex;width:20px;height:20px">',
+      '    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20">',
+      '      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>',
+      '      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>',
+      '      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>',
+      '      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>',
+      '    </svg>',
+      '  </span>',
+      '  <span>Sign in with Google</span>',
+      '</button>'
+    ].join('');
     document.body.appendChild(el);
-    el.querySelector('.dz-login-backdrop').onclick = closeLoginPanel;
-    el.querySelector('#diggerz-login-close').onclick = closeLoginPanel;
     el.querySelector('#diggerz-login-google').onclick = function(){ loginWithGoogle(); };
-    el.querySelector('#diggerz-login-logout').onclick = function(){ logout(); };
     return el;
   }
-  function updatePanel() {
-    var el = document.getElementById('diggerz-login-panel');
-    if (!el) return;
-    var st = el.querySelector('#diggerz-login-status');
-    var g = el.querySelector('#diggerz-login-google');
-    var lo = el.querySelector('#diggerz-login-logout');
+  function positionGoogleButton() {
+    var el = ensureGoogleButton();
+    var canvas = document.querySelector('canvas');
+    var rect = canvas ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+    // Sit in the middle of the native LOGIN panel (slightly above center)
+    el.style.left = (rect.left + rect.width * 0.5) + 'px';
+    el.style.top = (rect.top + rect.height * 0.48) + 'px';
+  }
+  function showGoogleButton() {
     if (state.authenticated) {
-      st.textContent = 'Signed in as ' + (state.email || state.username || state.uid) + ' — progress syncs to the cloud.';
-      g.style.display = 'none';
-      lo.style.display = 'block';
-    } else {
-      st.textContent = 'Sign in with Google to keep name, country, skin, and items across devices.';
-      g.style.display = 'block';
-      lo.style.display = 'none';
+      hideGoogleButton();
+      return;
+    }
+    var el = ensureGoogleButton();
+    positionGoogleButton();
+    el.classList.add('show');
+    if (!window.__diggerzGooglePosTimer) {
+      window.__diggerzGooglePosTimer = setInterval(function(){
+        if (!document.getElementById('diggerz-google-only') || !document.getElementById('diggerz-google-only').classList.contains('show')) return;
+        positionGoogleButton();
+      }, 200);
     }
   }
+  function hideGoogleButton() {
+    var el = document.getElementById('diggerz-google-only');
+    if (el) el.classList.remove('show');
+  }
+  function ensurePanel() {
+    // Back-compat: only the Google overlay (panel is native ja)
+    return ensureGoogleButton();
+  }
+  function updatePanel() {
+    var btn = document.getElementById('diggerz-login-google');
+    if (state.authenticated) hideGoogleButton();
+    if (btn) btn.disabled = !!state.busy;
+  }
   function openLoginPanel(menu) {
-    ensurePanel();
-    updatePanel();
-    document.getElementById('diggerz-login-panel').classList.add('open');
+    // Legacy path — prefer native D55 panel; still show Google overlay
     window.__diggerzLoginMenu = menu || null;
+    showGoogleButton();
   }
   function closeLoginPanel() {
-    var el = document.getElementById('diggerz-login-panel');
-    if (el) el.classList.remove('open');
+    hideGoogleButton();
+    try {
+      var panel = window.__diggerzLoginPanel;
+      if (panel) {
+        panel.a0 = 1;
+      }
+    } catch (e) {}
   }
 
-  function loadScript(src) {
+function loadScript(src) {
     return new Promise(function(resolve, reject) {
       var s = document.createElement('script');
       s.src = src;
@@ -118063,6 +118151,15 @@ function addSupportUI(){
     auth = firebase.auth();
     db = firebase.firestore();
     auth.onAuthStateChanged(function(user) {
+      // During explicit Google login we push local data then reload — skip pull race
+      if (state.busy && user) {
+        state.authenticated = true;
+        state.uid = user.uid || '';
+        state.email = (user.email || '').toLowerCase();
+        state.username = cleanName(user.displayName || '');
+        state.ready = true;
+        return;
+      }
       applySession(user);
       state.ready = true;
     });
@@ -118081,11 +118178,14 @@ function addSupportUI(){
       var provider = new firebase.auth.GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       var result = await auth.signInWithPopup(provider);
-      applySession(result.user);
-      if (st) st.textContent = 'Signed in — syncing cloud save…';
-      var menu = window.__diggerzLoginMenu;
-      if (menu) popup(menu, '^2Signed in with Google!');
-      setTimeout(closeLoginPanel, 700);
+      applySession(result.user, true); // skip auto pull; we handle below
+      if (st) st.textContent = 'Saving this browser’s progress to your account…';
+      // Force-upload name, country, skin, items, coins from THIS browser
+      await pushCloudSave(true);
+      try { sessionStorage.setItem('diggerz.cloud.reload', '1'); } catch (e) {}
+      if (st) st.textContent = 'Saved! Reloading to apply account data…';
+      setTimeout(function(){ location.reload(); }, 500);
+      return;
     } catch (e) {
       console.warn('[Diggerz Auth]', e);
       var msg = (e && e.message) ? e.message : 'Sign-in failed';
@@ -118101,7 +118201,7 @@ function addSupportUI(){
     }
   }
 
-  async function logout() {
+async function logout() {
     try {
       await initFirebase();
       await auth.signOut();
@@ -118153,6 +118253,9 @@ function addSupportUI(){
   window.DiggerzAuth237 = {
     state: state,
     openLoginPanel: openLoginPanel,
+    showGoogleButton: showGoogleButton,
+    hideGoogleButton: hideGoogleButton,
+    positionGoogleButton: positionGoogleButton,
     loginWithGoogle: loginWithGoogle,
     logout: logout,
     logoutFromMenu: logoutFromMenu,
@@ -118167,7 +118270,7 @@ function addSupportUI(){
 	<div name="changes" id="changes">
 		<h1>Diggerz.io Reblasted - Change Log</h1><hr><a name="Build 24.0.41"></a><h2>Build 24.0.41 - Coaster Town Native Packet Layout</h2><ul><li>Uses the actual Coaster Town K.X8 opcode-11 packet layout: player X/Y, tile ID, tile X, tile layer, tile Y, catalog data, and flags.</li><li>Uses the engine packet's big-endian DataView encoding and correct field offsets.</li><li>Native opcode detection now uses the same big-endian opcode framing, so the authoritative placement gate actually sees native build packets.</li><li>Preserves Coaster Town tile layers 0/1/2 instead of treating layer 1 as an actor layer.</li></ul><hr><a name="Build 24.0.40"></a><h2>Build 24.0.40 - Coaster Town Native Tile Semantics</h2><ul><li>Uses the recovered native tile layers exactly: BLOCK_LAYER=0, FLOATER_LAYER=1, BKND_LAYER=2.</li><li>Native opcode-11 placement now uses the placement-time player coordinates carried by the native packet for the player-overlap check.</li><li>Native binary packet parsing is little-endian, matching the engine's DataView writers.</li><li>Layer-1 tiles are no longer incorrectly rejected as an actor/player layer.</li></ul><hr><a name="Build 24.0.35"></a><h2>Build 24.0.35 - Authoritative Layer Repair</h2><ul><li>Wrong-layer blocks are now repaired on both the server and every client, not just inside the server tile maps.</li><li>Stale copies on the old layer are explicitly removed so mining and block-variation modification continue to target the real block.</li><li>Client layer repairs no longer echo correction packets back to the server.</li></ul><hr><a name="Build 24.0.30"></a><h2>Build 24.0.30 - Live Player-Hitbox Placement Cells</h2><ul><li>Placement cells now stay blocked for the entire time the player physics hitbox overlaps any part of the 1x1 cell.</li><li>The check uses a live player-footprint-vs-cell intersection instead of only checking the cell center.</li><li>A cell becomes placeable immediately after the hitbox exits it, including when the player moves across cell boundaries.</li><li>The same rule is enforced client-side and authoritatively by the multiplayer server.</li></ul><hr><a name="Build 24.0.29"></a><h2>Build 24.0.29 - Native Picker Cleanup &amp; Placement Guard Hardening</h2><ul><li>Hardened the native placement guard call so the placement handler always resolves it through the global window object, eliminating the intermittent undefined-function race.</li><li>Removed the red X entry from the native block variation wheel used for block modification.</li><li>Automatically closes the native tile variation wheel when its target block is broken, preventing an invisible menu from remaining on screen.</li></ul><hr><a name="Build 24.0.26"></a><h2>Build 24.0.26 - Strict Block Placement Rules</h2><ul><li>Block placement is now a hard no-op outside the five-tile placement range.</li><li>Placement is rejected when the target cell overlaps a player.</li><li>Normal placed blocks are forced onto the foreground block layer; only native background/decorative items using layer 2 remain on the background layer.</li><li>Multiplayer tile synchronization now preserves the placement layer and supports dynamic background tiles.</li></ul><hr><a name="Build 24.0.17"></a><h2>Build 24.0.17 - Admin Modifiers &amp; Building Polish</h2><ul><li>Added admin Speed, Size, Jump, and Break Speed modifiers.</li><li>Integrated the supplied noclip radius override while preserving normal movement.</li><li>Added a placement travel/grow/spin animation and grid placement indicator.</li><li>Added block modification popup when a block is selected and an occupied cell is clicked.</li><li>Hardened rapid placement/replacement synchronization.</li></ul>
 
-		<hr><a name="Build 24.0"></a> <h2>Build 24.0 - Patches, PvP Polish &amp; RGB Weekend</h2> <ul> <li>Item drops now fall through cleared space instead of remaining suspended in mid-air.</li> <li>Mining bonus drops now use fresh random rolls, and player-placed blocks cannot be recycled for bonus-loot farming.</li> <li>PvP music now ducks during combat instead of stopping, returns to full volume on a winner, and stops cleanly when leaving PvP early.</li> <li>Restored the older Battle Royale text placement and presentation while keeping the newer in-game font.</li> <li>Added RGB Weekend: three animated RGB variants replace the normal featured Super Rares every Saturday and Sunday.</li> <li>Rebalanced True RGB mining: regular True RGB uses a 1/100,000 roll, True RGB Military Hat is 1/1,000,000, and each True RGB K-Pop piece including Stetson is 1/101,337. Successful finds use a global all-server celebration with the correct odds.</li> </ul> <hr><a name="Build 23.9"></a> <h2>Build 23.9 - Economy, Beta Gun, Support &amp; UPDATE Hat</h2> <ul> <li>Patched the long-standing multiplayer trade reload/duplication race.</li> <li>Fixed Beta Gun firing, added it to common mining weapon drops, and kept it tradable.</li> <li>Added the UPDATE Hat with item-specific player-head placement.</li> <li>Added Support Diggerz donations and a verified supporter leaderboard.</li> </ul> <hr><a name="Build 23.8"></a> <h2>Build 23.8 - Railway / itch Migration &amp; Fixes</h2> <ul> <li>Reduced lightsword swing sound volume to 30% and added a 120 ms anti-spam cooldown.</li> <li>Fixed server-authorized admin item, coin, and kill actions when an admin targets themselves.</li> <li>Removed the player login / logout feature and retired the passwordless account client. Diggerz now runs guest-only.</li> <li>Prepared the browser client to use the permanent Railway multiplayer/admin backend when hosted on itch.io.</li> <li>Updated active multiplayer build identifiers to 23.8.</li> </ul> <hr><a name="Build 23.7"></a>
+		<hr><a name="Build 24.0"></a> <h2>Build 24.0 - Patches, PvP Polish &amp; RGB Weekend</h2> <ul> <li>Item drops now fall through cleared space instead of remaining suspended in mid-air.</li> <li>Mining bonus drops now use fresh random rolls, and player-placed blocks cannot be recycled for bonus-loot farming.</li> <li>PvP music now ducks during combat instead of stopping, returns to full volume on a winner, and stops cleanly when leaving PvP early.</li> <li>Restored the older Battle Royale text placement and presentation while keeping the newer in-game font.</li> <li>Added RGB Weekend: three animated RGB variants replace the normal featured Super Rares every Saturday and Sunday.</li> <li>Rebalanced True RGB mining: regular True RGB uses a 1/100,000 roll, True RGB Military Hat is 1/1,000,000, and each True RGB K-Pop piece including Stetson is 1/101,337. Successful finds use a global all-server celebration with the correct odds.</li> </ul> <hr><a name="Build 24.0"></a> <h2>Build 24.0 - Patches, PvP Polish &amp; RGB Weekend</h2> <ul> <li>Item drops now fall through cleared space instead of remaining suspended in mid-air.</li> <li>Mining bonus drops now use fresh random rolls, and player-placed blocks cannot be recycled for bonus-loot farming.</li> <li>PvP music now ducks during combat instead of stopping, returns to full volume on a winner, and stops cleanly when leaving PvP early.</li> <li>Restored the older Battle Royale text placement and presentation while keeping the newer in-game font.</li> <li>Added RGB Weekend: three animated RGB variants replace the normal featured Super Rares every Saturday and Sunday.</li> <li>Rebalanced True RGB mining: regular True RGB uses a 1/100,000 roll, True RGB Military Hat is 1/1,000,000, and each True RGB K-Pop piece including Stetson is 1/101,337. Successful finds use a global all-server celebration with the correct odds.</li> </ul> <hr><a name="Build 23.9"></a> <h2>Build 23.9 - Economy, Beta Gun, Support &amp; UPDATE Hat</h2> <ul> <li>Patched the long-standing multiplayer trade reload/duplication race.</li> <li>Fixed Beta Gun firing, added it to common mining weapon drops, and kept it tradable.</li> <li>Added the UPDATE Hat with item-specific player-head placement.</li> <li>Added Support Diggerz donations and a verified supporter leaderboard.</li> </ul> <hr><a name="Build 23.9"></a> <h2>Build 23.9 - Economy, Beta Gun, Support &amp; UPDATE Hat</h2> <ul> <li>Patched the long-standing multiplayer trade reload/duplication race.</li> <li>Fixed Beta Gun firing, added it to common mining weapon drops, and kept it tradable.</li> <li>Added the UPDATE Hat with item-specific player-head placement.</li> <li>Added Support Diggerz donations and a verified supporter leaderboard.</li> </ul> <hr><a name="Build 23.8"></a> <h2>Build 23.8 - Railway / itch Migration &amp; Fixes</h2> <ul> <li>Reduced lightsword swing sound volume to 30% and added a 120 ms anti-spam cooldown.</li> <li>Fixed server-authorized admin item, coin, and kill actions when an admin targets themselves.</li> <li>Removed the player login / logout feature and retired the passwordless account client. Diggerz now runs guest-only.</li> <li>Prepared the browser client to use the permanent Railway multiplayer/admin backend when hosted on itch.io.</li> <li>Updated active multiplayer build identifiers to 23.8.</li> </ul> <hr><a name="Build 23.8"></a> <h2>Build 23.8 - Railway / itch Migration &amp; Fixes</h2> <ul> <li>Reduced lightsword swing sound volume to 30% and added a 120 ms anti-spam cooldown.</li> <li>Fixed server-authorized admin item, coin, and kill actions when an admin targets themselves.</li> <li>Removed the player login / logout feature and retired the passwordless account client. Diggerz now runs guest-only.</li> <li>Prepared the browser client to use the permanent Railway multiplayer/admin backend when hosted on itch.io.</li> <li>Updated active multiplayer build identifiers to 23.8.</li> </ul> <hr><a name="Build 23.7"></a>
 		<h2>Build 23.7 - Security &amp; Account Hardening</h2>
 		<ul>
 			<li>Removed the legacy Base64/PHP password login path and stopped storing passwords or email credentials in the Globals save blob.</li>
