@@ -4905,9 +4905,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             q.ObjectsDrawn = 0;
             q.GuysDrawn = 0;
             if (null != this.stage && null != this.stage.context3D) {
-                // Diggerz render-stability patch: do not clear Main's native display-list every frame.
-                // The world is rendered from q.children directly; clearing the Main display list here can
-                // transiently detach native UI/display children before the frame is presented.
+                this.removeChildren();
                 q.stateChanges = 0;
                 db.getTimer();
                 var renderContext = this.stage.context3D;
