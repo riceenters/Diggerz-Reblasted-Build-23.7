@@ -116097,9 +116097,8 @@ return true
 <script>
 (function(){
   var P=window.DiggerzPvp22={socket:null,service:null,queue:[],nativeQueue:[],connected:false,joined:false,starting:false,mode:'pvp',menu:null,hooksInstalled:false,room:'',requested:false,everOpened:false,intentionalClose:false,nativeSpawnSeen:false,nativeMoveSeen:false,debugLines:[],connectionId:'',maxPlayers:10};
-  window.DiggerzMultiplayerIsolation=true;
   // Global fallback used by prototype callbacks during multiplayer startup.
-  window.DiggerzIsMultiplayer=function(service){return false};
+  window.DiggerzIsMultiplayer=window.DiggerzIsMultiplayer||function(service){return !!(service&&(service.mode==='pvp'||service.mode==='digtrade'))};
   var overlay=document.getElementById('diggerz-pvp22'),status=document.getElementById('diggerz-pvp22-status');
   var serverInput=document.getElementById('pvp22-server-url');
   var debugBox=document.getElementById('diggerz-mp-debug'),debugLog=document.getElementById('diggerz-mp-debug-log'),debugSummary=document.getElementById('diggerz-mp-debug-summary');
@@ -116130,8 +116129,9 @@ return true
   function setMode(mode){P.mode=mode==='digtrade'?'digtrade':'pvp';dbg('MP-001','mode selected: '+P.mode)}
   function show(side,mode){
     if(mode)setMode(mode);
-    dbg('MP-ISO','multiplayer isolated for UI diagnosis; no socket or runtime hooks installed');
-    return false;
+    P.requested=true;P.intentionalClose=false;overlay.style.display='none';dbg('MP-002','background matchmaking requested');
+    installRuntimeHooks();
+    connectMatchmaking();
   }
   function username(){try{return String(q.thisMain.userName||'Player').slice(0,24)}catch(e){return 'Player'}}
   function clientId(){var k='diggerz.resurrection.clientId.v1',v='';try{v=localStorage.getItem(k)||'';if(!/^[A-Za-z0-9_-]{16,80}$/.test(v)){var a=new Uint8Array(18);crypto.getRandomValues(a);v='DG-'+Array.prototype.map.call(a,function(b){return ('0'+b.toString(16)).slice(-2)}).join('');localStorage.setItem(k,v)}}catch(e){v='DG-'+Math.random().toString(36).slice(2)+Date.now().toString(36)}return v}
@@ -116231,59 +116231,10 @@ return true
       var id=peer.id;
       delete peers[cid];
       var self=this;
-      function scrubEntity(ent){
-        if(!ent)return;
-        try{ent.a2=false}catch(_e){}
-        try{ent.set_local_alp(0)}catch(_e){}
-        try{ent.set_alp(0)}catch(_e){}
-        try{if(ent.J30){ent.J30.a2=false;try{ent.J30.set_local_alp(0)}catch(_e2){}}}catch(_e){}
-        try{if(ent.i33)ent.i33.a2=false}catch(_e){}
-        // Move off-world so minimap/leaderboard scans skip them.
-        try{ent.b6=-99999;ent.b7=-99999}catch(_e){}
-        try{if(ent.A7!=null)ent.A7=-99999;if(ent.A8!=null)ent.A8=-99999}catch(_e){}
-        try{if(typeof oa!=='undefined'&&oa.MODE_DEAD!=null)ent.i32=oa.MODE_DEAD}catch(_e){}
-        try{if(ent.a0!=null)ent.a0=1}catch(_e){}
-        try{if(typeof ent.e3==='function')ent.e3()}catch(_e){}
-        // Detach from the live scene list so leaderboard/minimap cannot see them.
-        try{
-          var scene=l.z38&&l.z38._9;
-          if(scene){
-            for(var i=scene.length-1;i>=0;i--){
-              if(scene[i]===ent)scene.splice(i,1);
-            }
-          }
-        }catch(_e){}
-        try{
-          var gameKids=self.game&&self.game._9;
-          if(gameKids){
-            for(var j=gameKids.length-1;j>=0;j--){
-              if(gameKids[j]===ent)gameKids.splice(j,1);
-            }
-          }
-        }catch(_e){}
-      }
-      function despawn(guid){
-        if(!guid)return;
-        try{self.enqueue(3,1,function(out){out.R8(guid)})}catch(e){}
-        try{
-          var ent=self.game&&self.game.V31?self.game.V31(guid):null;
-          scrubEntity(ent);
-        }catch(e){}
-      }
-      despawn(id);
-      // Also scrub any entity that still matches the peer name (guid may be missing).
-      try{
-        var scene=l.z38&&l.z38._9;
-        if(scene&&peer.name){
-          for(var si=scene.length-1;si>=0;si--){
-            var se=scene[si];
-            if(!se||se===l.z39)continue;
-            try{
-              if(se._1&&String(se._1).split(' ')[0]===String(peer.name))scrubEntity(se);
-            }catch(_e){}
-          }
-        }
-      }catch(_e){}
+      // CLEANUP ISOLATION TEST: keep multiplayer peer bookkeeping, but do not
+      // mutate native entities or scene/display lists when a peer is removed.
+      function scrubEntity(ent){ return; }
+      function despawn(guid){ return; }catch(_e){}
       [80,200,500,1000].forEach(function(delay){setTimeout(function(){despawn(id);try{self.pvpRefreshLeaderboard&&self.pvpRefreshLeaderboard()}catch(_e){}},delay)});
       if(this.pvpTrade&&this.pvpTrade.partnerConnectionId===cid)this.pvpCancelTradeLocal('Player disconnected.');
       this.pvpRefreshLegacyPeer();
@@ -116613,7 +116564,7 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
     return true
   }
   P.installRuntimeHooks=installRuntimeHooks;
-  var hookTimer=setInterval(function(){if(window.DiggerzMultiplayerIsolation){clearInterval(hookTimer);return}if(installRuntimeHooks()){clearInterval(hookTimer);if(P.requested&&!P.joined)setStatus('Connecting to '+(P.mode==='pvp'?'Battle':'Dig+Trade')+' server…')}},50);
+  var hookTimer=setInterval(function(){if(installRuntimeHooks()){clearInterval(hookTimer);if(P.requested&&!P.joined)setStatus('Connecting to '+(P.mode==='pvp'?'Battle':'Dig+Trade')+' server…')}},50);
 
   function prepareMenu(){
     if(P.menu&&P.menu.d52){q.thisMain.userName=P.menu.d52.q35;q.SaveGlobals()}

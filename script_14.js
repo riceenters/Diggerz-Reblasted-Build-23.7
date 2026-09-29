@@ -1,7 +1,6 @@
 
 (function(){
   function install230(){
-    if(window.DiggerzMultiplayerIsolation)return;
     var P=window.DiggerzPvp22,DS=window.DiggerzService,q=window.q,l=window.l;
     if(!P||!DS||!DS.prototype||!P.hooksInstalled||!q||!l){setTimeout(install230,50);return}
     var proto=DS.prototype;if(proto.__build230)return;proto.__build230=true;
