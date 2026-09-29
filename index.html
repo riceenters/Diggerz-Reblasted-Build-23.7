@@ -117416,87 +117416,97 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
     var digMusicBtn=null, digMusicPanel=null;
     function digMusicClosePanel(){
       try{
-        if(digMusicPanel){ digMusicPanel.a0=1; try{ if(window.DiggerzNativeUI&&DiggerzNativeUI.E&&DiggerzNativeUI.E.u4) DiggerzNativeUI.E.u4(digMusicPanel,0,300,1,.5,0,1,0);}catch(e){} digMusicPanel=null; }
+        if(digMusicPanel){
+          try{ digMusicPanel.a0=1; }catch(e0){}
+          try{
+            if(window.DiggerzNativeUI&&DiggerzNativeUI.E&&DiggerzNativeUI.E.u4)
+              DiggerzNativeUI.E.u4(digMusicPanel,0,300,1,.5,0,1,0);
+          }catch(e1){}
+          digMusicPanel=null;
+        }
       }catch(e){}
     }
     function digMusicOpenPanel(){
       var UI=window.DiggerzNativeUI;
-      if(!UI||!UI.ja||!UI.xa||!UI.ob||!UI.q) return;
+      if(!UI||!UI.ja||!UI.xa||!UI.ob||!UI.z||!UI.q) return;
       digMusicClosePanel();
       try{
-        var panel=new UI.ja(420,420,!0);
+        var panel=new UI.ja(380,400,!0);
         panel._1='diggerz_music_panel';
         panel.c0=!0;
+        // Same click-off behavior as Game Settings (Op): outside click closes
+        panel.E7=function(){ return !0; };
+        panel.C39=function(){
+          try{
+            if(null==this._8||null==this._8[3]){
+              digMusicClosePanel();
+            }
+          }catch(eC){ digMusicClosePanel(); }
+        };
         panel.A7=UI.q.CENTERX;
         panel.A8=UI.q.CENTERY;
         try{ UI.E.u4(panel,0,300,0,.5,1,0,1);}catch(e){}
-        var title=new UI.xa(0,-155,'^9MUSIC',UI.q.MAIN_FONT_BIG);
+        var title=new UI.xa(0,-150,'^9MUSIC',UI.q.MAIN_FONT_BIG);
         title.D7(panel,!0); panel._9.push(title);
-        var y=-85;
+        var y=-80;
         for(var ti=0;ti<4;ti++){
           (function(trackIndex, yy){
             var bg=new UI.z;
             try{ bg.Init(UI.u.YELLOWBUTTON_PNG()); }catch(e){}
             bg.D7(panel,!0);
             bg.b6=0; bg.b7=yy;
-            bg.set_local_xScale(bg.set_local_yScale(.55));
+            bg.set_local_xScale(bg.set_local_yScale(.5));
             panel._9.push(bg);
-            // Label is child of the button so text sits ON the sprite
-            var lbl=new UI.ob(0,0,TRACK_NAMES[trackIndex],UI.q.MAIN_FONT_BIG);
+            var lbl=new UI.ob(0,0,TRACK_NAMES[trackIndex],UI.q.MAIN_FONT);
             lbl.D7(bg,!0);
             lbl.b6=0; lbl.b7=2;
-            try{ lbl.set_local_xScale(lbl.set_local_yScale(.7)); }catch(eS){}
+            try{ lbl.set_local_xScale(lbl.set_local_yScale(.85)); }catch(eS){}
             lbl.C33=function(){
               digSetTrack(trackIndex,true);
               digMusicClosePanel();
             };
-            if(!bg._9) bg._9=[];
-            bg._9.push(lbl);
+            bg._9=bg._9||[]; bg._9.push(lbl);
           })(ti, y);
-          y+=60;
+          y+=58;
         }
-        var closeBg=new UI.z;
-        try{ closeBg.Init(UI.u.REDBUTTON_PNG()); }catch(e){}
-        closeBg.D7(panel,!0);
-        closeBg.b6=0; closeBg.b7=y+15;
-        closeBg.set_local_xScale(closeBg.set_local_yScale(.48));
-        panel._9.push(closeBg);
-        var closeLbl=new UI.ob(0,0,'Close',UI.q.MAIN_FONT_BIG);
-        closeLbl.D7(closeBg,!0);
-        closeLbl.b6=0; closeLbl.b7=2;
-        try{ closeLbl.set_local_xScale(closeLbl.set_local_yScale(.7)); }catch(eC){}
-        closeLbl.C33=function(){ digMusicClosePanel(); };
-        if(!closeBg._9) closeBg._9=[];
-        closeBg._9.push(closeLbl);
-        var root=null;
-        try{ if(window.l&&l.z38) root=l.z38; }catch(e){}
-        if(!root) try{ if(UI.q.thisMain) root=UI.q.thisMain; }catch(e2){}
-        if(root&&root._9){ root._9.push(panel); panel._2=root; }
         digMusicPanel=panel;
+        var root=null;
+        try{ if(window.l&&l.z38) root=l.z38; }catch(eR){}
+        if(!root) try{ if(UI.q.thisMain) root=UI.q.thisMain; }catch(eR2){}
+        if(!root) try{ if(UI.q.children) root=UI.q; }catch(eR3){}
+        if(root&&root._9){ root._9.push(panel); panel._2=root; }
       }catch(err){ console.warn('[Diggerz Music] panel failed', err); }
     }
     function digMusicEnsureBtn(show){
       var UI=window.DiggerzNativeUI;
+      // If panel was closed by engine click-off (a0 set), drop our ref
+      try{
+        if(digMusicPanel&&digMusicPanel.a0) digMusicPanel=null;
+      }catch(eP){ digMusicPanel=null; }
       if(!show){
         try{ if(digMusicBtn){ digMusicBtn.a0=1; digMusicBtn=null; } }catch(e){}
         digMusicClosePanel();
         return;
       }
-      if(!UI||!UI.ja||!UI.ob||!UI.z||!UI.q) return;
-      if(digMusicBtn&&!digMusicBtn.a0) return;
+      if(!UI||!UI.ob||!UI.z||!UI.q) return;
+      if(digMusicBtn&&!digMusicBtn.a0){
+        // Keep tiny HUD button pinned under the X
+        try{ digMusicBtn.A7=48; digMusicBtn.A8=78; }catch(eK){}
+        return;
+      }
       try{
-        // Smaller button under the top-left X
+        // Whole button smaller (not only the text)
         var wrap=new UI.z;
         try{ wrap.Init(UI.u.YELLOWBUTTON_PNG()); }catch(e){}
         wrap._1='diggerz_music_btn';
-        wrap.c0=!0;
-        wrap.A7=55;
-        wrap.A8=88;
-        wrap.set_local_xScale(wrap.set_local_yScale(.22));
+        // Do NOT set c0 on the HUD button — only the panel should modal/click-off
+        wrap.A7=48;
+        wrap.A8=78;
+        wrap.set_local_xScale(wrap.set_local_yScale(.14));
         var lbl=new UI.ob(0,0,'Music',UI.q.MAIN_FONT);
         lbl.D7(wrap,!0);
         lbl.b6=0; lbl.b7=1;
-        try{ lbl.set_local_xScale(lbl.set_local_yScale(.55)); }catch(e){}
+        try{ lbl.set_local_xScale(lbl.set_local_yScale(1.0)); }catch(e){}
         lbl.C33=function(){ digMusicOpenPanel(); };
         wrap._9=wrap._9||[]; wrap._9.push(lbl);
         var root=null;
@@ -118152,7 +118162,7 @@ function addSupportUI(){
       var wrap = new UI.z;
       try { wrap.Init(UI.u.REDBUTTON_PNG()); } catch (e1) {}
       wrap._1 = 'diggerz_chat_enter';
-      wrap.c0 = !0;
+      // no c0 — HUD only; click-off is for modal panels (settings/music)
       wrap.A7 = UI.q.CENTERX;
       wrap.A8 = 105;
       wrap.set_local_xScale(wrap.set_local_yScale(0.42));
