@@ -18386,6 +18386,17 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         q.diggerzConnectionRoute = usePvpTest ? "Build 23.7 native-packet PvP" : (useLocalDigTrade ? "Build 23.7 native-packet Dig+Trade" : "original multiplayer server");
         this.R36 = usePvpTest ? new DiggerzService(this, "pvp") : (useLocalDigTrade ? new DiggerzService(this, "digtrade") : new Cr(q.SERVER_ADDRESS,l.a48,l.a49));
         try { if (window.DiggerzMpDebugLog) window.DiggerzMpDebugLog("MP-071", "R36=" + (this.R36 && this.R36.constructor ? this.R36.constructor.name : "?") + " mode=" + (this.R36 && this.R36.mode || "?") + " A46=" + l.A46 + " route=" + q.diggerzConnectionRoute) } catch (_debugError) {}
+        // Attach multiplayer service during connecting so room-state can unlock ready.
+        try {
+          if ((usePvpTest || useLocalDigTrade) && window.DiggerzPvp22 && window.DiggerzPvp22.attach) {
+            window.DiggerzPvp22.attach(this.R36);
+            if (!window.DiggerzPvp22.requested) {
+              window.DiggerzPvp22.requested = true;
+              if (typeof window.DiggerzBeginBackgroundMatchmaking === "function")
+                window.DiggerzBeginBackgroundMatchmaking(usePvpTest ? "pvp" : "digtrade", null);
+            }
+          }
+        } catch (_att) {}
         this.R35 = new zo;
         this.R35.B8 = 8;
         q.children.push(this.R35);
@@ -19697,9 +19708,19 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     a.s0(l.A48);
                     this.R36.A18(a);
                     this.i32 = Ph.MODE_PLAYING
-                } else
-                    100 == this.a1 / 3 ? this.R35.C46("^1COULD NOT CONNECT!") : 125 == this.a1 / 3 && (this.a0 = 1,
-                    q.InitTitleScreen())
+                } else {
+                    // Multiplayer: stay on connecting until room-state unlocks ready.
+                    // Failed socket → red COULD NOT CONNECT; timeout → same, then title.
+                    var failed = !!(this.R36 && this.R36._pvpConnectFailed);
+                    if (failed || 100 == this.a1 / 3)
+                        this.R35.C46("^1COULD NOT CONNECT!");
+                    else if (20 == this.a1 / 3 || 40 == this.a1 / 3 || 60 == this.a1 / 3 || 80 == this.a1 / 3)
+                        this.R35.C46("Connecting to server...");
+                    if (failed && 40 == this.a1 / 3 || 125 == this.a1 / 3) {
+                        this.a0 = 1;
+                        q.InitTitleScreen();
+                    }
+                }
             }
         },
         V31: function(a) {
@@ -22241,7 +22262,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.game = game;
         this.mode = mode || "digtrade";
         this.incoming = [];
-        this.ready = true;
+        // Multiplayer stays on the connecting screen until room-state has
+        // applied map + tiles + peers + items. Offline/shop is ready immediately.
+        this.ready = !(this.mode === "pvp" || this.mode === "digtrade");
+        this._pvpWorldSynced = false;
         this.closed = false;
         this.ticks = 0;
         this.dirty = false;
@@ -115806,11 +115830,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       if(m.t==='peer-left'){dbg('MP-040','peer-left '+String(m.connectionId||'?'));P.connected=((m.count||0)>=2);routeGameMessage(m);if(!P.starting&&!P.connected)setStatus('Waiting for more players…');return}
       if(m.t==='pong')return;if(m.t==='hello')dbg('MP-030','peer hello from '+String(m.name||m._serverName||'?'));routeGameMessage(m)
     };
-    ws.onerror=function(event){dbg('MP-060','WebSocket error; state='+socketState());if(P.socket===ws&&P.requested&&!P.everOpened)setStatus('Could not reach the Diggerz multiplayer server. If you opened the downloaded HTML directly, the multiplayer server must be running locally; the hosted Render version connects automatically.')};
+    ws.onerror=function(event){dbg('MP-060','WebSocket error; state='+socketState());if(P.socket===ws&&P.requested&&!P.everOpened){setStatus('Could not reach the Diggerz multiplayer server. If you opened the downloaded HTML directly, the multiplayer server must be running locally; the hosted Render version connects automatically.');try{if(P.service){P.service.ready=false;P.service._pvpConnectFailed=true}}catch(_e){}try{if(P.service&&P.service.game&&P.service.game.R35)P.service.game.R35.C46('^1COULD NOT CONNECT!')}catch(_e2){}}};
     ws.onclose=function(event){
       if(P.socket!==ws)return;
       var hadOpened=P.everOpened,hadJoined=P.joined,hadMatch=P.connected,intentional=P.intentionalClose;dbg('MP-061','socket CLOSED code='+event.code+' reason='+(event.reason||'none')+' opened='+hadOpened+' joined='+hadJoined+' paired='+hadMatch);
       P.socket=null;P.connected=false;P.joined=false;P.everOpened=false;
+      try{if(P.service&&!P.service._pvpWorldSynced){P.service.ready=false;P.service._pvpConnectFailed=true;if(P.service.game&&P.service.game.R35)P.service.game.R35.C46('^1COULD NOT CONNECT!')}}catch(_cf){}
       if(intentional||!P.requested)return;
       if(!hadOpened)setStatus('Could not reach the Diggerz multiplayer server. No match was joined.');
       else if(!hadJoined)setStatus('The multiplayer server connection closed before matchmaking started. No match was joined.');
@@ -116135,6 +116160,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             if(m.map&&(self.mode==='pvp'||self.mode==='digtrade'))self.pvpApplyBaseMap(m.map);
             if(Array.isArray(m.tiles)||Array.isArray(m.backgroundTiles)||Array.isArray(m.drops))self.pvpApplyRoomState(m);
             self._pvpWorldSynced=true;
+            // Unlock the connecting screen — local player enters only after this.
+            self.ready=true;
+            try{if(self.game&&self.game.R35)self.game.R35.C46("^2Connected!")}catch(_c){}
             // Now that the map/items/peers are in, announce ourselves.
             try{if(self.pvpSendHello)self.pvpSendHello()}catch(_h){}
             try{if(P.connected&&self.pvpSendNativeSpawn)self.pvpSendNativeSpawn()}catch(_s){}
@@ -117190,24 +117218,100 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
       if(roll<1242){list=DS.COMMON_REWARDS;item=list[Math.floor(hash/642)%list.length];return {category:item.category,id:item.id,count:item.count,tier:item.category===1?'block':'weapon'}}
       return null
     };
-    // --- Music: Dig+Trade player + synchronized PvP pre-match track ---
+        // --- Music: native in-game Dig+Trade player + PvP pre-match track ---
+    // UI uses title-menu red buttons (REDBUTTON_PNG + ob label) inside a ja panel.
     var TRACKS=['music_theme.ogg','music_theme2.ogg','music_theme3.ogg','music_theme4.ogg'];
-    var digHowl=null,digTrack=-1,pvpHowl=null,pvpKey='',pvpFightAt=0,pvpOffset=0,pvpBaseVolume=.7;
-    var player=document.createElement('div');player.id='diggerz-music-player';player.innerHTML='<div class="mp-title">MUSIC PLAYER</div><select id="diggerz-music-track"><option value="0">Track 1</option><option value="1">Track 2</option><option value="2">Track 3</option><option value="3">Track 4</option></select><div class="mp-row"><button id="diggerz-music-play">Play</button><button id="diggerz-music-pause">Pause</button></div><div class="mp-row"><button id="diggerz-music-restart">Restart</button><button id="diggerz-music-rewind">-2 sec</button></div>';
-    document.body.appendChild(player);
-    var style=document.createElement('style');style.id='diggerz-build233-style';style.textContent='#diggerz-music-player{display:none;position:fixed;left:10px;top:72px;z-index:2147482305;width:176px;padding:7px;background:rgba(10,17,25,.88);border:2px solid rgba(255,255,255,.72);border-radius:6px;color:#fff;font:700 11px/1.2 Arial,sans-serif;text-shadow:1px 1px #000;box-shadow:0 3px 12px rgba(0,0,0,.45)}#diggerz-music-player .mp-title{text-align:center;margin-bottom:5px;color:#ffe052}#diggerz-music-player select{width:100%;padding:4px;background:#111d2a;color:#fff;border:1px solid #64788e;border-radius:3px;font:inherit}#diggerz-music-player .mp-row{display:flex;gap:4px;margin-top:4px}#diggerz-music-player button{flex:1;padding:4px 2px;background:#263a50;color:#fff;border:1px solid #7b8fa4;border-radius:3px;font:inherit;cursor:pointer}#diggerz-music-player button:hover{background:#36506c}';document.head.appendChild(style);
-    var sel=document.getElementById('diggerz-music-track');
+    var TRACK_NAMES=['Track 1','Track 2','Track 3','Track 4'];
+    var digHowl=null,digTrack=0,digPlaying=false,pvpHowl=null,pvpKey='',pvpFightAt=0,pvpOffset=0,pvpBaseVolume=.7;
+    var musicUi=null,musicTrackLabel=null,musicPlayLabel=null,musicRoot=null;
+
     function newTrackHowl(i,loop,onload){return new Howl({src:[TRACKS[i]],preload:true,loop:!!loop,volume:pvpBaseVolume,onload:onload||null})}
     function digSetTrack(i,play){
-      i=Math.max(0,Math.min(3,i|0));
+      i=((i|0)%4+4)%4;
       if(!digHowl||digTrack!==i){if(digHowl)try{digHowl.unload()}catch(e){}digTrack=i;digHowl=newTrackHowl(i,false)}
-      if(play)try{digHowl.play()}catch(e){}
+      if(play){try{digHowl.play();digPlaying=true}catch(e){digPlaying=false}}
+      refreshMusicLabels();
     }
-    sel.onchange=function(){digSetTrack(+sel.value,true)};
-    document.getElementById('diggerz-music-play').onclick=function(){digSetTrack(+sel.value,true)};
-    document.getElementById('diggerz-music-pause').onclick=function(){if(digHowl)try{digHowl.pause()}catch(e){}};
-    document.getElementById('diggerz-music-restart').onclick=function(){digSetTrack(+sel.value,false);if(digHowl)try{digHowl.stop();digHowl.play()}catch(e){}};
-    document.getElementById('diggerz-music-rewind').onclick=function(){if(!digHowl)return;try{var pos=Number(digHowl.seek())||0;digHowl.seek(Math.max(0,pos-2))}catch(e){}};
+    function digTogglePlay(){
+      if(!digHowl){digSetTrack(digTrack|0,true);return}
+      if(digPlaying){try{digHowl.pause()}catch(e){}digPlaying=false}
+      else{try{digHowl.play();digPlaying=true}catch(e){}}
+      refreshMusicLabels();
+    }
+    function digCycleTrack(){digSetTrack(((digTrack|0)+1)%4,!!digPlaying)}
+    function refreshMusicLabels(){
+      try{
+        if(musicTrackLabel&&musicTrackLabel.E37)musicTrackLabel.E37('^7'+TRACK_NAMES[digTrack|0]+' ^0(click)');
+        if(musicPlayLabel&&musicPlayLabel.E37)musicPlayLabel.E37(digPlaying?'Pause':'Play');
+      }catch(e){}
+    }
+    function ensureMusicUi(){
+      try{
+        if(musicRoot&&!musicRoot.a0)return musicRoot;
+        if(typeof ja==='undefined'||typeof xa==='undefined'||typeof ob==='undefined'||typeof z==='undefined'||typeof u==='undefined'||!q||!q.MAIN_FONT)return null;
+        var panel=new ja(200,118,true);
+        panel._1='diggerz_music_player';
+        panel.B8=9;
+        panel.c0=true;
+        panel.A7=110;
+        panel.A8=90;
+        try{panel.set_local_alp(.92)}catch(_e){}
+
+        var title=new xa(0,-42,'^9MUSIC PLAYER',q.MAIN_FONT);
+        title.D7(panel);
+        panel._9.push(title);
+
+        var track=new ob(0,-8,'^7Track 1 ^0(click)',q.MAIN_FONT);
+        track.D7(panel);
+        track.C33=function(){digCycleTrack()};
+        panel._9.push(track);
+        musicTrackLabel=track;
+
+        // Same pattern as title-screen FIGHT! / Dig red buttons
+        var btn=z.I9();
+        btn.Init(u.REDBUTTON_PNG());
+        btn.D7(panel);
+        btn.b6=0;
+        btn.b7=34;
+        btn.set_local_xScale(btn.set_local_yScale(.42));
+        panel._9.push(btn);
+
+        var play=new ob(0,0,'',q.MAIN_FONT_BIG||q.MAIN_FONT);
+        play.D7(btn);
+        play.E37('Play');
+        play.b7=2;
+        play.C33=function(){digTogglePlay()};
+        panel._9.push(play);
+        musicPlayLabel=play;
+
+        try{
+          var hint=new xa(0,54,'^0click name to switch',q.MAIN_FONT_SMALL||q.MAIN_FONT);
+          hint.D7(panel);
+          panel._9.push(hint);
+        }catch(_h){}
+
+        musicUi=panel;
+        musicRoot=panel;
+        try{if(q.children&&q.children.indexOf(panel)<0)q.children.push(panel)}catch(_a){}
+        refreshMusicLabels();
+        return panel;
+      }catch(err){
+        try{console.warn('Diggerz music UI failed',err)}catch(_e){}
+        return null;
+      }
+    }
+    function setMusicUiVisible(show){
+      try{
+        if(show){
+          var ui=ensureMusicUi();
+          if(ui){ui.a2=true;try{ui.set_local_alp(.92)}catch(_e){}}
+        }else{
+          if(musicRoot){musicRoot.a2=false;try{musicRoot.set_local_alp(0)}catch(_e){}}
+          if(digHowl)try{digHowl.pause()}catch(e){};digPlaying=false;refreshMusicLabels();
+        }
+      }catch(e){}
+    }
+
     function startPvpMusic(track,startedAt,fightAt,serverNow){
       track=Number(track);if(!isFinite(track)||track<0||track>3)return;startedAt=+startedAt||Date.now();fightAt=+fightAt||0;pvpOffset=(+serverNow||Date.now())-Date.now();pvpFightAt=fightAt;
       var key=track+':'+startedAt;
@@ -117227,7 +117331,9 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
       return prevReceive233.call(this,m)
     };
     setInterval(function(){
-      var service=P.service,show=!!(P.joined&&P.mode==='digtrade'&&service&&service.mode==='digtrade');player.style.display=show?'block':'none';if(!show&&digHowl)try{digHowl.pause()}catch(e){};
+      var service=P.service;
+      var show=!!(P.joined&&P.mode==='digtrade'&&service&&service.mode==='digtrade'&&typeof Ph!=='undefined'&&l&&l.z38&&l.z38.i32===Ph.MODE_PLAYING);
+      setMusicUiVisible(show);
       if(P.mode==='pvp'&&pvpFightAt&&pvpKey&&pvpHowl){var rem=pvpFightAt-(Date.now()+pvpOffset);if(rem<=0){stopPvpMusic()}else if(rem<=3000){try{pvpHowl.volume(Math.max(0,pvpBaseVolume*(rem/3000)))}catch(e){}}else try{pvpHowl.volume(pvpBaseVolume)}catch(e){}}
       else if(P.mode!=='pvp'&&pvpHowl)stopPvpMusic();
     },100);

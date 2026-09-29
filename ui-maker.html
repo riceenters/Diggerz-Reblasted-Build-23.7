@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Diggerz UI Maker</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --panel: #131827;
+    --border: #52607d;
+    --accent: #ffe052;
+    --text: #e8eefc;
+    --muted: #9aa8c2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 13px/1.4 Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: grid;
+    grid-template-columns: 320px 1fr 300px;
+    grid-template-rows: auto 1fr;
+    height: 100vh;
+  }
+  header {
+    grid-column: 1 / -1;
+    padding: 10px 14px;
+    background: #0e1628;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  header h1 { margin: 0; font-size: 15px; color: var(--accent); letter-spacing: .04em; }
+  header .hint { color: var(--muted); font-size: 12px; }
+  aside, main, .export-col {
+    overflow: auto;
+    padding: 12px;
+    border-right: 1px solid #1c2740;
+  }
+  .export-col { border-right: none; border-left: 1px solid #1c2740; }
+  h2 { margin: 0 0 8px; font-size: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: .06em; }
+  section { margin-bottom: 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+  label { display: block; font-size: 11px; color: var(--muted); margin: 6px 0 3px; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%;
+    background: #0a101c;
+    color: var(--text);
+    border: 1px solid #3a4a66;
+    border-radius: 4px;
+    padding: 6px 8px;
+    font: inherit;
+  }
+  textarea { min-height: 70px; font-family: Consolas, monospace; font-size: 12px; }
+  button, .btn {
+    background: #263a50;
+    color: #fff;
+    border: 1px solid #7b8fa4;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font: 700 12px Arial, sans-serif;
+    cursor: pointer;
+  }
+  button:hover { background: #36506c; }
+  button.primary { background: #3d5a1f; border-color: #9ccc5a; color: #e8ffb0; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .row > * { flex: 1; }
+
+  /* ===== Diggerz-style stage ===== */
+  #stage-wrap {
+    background: #1a2740;
+    border: 2px solid #64788e;
+    border-radius: 6px;
+    min-height: 420px;
+    position: relative;
+    overflow: hidden;
+    background-image:
+      linear-gradient(180deg, #5ba3e0 0%, #7ec8f0 40%, #b8e0a0 40%, #6aaa3a 42%, #5a8a2e 100%);
+  }
+  #stage-wrap.dark {
+    background: #000;
+    background-image: none;
+  }
+  #stage {
+    position: relative;
+    width: 100%;
+    height: 480px;
+  }
+
+  /* Exact-ish diggerz panel (ja-like): dark fill + solid border */
+  .dz-panel {
+    position: absolute;
+    background: rgba(10, 17, 25, 0.92);
+    border: 2px solid rgba(255, 255, 255, 0.75);
+    border-radius: 2px;
+    box-shadow: 0 3px 12px rgba(0,0,0,.5);
+    padding: 8px;
+    color: #fff;
+    font: 700 12px/1.25 Arial, sans-serif;
+    text-shadow: 1px 1px #000;
+    user-select: none;
+  }
+  .dz-panel .dz-title {
+    text-align: center;
+    margin-bottom: 6px;
+    color: #ffe052;
+    font-weight: 700;
+  }
+  .dz-panel .dz-btn {
+    display: inline-block;
+    padding: 4px 8px;
+    margin: 2px;
+    background: #263a50;
+    border: 1px solid #7b8fa4;
+    border-radius: 3px;
+    color: #fff;
+    font: 700 11px Arial, sans-serif;
+    text-shadow: 1px 1px #000;
+    cursor: pointer;
+  }
+  .dz-panel .dz-btn:hover { background: #36506c; }
+  .dz-panel select {
+    width: 100%;
+    margin: 4px 0;
+    padding: 4px;
+    background: #111d2a;
+    color: #fff;
+    border: 1px solid #64788e;
+    border-radius: 3px;
+    font: 700 11px Arial, sans-serif;
+  }
+  .dz-panel .dz-row { display: flex; gap: 4px; margin-top: 4px; }
+  .dz-panel .dz-row .dz-btn { flex: 1; text-align: center; }
+
+  /* Diggerz chat text colors (^0–^9) via spans */
+  .dz-text { white-space: pre-wrap; word-break: break-word; }
+  .c0 { color: rgb(153,153,153); } /* 0.6 gray */
+  .c1 { color: rgb(255,77,77); }   /* red */
+  .c2 { color: rgb(77,255,77); }   /* green */
+  .c3 { color: rgb(77,255,255); }  /* cyan */
+  .c4 { color: rgb(77,77,255); }   /* blue */
+  .c5 { color: rgb(51,51,51); }    /* dark */
+  .c6 { color: rgb(153,77,255); }  /* purple */
+  .c7 { color: rgb(255,255,255); } /* white (default in engine often 7) */
+  .c8 { color: rgb(255,128,26); }  /* orange */
+  .c9 { color: rgb(255,217,38); }  /* gold/yellow */
+
+  #atlas-canvas, #crop-canvas {
+    max-width: 100%;
+    image-rendering: pixelated;
+    background: #222;
+    border: 1px solid #444;
+  }
+  #crop-preview {
+    image-rendering: pixelated;
+    background: repeating-conic-gradient(#333 0% 25%, #222 0% 50%) 50% / 12px 12px;
+    border: 1px solid #555;
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #crop-preview img { image-rendering: pixelated; max-width: 100%; }
+  code, pre {
+    background: #0a101c;
+    border: 1px solid #2a3a55;
+    border-radius: 4px;
+    padding: 8px;
+    font: 11px/1.4 Consolas, monospace;
+    overflow: auto;
+    max-height: 280px;
+    white-space: pre-wrap;
+  }
+  .swatch {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 1px solid #888;
+    vertical-align: middle;
+    margin-right: 4px;
+  }
+  .color-list div { margin: 3px 0; font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>DIGGERZ UI MAKER</h1>
+  <span class="hint">Drop this file in the game folder. Loads <code>tiles.png</code> / local assets. Uses the same <code>^0</code>–<code>^9</code> text colors and panel look as the game.</span>
+</header>
+
+<aside>
+  <section>
+    <h2>1. Assets</h2>
+    <label>Atlas / sprite sheet (tiles.png)</label>
+    <input type="file" id="atlasFile" accept="image/*"/>
+    <div class="row">
+      <button type="button" id="btnLoadTiles">Load ./tiles.png</button>
+      <button type="button" id="btnLoadBknd">Load ./bknd.png</button>
+    </div>
+    <label>Or paste image URL</label>
+    <input type="text" id="atlasUrl" placeholder="tiles.png"/>
+    <div class="row"><button type="button" id="btnLoadUrl">Load URL</button></div>
+  </section>
+
+  <section>
+    <h2>2. Crop region</h2>
+    <label>Click-drag on the atlas to select a region</label>
+    <div class="row">
+      <div><label>X</label><input type="number" id="cx" value="0"/></div>
+      <div><label>Y</label><input type="number" id="cy" value="0"/></div>
+      <div><label>W</label><input type="number" id="cw" value="32"/></div>
+      <div><label>H</label><input type="number" id="ch" value="32"/></div>
+    </div>
+    <div class="row">
+      <button type="button" id="btnApplyCrop">Apply crop</button>
+      <button type="button" id="btnAddSprite">Add to UI as icon</button>
+    </div>
+    <div id="crop-preview"></div>
+  </section>
+
+  <section>
+    <h2>3. Text (game color codes)</h2>
+    <label>Text with ^ codes (same as chat)</label>
+    <textarea id="textIn">^3MUSIC PLAYER
+^7Track 1 selected
+^2Play ^7| ^1Pause</textarea>
+    <div class="row">
+      <button type="button" id="btnPreviewText">Preview text</button>
+      <button type="button" id="btnAddText">Add text to UI</button>
+    </div>
+    <div class="color-list">
+      <div><span class="swatch c0"></span>^0 gray</div>
+      <div><span class="swatch c1"></span>^1 red</div>
+      <div><span class="swatch c2"></span>^2 green</div>
+      <div><span class="swatch c3"></span>^3 cyan</div>
+      <div><span class="swatch c4"></span>^4 blue</div>
+      <div><span class="swatch c5"></span>^5 dark</div>
+      <div><span class="swatch c6"></span>^6 purple</div>
+      <div><span class="swatch c7"></span>^7 white</div>
+      <div><span class="swatch c8"></span>^8 orange</div>
+      <div><span class="swatch c9"></span>^9 gold</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>4. Panel</h2>
+    <label>Title</label>
+    <input type="text" id="panelTitle" value="MUSIC PLAYER"/>
+    <div class="row">
+      <div><label>Width</label><input type="number" id="pw" value="176"/></div>
+      <div><label>Height</label><input type="number" id="ph" value="120"/></div>
+    </div>
+    <div class="row">
+      <div><label>Left</label><input type="number" id="pl" value="10"/></div>
+      <div><label>Top</label><input type="number" id="pt" value="72"/></div>
+    </div>
+    <div class="row">
+      <button type="button" class="primary" id="btnMakePanel">Create / update panel</button>
+    </div>
+    <div class="row">
+      <button type="button" id="btnMusicTemplate">Music player template</button>
+    </div>
+  </section>
+</aside>
+
+<main>
+  <section style="margin:0;padding:0;border:none;background:transparent">
+    <div class="row" style="margin-bottom:8px">
+      <button type="button" id="btnStageSky">Sky stage</button>
+      <button type="button" id="btnStageDark">Black (connecting) stage</button>
+      <button type="button" id="btnClear">Clear UI</button>
+    </div>
+    <div id="stage-wrap">
+      <div id="stage"></div>
+    </div>
+    <p class="hint" style="margin-top:8px;color:var(--muted)">
+      Drag panels on the stage to position them. This mimics in-game HUD placement (fixed screen coords).
+    </p>
+  </section>
+
+  <section>
+    <h2>Atlas view (crop source)</h2>
+    <canvas id="atlas-canvas" width="400" height="200"></canvas>
+  </section>
+</main>
+
+<div class="export-col">
+  <section>
+    <h2>Export — CSS HUD (drop-in)</h2>
+    <p class="hint" style="color:var(--muted);font-size:11px;margin:0 0 6px">
+      Paste into <code>index.html</code> or a small script. Same look as the current DOM music player, tuned to diggerz colors.
+    </p>
+    <pre id="exportCss"></pre>
+    <div class="row"><button type="button" id="btnCopyCss">Copy CSS/HTML</button></div>
+  </section>
+
+  <section>
+    <h2>Export — native game hooks</h2>
+    <p class="hint" style="color:var(--muted);font-size:11px;margin:0 0 6px">
+      How the real engine draws this: chat text via <code>R35.C46("^2Hello")</code>, panels via <code>ja</code> (dark fill + RECT_SIDES), labels via <code>xa</code> / <code>ob</code> with <code>q.MAIN_FONT</code> and <code>h4(colorIndex)</code>.
+    </p>
+    <pre id="exportNative"></pre>
+    <div class="row"><button type="button" id="btnCopyNative">Copy notes</button></div>
+  </section>
+
+  <section>
+    <h2>Live text preview</h2>
+    <div id="liveText" class="dz-panel" style="position:relative;left:0;top:0;width:100%"></div>
+  </section>
+</div>
+
+<script>
+/* ========== Exact diggerz text color map (from h4()) ==========
+   Engine multiplies texture by these RGB factors (0–1):
+   0: 0.6,0.6,0.6
+   1: 1, 0.3, 0.3
+   2: 0.3, 1, 0.3
+   3: 0.3, 1, 1
+   4: 0.3, 0.3, 1
+   5: 0.2, 0.2, 0.2
+   6: 0.6, 0.3, 1
+   7: (default white path — treated as 1,1,1 here)
+   8: 1, 0.5, 0.1
+   9: 1, 0.85, 0.15
+*/
+const DZ_COLORS = {
+  0: [0.6, 0.6, 0.6],
+  1: [1, 0.3, 0.3],
+  2: [0.3, 1, 0.3],
+  3: [0.3, 1, 1],
+  4: [0.3, 0.3, 1],
+  5: [0.2, 0.2, 0.2],
+  6: [0.6, 0.3, 1],
+  7: [1, 1, 1],
+  8: [1, 0.5, 0.1],
+  9: [1, 0.85, 0.15]
+};
+
+function parseDiggerzText(str) {
+  // Same rules as xa.E37: ^ then digit changes color; digit not drawn
+  let color = 7;
+  let html = '';
+  let i = 0;
+  const s = String(str || '');
+  while (i < s.length) {
+    const ch = s[i];
+    if (ch === '^' && i + 1 < s.length && s[i + 1] >= '0' && s[i + 1] <= '9') {
+      color = parseInt(s[i + 1], 10);
+      i += 2;
+      continue;
+    }
+    if (ch === '\n') { html += '<br/>'; i++; continue; }
+    const esc = ch === '<' ? '&lt;' : ch === '>' ? '&gt;' : ch === '&' ? '&amp;' : ch;
+    html += '<span class="c' + color + '">' + esc + '</span>';
+    i++;
+  }
+  return html;
+}
+
+function rgbCss(idx) {
+  const c = DZ_COLORS[idx] || DZ_COLORS[7];
+  return 'rgb(' + Math.round(c[0]*255) + ',' + Math.round(c[1]*255) + ',' + Math.round(c[2]*255) + ')';
+}
+
+/* ========== Atlas / crop ========== */
+const atlasCanvas = document.getElementById('atlas-canvas');
+const actx = atlasCanvas.getContext('2d');
+let atlasImg = null;
+let drag = null;
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+async function setAtlas(img) {
+  atlasImg = img;
+  const maxW = 520;
+  const scale = Math.min(1, maxW / img.width);
+  atlasCanvas.width = Math.floor(img.width * scale);
+  atlasCanvas.height = Math.floor(img.height * scale);
+  atlasCanvas._scale = scale;
+  actx.imageSmoothingEnabled = false;
+  actx.clearRect(0, 0, atlasCanvas.width, atlasCanvas.height);
+  actx.drawImage(img, 0, 0, atlasCanvas.width, atlasCanvas.height);
+  drawCropRect();
+}
+
+function drawCropRect() {
+  if (!atlasImg) return;
+  const scale = atlasCanvas._scale || 1;
+  const x = +cx.value, y = +cy.value, w = +cw.value, h = +ch.value;
+  actx.clearRect(0, 0, atlasCanvas.width, atlasCanvas.height);
+  actx.drawImage(atlasImg, 0, 0, atlasCanvas.width, atlasCanvas.height);
+  actx.strokeStyle = '#ffe052';
+  actx.lineWidth = 2;
+  actx.strokeRect(x * scale, y * scale, w * scale, h * scale);
+}
+
+function applyCrop() {
+  if (!atlasImg) return null;
+  const x = +cx.value|0, y = +cy.value|0, w = Math.max(1,+cw.value|0), h = Math.max(1,+ch.value|0);
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.drawImage(atlasImg, x, y, w, h, 0, 0, w, h);
+  const url = c.toDataURL('image/png');
+  const prev = document.getElementById('crop-preview');
+  prev.innerHTML = '';
+  const im = document.createElement('img');
+  im.src = url;
+  im.style.width = Math.min(128, w * 2) + 'px';
+  prev.appendChild(im);
+  return url;
+}
+
+const cx = document.getElementById('cx');
+const cy = document.getElementById('cy');
+const cw = document.getElementById('cw');
+const ch = document.getElementById('ch');
+[cx,cy,cw,ch].forEach(el => el.addEventListener('input', drawCropRect));
+
+atlasCanvas.addEventListener('mousedown', e => {
+  if (!atlasImg) return;
+  const scale = atlasCanvas._scale || 1;
+  const r = atlasCanvas.getBoundingClientRect();
+  const x = Math.floor((e.clientX - r.left) / scale);
+  const y = Math.floor((e.clientY - r.top) / scale);
+  drag = { x0: x, y0: y };
+  cx.value = x; cy.value = y; cw.value = 1; ch.value = 1;
+  drawCropRect();
+});
+window.addEventListener('mousemove', e => {
+  if (!drag || !atlasImg) return;
+  const scale = atlasCanvas._scale || 1;
+  const r = atlasCanvas.getBoundingClientRect();
+  const x = Math.floor((e.clientX - r.left) / scale);
+  const y = Math.floor((e.clientY - r.top) / scale);
+  cx.value = Math.min(drag.x0, x);
+  cy.value = Math.min(drag.y0, y);
+  cw.value = Math.max(1, Math.abs(x - drag.x0));
+  ch.value = Math.max(1, Math.abs(y - drag.y0));
+  drawCropRect();
+});
+window.addEventListener('mouseup', () => { drag = null; });
+
+document.getElementById('btnLoadTiles').onclick = async () => {
+  try { await setAtlas(await loadImage('tiles.png')); }
+  catch { alert('Could not load tiles.png — put ui-maker.html next to tiles.png or pick a file.'); }
+};
+document.getElementById('btnLoadBknd').onclick = async () => {
+  try { await setAtlas(await loadImage('bknd.png')); }
+  catch { alert('Could not load bknd.png'); }
+};
+document.getElementById('btnLoadUrl').onclick = async () => {
+  const u = document.getElementById('atlasUrl').value.trim();
+  if (!u) return;
+  try { await setAtlas(await loadImage(u)); } catch { alert('Failed to load URL'); }
+};
+document.getElementById('atlasFile').onchange = e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const url = URL.createObjectURL(f);
+  loadImage(url).then(setAtlas);
+};
+document.getElementById('btnApplyCrop').onclick = applyCrop;
+
+/* ========== Stage / panels ========== */
+const stage = document.getElementById('stage');
+let activePanel = null;
+
+function makePanel() {
+  const title = document.getElementById('panelTitle').value || 'PANEL';
+  const w = +document.getElementById('pw').value || 176;
+  const h = +document.getElementById('ph').value || 120;
+  const left = +document.getElementById('pl').value || 10;
+  const top = +document.getElementById('pt').value || 72;
+
+  let panel = activePanel;
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.className = 'dz-panel';
+    panel.dataset.role = 'panel';
+    stage.appendChild(panel);
+    activePanel = panel;
+    enableDrag(panel);
+  }
+  panel.style.width = w + 'px';
+  panel.style.minHeight = h + 'px';
+  panel.style.left = left + 'px';
+  panel.style.top = top + 'px';
+  if (!panel.querySelector('.dz-title')) {
+    panel.innerHTML = '<div class="dz-title"></div><div class="dz-body"></div>';
+  }
+  panel.querySelector('.dz-title').textContent = title;
+  updateExport();
+  return panel;
+}
+
+function enableDrag(el) {
+  let ox = 0, oy = 0, dragging = false;
+  el.addEventListener('mousedown', e => {
+    if (e.target.closest('select,button,input')) return;
+    dragging = true;
+    activePanel = el;
+    const r = el.getBoundingClientRect();
+    const sr = stage.getBoundingClientRect();
+    ox = e.clientX - r.left;
+    oy = e.clientY - r.top;
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const sr = stage.getBoundingClientRect();
+    const left = Math.round(e.clientX - sr.left - ox);
+    const top = Math.round(e.clientY - sr.top - oy);
+    el.style.left = left + 'px';
+    el.style.top = top + 'px';
+    document.getElementById('pl').value = left;
+    document.getElementById('pt').value = top;
+  });
+  window.addEventListener('mouseup', () => {
+    if (dragging) { dragging = false; updateExport(); }
+  });
+}
+
+document.getElementById('btnMakePanel').onclick = makePanel;
+
+document.getElementById('btnMusicTemplate').onclick = () => {
+  document.getElementById('panelTitle').value = 'MUSIC PLAYER';
+  document.getElementById('pw').value = 176;
+  document.getElementById('ph').value = 118;
+  document.getElementById('pl').value = 10;
+  document.getElementById('pt').value = 72;
+  const p = makePanel();
+  p.querySelector('.dz-body').innerHTML =
+    '<select><option>Track 1</option><option>Track 2</option><option>Track 3</option><option>Track 4</option></select>' +
+    '<div class="dz-row"><span class="dz-btn">Play</span><span class="dz-btn">Pause</span></div>' +
+    '<div class="dz-row"><span class="dz-btn">Restart</span><span class="dz-btn">-2 sec</span></div>';
+  updateExport();
+};
+
+document.getElementById('btnPreviewText').onclick = () => {
+  document.getElementById('liveText').innerHTML =
+    '<div class="dz-text">' + parseDiggerzText(document.getElementById('textIn').value) + '</div>';
+};
+document.getElementById('btnAddText').onclick = () => {
+  const p = activePanel || makePanel();
+  const body = p.querySelector('.dz-body') || p;
+  const div = document.createElement('div');
+  div.className = 'dz-text';
+  div.innerHTML = parseDiggerzText(document.getElementById('textIn').value);
+  body.appendChild(div);
+  updateExport();
+};
+document.getElementById('btnAddSprite').onclick = () => {
+  const url = applyCrop();
+  if (!url) { alert('Load an atlas and crop first'); return; }
+  const p = activePanel || makePanel();
+  const body = p.querySelector('.dz-body') || p;
+  const im = document.createElement('img');
+  im.src = url;
+  im.style.imageRendering = 'pixelated';
+  im.style.height = '24px';
+  im.style.verticalAlign = 'middle';
+  im.style.margin = '2px';
+  body.appendChild(im);
+  updateExport();
+};
+
+document.getElementById('btnStageSky').onclick = () => {
+  document.getElementById('stage-wrap').classList.remove('dark');
+};
+document.getElementById('btnStageDark').onclick = () => {
+  document.getElementById('stage-wrap').classList.add('dark');
+};
+document.getElementById('btnClear').onclick = () => {
+  stage.innerHTML = '';
+  activePanel = null;
+  updateExport();
+};
+
+/* ========== Export ========== */
+function updateExport() {
+  const panel = activePanel || stage.querySelector('.dz-panel');
+  if (!panel) {
+    document.getElementById('exportCss').textContent = '/* Create a panel first */';
+    document.getElementById('exportNative').textContent = '/* Create a panel first */';
+    return;
+  }
+  const left = parseInt(panel.style.left, 10) || 10;
+  const top = parseInt(panel.style.top, 10) || 72;
+  const width = parseInt(panel.style.width, 10) || 176;
+  const title = (panel.querySelector('.dz-title') || {}).textContent || 'PANEL';
+  const bodyHtml = (panel.querySelector('.dz-body') || panel).innerHTML;
+
+  const css = `<!-- Diggerz-style HUD panel (from UI Maker) -->
+<style>
+#diggerz-custom-ui{
+  display:block;position:fixed;left:${left}px;top:${top}px;z-index:2147482305;
+  width:${width}px;padding:8px;
+  background:rgba(10,17,25,.92);border:2px solid rgba(255,255,255,.75);
+  border-radius:2px;color:#fff;font:700 12px/1.25 Arial,sans-serif;
+  text-shadow:1px 1px #000;box-shadow:0 3px 12px rgba(0,0,0,.5);
+}
+#diggerz-custom-ui .dz-title{text-align:center;margin-bottom:6px;color:#ffe052}
+#diggerz-custom-ui select{width:100%;padding:4px;background:#111d2a;color:#fff;border:1px solid #64788e;border-radius:3px;font:inherit}
+#diggerz-custom-ui .dz-row{display:flex;gap:4px;margin-top:4px}
+#diggerz-custom-ui .dz-btn, #diggerz-custom-ui button{
+  flex:1;padding:4px 2px;background:#263a50;color:#fff;border:1px solid #7b8fa4;
+  border-radius:3px;font:inherit;cursor:pointer;text-align:center
+}
+#diggerz-custom-ui .dz-btn:hover, #diggerz-custom-ui button:hover{background:#36506c}
+/* diggerz ^ color classes */
+.c0{color:rgb(153,153,153)}.c1{color:rgb(255,77,77)}.c2{color:rgb(77,255,77)}
+.c3{color:rgb(77,255,255)}.c4{color:rgb(77,77,255)}.c5{color:rgb(51,51,51)}
+.c6{color:rgb(153,77,255)}.c7{color:#fff}.c8{color:rgb(255,128,26)}.c9{color:rgb(255,217,38)}
+</style>
+<div id="diggerz-custom-ui">
+  <div class="dz-title">${title.replace(/</g,'&lt;')}</div>
+  <div class="dz-body">${bodyHtml}</div>
+</div>`;
+
+  document.getElementById('exportCss').textContent = css;
+
+  const native = `// Diggerz engine equivalents (reference for a real in-world UI)
+//
+// Text (chat / labels) — color codes ^0-^9 map to sprite.h4(n):
+//   l.z38.R35.C46("^3MUSIC PLAYER");     // chat line
+//   var label = new xa(0, 0, "^7Track 1", q.MAIN_FONT);
+//   label.e38 = Pc.LEFT;
+//
+// Clickable button text:
+//   var btn = new ob(0, 0, "Play", q.MAIN_FONT);
+//   btn.C33 = function(){ /* on click */ };
+//
+// Panel frame (dark fill + side borders):
+//   var panel = new ja(width, height, true);  // true = shaded background
+//   panel.A7 = screenX;  // center X in game coords
+//   panel.A8 = screenY;
+//   panel._9.push(label);
+//
+// Color table (engine h4):
+//   0 gray  1 red  2 green  3 cyan  4 blue
+//   5 dark  6 purple  7 white  8 orange  9 gold
+//
+// Cropping sprites from tiles.png uses the same rect crop as the maker:
+//   source x,y,w,h → draw sub-rectangle (Init + _5 crop in engine).
+//
+// For the music player specifically, wire buttons to your existing digHowl
+// controls (Play / Pause / Restart / seek -2s) once the panel is in-game.
+`;
+  document.getElementById('exportNative').textContent = native;
+}
+
+document.getElementById('btnCopyCss').onclick = () => {
+  navigator.clipboard.writeText(document.getElementById('exportCss').textContent);
+};
+document.getElementById('btnCopyNative').onclick = () => {
+  navigator.clipboard.writeText(document.getElementById('exportNative').textContent);
+};
+
+// Auto-try tiles.png + music template
+document.getElementById('btnMusicTemplate').click();
+document.getElementById('btnPreviewText').click();
+loadImage('tiles.png').then(setAtlas).catch(() => {});
+updateExport();
+</script>
+</body>
+</html>
