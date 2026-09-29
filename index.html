@@ -118134,57 +118134,12 @@ function addSupportUI(){
 
 <script id="diggerz-mobile-chat-enter">
 (function(){
-  // Native Enter button removed — mobile soft-keyboard Enter works.
-  // Keep key handler only.
-  function getOpenChat() {
-    try {
-      if (window.__diggerzChatOpen && !window.__diggerzChatOpen.a0)
-        return window.__diggerzChatOpen;
-    } catch (e) {}
-    return null;
-  }
-  function sendChat() {
-    var chat = getOpenChat();
-    if (!chat) return;
-    try {
-      if (chat.D31) {
-        try {
-          if (chat.D31.Q30 && typeof chat.D31.Q30.get_text === 'function') {
-            var t = String(chat.D31.Q30.get_text() || '');
-            if (t) {
-              chat.D31.q35 = t;
-              try { chat.D31.E37(t); } catch (eE) {}
-            }
-          }
-        } catch (eT) {}
-        if (typeof chat.y1 === 'function') {
-          chat.y1();
-          return;
-        }
-      }
-    } catch (e) {}
-    try {
-      if (!window.q) return;
-      if (!q.mKeyQueue) q.mKeyQueue = [];
-      if (q.mKeyQueue.indexOf(13) < 0) q.mKeyQueue.push(13);
-      q.mKeyDown = q.mKeyDown || [];
-      q.mKeyDown[13] = true;
-    } catch (e2) {}
-  }
-  function onKey(ev) {
-    var isEnter = ev.key === 'Enter' || ev.keyCode === 13 || ev.which === 13;
-    if (!isEnter) return;
-    if (!getOpenChat()) return;
-    sendChat();
-    try { ev.preventDefault(); } catch (e) {}
-  }
-  document.addEventListener('keydown', onKey, true);
-  document.addEventListener('keypress', onKey, true);
-  // Hide any leftover HTML Enter button from older builds
+  // Removed: document keydown/keypress Enter handlers were double-sending chat.
+  // Native chat already binds Enter to y1 via D31.q39 — one send only.
   try {
     var old = document.getElementById('diggerz-chat-enter-btn');
     if (old) old.style.display = 'none';
-  } catch (e3) {}
+  } catch (e) {}
 })();
 </script>
 
