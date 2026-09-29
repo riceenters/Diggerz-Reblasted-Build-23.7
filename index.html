@@ -87636,9 +87636,17 @@ return true
                         window.__diggerzLoginPanel = null;
                     }
                 } catch (eClose) {}
-                var popup = new $b(this, "Enter your email", "", 64, A(this, this.D59), 440, 200);
+                var popup = new $b(this, "Enter your email", "", 80, A(this, this.D59), 480, 220);
                 popup._1 = "diggerz_email_popup";
+                window.__diggerzEmailPopup = popup;
                 this._9.push(popup);
+                // Focus the text field so typing goes into q35
+                try {
+                    if (popup.F30) {
+                        popup.F30.Q31 = !0;
+                        if (popup.F30.Q30) q.thisMain.stage.set_focus(popup.F30.Q30);
+                    }
+                } catch (eF) {}
             });
             eBg._9 = eBg._9 || [];
             eBg._9.push(eLbl);
@@ -87656,31 +87664,59 @@ return true
         },
         D58: function(a) {},
         D59: function() {
-            // Okay on the native email $b popup
-            var a = q.GetChildByType($b);
-            null == a && (a = this.f4($b));
-            if (null == a || null == a.F30) return;
+            // Okay / Enter on the native email $b popup
+            var a = window.__diggerzEmailPopup || null;
+            try {
+                if (!a || a.a0) a = this.f4($b);
+            } catch (e0) { a = null; }
+            try {
+                if (!a || a.a0) a = q.GetChildByType($b);
+            } catch (e1) {}
+            if (null == a || null == a.F30) {
+                this._9.push(new vb(this, "", "^1Could not read the email field. Try again.", new Cd, vb.F39));
+                return;
+            }
+            // Force any pending soft-keyboard text into q35 (same path the engine uses)
             var email = "";
             try {
-                if (a.F30.Q30 && typeof a.F30.Q30.get_text === "function")
-                    email = String(a.F30.Q30.get_text() || "");
-                else
-                    email = String(a.F30.q35 || "");
+                var field = a.F30;
+                try {
+                    if (field.Q30 && typeof field.Q30.get_text === "function") {
+                        var pending = String(field.Q30.get_text() || "");
+                        if (pending) {
+                            field.q35 = String(field.q35 || "") + pending;
+                            try { field.Q30.set_text(""); } catch (e2) {}
+                            try { field.E37(field.q35); } catch (e3) {}
+                        }
+                    }
+                } catch (e4) {}
+                email = String(field.q35 || "");
+                if (!email) {
+                    try { email = String(field.E32 || ""); } catch (e5) {}
+                }
+                if (!email && field.Q30 && typeof field.Q30.get_text === "function") {
+                    try { email = String(field.Q30.get_text() || ""); } catch (e6) {}
+                }
             } catch (eR) {
-                email = String(a.F30.q35 || "");
+                email = "";
             }
-            email = email.trim().toLowerCase();
-            if (!email || email.indexOf("@") < 0) {
-                this._9.push(new vb(this, "", "^1Enter a valid email address.", new Cd, vb.F39));
+            // Strip diggerz color codes if any leaked in
+            email = String(email || "").replace(/\^\d/g, "").trim().toLowerCase();
+            // Accept any normal email (gmail, yahoo, etc.) — only need non-empty + @
+            var at = email.indexOf("@");
+            var ok = email.length >= 3 && at > 0 && at < email.length - 1;
+            if (!ok) {
+                this._9.push(new vb(this, "", "^1Type your email in the box, then press Okay.", new Cd, vb.F39));
                 return;
             }
             q.thisMain.userEmail = email;
-            // Close the $b popup
-            try { a.a0 = 1; } catch (eC) {}
+            try {
+                a.a0 = 1;
+                try { E.u4(a, 0, 300, 1, 1, 0); } catch (eU) {}
+            } catch (eC) {}
+            window.__diggerzEmailPopup = null;
             if (window.DiggerzAuth237 && window.DiggerzAuth237.sendEmailLink)
                 window.DiggerzAuth237.sendEmailLink(email, this);
-            else if (window.DiggerzAuth237 && window.DiggerzAuth237.requestLink)
-                window.DiggerzAuth237.requestLink(email, q.thisMain.userName, this, a);
             else
                 this._9.push(new vb(this, "", "^1Email login is not ready yet. Refresh the page.", new Cd, vb.F39));
         },
@@ -118538,20 +118574,18 @@ function addSupportUI(){
           if (typeof q.SaveGlobals === 'function') q.SaveGlobals();
         }
       } catch (e) {}
-      // After login / page load while signed in: load account into this browser
+      // After login / page load while signed in: load account into this browser.
+      // Reload at most ONCE per uid per tab session — never clear the flag (that caused an infinite reload loop).
       if (!skipPull) {
         pullCloudSave(true).then(function(data){
           var hadInv = data && data.inventory && inventoryScore(data.inventory) > 0;
           console.log('[Diggerz Cloud] post-auth pull', hadInv ? 'got items' : 'no items');
           try {
-            var already = sessionStorage.getItem('diggerz.cloud.appliedReload') === '1';
-            if (hadInv && !already) {
-              sessionStorage.setItem('diggerz.cloud.appliedReload', '1');
-              // Reload so Dig+Trade reads the fresh localStorage state
+            var flag = 'diggerz.cloud.appliedReload.' + (state.uid || 'anon');
+            if (hadInv && sessionStorage.getItem(flag) !== '1') {
+              sessionStorage.setItem(flag, '1');
               setTimeout(function(){ location.reload(); }, 400);
-              return;
             }
-            if (already) sessionStorage.removeItem('diggerz.cloud.appliedReload');
           } catch (e2) {}
         });
       }
@@ -118872,9 +118906,14 @@ async function logout() {
       applySession(result.user, true);
       saveLocal();
       state.busy = false;
-      // Load cloud save after email link login (same as returning user)
       try {
-        await pullCloudSave(true);
+        var data = await pullCloudSave(true);
+        var hadInv = data && data.inventory && inventoryScore(data.inventory) > 0;
+        var flag = 'diggerz.cloud.appliedReload.' + (state.uid || 'anon');
+        if (hadInv && sessionStorage.getItem(flag) !== '1') {
+          sessionStorage.setItem(flag, '1');
+          setTimeout(function(){ location.reload(); }, 400);
+        }
       } catch (e3) {}
       console.log('[Diggerz Auth] email link sign-in ok', state.email);
       return true;
