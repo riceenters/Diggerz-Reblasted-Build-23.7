@@ -117849,12 +117849,15 @@ function addSupportUI(){
 
 <script id="diggerz-mobile-chat-enter">
 (function(){
+  var btn = null;
+  var style = null;
+
   function findChat(list, depth) {
-    if (!list || depth > 12) return null;
+    if (!list || depth > 14) return null;
     for (var i = 0; i < list.length; i++) {
       var o = list[i];
       if (!o) continue;
-      if (o._1 === 'chat_local') return o;
+      if (o._1 === 'chat_local' && !o.a0) return o;
       if (o._9) {
         var f = findChat(o._9, depth + 1);
         if (f) return f;
@@ -117862,44 +117865,110 @@ function addSupportUI(){
     }
     return null;
   }
-  function pushEnterToChat() {
+
+  function getOpenChat() {
     try {
-      if (!window.q) return false;
+      if (!window.q) return null;
       var roots = [];
       try { if (q.thisMain && q.thisMain._9) roots.push(q.thisMain._9); } catch (e) {}
-      try { if (q.children) roots.push(q.children); } catch (e2) {}
-      try { if (window.l && l.z38 && l.z38._9) roots.push(l.z38._9); } catch (e3) {}
-      var chat = null;
-      for (var r = 0; r < roots.length && !chat; r++) chat = findChat(roots[r], 0);
-      if (!chat) return false;
-      // Prefer direct submit if text is already in the field
-      try {
-        if (chat.D31 && String(chat.D31.q35 || '').length > 0 && typeof chat.y1 === 'function') {
-          chat.y1();
-          return true;
-        }
-      } catch (e4) {}
+      try { if (window.l && l.z38 && l.z38._9) roots.push(l.z38._9); } catch (e2) {}
+      try { if (q.children) roots.push(q.children); } catch (e3) {}
+      for (var r = 0; r < roots.length; r++) {
+        var c = findChat(roots[r], 0);
+        if (c) return c;
+      }
+    } catch (e4) {}
+    return null;
+  }
+
+  function sendChat() {
+    var chat = getOpenChat();
+    if (!chat) return;
+    try {
+      if (chat.D31 && typeof chat.y1 === 'function') {
+        // Ensure text is pulled from soft keyboard field first
+        try {
+          if (chat.D31.Q30 && chat.D31.Q30.get_text) {
+            var t = String(chat.D31.Q30.get_text() || '');
+            if (t && (!chat.D31.q35 || !chat.D31.q35.length)) {
+              chat.D31.q35 = t;
+              try { chat.D31.E37(t); } catch (eE) {}
+            }
+          }
+        } catch (eT) {}
+        chat.y1();
+        return;
+      }
+    } catch (e) {}
+    try {
       if (!q.mKeyQueue) q.mKeyQueue = [];
       if (q.mKeyQueue.indexOf(13) < 0) q.mKeyQueue.push(13);
       q.mKeyDown = q.mKeyDown || [];
       q.mKeyDown[13] = true;
-      return true;
-    } catch (e) { return false; }
+    } catch (e2) {}
   }
+
+  function ensureBtn() {
+    if (btn) return btn;
+    style = document.createElement('style');
+    style.textContent = [
+      '#diggerz-chat-enter-btn{display:none;position:fixed;z-index:2147483646;left:50%;transform:translateX(-50%);',
+      'min-width:120px;height:40px;padding:0 18px;border:3px solid #111;border-radius:4px;cursor:pointer;',
+      'background:#d94a38;color:#fff;font:800 18px Arial Black,Arial,sans-serif;text-transform:uppercase;',
+      'letter-spacing:1px;box-shadow:0 4px 0 #8a281c;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}',
+      '#diggerz-chat-enter-btn.show{display:block;}',
+      '#diggerz-chat-enter-btn:active{transform:translateX(-50%) translateY(2px);box-shadow:0 2px 0 #8a281c;}'
+    ].join('');
+    document.head.appendChild(style);
+    btn = document.createElement('button');
+    btn.id = 'diggerz-chat-enter-btn';
+    btn.type = 'button';
+    btn.textContent = 'Enter';
+    btn.addEventListener('click', function(ev) {
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {}
+      sendChat();
+    });
+    btn.addEventListener('touchend', function(ev) {
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {}
+      sendChat();
+    }, { passive: false });
+    document.body.appendChild(btn);
+    return btn;
+  }
+
+  function positionBtn() {
+    var el = ensureBtn();
+    var canvas = document.querySelector('canvas');
+    var rect = canvas ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+    // Chat box sits near top center (A8 ≈ 50). Place Enter just under it.
+    el.style.left = Math.round(rect.left + rect.width * 0.5) + 'px';
+    el.style.top = Math.round(rect.top + Math.max(70, rect.height * 0.11) + 36) + 'px';
+  }
+
+  function tick() {
+    var chat = getOpenChat();
+    var el = ensureBtn();
+    if (chat) {
+      positionBtn();
+      el.classList.add('show');
+    } else {
+      el.classList.remove('show');
+    }
+  }
+
+  // Keyboard Enter still works on mobile soft keyboards
   function onKey(ev) {
     var isEnter = ev.key === 'Enter' || ev.keyCode === 13 || ev.which === 13;
     if (!isEnter) return;
-    if (pushEnterToChat()) {
-      try { ev.preventDefault(); } catch (e) {}
-    }
+    if (!getOpenChat()) return;
+    sendChat();
+    try { ev.preventDefault(); } catch (e) {}
   }
   document.addEventListener('keydown', onKey, true);
   document.addEventListener('keypress', onKey, true);
-  document.addEventListener('keyup', function(ev) {
-    if (ev.key === 'Enter' || ev.keyCode === 13) {
-      try { if (window.q && q.mKeyDown) q.mKeyDown[13] = false; } catch (e) {}
-    }
-  }, true);
+
+  setInterval(tick, 200);
+  window.addEventListener('resize', function(){ if (btn && btn.classList.contains('show')) positionBtn(); });
 })();
 </script>
 
@@ -117967,40 +118036,83 @@ function addSupportUI(){
     } catch (e) {}
     return 'diggerz.digtrade.rebuild.v3';
   }
+
+  function defaultAppearance() {
+    return [0, 247, 0, 0, 326, 0, 0, 0, 0, 0, 0];
+  }
+
+  function normalizeSlot(item) {
+    if (item == null) return { category: 0, id: 0, variant: 0, count: 0 };
+    if (typeof item === 'number') {
+      return { category: 0, id: item | 0, variant: 0, count: item ? 1 : 0 };
+    }
+    return {
+      category: Math.max(0, Math.min(6, Number(item.category) || 0)),
+      id: Math.max(0, Math.min(2047, Number(item.id) || 0)),
+      variant: Math.max(0, Math.min(31, Number(item.variant) || 0)),
+      count: Math.max(0, Math.min(65535, Number(item.count) || 0))
+    };
+  }
+
+  function normalizeInventory(inv) {
+    if (!inv) return null;
+    var slotsIn = Array.isArray(inv.slots) ? inv.slots : [];
+    if (slotsIn.length < 3) {
+      // pad to valid length
+      while (slotsIn.length < 3) slotsIn.push({ category: 0, id: 0, variant: 0, count: 0 });
+    }
+    var slots = [];
+    for (var i = 0; i < slotsIn.length; i++) slots.push(normalizeSlot(slotsIn[i]));
+    var appearance = Array.isArray(inv.appearance) && inv.appearance.length
+      ? inv.appearance.map(function(n){ return Number(n) || 0; })
+      : defaultAppearance();
+    while (appearance.length < 11) appearance.push(0);
+    return {
+      version: 6,
+      slots: slots,
+      appearance: appearance,
+      appearanceText: String(inv.appearanceText || ''),
+      wins: inv.wins | 0,
+      coins: inv.coins | 0,
+      mined: inv.mined | 0,
+      placed: inv.placed | 0,
+      starterLoadoutVersion: inv.starterLoadoutVersion | 0,
+      x: inv.x,
+      y: inv.y
+    };
+  }
+
   function collectInventory() {
     try {
+      var rawObj = null;
       var svc = window.P && P.service;
       if (svc && svc.state && Array.isArray(svc.state.slots)) {
-        var s = svc.state;
-        return {
-          version: s.version || 6,
-          slots: JSON.parse(JSON.stringify(s.slots)),
-          appearance: Array.isArray(s.appearance) ? JSON.parse(JSON.stringify(s.appearance)) : s.appearance,
-          appearanceText: s.appearanceText || '',
-          wins: s.wins | 0,
-          coins: s.coins | 0,
-          mined: s.mined | 0,
-          placed: s.placed | 0,
-          starterLoadoutVersion: s.starterLoadoutVersion | 0
+        rawObj = {
+          version: svc.state.version || 6,
+          slots: svc.state.slots,
+          appearance: svc.state.appearance,
+          appearanceText: svc.state.appearanceText || '',
+          wins: svc.state.wins | 0,
+          coins: svc.state.coins | 0,
+          mined: svc.state.mined | 0,
+          placed: svc.state.placed | 0,
+          starterLoadoutVersion: svc.state.starterLoadoutVersion | 0,
+          x: svc.state.x,
+          y: svc.state.y
         };
+      } else {
+        var raw = localStorage.getItem(digtradeStorageKey());
+        if (raw) {
+          try { rawObj = JSON.parse(raw); } catch (e0) { rawObj = null; }
+        }
       }
-      // Title screen / other window: read digtrade save from localStorage
-      var raw = localStorage.getItem(digtradeStorageKey());
-      if (!raw) return null;
-      var parsed = JSON.parse(raw);
-      if (!parsed || !Array.isArray(parsed.slots)) return null;
-      return {
-        version: parsed.version || 6,
-        slots: parsed.slots,
-        appearance: parsed.appearance,
-        appearanceText: parsed.appearanceText || '',
-        wins: parsed.wins | 0,
-        coins: parsed.coins | 0,
-        mined: parsed.mined | 0,
-        placed: parsed.placed | 0,
-        starterLoadoutVersion: parsed.starterLoadoutVersion | 0
-      };
-    } catch (e) { return null; }
+      var norm = normalizeInventory(rawObj);
+      if (norm) console.log('[Diggerz Cloud] collectInventory slots=', norm.slots.length, 'filled=', inventoryScore(norm));
+      return norm;
+    } catch (e) {
+      console.warn('[Diggerz Cloud] collectInventory failed', e);
+      return null;
+    }
   }
 
   function applyProfile(data) {
@@ -118028,62 +118140,86 @@ function addSupportUI(){
     } catch (e) {}
   }
 
-    function applyInventory(inv) {
-    if (!inv || !Array.isArray(inv.slots)) return;
+  function applyInventory(inv) {
+    var norm = normalizeInventory(inv);
+    if (!norm || !Array.isArray(norm.slots)) {
+      console.warn('[Diggerz Cloud] applyInventory: invalid inventory', inv);
+      return false;
+    }
     try {
       var key = digtradeStorageKey();
+      // Preserve map fields from existing save if present
       var existing = null;
       try { existing = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) {}
       var merged = existing && typeof existing === 'object' ? existing : {};
-      merged.version = inv.version || merged.version || 6;
-      merged.slots = inv.slots;
-      if (Array.isArray(inv.appearance)) merged.appearance = inv.appearance;
-      if (inv.appearanceText != null) merged.appearanceText = inv.appearanceText;
-      if (inv.wins != null) merged.wins = inv.wins | 0;
-      if (inv.coins != null) merged.coins = inv.coins | 0;
-      if (inv.mined != null) merged.mined = inv.mined | 0;
-      if (inv.placed != null) merged.placed = inv.placed | 0;
-      if (inv.starterLoadoutVersion != null) merged.starterLoadoutVersion = inv.starterLoadoutVersion | 0;
+      merged.version = 6;
+      merged.slots = norm.slots;
+      merged.appearance = norm.appearance;
+      merged.appearanceText = norm.appearanceText || '';
+      merged.wins = norm.wins | 0;
+      merged.coins = norm.coins | 0;
+      merged.mined = norm.mined | 0;
+      merged.placed = norm.placed | 0;
+      merged.starterLoadoutVersion = norm.starterLoadoutVersion | 0;
+      if (norm.x != null) merged.x = norm.x;
+      if (norm.y != null) merged.y = norm.y;
+      // Ensure digtrade validState will accept this
       localStorage.setItem(key, JSON.stringify(merged));
+      console.log('[Diggerz Cloud] wrote localStorage', key, 'filled~', inventoryScore(norm));
+
       var svc = window.P && P.service;
       if (svc && svc.state) {
-        svc.state.slots = inv.slots;
-        if (Array.isArray(inv.appearance)) svc.state.appearance = inv.appearance;
-        if (inv.appearanceText != null) svc.state.appearanceText = inv.appearanceText;
-        if (inv.wins != null) svc.state.wins = inv.wins | 0;
-        if (inv.coins != null) svc.state.coins = inv.coins | 0;
-        if (inv.mined != null) svc.state.mined = inv.mined | 0;
-        if (inv.placed != null) svc.state.placed = inv.placed | 0;
+        svc.state.slots = norm.slots;
+        svc.state.appearance = norm.appearance;
+        svc.state.appearanceText = norm.appearanceText || '';
+        svc.state.wins = norm.wins | 0;
+        svc.state.coins = norm.coins | 0;
+        svc.state.mined = norm.mined | 0;
+        svc.state.placed = norm.placed | 0;
         try { if (typeof svc.save === 'function') svc.save(true); } catch (e3) {}
         try { if (typeof svc.applyAppearance === 'function') svc.applyAppearance(); } catch (e4) {}
       }
-      console.log('[Diggerz Cloud] inventory applied (' + inv.slots.length + ' slots)');
-    } catch (e) { console.warn('[Diggerz Cloud] applyInventory failed', e); }
+      return true;
+    } catch (e) {
+      console.warn('[Diggerz Cloud] applyInventory failed', e);
+      return false;
+    }
   }
 
   async function pullCloudSave(force) {
-    if (!state.uid || !db) return null;
+    if (!state.uid || !db) {
+      console.warn('[Diggerz Cloud] pull: not ready', !!state.uid, !!db);
+      return null;
+    }
     try {
       var snap = await db.collection('users').doc(state.uid).get();
-      if (!snap.exists) return null;
+      if (!snap.exists) {
+        console.log('[Diggerz Cloud] pull: no document for', state.uid);
+        return null;
+      }
       var data = snap.data() || {};
+      // Prefer inventoryJson (Firestore-safe) then inventory object
+      var inv = null;
+      if (data.inventoryJson) {
+        try { inv = JSON.parse(data.inventoryJson); } catch (e0) { inv = null; }
+      }
+      if (!inv && data.inventory) inv = data.inventory;
+
       var localInv = collectInventory();
       var localScore = inventoryScore(localInv);
-      var cloudScore = inventoryScore(data.inventory);
-      // Safety: Settings Load uses force=true. Never silently replace a fuller local inventory.
-      if (!force && localScore > cloudScore + 1) {
-        console.log('[Diggerz Cloud] skip auto-load: this browser has more items than cloud', localScore, '>', cloudScore);
-        return { skipped: true, reason: 'local-richer', profile: data.profile, inventory: data.inventory, updatedAt: data.updatedAt };
-      }
+      var cloudScore = inventoryScore(inv);
+      console.log('[Diggerz Cloud] pull scores local=', localScore, 'cloud=', cloudScore, 'force=', !!force);
+
       if (data.profile) applyProfile(data.profile);
       else applyProfile(data);
-      if (data.inventory && Array.isArray(data.inventory.slots) && data.inventory.slots.length) {
-        applyInventory(data.inventory);
-      } else if (force && localScore > 0) {
-        console.log('[Diggerz Cloud] cloud has no items; keeping local inventory');
+
+      if (inv) {
+        var ok = applyInventory(inv);
+        if (!ok) console.warn('[Diggerz Cloud] applyInventory returned false');
+      } else {
+        console.log('[Diggerz Cloud] no inventory on account');
       }
-      console.log('[Diggerz Cloud] loaded save for', state.uid, 'cloudSlots~', cloudScore);
-      return data;
+      return { profile: data.profile || data, inventory: inv, updatedAt: data.updatedAt, itemCount: cloudScore };
     } catch (e) {
       console.warn('[Diggerz Cloud] pull failed', e);
       return null;
@@ -118098,8 +118234,9 @@ function addSupportUI(){
       if (s == null) continue;
       if (typeof s === 'number' && s > 0) { n++; continue; }
       if (typeof s === 'object') {
-        var id = s.id != null ? s.id : (s.itemId != null ? s.itemId : (s[0] != null ? s[0] : 0));
-        if (id && id !== 0) n++;
+        var id = s.id != null ? s.id : 0;
+        var count = s.count != null ? s.count : 1;
+        if (id && id !== 0 && count !== 0) n++;
       }
     }
     return n;
@@ -118113,70 +118250,84 @@ function addSupportUI(){
   }
 
   async function pushCloudSave(force) {
-    if (!state.authenticated || !state.uid || !db) return { ok: false, reason: 'not-logged-in' };
+    if (!state.authenticated || !state.uid || !db) {
+      console.warn('[Diggerz Cloud] push: not logged in or db missing');
+      return { ok: false, reason: 'not-logged-in' };
+    }
     var now = Date.now();
-    if (!force && now - lastCloudPush < 8000) return { ok: false, reason: 'rate' };
+    if (!force && now - lastCloudPush < 5000) return { ok: false, reason: 'rate' };
     lastCloudPush = now;
     try {
+      await initFirebase();
       var profile = collectProfile();
       var inventory = collectInventory();
       var localScore = inventoryScore(inventory);
 
       var snap = await db.collection('users').doc(state.uid).get();
       var cloud = snap.exists ? (snap.data() || {}) : null;
-      var cloudScore = inventoryScore(cloud && cloud.inventory);
-      var cloudAt = (cloud && cloud.updatedAt) ? Number(cloud.updatedAt) : 0;
+      var cloudInv = null;
+      if (cloud && cloud.inventoryJson) {
+        try { cloudInv = JSON.parse(cloud.inventoryJson); } catch (e1) {}
+      }
+      if (!cloudInv && cloud && cloud.inventory) cloudInv = cloud.inventory;
+      var cloudScore = inventoryScore(cloudInv);
 
-      // Never wipe a good account save with an empty browser
       if (localScore === 0 && cloudScore > 0) {
-        console.log('[Diggerz Cloud] blocked save: this browser has 0 items, account has', cloudScore);
+        console.log('[Diggerz Cloud] blocked empty wipe; cloud has', cloudScore);
         return { ok: false, reason: 'refuse-empty-wipe', cloudScore: cloudScore };
       }
-
-      if (!force) {
-        // Auto-save: don't overwrite a richer account save from another device
-        if (cloudScore > localScore + 1 && cloudAt >= localEditTime()) {
-          console.log('[Diggerz Cloud] skip auto-save: account has more items', cloudScore, 'vs local', localScore);
-          return { ok: false, reason: 'cloud-richer', cloudScore: cloudScore, localScore: localScore };
-        }
+      if (!force && cloudScore > localScore + 1) {
+        console.log('[Diggerz Cloud] skip auto-save; cloud richer', cloudScore, localScore);
+        return { ok: false, reason: 'cloud-richer', cloudScore: cloudScore, localScore: localScore };
+      }
+      if (localScore === 0 && !force) {
+        console.log('[Diggerz Cloud] skip auto-save; nothing to upload');
+        return { ok: false, reason: 'nothing' };
       }
 
       var payload = {
         profile: profile,
         email: state.email || '',
         updatedAt: now,
-        localEditAt: localEditTime() || now,
         itemCount: localScore
       };
-      if (localScore > 0) payload.inventory = inventory;
+      if (inventory && localScore >= 0) {
+        // Plain object for convenience
+        payload.inventory = inventory;
+        // JSON string is the reliable path for Firestore
+        payload.inventoryJson = JSON.stringify(inventory);
+        try { var pr = localStorage.getItem('diggerz.profile.v1'); if (pr) payload.profileJson = pr; } catch (eP) {}
+      }
+      // Also dump raw localStorage blob as ultimate backup
+      try {
+        var raw = localStorage.getItem(digtradeStorageKey());
+        if (raw && raw.length < 900000) payload.digtradeRaw = raw;
+      } catch (e2) {}
 
       await db.collection('users').doc(state.uid).set(payload, { merge: true });
-      console.log('[Diggerz Cloud] saved slots~', localScore, force ? '(manual)' : '(auto)');
+      console.log('[Diggerz Cloud] SAVED ok slots~', localScore, force ? 'manual' : 'auto');
       return { ok: true, slots: localScore };
     } catch (e) {
       console.warn('[Diggerz Cloud] push failed', e);
-      return { ok: false, reason: 'error', error: e };
+      return { ok: false, reason: 'error', error: String(e && e.message || e) };
     }
   }
 
   function isInGameForCloud() {
     try {
-      // Dig+Trade / shop service live
       if (window.P && P.service && P.service.state && Array.isArray(P.service.state.slots)) return true;
     } catch (e) {}
     try {
-      // In a live world (not pure title)
-      if (window.l && l.z39 && l.a42 && l.a42 !== '' && String(l.a42).indexOf('Title') < 0) return true;
+      if (window.l && l.z39 && l.a42 && String(l.a42).indexOf('Title') < 0) return true;
     } catch (e2) {}
     return false;
   }
 
   function scheduleCloudSave() {
     if (!state.authenticated) return;
-    // Only auto-save while actually in-game (never from empty title-screen browser)
     if (!isInGameForCloud()) return;
     if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(function(){ pushCloudSave(false); }, 5000);
+    saveTimer = setTimeout(function(){ pushCloudSave(false); }, 3000);
   }
 
   function applySession(user, skipPull) {
@@ -118200,15 +118351,18 @@ function addSupportUI(){
       // After login / page load while signed in: load account into this browser
       if (!skipPull) {
         pullCloudSave(true).then(function(data){
+          var hadInv = data && data.inventory && inventoryScore(data.inventory) > 0;
+          console.log('[Diggerz Cloud] post-auth pull', hadInv ? 'got items' : 'no items');
           try {
-            if (sessionStorage.getItem('diggerz.cloud.reload') === '1') {
-              sessionStorage.removeItem('diggerz.cloud.reload');
+            var already = sessionStorage.getItem('diggerz.cloud.appliedReload') === '1';
+            if (hadInv && !already) {
+              sessionStorage.setItem('diggerz.cloud.appliedReload', '1');
+              // Reload so Dig+Trade reads the fresh localStorage state
+              setTimeout(function(){ location.reload(); }, 400);
+              return;
             }
+            if (already) sessionStorage.removeItem('diggerz.cloud.appliedReload');
           } catch (e2) {}
-          if (data && data.inventory)
-            console.log('[Diggerz Cloud] account loaded after login');
-          else
-            console.log('[Diggerz Cloud] signed in — no cloud inventory yet (play & it will auto-save in-game)');
         });
       }
     } else {
