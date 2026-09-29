@@ -23183,6 +23183,39 @@ return true
         },
         hurtLocalPlayer: function(amount, source) {
             if (!l.z39 || this.localDead) return;
+            // No damage in Dig+Trade. No damage in Fight until the countdown ends (fight/elimination).
+            try {
+                var mode = this.mode || (typeof P !== 'undefined' && P.mode) || '';
+                if (mode === 'digtrade') {
+                    var now = Date.now();
+                    if (!this._safeDmgMsgAt || now - this._safeDmgMsgAt > 2500) {
+                        this._safeDmgMsgAt = now;
+                        try {
+                            var msg = "^9You can't take damage in Dig+Trade!";
+                            if (this.message) this.message(msg);
+                            else if (this.game && this.game.R35 && this.game.R35.C46) this.game.R35.C46(msg);
+                            else if (typeof l !== 'undefined' && l.z38 && l.z38.R35) l.z38.R35.C46(msg);
+                        } catch (_m) {}
+                    }
+                    return;
+                }
+                if (mode === 'pvp') {
+                    var phase = this._pvpBattlePhase || (typeof P !== 'undefined' && (P.battlePhase || (P.battle && P.battle.phase))) || '';
+                    if (phase && phase !== 'fight' && phase !== 'elimination') {
+                        var now2 = Date.now();
+                        if (!this._safeDmgMsgAt || now2 - this._safeDmgMsgAt > 2500) {
+                            this._safeDmgMsgAt = now2;
+                            try {
+                                var msg2 = "^9Match hasn't started — you can't take damage yet!";
+                                if (this.message) this.message(msg2);
+                                else if (this.game && this.game.R35 && this.game.R35.C46) this.game.R35.C46(msg2);
+                                else if (typeof l !== 'undefined' && l.z38 && l.z38.R35) l.z38.R35.C46(msg2);
+                            } catch (_m2) {}
+                        }
+                        return;
+                    }
+                }
+            } catch (_gate) {}
             var max = l.z39.N34 || 3;
             var observed = l.z39.N33;
             if (this.localHealth == null || this.localHealth > max)
@@ -87326,19 +87359,11 @@ return true
         },
         D54: null,
         D55: function() {
-            for (var a = 0, b = this._9; a < b.length; ) {
-                var c = b[a];
-                ++a;
-                null != c._1 && N.startsWith(c._1, "welcome message") && (c.e3(),
-                c.a0 = 1)
-            }
-            a = new $b(this,"Email Address:",q.thisMain.userEmail,64,A(this, this.D59),400,200,!0,!1);
-            a._1 = "getemail";
-            a.B8 = 4;
-            this.D54 = !0;
-            a.c0 = !0;
-            q.children.push(a);
-            q.thisMain.stage.set_focus(a.F30.Q30)
+            // Firebase Google login panel (passwordless).
+            if (window.DiggerzAuth237 && window.DiggerzAuth237.openLoginPanel)
+                window.DiggerzAuth237.openLoginPanel(this);
+            else
+                this._9.push(new vb(this,"","^1Login is not ready yet. Refresh the page.",new Cd,vb.F39))
         },
         D56: function(a) {
             // Build 23.7: account lookup/password prompts are retired. Email magic-link only.
@@ -116124,7 +116149,7 @@ return true
       if(m.t==='room-state'){
         // Stash the full snapshot so we can re-apply once the local world exists.
         this._pvpPendingRoomState=m;
-        this._pvpWorldSynced=false;
+        this._pvpWorldSynced=false;this._pvpBattlePhase='';;
         // Seed peer roster BEFORE local spawn so other players exist in the world first.
         try{
           var peerList=Array.isArray(m.peers)?m.peers:(Array.isArray(m.players)?m.players:[]);
@@ -116189,7 +116214,7 @@ return true
       if(m.t==='drop-spawn'){this.pvpAddSharedDrop(m.drop);return}
       if(m.t==='drop-remove'){this.pvpRemoveSharedDrop(m.guid);return}
       if(m.t==='drop-award'){var d=m.drop||{};if(this.addItem(d.category|0,d.id|0,d.variant|0,Math.max(1,d.count|0),d.extra|0,String(d.text||''))<0){var x=l.z39?l.z39.b6/l._44:this.state.x,y=l.z39?l.z39.b7/l._44-.5:this.state.y;this.spawnDrop(d.category|0,d.id|0,Math.max(1,d.count|0),x,y,String(d.text||''),String(d.tier||''))}else{if(d.tier==='super'){var sn=this.itemName(d.category|0,d.id|0);this.message('^3SUPER RARE! ^7'+this.playerName()+' found '+sn+'!');this.centerMessage('^3SUPER RARE!\n^7'+sn)}else if(d.tier==='rare'){var rn=this.itemName(d.category|0,d.id|0);this.message('^9RARE ITEM! ^7'+this.playerName()+' found '+rn+'!');this.centerMessage('^9RARE ITEM!\n^7'+rn)}this.markDirty()}return}
-      if(m.t==='damage'&&(P.mode==='pvp'||(P.mode==='digtrade'&&(this.adminPvpEnabled||(typeof q!=='undefined'&&q.diggerzAdminPvpEnabled))))){this.hurtLocalPlayer(Math.max(1,m.amount|0),m.source||'weapon');return}
+      if(m.t==='damage'){if(P.mode==='digtrade')return;if(P.mode==='pvp'){var ph=this._pvpBattlePhase||P.battlePhase||(P.battle&&P.battle.phase)||'';if(ph&&ph!=='fight'&&ph!=='elimination')return;this.hurtLocalPlayer(Math.max(1,m.amount|0),m.source||'weapon')}return}
       if(m.t==='health'){var hp=this.pvpPeerForConnection(m._serverFrom);if(hp&&hp.id){var hid=hp.id,current=+m.current||0,maximum=+m.maximum||3;this.enqueue(48,1,function(p){p.R8(hid);p.r8(current);p.r8(maximum)})}return}
       if(m.t==='death'){var dp=this.pvpPeerForConnection(m._serverFrom);if(dp&&dp.id){var did=dp.id,dx=+m.x||0,dy=+m.y||0;this.enqueue(46,1,function(p){p.R8(did);p.r8(dx);p.r8(0);p.r8(dy);p.R4(0)})}return}
       if(m.t==='respawn'){var rp=this.pvpPeerForConnection(m._serverFrom);if(rp&&rp.id){var rid=rp.id,rx=+m.x||12,ry=+m.y||16;this.enqueue(47,1,function(p){p.R8(rid);p.r8(rx);p.r8(0);p.r8(ry);p.s0(false)})}return}
@@ -116362,7 +116387,7 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
     var oldRoomState=proto.pvpApplyRoomState;proto.pvpApplyRoomState=function(m){var r=oldRoomState.call(this,m);if(m&&Array.isArray(m.coins))for(var i=0;i<m.coins.length;i++)addCoinVisual(this,m.coins[i]);return r};
     var oldReceive=proto.pvpReceive;proto.pvpReceive=function(m){
       if(!m)return;
-      if(m.t==='battle-state'){var b=P.battle;b.serverOffset=(+m.serverNow||Date.now())-Date.now();b.phase=String(m.phase||b.phase);b.fightAt=+m.fightAt||0;b.nextShrinkAt=+m.nextShrinkAt||0;b.shrinkStage=m.shrinkStage|0;if(isFinite(+m.left)&&isFinite(+m.right)){var nl=+m.left,nr=+m.right;if(Math.abs(nl-b.left)>0.05||Math.abs(nr-b.right)>0.05){b.targetLeft=nl;b.targetRight=nr;b.shrinking=true;b._shrinkAnimStartedAt=0;b._shrinkFromLeft=b.left;b._shrinkFromRight=b.right}else{b.left=nl;b.right=nr;b.targetLeft=nl;b.targetRight=nr}}if(isFinite(+m.nextLeft))b.nextShrinkLeft=+m.nextLeft;if(isFinite(+m.nextRight))b.nextShrinkRight=+m.nextRight;b.elimination=!!m.elimination;if(b.phase==='finished')bannerText('');return}
+      if(m.t==='battle-state'){var b=P.battle;b.serverOffset=(+m.serverNow||Date.now())-Date.now();b.phase=String(m.phase||b.phase);try{this._pvpBattlePhase=b.phase;P.battlePhase=b.phase}catch(_bp){};b.fightAt=+m.fightAt||0;b.nextShrinkAt=+m.nextShrinkAt||0;b.shrinkStage=m.shrinkStage|0;if(isFinite(+m.left)&&isFinite(+m.right)){var nl=+m.left,nr=+m.right;if(Math.abs(nl-b.left)>0.05||Math.abs(nr-b.right)>0.05){b.targetLeft=nl;b.targetRight=nr;b.shrinking=true;b._shrinkAnimStartedAt=0;b._shrinkFromLeft=b.left;b._shrinkFromRight=b.right}else{b.left=nl;b.right=nr;b.targetLeft=nl;b.targetRight=nr}}if(isFinite(+m.nextLeft))b.nextShrinkLeft=+m.nextLeft;if(isFinite(+m.nextRight))b.nextShrinkRight=+m.nextRight;b.elimination=!!m.elimination;if(b.phase==='finished')bannerText('');return}
       if(m.t==='battle-event'){
         if(m.kind==='build-start'){try{restoreWorldSnapshot(this)}catch(e){}P.battle.phase='build';P.battle.fightAt=+m.fightAt||P.battle.fightAt;P.battle.lastCountdown=-1;P.battle.resultsShown=false;P.battle.left=1;P.battle.right=126;P.battle.targetLeft=1;P.battle.targetRight=126;P.battle.shrinking=false;P.battle.shrinkStage=0;P.battle.shrinkAt=0;P.battle._shrinkAppliedFor=0;P.battle.elimination=false;P.battle._tileSnap=null;P.battle._varSnap=null;stats(this).shots=stats(this).hits=stats(this).kills=0}
         else if(m.kind==='fight'){P.battle.phase='fight';P.battle.shrinkAt=0;P.battle.left=1;P.battle.right=126;P.battle.targetLeft=1;P.battle.targetRight=126;P.battle.shrinking=false;P.battle.shrinkStage=0;P.battle._shrinkAppliedFor=0;bannerText('');popText('FIGHT!','#ff2f39')}
@@ -116969,7 +116994,7 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
       if(m.t==='cotton-item-award'){if(this.addItem(m.category|0,m.id|0,0,Math.max(1,m.count|0),0,'')>=0){this.markDirty();this.save(true)}return}
       if(m.t==='turret-fire'){turretVisual(this,m);return}
       if(m.t==='tool-attack'){return} // server owns the damage; native equipped animation already travels in player state.
-      if(m.t==='battle-event'&&m.kind==='build-start'){P.battle.winCounted=false}
+      if(m.t==='battle-event'&&m.kind==='build-start'){ try{if(m.kind==='build-start'){this._pvpBattlePhase='build';if(typeof P!=='undefined')P.battlePhase='build'}else if(m.kind==='fight'||m.kind==='elimination'){this._pvpBattlePhase=String(m.kind);if(typeof P!=='undefined')P.battlePhase=String(m.kind)}}catch(_be){} P.battle.winCounted=false}
       if(m.t==='winner'&&String(m.connectionId||'')===String(P.connectionId||'')&&!P.battle.winCounted){P.battle.winCounted=true;this.state.wins=Math.max(0,(this.state.wins|0)+1);this.markDirty();this.save(true);applyWins(this);setTimeout(this.pvpSendHello.bind(this),80)}
       var r=oldReceive.call(this,m);
       if(m.t==='hello'){setRemoteWins(this,m._serverFrom,Math.max(0,m.wins|0));applyWins(this)}
@@ -117557,89 +117582,416 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
 		</ul>
 	</div>
 
-<script id="diggerz-build23-7-security-patch">
+<script id="diggerz-firebase-google-auth">
 (function(){
   'use strict';
-  var AUTH_MARKER='SESSION_AUTHENTICATED';
-  var OLD_ACCOUNT_KEY='diggerz.resurrection.accounts.v1',OLD_BOUND_KEY='diggerz.resurrection.boundEmail.v1';
-  var state={authenticated:false,email:'',username:'',busy:false};
+  var AUTH_MARKER = 'SESSION_AUTHENTICATED';
+  var STORAGE_KEY = 'diggerz.firebase.auth.v1';
+  var firebaseConfig = {
+    apiKey: "AIzaSyBMsaYJ4UMAQPkJcjG9-Ix4LXoGKppwZpk",
+    authDomain: "diggerz-86512.firebaseapp.com",
+    projectId: "diggerz-86512",
+    storageBucket: "diggerz-86512.firebasestorage.app",
+    messagingSenderId: "812494082190",
+    appId: "1:812494082190:web:d399176297e8171316f9df",
+    measurementId: "G-BPH0E6RM9L"
+  };
+  var state = { authenticated: false, email: '', username: '', uid: '', busy: false, ready: false };
+  var auth = null;
+  var db = null;
+  var saveTimer = null;
+  var lastCloudPush = 0;
 
-  function cleanEmail(v){return String(v||'').trim().toLowerCase().slice(0,254)}
-  function validEmail(v){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)}
-  function cleanName(v){v=String(v||'').trim();return (!v||v==='Enter Name')?'Player':v.slice(0,24)}
-  function popup(menu,text){
-    try{menu._9.push(new vb(menu,'',String(text),new Cd,vb.F39))}
-    catch(e){try{alert(String(text).replace(/\^[0-9]/g,''))}catch(_e){}}
+  function cleanName(v) {
+    v = String(v || '').trim();
+    return (!v || v === 'Enter Name') ? 'Player' : v.slice(0, 24);
   }
-  function closeField(field){try{field.a2=false;field.a0=1}catch(e){}}
-  function applySession(data){
-    state.authenticated=!!(data&&data.authenticated!==false&&data.ok!==false&&(data.email||data.user));
-    state.email=cleanEmail(data&&data.email||'');state.username=cleanName(data&&data.username||data&&data.name||'');
-    try{
-      if(window.q&&q.thisMain){
-        if(state.authenticated){q.thisMain.userPW=AUTH_MARKER;q.thisMain.userEmail=state.email;if(state.username&&state.username!=='Player'&&(!q.thisMain.userName||q.thisMain.userName==='Enter Name'))q.thisMain.userName=state.username}
-        else{q.thisMain.userEmail='';if(!String(q.thisMain.userPW||'').startsWith('NOPASSWORD'))q.thisMain.userPW='NOPASSWORD_'+String(q.thisMain.userUniqueID||'')}
-        q.SaveGlobals()
+  function popup(menu, text) {
+    try { menu._9.push(new vb(menu, '', String(text), new Cd, vb.F39)); }
+    catch (e) { try { alert(String(text).replace(/\^[0-9]/g, '')); } catch (_e) {} }
+  }
+  function saveLocal() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        uid: state.uid, email: state.email, username: state.username, authenticated: state.authenticated
+      }));
+    } catch (e) {}
+  }
+
+  function collectProfile() {
+    var profile = {
+      userName: '',
+      country_flag: 0,
+      skin_tone: 1,
+      music_volume: 50,
+      sound_volume: 50,
+      email: state.email || '',
+      updatedAt: Date.now()
+    };
+    try {
+      if (window.q && q.thisMain) profile.userName = String(q.thisMain.userName || '');
+      if (window.q && q.player) {
+        profile.country_flag = q.player.L0 | 0;
+        profile.skin_tone = Number(q.player.l9) || 1;
+        profile.music_volume = q.player.k7 | 0;
+        profile.sound_volume = q.player.k8 | 0;
       }
-    }catch(e){}
-    try{sessionStorage.setItem('diggerz.auth.active.v1',state.authenticated?'1':'0')}catch(e){}
-    return state
+    } catch (e) {}
+    return profile;
   }
-  async function jsonFetch(url,options){
-    options=options||{};options.credentials='same-origin';options.cache='no-store';
-    var response=await fetch(url,options),data={};try{data=await response.json()}catch(e){}
-    if(!response.ok)throw new Error(data.error||data.message||('HTTP '+response.status));
-    return data
+
+  function collectInventory() {
+    try {
+      var svc = window.P && P.service;
+      if (!svc || !svc.state || !Array.isArray(svc.state.slots)) return null;
+      var s = svc.state;
+      return {
+        version: s.version || 6,
+        slots: s.slots,
+        appearance: s.appearance,
+        appearanceText: s.appearanceText || '',
+        wins: s.wins | 0,
+        coins: s.coins | 0,
+        mined: s.mined | 0,
+        placed: s.placed | 0,
+        starterLoadoutVersion: s.starterLoadoutVersion | 0
+      };
+    } catch (e) { return null; }
   }
-  async function refresh(){
-    try{return applySession(await jsonFetch('/api/auth/me'))}
-    catch(e){return applySession({authenticated:false})}
+
+  function applyProfile(data) {
+    if (!data) return;
+    try {
+      if (window.q && q.thisMain && data.userName) {
+        q.thisMain.userName = String(data.userName).slice(0, 24);
+      }
+      if (window.q && q.player) {
+        if (data.country_flag != null) q.player.L0 = data.country_flag | 0;
+        if (data.skin_tone != null) q.player.l9 = Number(data.skin_tone) || 1;
+        if (data.music_volume != null) q.player.k7 = data.music_volume | 0;
+        if (data.sound_volume != null) q.player.k8 = data.sound_volume | 0;
+      }
+      if (typeof q !== 'undefined' && typeof q.SaveGlobals === 'function') q.SaveGlobals();
+      try {
+        localStorage.setItem('diggerz.profile.v1', JSON.stringify({
+          userName: String((q.thisMain && q.thisMain.userName) || ''),
+          country_flag: (q.player && q.player.L0) | 0,
+          skin_tone: Number(q.player && q.player.l9) || 1,
+          music_volume: (q.player && q.player.k7) | 0,
+          sound_volume: (q.player && q.player.k8) | 0
+        }));
+      } catch (e2) {}
+    } catch (e) {}
   }
-  async function requestLink(email,username,menu,field){
-    if(state.busy)return;email=cleanEmail(email);username=cleanName(username);
-    if(!validEmail(email)){popup(menu,'^1Enter a valid email address.');return}
-    state.busy=true;
-    try{
-      await jsonFetch('/api/auth/request-link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,username:username})});
-      closeField(field);
-      popup(menu,'^2Check your email. ^7Use the one-time Diggerz sign-in link. No password is stored or sent.')
-    }catch(e){
-      popup(menu,'^1Passwordless sign-in is unavailable on the server right now. ^7You can keep playing as a guest.');
-    }finally{state.busy=false}
+
+  function applyInventory(inv) {
+    if (!inv || !Array.isArray(inv.slots)) return;
+    try {
+      // Merge into local digtrade storage so next Dig+Trade load picks it up
+      var key = (window.DiggerzService && DiggerzService.STORAGE_KEY) || 'diggerz.digtrade.rebuild.v3';
+      var existing = null;
+      try { existing = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) {}
+      var merged = existing && typeof existing === 'object' ? existing : {};
+      merged.version = inv.version || merged.version || 6;
+      merged.slots = inv.slots;
+      if (Array.isArray(inv.appearance)) merged.appearance = inv.appearance;
+      if (inv.appearanceText != null) merged.appearanceText = inv.appearanceText;
+      if (inv.wins != null) merged.wins = inv.wins | 0;
+      if (inv.coins != null) merged.coins = inv.coins | 0;
+      if (inv.mined != null) merged.mined = inv.mined | 0;
+      if (inv.placed != null) merged.placed = inv.placed | 0;
+      if (inv.starterLoadoutVersion != null) merged.starterLoadoutVersion = inv.starterLoadoutVersion | 0;
+      localStorage.setItem(key, JSON.stringify(merged));
+      // Live service if already running
+      var svc = window.P && P.service;
+      if (svc && svc.state) {
+        svc.state.slots = inv.slots;
+        if (Array.isArray(inv.appearance)) svc.state.appearance = inv.appearance;
+        if (inv.appearanceText != null) svc.state.appearanceText = inv.appearanceText;
+        if (inv.wins != null) svc.state.wins = inv.wins | 0;
+        if (inv.coins != null) svc.state.coins = inv.coins | 0;
+        try { svc.markDirty(); } catch (e3) {}
+        try { if (svc.sendInventory) svc.sendInventory(); } catch (e4) {}
+      }
+    } catch (e) { console.warn('[Diggerz Cloud] apply inventory failed', e); }
   }
-  async function exchangeMagicToken(){
-    var u;try{u=new URL(location.href)}catch(e){return false}
-    var token=u.searchParams.get('login_token');if(!token)return false;
-    try{
-      await jsonFetch('/api/auth/exchange',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:token})});
-      u.searchParams.delete('login_token');history.replaceState(null,'',u.pathname+(u.search?'?'+u.searchParams.toString():'')+u.hash);
-      await refresh();return true
-    }catch(e){
-      u.searchParams.delete('login_token');history.replaceState(null,'',u.pathname+(u.search?'?'+u.searchParams.toString():'')+u.hash);return false
+
+  async function pullCloudSave() {
+    if (!state.uid || !db) return null;
+    try {
+      var snap = await db.collection('users').doc(state.uid).get();
+      if (!snap.exists) return null;
+      var data = snap.data() || {};
+      if (data.profile) applyProfile(data.profile);
+      else applyProfile(data); // flat docs
+      if (data.inventory) applyInventory(data.inventory);
+      console.log('[Diggerz Cloud] loaded save for', state.uid);
+      return data;
+    } catch (e) {
+      console.warn('[Diggerz Cloud] pull failed', e);
+      return null;
     }
   }
-  async function logoutFromMenu(menu){
-    try{await jsonFetch('/api/auth/logout',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})}catch(e){}
-    applySession({authenticated:false});
-    popup(menu,'^2Signed out. ^7Your local game progress remains on this browser.')
+
+  async function pushCloudSave(force) {
+    if (!state.authenticated || !state.uid || !db) return;
+    var now = Date.now();
+    if (!force && now - lastCloudPush < 4000) return;
+    lastCloudPush = now;
+    try {
+      var profile = collectProfile();
+      var inventory = collectInventory();
+      var payload = {
+        profile: profile,
+        email: state.email || '',
+        updatedAt: now
+      };
+      if (inventory) payload.inventory = inventory;
+      await db.collection('users').doc(state.uid).set(payload, { merge: true });
+      console.log('[Diggerz Cloud] saved');
+    } catch (e) {
+      console.warn('[Diggerz Cloud] push failed', e);
+    }
   }
 
-  window.DiggerzAuth237={state:state,requestLink:requestLink,refresh:refresh,logoutFromMenu:logoutFromMenu};
+  function scheduleCloudSave() {
+    if (!state.authenticated) return;
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){ pushCloudSave(false); }, 2500);
+  }
 
-  // Remove credential remnants from the old browser-local account system.
-  try{localStorage.removeItem(OLD_ACCOUNT_KEY);localStorage.removeItem(OLD_BOUND_KEY)}catch(e){}
-  try{if(sessionStorage.getItem('diggerz.auth.active.v1')==='1'&&window.q&&q.thisMain)q.thisMain.userPW=AUTH_MARKER}catch(e){}
+  function applySession(user) {
+    if (user) {
+      state.authenticated = true;
+      state.uid = user.uid || '';
+      state.email = (user.email || '').toLowerCase();
+      state.username = cleanName(user.displayName || '');
+      try {
+        if (window.q && q.thisMain) {
+          q.thisMain.userPW = AUTH_MARKER;
+          q.thisMain.userEmail = state.email;
+          if (state.username && state.username !== 'Player') {
+            if (!q.thisMain.userName || q.thisMain.userName === 'Enter Name')
+              q.thisMain.userName = state.username;
+          }
+          if (typeof q.SaveGlobals === 'function') q.SaveGlobals();
+        }
+      } catch (e) {}
+      // Load cloud data then push local as backup merge
+      pullCloudSave().then(function(data){
+        // If no cloud doc yet, upload current local progress
+        if (!data) pushCloudSave(true);
+        else scheduleCloudSave();
+      });
+    } else {
+      state.authenticated = false;
+      state.uid = '';
+      state.email = '';
+      state.username = '';
+      try {
+        if (window.q && q.thisMain) {
+          q.thisMain.userEmail = '';
+          q.thisMain.userPW = 'NOPASSWORD_' + String(q.thisMain.userUniqueID || '');
+          if (typeof q.SaveGlobals === 'function') q.SaveGlobals();
+        }
+      } catch (e) {}
+    }
+    saveLocal();
+    try { sessionStorage.setItem('diggerz.auth.active.v1', state.authenticated ? '1' : '0'); } catch (e) {}
+    updatePanel();
+    return state;
+  }
 
-  // Exchange an emailed one-time token if the backend redirects to ?login_token=...
-  exchangeMagicToken().then(function(done){if(!done)refresh()});
+  function ensurePanel() {
+    var el = document.getElementById('diggerz-login-panel');
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'diggerz-login-panel';
+    el.innerHTML = [
+      '<div class="dz-login-backdrop"></div>',
+      '<div class="dz-login-card">',
+      '  <div class="dz-login-title">LOGIN</div>',
+      '  <div class="dz-login-status" id="diggerz-login-status">Sign in to keep your account across devices.</div>',
+      '  <button type="button" class="dz-login-btn" id="diggerz-login-google">Login with Google</button>',
+      '  <button type="button" class="dz-login-btn dz-login-secondary" id="diggerz-login-logout" style="display:none">Log Out</button>',
+      '  <button type="button" class="dz-login-close" id="diggerz-login-close">Close</button>',
+      '</div>'
+    ].join('');
+    var style = document.createElement('style');
+    style.textContent = [
+      '#diggerz-login-panel{display:none;position:fixed;inset:0;z-index:99999;font-family:Arial,Helvetica,sans-serif;}',
+      '#diggerz-login-panel.open{display:block;}',
+      '.dz-login-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55);}',
+      '.dz-login-card{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,92vw);',
+      'background:#1a1f2e;border:2px solid #f0f0f0;border-radius:8px;padding:28px 24px 20px;box-shadow:0 12px 40px rgba(0,0,0,.5);',
+      'text-align:center;color:#eee;}',
+      '.dz-login-title{font-size:28px;font-weight:700;color:#f5c542;margin-bottom:12px;letter-spacing:1px;}',
+      '.dz-login-status{font-size:14px;line-height:1.4;color:#ccc;min-height:40px;margin-bottom:18px;}',
+      '.dz-login-btn{display:block;width:100%;margin:0 0 12px;padding:12px 16px;font-size:16px;font-weight:700;',
+      'border:2px solid #fff;border-radius:6px;cursor:pointer;background:#c43c3c;color:#fff;}',
+      '.dz-login-btn:hover{filter:brightness(1.08);}',
+      '.dz-login-btn:disabled{opacity:.55;cursor:wait;}',
+      '.dz-login-secondary{background:#444;}',
+      '.dz-login-close{background:transparent;border:none;color:#aaa;cursor:pointer;font-size:14px;margin-top:4px;text-decoration:underline;}'
+    ].join('');
+    document.head.appendChild(style);
+    document.body.appendChild(el);
+    el.querySelector('.dz-login-backdrop').onclick = closeLoginPanel;
+    el.querySelector('#diggerz-login-close').onclick = closeLoginPanel;
+    el.querySelector('#diggerz-login-google').onclick = function(){ loginWithGoogle(); };
+    el.querySelector('#diggerz-login-logout').onclick = function(){ logout(); };
+    return el;
+  }
+  function updatePanel() {
+    var el = document.getElementById('diggerz-login-panel');
+    if (!el) return;
+    var st = el.querySelector('#diggerz-login-status');
+    var g = el.querySelector('#diggerz-login-google');
+    var lo = el.querySelector('#diggerz-login-logout');
+    if (state.authenticated) {
+      st.textContent = 'Signed in as ' + (state.email || state.username || state.uid) + ' — progress syncs to the cloud.';
+      g.style.display = 'none';
+      lo.style.display = 'block';
+    } else {
+      st.textContent = 'Sign in with Google to keep name, country, skin, and items across devices.';
+      g.style.display = 'block';
+      lo.style.display = 'none';
+    }
+  }
+  function openLoginPanel(menu) {
+    ensurePanel();
+    updatePanel();
+    document.getElementById('diggerz-login-panel').classList.add('open');
+    window.__diggerzLoginMenu = menu || null;
+  }
+  function closeLoginPanel() {
+    var el = document.getElementById('diggerz-login-panel');
+    if (el) el.classList.remove('open');
+  }
 
-  // q may finish initializing after this patch; rewrite Globals once to scrub any old upw/uem attributes.
-  var scrubTries=0,scrub=setInterval(function(){
-    scrubTries++;
-    try{if(window.q&&q.thisMain&&typeof q.SaveGlobals==='function'){q.SaveGlobals();clearInterval(scrub)}}catch(e){}
-    if(scrubTries>100)clearInterval(scrub)
-  },100);
-}());
+  function loadScript(src) {
+    return new Promise(function(resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.onload = resolve;
+      s.onerror = function(){ reject(new Error('Failed to load ' + src)); };
+      document.head.appendChild(s);
+    });
+  }
+
+  async function initFirebase() {
+    if (auth && db) return auth;
+    if (!window.firebase) {
+      await loadScript('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
+      await loadScript('https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js');
+      await loadScript('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js');
+    } else if (!firebase.firestore) {
+      await loadScript('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js');
+    }
+    if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.firestore();
+    auth.onAuthStateChanged(function(user) {
+      applySession(user);
+      state.ready = true;
+    });
+    return auth;
+  }
+
+  async function loginWithGoogle() {
+    if (state.busy) return;
+    state.busy = true;
+    var btn = document.getElementById('diggerz-login-google');
+    if (btn) btn.disabled = true;
+    var st = document.getElementById('diggerz-login-status');
+    if (st) st.textContent = 'Opening Google sign-in…';
+    try {
+      await initFirebase();
+      var provider = new firebase.auth.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      var result = await auth.signInWithPopup(provider);
+      applySession(result.user);
+      if (st) st.textContent = 'Signed in — syncing cloud save…';
+      var menu = window.__diggerzLoginMenu;
+      if (menu) popup(menu, '^2Signed in with Google!');
+      setTimeout(closeLoginPanel, 700);
+    } catch (e) {
+      console.warn('[Diggerz Auth]', e);
+      var msg = (e && e.message) ? e.message : 'Sign-in failed';
+      if (e && e.code === 'auth/popup-blocked') msg = 'Popup blocked — allow popups for this site.';
+      if (e && e.code === 'auth/unauthorized-domain') msg = 'Domain not authorized in Firebase. Add this site under Authentication → Settings → Authorized domains.';
+      if (st) st.textContent = msg;
+      var menu2 = window.__diggerzLoginMenu;
+      if (menu2) popup(menu2, '^1' + msg);
+    } finally {
+      state.busy = false;
+      if (btn) btn.disabled = false;
+      updatePanel();
+    }
+  }
+
+  async function logout() {
+    try {
+      await initFirebase();
+      await auth.signOut();
+    } catch (e) {}
+    applySession(null);
+    closeLoginPanel();
+  }
+
+  function logoutFromMenu(menu) {
+    logout().then(function() {
+      if (menu) popup(menu, '^9Signed out.');
+    });
+  }
+
+  function requestLink() { openLoginPanel(null); }
+
+  // Hook SaveGlobals + digtrade save → cloud
+  function installSaveHooks() {
+    try {
+      if (window.q && typeof q.SaveGlobals === 'function' && !q.SaveGlobals.__diggerzCloud) {
+        var oldG = q.SaveGlobals;
+        q.SaveGlobals = function() {
+          var r = oldG.apply(this, arguments);
+          try { scheduleCloudSave(); } catch (e) {}
+          return r;
+        };
+        q.SaveGlobals.__diggerzCloud = true;
+      }
+    } catch (e) {}
+    try {
+      if (window.DiggerzService && DiggerzService.prototype && DiggerzService.prototype.save && !DiggerzService.prototype.save.__diggerzCloud) {
+        var oldS = DiggerzService.prototype.save;
+        DiggerzService.prototype.save = function(force) {
+          var r = oldS.call(this, force);
+          try { scheduleCloudSave(); } catch (e) {}
+          return r;
+        };
+        DiggerzService.prototype.save.__diggerzCloud = true;
+      }
+    } catch (e2) {}
+  }
+
+  // Boot
+  initFirebase().then(function(){ installSaveHooks(); }).catch(function(e){ console.warn('[Diggerz Auth] init failed', e); });
+  setInterval(installSaveHooks, 2000);
+  // Periodic cloud push while logged in
+  setInterval(function(){ if (state.authenticated) pushCloudSave(false); }, 60000);
+
+  window.DiggerzAuth237 = {
+    state: state,
+    openLoginPanel: openLoginPanel,
+    loginWithGoogle: loginWithGoogle,
+    logout: logout,
+    logoutFromMenu: logoutFromMenu,
+    requestLink: requestLink,
+    refresh: function(){ return Promise.resolve(state); },
+    pushCloudSave: function(){ return pushCloudSave(true); },
+    pullCloudSave: pullCloudSave
+  };
+})();
 </script>
 
 	<div name="changes" id="changes">

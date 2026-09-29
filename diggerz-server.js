@@ -183,26 +183,8 @@ function patchGameHtmlForBuild239(input) {
     html = html.replace(from, to);
   }
 
-  // Build 23.8: the game is guest-only. Remove the Log In / Log Out menu block
-  // and retire the 23.7 passwordless account client entirely.
-  const loginStart = html.indexOf('            N.startsWith(q.thisMain.userPW, "NOPASSWORD")');
-  const shopText = loginStart >= 0 ? html.indexOf('            this.d51.E37("Shop");', loginStart) : -1;
-  const shopStart = shopText >= 0 ? html.lastIndexOf('            b = new z;', shopText) : -1;
-  if (loginStart >= 0 && shopStart > loginStart) {
-    const supportMenuBlock = "            q.thisMain.userEmail = \"\";\n            q.thisMain.userPW = \"\";\n            b = new z;\n            b.Init(u.YELLOWBUTTON_PNG());\n            b.D7(this);\n            b.b7 = d;\n            d += 80;\n            b.b6 = q.SCREENWIDTH / 2 - 150;\n            b.set_local_xScale(b.set_local_yScale(.5));\n            b._1 = \"support message\";\n            b.F6(5, 0, 1, 500);\n            this._9.push(b);\n            this.d51 = new ob(0,0,\"\",q.MAIN_FONT_BIG);\n            this.d51.D7(b);\n            this.d51.E37(\"Donate\");\n            this.d51.b7 = 2;\n            this.d51.B8 = 5;\n            this.d51.C33 = function(){ if(window.DiggerzSupport239) window.DiggerzSupport239.open(); };\n            this.d51._1 = \"welcome message\";\n            this._9.push(this.d51);\n            c = new xa(0,-70,\"Support Diggerz multiplayer\");\n            c.D7(b, !0);\n            c.set_local_xScale(c.set_local_yScale(1.25));\n            this._9.push(c);\n";
-    html = html.slice(0, loginStart) + supportMenuBlock + html.slice(shopStart);
-  } else {
-    console.warn('[Diggerz 23.9] login/support menu block was not found.');
-  }
-
-  const authScriptStart = html.indexOf('<script id="diggerz-build23-7-security-patch">');
-  const authScriptEnd = authScriptStart >= 0 ? html.indexOf('</script>', authScriptStart) : -1;
-  if (authScriptStart >= 0 && authScriptEnd > authScriptStart) {
-    const noLoginScript = '<script id="diggerz-build23-8-no-login-patch">(function(){try{localStorage.removeItem("diggerz.resurrection.accounts.v1");localStorage.removeItem("diggerz.resurrection.boundEmail.v1");sessionStorage.removeItem("diggerz.auth.active.v1");delete window.DiggerzAuth237}catch(e){}var n=0,t=setInterval(function(){n++;try{if(window.q&&q.thisMain){q.thisMain.userEmail="";q.thisMain.userPW="";if(typeof q.SaveGlobals==="function")q.SaveGlobals();clearInterval(t)}}catch(e){}if(n>100)clearInterval(t)},100)}());</script>';
-    html = html.slice(0, authScriptStart) + noLoginScript + html.slice(authScriptEnd + 9);
-  } else {
-    console.warn('[Diggerz 23.8] legacy auth client script was not found.');
-  }
+  // Build 24.x: keep Log In menu + Firebase Google auth client script.
+  // (Previously Build 23.8 replaced Log In with Donate and wiped DiggerzAuth237.)
 
   // Build 23.8 itch/Railway split: static browser clients always use Railway
   // for multiplayer and protected admin HTTP endpoints.
@@ -1604,8 +1586,10 @@ function eliminateOrRespawn(victim, attacker, source) {
 function dealPvpDamage(attacker, victim, amount, source) {
   if (!attacker || !victim || attacker === victim || !attacker.room || attacker.room !== victim.room) return false;
   const room = attacker.room;
-  if (room.mode !== 'pvp' && !(room.mode === 'digtrade' && room.adminPvpOverride)) return false;
-  if (room.mode === 'pvp' && (!room.battle || (room.battle.phase !== 'fight' && room.battle.phase !== 'elimination'))) return false;
+  // Dig+Trade: no damage. PvP: only after fight countdown (fight/elimination).
+  if (room.mode === 'digtrade') return false;
+  if (room.mode !== 'pvp') return false;
+  if (!room.battle || (room.battle.phase !== 'fight' && room.battle.phase !== 'elimination')) return false;
   if (!victim.alive || victim.eliminated) return false;
   if (victim.adminEffects && victim.adminEffects.invis) return false;
   if (victim.adminEffects && victim.adminEffects.god) {
@@ -2533,15 +2517,10 @@ function relayGameMessage(client, message, rawLength) {
   }
 
   if (message.t==='damage') {
-    // Normal PvP is server-authoritative. In Dig+Trade, admin PvP override
-    // explicitly opens the same authoritative damage path.
-    if (room.mode==='pvp') return;
-    if (room.mode==='digtrade' && room.adminPvpOverride) {
-      const target=findRoomClient(room,String(message.targetConnectionId||''));
-      if(target) dealPvpDamage(client,target,Number(message.amount)||1,String(message.source||'weapon'));
-      return;
-    }
+    // Dig+Trade: no player damage ever.
+    // PvP: client-sent damage ignored (server-authoritative combat).
     if (room.mode==='digtrade') return;
+    if (room.mode==='pvp') return;
     const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target||target===client)return;if(target.adminEffects&&target.adminEffects.god)return;sendJson(target,envelope);return;
   }
 
