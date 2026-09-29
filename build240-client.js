@@ -1462,7 +1462,10 @@
         for(var i=projectileNodes.length-1;i>=0;i--)if(projectileNodes[i].projectile===projectile)projectileNodes.splice(i,1);
       }catch(error){}
     };
-    requestAnimationFrame(overlayLoop);
+    // TEST: Build 24.0 DOM visual overlay disabled. Native Diggerz rendering remains untouched.
+    // The overlayLoop previously ran every animation frame and hid native wear with alpha=0.
+    // Keep the rest of Build 24.0 installed for this isolation test.
+    window.DiggerzBuild240.overlayRendererDisabled=true;
     installTrackFive();
     setInterval(function(){
       installTrackFive();
