@@ -87395,7 +87395,7 @@ return true
         },
         D54: null,
         D55: function() {
-            // Native Diggerz UI panel (same system as Game Settings) + Google button overlay only.
+            // Native LOGIN panel (ja) + official Google button overlay only.
             try {
                 for (var li = this._9.length - 1; li >= 0; li--) {
                     var ch = this._9[li];
@@ -87404,56 +87404,27 @@ return true
                     }
                 }
             } catch (e1) {}
-            var panel = new ja(480, 400, !0);
+            var panel = new ja(420, 320, !0);
             panel._1 = "diggerz_login_panel";
             panel.c0 = !0;
             panel.A7 = q.CENTERX;
             panel.A8 = q.CENTERY;
             panel.B8 = 8;
             try { E.u4(panel, 0, 300, 0, .5, 1, 0, 1); } catch (e2) {}
-            var title = new xa(0, -150, "^9LOGIN", q.MAIN_FONT_BIG);
+            var title = new xa(0, -110, "^9LOGIN", q.MAIN_FONT_BIG);
             title.D7(panel, !0);
             panel._9.push(title);
-            var hint = new xa(0, -100, "^7Save items, coins, name & skin", q.MAIN_FONT);
-            hint.D7(panel, !0);
-            try { hint.set_local_xScale(hint.set_local_yScale(.85)); } catch (e3) {}
-            panel._9.push(hint);
-            // Empty band in the middle — Google HTML button is overlaid here
-            var gap = new xa(0, -10, "^8 ", q.MAIN_FONT);
-            gap.D7(panel, !0);
-            panel._9.push(gap);
-            var future = new xa(0, 55, "^8More sign-in options coming soon", q.MAIN_FONT);
+            // Middle reserved for Google HTML overlay button
+            var future = new xa(0, 85, "^6More sign-in options coming soon", q.MAIN_FONT);
             future.D7(panel, !0);
-            try { future.set_local_xScale(future.set_local_yScale(.75)); } catch (e4) {}
+            try { future.set_local_xScale(future.set_local_yScale(.8)); } catch (e4) {}
             panel._9.push(future);
-            // Close — same red button style as the rest of the menu
-            var closeBg = new z;
-            closeBg.Init(u.REDBUTTON_PNG());
-            closeBg.D7(panel, !0);
-            closeBg.b7 = 145;
-            closeBg.set_local_xScale(closeBg.set_local_yScale(.42));
-            panel._9.push(closeBg);
-            var closeLbl = new ob(0, 145, "Close", q.MAIN_FONT_BIG);
-            closeLbl.D7(panel, !0);
-            closeLbl.b7 = 2;
-            closeLbl._1 = "diggerz_login_close";
-            closeLbl.C33 = A(this, function() {
-                try {
-                    if (panel) {
-                        panel.a0 = 1;
-                        E.u4(panel, 0, 300, 1, .5, 0, 1, 0);
-                    }
-                } catch (e5) {}
-                try {
-                    if (window.DiggerzAuth237 && window.DiggerzAuth237.hideGoogleButton)
-                        window.DiggerzAuth237.hideGoogleButton();
-                } catch (e6) {}
-            });
-            panel._9.push(closeLbl);
             this._9.push(panel);
             panel._2 = this;
             window.__diggerzLoginMenu = this;
             window.__diggerzLoginPanel = panel;
+            // Click shading/outside: close via Escape-style — Close removed; overlay has no forced close btn
+            // Show official Google button over the empty middle of the panel
             if (window.DiggerzAuth237 && window.DiggerzAuth237.showGoogleButton)
                 window.DiggerzAuth237.showGoogleButton();
             else if (window.DiggerzAuth237 && window.DiggerzAuth237.openLoginPanel)
@@ -118045,9 +118016,9 @@ function addSupportUI(){
     var style = document.createElement('style');
     style.id = 'diggerz-google-only-style';
     style.textContent = [
-      '#diggerz-google-only{display:none;position:fixed;z-index:100000;transform:translate(-50%,-50%);',
+      '#diggerz-google-only{display:none;position:fixed;z-index:2147483646;transform:translate(-50%,-50%);pointer-events:auto;',
       'font-family:Roboto,Arial,Helvetica,sans-serif;}',
-      '#diggerz-google-only.show{display:block;}',
+      '#diggerz-google-only.show{display:block !important;visibility:visible !important;opacity:1 !important;}',
       '#diggerz-google-only .dz-google-official{display:inline-flex;align-items:center;justify-content:center;gap:12px;',
       'height:44px;padding:0 14px 0 12px;min-width:240px;box-sizing:border-box;',
       'background:#fff;border:1px solid #4285F4;border-radius:4px;cursor:pointer;',
@@ -118078,25 +118049,38 @@ function addSupportUI(){
   }
   function positionGoogleButton() {
     var el = ensureGoogleButton();
+    if (!el) return;
     var canvas = document.querySelector('canvas');
     var rect = canvas ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
-    // Sit in the middle of the native LOGIN panel (slightly above center)
-    el.style.left = (rect.left + rect.width * 0.5) + 'px';
-    el.style.top = (rect.top + rect.height * 0.48) + 'px';
+    // Center of game canvas — middle of native LOGIN panel body
+    el.style.left = Math.round(rect.left + rect.width * 0.5) + 'px';
+    el.style.top = Math.round(rect.top + rect.height * 0.50) + 'px';
+    el.style.zIndex = '2147483646';
   }
   function showGoogleButton() {
     if (state.authenticated) {
       hideGoogleButton();
       return;
     }
-    var el = ensureGoogleButton();
-    positionGoogleButton();
-    el.classList.add('show');
-    if (!window.__diggerzGooglePosTimer) {
-      window.__diggerzGooglePosTimer = setInterval(function(){
-        if (!document.getElementById('diggerz-google-only') || !document.getElementById('diggerz-google-only').classList.contains('show')) return;
-        positionGoogleButton();
-      }, 200);
+    try {
+      var el = ensureGoogleButton();
+      positionGoogleButton();
+      el.classList.add('show');
+      el.style.display = 'block';
+      // Re-position a few times as the panel animates in
+      setTimeout(positionGoogleButton, 50);
+      setTimeout(positionGoogleButton, 200);
+      setTimeout(positionGoogleButton, 500);
+      if (!window.__diggerzGooglePosTimer) {
+        window.__diggerzGooglePosTimer = setInterval(function(){
+          var g = document.getElementById('diggerz-google-only');
+          if (!g || !g.classList.contains('show')) return;
+          positionGoogleButton();
+        }, 250);
+      }
+      console.log('[Diggerz Auth] Google button shown');
+    } catch (e) {
+      console.warn('[Diggerz Auth] showGoogleButton failed', e);
     }
   }
   function hideGoogleButton() {
