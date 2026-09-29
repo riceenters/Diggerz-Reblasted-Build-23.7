@@ -15470,6 +15470,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             return 0 == this.P4 && 0 == this.P5 && 0 == this.P6 ? 0 == this.P7 : !1
         },
         q2: function(a) {
+            if (!a) return !1;
             return this.P4 == a.P4 && this.P5 == a.P5 && this.P6 == a.P6 && this.P7 == a.P7 ? !0 : !1
         },
         q3: function() {
@@ -17788,10 +17789,17 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.Q0 += 1
         },
         R8: function(a) {
-            this.R1(a.P4);
-            this.R1(a.P5);
-            this.R1(a.P6);
-            this.R1(a.P7)
+            if (!a) {
+                this.R1(0);
+                this.R1(0);
+                this.R1(0);
+                this.R1(0);
+                return;
+            }
+            this.R1(a.P4 | 0);
+            this.R1(a.P5 | 0);
+            this.R1(a.P6 | 0);
+            this.R1(a.P7 | 0)
         },
         R9: function(a) {
             this.R0(a.length + 1);
@@ -19695,8 +19703,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     a.R0(q.player.L0);
                     a.R9(ui.get_language());
                     a.s0(l.A45);
-                    null == l.A40 && (l.A40 = new Cd);
-                    a.R8(l.A40);
+                    if (null == l.A40) l.A40 = new Cd;
+                    if (!l.A40) l.A40 = new Cd;
+                    try { a.R8(l.A40); } catch (_a40) { try { a.R8(new Cd); } catch (_a41) {} }
                     l.A40 = null;
                     a.s0(l.A46);
                     a.s0(l.A47);
@@ -22268,8 +22277,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.incoming = [];
         // Service must be ready so MODE_CONNECTING can run A18 and build the world.
         // Room-state still applies the shared map/tiles afterward (_pvpWorldSynced).
-        this.ready = !(this.mode === "pvp" || this.mode === "digtrade");
-        // Multiplayer: ready flips true only after room-state (real spawn gate).
+        this.ready = true; // world must init; room-state still applies map after connect
         this._pvpWorldSynced = false;
         this.closed = false;
         this.ticks = 0;
@@ -22278,9 +22286,19 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.hazardCooldown = 0;
         this.lastDigTick = -9999;
         this.adminPvpEnabled = false;
-        this.playerId = (this.mode === "pvp" || this.mode === "digtrade") ? this.guid((Math.random()*4294967296)|0,(Math.random()*4294967296)|0,(Math.random()*4294967296)|0,(Math.random()*4294967296)|0) : this.guid(1145655898, 1229212756, 1380275020, 1162690898);
-        this.pocketId = this.guid(1347374923, 1162627412, 1230193988, 1096040772);
-        this.zeroId = this.guid(0, 0, 0, 0);
+        try {
+          this.playerId = (this.mode === "pvp" || this.mode === "digtrade") ? this.guid((Math.random()*4294967296)|0,(Math.random()*4294967296)|0,(Math.random()*4294967296)|0,(Math.random()*4294967296)|0) : this.guid(1145655898, 1229212756, 1380275020, 1162690898);
+        } catch (_pid) {
+          this.playerId = this.guid(1145655898, 1229212756, 1380275020, 1162690898);
+        }
+        if (!this.playerId) this.playerId = this.guid(1145655898, 1229212756, 1380275020, 1162690898);
+        try {
+          this.pocketId = this.guid(1347374923, 1162627412, 1230193988, 1096040772);
+          this.zeroId = this.guid(0, 0, 0, 0);
+        } catch (_ids) {
+          this.pocketId = this.guid(1347374923, 1162627412, 1230193988, 1096040772);
+          this.zeroId = this.guid(0, 0, 0, 0);
+        }
         // Build 21.17 combat test target. Damage/HP live in the local service, while
         // the client draws a guaranteed world marker instead of a multiplayer player object.
         this.testNpcId = this.guid(1413567572, 1146377549, 1297102416, 1497649232);
@@ -23034,6 +23052,87 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             return x >= 0 && y >= 0 && x < this.state.width && y < this.state.height ?
                 this.state.tiles[x + y * this.state.width] : 0
         },
+
+        forcePurgeTileEntity: function(x, y, layer) {
+            // Strip any native tile entity at (x,y) on the solid layers so
+            // a mined block cannot leave an invisible physics body behind.
+            try {
+                if (typeof l === "undefined" || !l.z38 || !l.z38.R39) return;
+                var layers = [];
+                if (layer === 2) {
+                    layers = [typeof l._48 === "number" ? l._48 : 2];
+                } else {
+                    // Foreground solid + decorative layers that can hold colliders
+                    layers = [
+                        typeof l._46 === "number" ? l._46 : 0,
+                        typeof l._47 === "number" ? l._47 : 1,
+                        typeof l._48 === "number" ? l._48 : 2
+                    ];
+                }
+                var tx = x | 0, ty = y | 0, li, layerIdx, grid, tile, body, space, outer;
+                for (li = 0; li < layers.length; li++) {
+                    layerIdx = layers[li];
+                    grid = l.z38.R39[layerIdx];
+                    if (!grid || !grid.Q35 || !grid.Q35[tx]) continue;
+                    tile = grid.Q35[tx][ty];
+                    if (!tile) continue;
+                    try {
+                        if (tile.b33) {
+                            body = tile.b33;
+                            try {
+                                if (body.tBJ) {
+                                    outer = body.tBJ.space ? body.tBJ.space.outer : null;
+                                    if (outer && outer.tBJ && outer.tBJ.wrap_bodies) {
+                                        try { body.tBJ.component.woken = !1; } catch (_w) {}
+                                        try { outer.tBJ.wrap_bodies.remove(body); } catch (_r) {}
+                                    }
+                                }
+                            } catch (_body) {}
+                        }
+                    } catch (_phys) {}
+                    try { if (tile.J46) tile.J46(); } catch (_j) {}
+                    try { if (tile.e3) tile.e3(); } catch (_e3) {}
+                    try { tile.a0 = 1; } catch (_a0) {}
+                    try { tile.a2 = !1; } catch (_a2) {}
+                    try { grid.Q35[tx][ty] = null; } catch (_q) {}
+                    try {
+                        if (grid._9 && typeof T !== "undefined" && T.remove)
+                            T.remove(grid._9, tile);
+                        else if (grid._9) {
+                            var ix = grid._9.indexOf(tile);
+                            if (ix >= 0) grid._9.splice(ix, 1);
+                        }
+                    } catch (_rm) {}
+                    try {
+                        if (typeof h !== "undefined" && h.q21)
+                            h.q21(0, 0, 0, tile);
+                    } catch (_h) {}
+                }
+                // Also kill any leftover placement "fx" sprites on the player that
+                // still claim this cell (native place animation residue).
+                try {
+                    if (l.z39 && l.z39._9) {
+                        var kids = l.z39._9.slice(), ki, fx, fxX, fxY;
+                        for (ki = 0; ki < kids.length; ki++) {
+                            fx = kids[ki];
+                            if (!fx || fx._1 !== "fx") continue;
+                            fxX = Math.round(fx.b6 / l._44);
+                            fxY = Math.round(fx.b7 / l._44);
+                            try {
+                                if (fx._8 && fx._8[1] && isFinite(fx._8[1].W0))
+                                    fxX = Math.round(fx._8[1].W0 / l._44);
+                                if (fx._8 && fx._8[2] && isFinite(fx._8[2].W0))
+                                    fxY = Math.round(fx._8[2].W0 / l._44);
+                            } catch (_fxc) {}
+                            if (fxX === tx && fxY === ty) {
+                                try { fx.e3 && fx.e3(); } catch (_fe) {}
+                                try { fx.a0 = 1; } catch (_fa) {}
+                            }
+                        }
+                    }
+                } catch (_fx) {}
+            } catch (_purge) {}
+        },
         setTile: function(x, y, id, variant, layer) {
             layer = layer == null ? 0 : (layer | 0);
             if (x < 0 || y < 0 || x >= this.state.width || y >= this.state.height) return false;
@@ -23052,8 +23151,36 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 this.state.tiles[index] = id;
                 if (this.state.variants) this.state.variants[index] = variant;
             }
-            if (!id) delete this.damage[x + ":" + y];
+            if (!id) {
+                delete this.damage[x + ":" + y];
+                // Cancel delayed place-commit so a mine within ~410ms cannot
+                // resurrect the block as an invisible / ghost tile.
+                try {
+                    if (this._diggerzPendingPlacements) {
+                        delete this._diggerzPendingPlacements[x + ":" + y];
+                        delete this._diggerzPendingPlacements[x + ":" + y + ":" + layer];
+                        delete this._diggerzPendingPlacements[x + ":" + y + ":0"];
+                    }
+                    if (!this._diggerzClearedCells) this._diggerzClearedCells = {};
+                    this._diggerzClearedCells[x + ":" + y] = Date.now();
+                } catch (_clr) {}
+            } else {
+                // A real place undoes a prior clear mark for this cell.
+                try { if (this._diggerzClearedCells) delete this._diggerzClearedCells[x + ":" + y]; } catch (_pc) {}
+            }
             this.sendTile(x, y, id, variant, layer);
+            // Extra visual clear: if mining, enqueue a second clear packet so the
+            // native tile layer cannot leave a ghost collider after a place→mine race.
+            if (!id) {
+                try { this.sendTile(x, y, 0, 0, layer); } catch (_st2) {}
+                if (layer !== 2) {
+                    try { this.sendTile(x, y, 0, 0, 0); } catch (_st3) {}
+                }
+                // Force-destroy native tile sprite + physics body immediately.
+                // Enqueued opcode-11 can leave an invisible collider when the
+                // local place animation / Q35 entry is out of sync.
+                try { this.forcePurgeTileEntity(x, y, layer); } catch (_fp) {}
+            }
             this.markDirty();
             // Multiplayer: always notify the server of local place/mine so peers
             // see map changes. Skip when we are applying a server-authoritative
@@ -23098,6 +23225,49 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var dx = x - px, dy = y - py;
             return Math.sqrt(dx * dx + dy * dy)
         },
+        // Radius around a tile center that counts as "too close to build".
+        diggerzBuildClearRadius: 1.15,
+        diggerzTooCloseBuildMsg: function() {
+            try {
+                var now = Date.now();
+                if (this._tooCloseMsgAt && now - this._tooCloseMsgAt < 900) return;
+                this._tooCloseMsgAt = now;
+                var msg = "^1Error: ^7Someone is too close to this spot.";
+                if (this.message) this.message(msg);
+                else if (this.game && this.game.R35 && this.game.R35.C46) this.game.R35.C46(msg);
+                else if (typeof l !== "undefined" && l.z38 && l.z38.R35) l.z38.R35.C46(msg);
+            } catch (_m) {}
+        },
+        diggerzSomeoneTooCloseToBuild: function(tileX, tileY, actorX, actorY) {
+            // True if the target cell is too near the local player or any peer.
+            var r = this.diggerzBuildClearRadius || 1.15;
+            var cx = (tileX | 0) + 0.5, cy = (tileY | 0) + 0.5;
+            function near(px, py) {
+                if (!isFinite(px) || !isFinite(py)) return false;
+                var dx = cx - px, dy = cy - py;
+                return Math.sqrt(dx * dx + dy * dy) < r;
+            }
+            // Prefer placement-time actor position when provided (opcode 11).
+            var lpx = isFinite(actorX) ? actorX : (l.z39 ? l.z39.b6 / l._44 : this.state.x);
+            var lpy = isFinite(actorY) ? actorY : (l.z39 ? l.z39.b7 / l._44 : this.state.y);
+            if (near(lpx, lpy)) return true;
+            try {
+                if (l && l.z39 && near(l.z39.b6 / l._44, l.z39.b7 / l._44)) return true;
+            } catch (_s) {}
+            try {
+                var peers = this.pvpEnsurePeers && this.pvpEnsurePeers();
+                if (peers) {
+                    for (var k in peers) {
+                        var peer = peers[k];
+                        if (!peer) continue;
+                        var ent = this.pvpEntityForPeer && this.pvpEntityForPeer(peer);
+                        if (ent && near(ent.b6 / l._44, ent.b7 / l._44)) return true;
+                        if (isFinite(peer.lastX) && isFinite(peer.lastY) && near(peer.lastX, peer.lastY)) return true;
+                    }
+                }
+            } catch (_p) {}
+            return false;
+        },
         fixLocalAnimations: function() {
             var p = l.z39;
             if (!p || !p.i33) return;
@@ -23119,6 +23289,33 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         },
         checkDamageHazard: function() {
             if (this.hazardCooldown > 0 || !l.z39 || l.z39.N33 <= 0 || this.localDead) return;
+            // Dig+Trade and pre-fight build phase: no hazard damage (lava/blade/spikes).
+            try {
+                var mp = window.DiggerzPvp22;
+                var inDig = this.mode === "digtrade" || (mp && mp.mode === "digtrade");
+                var inBuild = (this.mode === "pvp" || (mp && mp.mode === "pvp")) && mp && mp.battle &&
+                    mp.battle.phase && mp.battle.phase !== "fight" && mp.battle.phase !== "elimination";
+                if (inDig || inBuild) {
+                    // Still detect contact so we can toast a message, but never apply HP loss.
+                    var px0 = l.z39.b6 / l._44, py0 = l.z39.b7 / l._44;
+                    var samples0 = [
+                        [Math.floor(px0 + .5), Math.floor(py0 + .35)],
+                        [Math.floor(px0 + .5), Math.floor(py0 + .95)]
+                    ];
+                    var touched = false;
+                    for (var si0 = 0; si0 < samples0.length; si0++) {
+                        var id0 = this.tileAt(samples0[si0][0], samples0[si0][1]);
+                        if (id0 === 117 || id0 === 112 || id0 === 312 || id0 === 313) { touched = true; break; }
+                    }
+                    if (touched) {
+                        this.hazardCooldown = 20;
+                        this._diggerzSafeDamageMsg(inDig
+                            ? "^9You can't take damage in Dig+Trade!"
+                            : "^9Match hasn't started — you can't take damage yet!");
+                    }
+                    return;
+                }
+            } catch (_safeHz) {}
             var px = l.z39.b6 / l._44, py = l.z39.b7 / l._44;
             // Build 23.0: Blade and Magma/Lava use only their visible one-tile footprint.
             // The old floor/round/ceil neighborhood made both hazards feel several blocks wide.
@@ -23180,8 +23377,35 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 } catch (error) { self.centerMessage("^1YOU DIED!") }
             }, 1650)
         },
+        _diggerzSafeDamageMsg: function(msg) {
+            try {
+                var now = Date.now();
+                if (this._safeDmgMsgAt && now - this._safeDmgMsgAt < 2500) return;
+                this._safeDmgMsgAt = now;
+                if (this.message) this.message(msg);
+                else if (this.game && this.game.R35 && this.game.R35.C46) this.game.R35.C46(msg);
+            } catch (_m) {}
+        },
         hurtLocalPlayer: function(amount, source) {
             if (!l.z39 || this.localDead) return;
+            source = source || "";
+            // Dig+Trade: never take environmental / combat damage (admin kill still works).
+            try {
+                var mp = window.DiggerzPvp22;
+                var inDig = this.mode === "digtrade" || (mp && mp.mode === "digtrade");
+                var inBuild = (this.mode === "pvp" || (mp && mp.mode === "pvp")) && mp && mp.battle &&
+                    mp.battle.phase && mp.battle.phase !== "fight" && mp.battle.phase !== "elimination";
+                if (source !== "admin") {
+                    if (inDig) {
+                        this._diggerzSafeDamageMsg("^9You can't take damage in Dig+Trade!");
+                        return;
+                    }
+                    if (inBuild) {
+                        this._diggerzSafeDamageMsg("^9Match hasn't started — you can't take damage yet!");
+                        return;
+                    }
+                }
+            } catch (_safeHurt) {}
             var max = l.z39.N34 || 3;
             var observed = l.z39.N33;
             if (this.localHealth == null || this.localHealth > max)
@@ -23821,14 +24045,14 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var slot = packet.Q9(), variant = packet.Q9();
             packet.r6();
             if (layer < 0 || layer > 2 || (layer === 0 && this.tileAt(x, y)) || this.distanceToPlayer(x, y) > 5 ||
-                y <= 0 || y >= this.state.height - 1 || this.distanceToPlayer(x, y) < 1.1) return;
-            // CT uses the actual native player body for the placement decision.
-            // Reject the exact grid cell if it intersects the player's live
-            // physics footprint at the moment opcode 11 was generated.
+                y <= 0 || y >= this.state.height - 1) return;
+            // Too close to yourself or another player → official-style message (no invisible hitbox).
             try {
-                if (window.DiggerzPlayerOverlapsCell && window.DiggerzPlayerOverlapsCell(actorX,actorY,x,y,
-                    (l.z39&&l.z39.b34&&l.z39.b34.tBJ&&isFinite(l.z39.b34.tBJ.radius)) ? Number(l.z39.b34.tBJ.radius)/l._44 : 0.72)) return;
-            } catch (_nativeBuildOverlap) {}
+                if (this.diggerzSomeoneTooCloseToBuild && this.diggerzSomeoneTooCloseToBuild(x, y, actorX, actorY)) {
+                    this.diggerzTooCloseBuildMsg();
+                    return;
+                }
+            } catch (_tooClose) {}
             if (window.DiggerzIsMultiplayer && window.DiggerzIsMultiplayer(this)) {
                 this._diggerzPlacementActor={x:actorX,y:actorY};
             }
@@ -23864,6 +24088,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         var pending = self._diggerzPendingPlacements && self._diggerzPendingPlacements[placeKey];
                         if (!pending) return;
                         delete self._diggerzPendingPlacements[placeKey];
+                        // Mined/cleared after the place packet — do NOT resurrect the block.
+                        if (self._diggerzClearedCells && self._diggerzClearedCells[placeKey]) return;
                         if (self.tileAt(x,y)) return;
                         self.state.placed++;
                         self.setTile(x,y,pending.id,pending.variant,pending.layer);
@@ -116200,7 +116426,19 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         var tx=m.x|0,ty=m.y|0,tLayer=m.layer|0,tid=m.id|0,tvar=(m.variant|0)&31;
         var tkey=tx+':'+ty+':'+tLayer;
         // Skip only while our local place animation is still pending that cell.
-        if(String(m._serverFrom||'')===String(P.connectionId||'') && this._diggerzPendingPlacements && this._diggerzPendingPlacements[tkey]) return;
+        // Never skip a clear (id=0). Skipping self-echo during pending place is
+        // only for place confirms — mining must always remove the tile visually.
+        if(tid!==0 && String(m._serverFrom||'')===String(P.connectionId||'') && this._diggerzPendingPlacements && (this._diggerzPendingPlacements[tkey]||this._diggerzPendingPlacements[tx+':'+ty])) return;
+        if(tid===0){
+          try{
+            if(this._diggerzPendingPlacements){
+              delete this._diggerzPendingPlacements[tx+':'+ty];
+              delete this._diggerzPendingPlacements[tkey];
+            }
+            if(!this._diggerzClearedCells)this._diggerzClearedCells={};
+            this._diggerzClearedCells[tx+':'+ty]=Date.now();
+          }catch(_c){}
+        }
         this._pvpApplyingTile=true;
         try{
           // 1) Service state + enqueued opcode-11 for the local net reader.
@@ -116253,7 +116491,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
       if(m.t==='drop-spawn'){this.pvpAddSharedDrop(m.drop);return}
       if(m.t==='drop-remove'){this.pvpRemoveSharedDrop(m.guid);return}
       if(m.t==='drop-award'){var d=m.drop||{};if(this.addItem(d.category|0,d.id|0,d.variant|0,Math.max(1,d.count|0),d.extra|0,String(d.text||''))<0){var x=l.z39?l.z39.b6/l._44:this.state.x,y=l.z39?l.z39.b7/l._44-.5:this.state.y;this.spawnDrop(d.category|0,d.id|0,Math.max(1,d.count|0),x,y,String(d.text||''),String(d.tier||''))}else{if(d.tier==='super'){var sn=this.itemName(d.category|0,d.id|0);this.message('^3SUPER RARE! ^7'+this.playerName()+' found '+sn+'!');this.centerMessage('^3SUPER RARE!\n^7'+sn)}else if(d.tier==='rare'){var rn=this.itemName(d.category|0,d.id|0);this.message('^9RARE ITEM! ^7'+this.playerName()+' found '+rn+'!');this.centerMessage('^9RARE ITEM!\n^7'+rn)}this.markDirty()}return}
-      if(m.t==='damage'&&(P.mode==='pvp'||(P.mode==='digtrade'&&(this.adminPvpEnabled||(typeof q!=='undefined'&&q.diggerzAdminPvpEnabled))))){this.hurtLocalPlayer(Math.max(1,m.amount|0),m.source||'weapon');return}
+      if(m.t==='damage'){var allowPvpDmg=(P.mode==='pvp'&&P.battle&&(P.battle.phase==='fight'||P.battle.phase==='elimination'))||(P.mode==='digtrade'&&(this.adminPvpEnabled||(typeof q!=='undefined'&&q.diggerzAdminPvpEnabled)));if(allowPvpDmg)this.hurtLocalPlayer(Math.max(1,m.amount|0),m.source||'weapon');else if(this._diggerzSafeDamageMsg)this._diggerzSafeDamageMsg(P.mode==='digtrade'?'^9You can\'t take damage in Dig+Trade!':'^9Match hasn\'t started — you can\'t take damage yet!');return}
       if(m.t==='health'){var hp=this.pvpPeerForConnection(m._serverFrom);if(hp&&hp.id){var hid=hp.id,current=+m.current||0,maximum=+m.maximum||3;this.enqueue(48,1,function(p){p.R8(hid);p.r8(current);p.r8(maximum)})}return}
       if(m.t==='death'){var dp=this.pvpPeerForConnection(m._serverFrom);if(dp&&dp.id){var did=dp.id,dx=+m.x||0,dy=+m.y||0;this.enqueue(46,1,function(p){p.R8(did);p.r8(dx);p.r8(0);p.r8(dy);p.R4(0)})}return}
       if(m.t==='respawn'){var rp=this.pvpPeerForConnection(m._serverFrom);if(rp&&rp.id){var rid=rp.id,rx=+m.x||12,ry=+m.y||16;this.enqueue(47,1,function(p){p.R8(rid);p.r8(rx);p.r8(0);p.r8(ry);p.s0(false)})}return}
@@ -116837,7 +117075,7 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return _rShoe;if(!P.service)
       }
       applyRows(map.backgroundTiles,2);applyRows(map.tiles,0);return true
     };
-    proto.pvpApplyBaseMap=function(map){
+    proto.pvpApplyBaseMap=function(map){try{
       if((this.mode!=='pvp'&&this.mode!=='digtrade')||!map||map.format!=='diggerz-pvp-map-v1'||(map.width|0)!==128||(map.height|0)!==80||!Array.isArray(map.tiles))return false;
       var total=128*80,oldTiles=(this.state&&this.state.tiles)||[],oldVariants=(this.state&&this.state.variants)||[],oldFlags=(this.state&&this.state.mapTileFlags)||[],oldBg=(this.state&&this.state.backgroundTiles)||[],oldBgV=(this.state&&this.state.backgroundVariants)||[],oldBgF=(this.state&&this.state.mapBackgroundFlags)||[],tiles=new Array(total),variants=new Array(total),flags=new Array(total),bgTiles=new Array(total),bgVariants=new Array(total),bgFlags=new Array(total),i;
       for(i=0;i<total;i++){tiles[i]=0;variants[i]=0;flags[i]=0;bgTiles[i]=0;bgVariants[i]=0;bgFlags[i]=0}
@@ -116854,7 +117092,7 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return _rShoe;if(!P.service)
       var theme=Math.max(0,Math.min(9,map.background|0));this.enqueue(102,1,function(packet){packet.R2(theme)});
       var self=this;[0,80,220,600,1200].forEach(function(delay){setTimeout(function(){if(self&&self.pvpApplyMapTransforms)self.pvpApplyMapTransforms(map)},delay)});
       this.markDirty();return true
-    };
+    }catch(_mapErr){try{console.warn("pvpApplyBaseMap",_mapErr)}catch(_c){}return false;}};
     var releaseRoomState=proto.pvpApplyRoomState;proto.pvpApplyRoomState=function(m){if(m&&m.map&&(this.mode==='pvp'||this.mode==='digtrade'))this.pvpApplyBaseMap(m.map);return releaseRoomState.call(this,m)};
     function refreshBoard(service){try{if(l.z38&&l.z38.R37&&l.z38.R37.Z44)l.z38.R37.Z44()}catch(e){}}
     function setNameWins(e,w){try{if(e&&e.J30&&e.J30.E32)e.J30.E32.E37(String(e._1||'Player')+' ^9'+Math.max(0,w|0))}catch(_e){}} function resetScores(service){try{if(l.z39){l.z39.k31=0;setNameWins(l.z39,service&&service.state?service.state.wins|0:0)}var peers=service&&service.pvpEnsurePeers?service.pvpEnsurePeers():{};for(var k in peers){var peer=peers[k],e=service.pvpEntityForPeer(peer);if(e){e.k31=0;setNameWins(e,peer&&peer.info?peer.info.wins|0:0)}}refreshBoard(service)}catch(e){}}
@@ -117389,20 +117627,17 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return _rShoe;if(!P.service)
   // shield is rejected so blocks cannot be planted on top of a player and
   // corrupt the native grid.
   window.DiggerzPlayerShieldOverlapsCell=function(px,py,cx,cy){
+    // Distance-based "too close to build" (replaces the old floating hitbox).
     if(!isFinite(px)||!isFinite(py)||!isFinite(cx)||!isFinite(cy))return false;
-    // Placement cell AABB (1x1, centered on integer tile coords).
-    var half=0.5;
-    var cellL=cx-half, cellR=cx+half, cellT=cy-half, cellB=cy+half;
-    // Player shield: ~1 block left, body, ~1 block right.  Continuous floats —
-    // NOT rounded to grid — so the shield moves exactly with the player.
-    var hw=0.50;  // horizontal half-width (tight around player)
-    var hh=0.50;  // vertical half-height → 1 block tall total (matches player)
-    var margin=0.05;
-    var shL=px-hw-margin, shR=px+hw+margin, shT=py-hh-margin, shB=py+hh+margin;
-    // AABB intersection
-    if(cellR<shL||cellL>shR||cellB<shT||cellT>shB)return false;
-    return true;
-  };
+    var dx=(cx+0.5)-px, dy=(cy+0.5)-py;
+    // cx/cy may already be tile centers or integer tile coords — handle both.
+    if (Math.abs(cx-Math.round(cx)) < 1e-6 && Math.abs(cy-Math.round(cy)) < 1e-6) {
+      dx = (cx + 0.5) - px; dy = (cy + 0.5) - py;
+    } else {
+      dx = cx - px; dy = cy - py;
+    }
+    return Math.sqrt(dx*dx+dy*dy) < 1.15;
+  };;
   // Back-compat alias used by older call sites.
   window.DiggerzPlayerOverlapsCell=function(px,py,cx,cy,radius){
     if(window.DiggerzPlayerShieldOverlapsCell(px,py,cx,cy))return true;

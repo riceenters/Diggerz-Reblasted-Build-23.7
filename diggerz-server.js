@@ -1247,23 +1247,10 @@ function placementOverlapsPlayer(player, tileX, tileY) {
   if (!player || !player.position) return false;
   const px=Number(player.position.x), py=Number(player.position.y);
   if (!Number.isFinite(px) || !Number.isFinite(py)) return false;
-
-  // Floating player placement shield: left block + body + right block.
-  // Coordinates are continuous world-tile units that FOLLOW the player and
-  // never snap to the grid.  Any placement cell that intersects this shield
-  // is rejected so blocks cannot be planted on a player and break the grid.
-  const cellHalf=0.5;
-  const left=Number(tileX)-cellHalf, right=Number(tileX)+cellHalf;
-  const top=Number(tileY)-cellHalf, bottom=Number(tileY)+cellHalf;
-
-  const hw=0.50, hh=0.50, margin=0.05; // tight 1x1 player shield
-  const L=px-hw-margin, R=px+hw+margin, T=py-hh-margin, B=py+hh+margin;
-  if (!(right < L || left > R || bottom < T || top > B)) return true;
-
-  // Secondary continuous corner check (slightly larger than before).
-  const cx=Math.max(left,Math.min(px,right));
-  const cy=Math.max(top,Math.min(py,bottom));
-  return Math.hypot(cx-px,cy-py) <= 1.35;
+  // Distance-based (same idea as client): reject if tile center is within ~1.15 of player.
+  const cx=(tileX|0)+0.5, cy=(tileY|0)+0.5;
+  const dx=cx-px, dy=cy-py;
+  return Math.hypot(dx, dy) < 1.15;
 }
 
 function placementBlockedByAnyPlayer(room, tileX, tileY) {
