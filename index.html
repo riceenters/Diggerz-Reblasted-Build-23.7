@@ -15967,17 +15967,38 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             a.set_local_r(a.set_local_g(a.set_local_b(this.l9)))
         },
         m37: function() {
+            var colorIdx = Wc.e14(this.q7.P4) % Wc.e14(10) | 0;
+            try {
+                // Local player: keep a stable shirt color in localStorage forever
+                var isLocal = false;
+                try {
+                    if (window.l && l.z38 && l.z38.R0 && this === l.z38.R0) isLocal = true;
+                } catch (eL) {}
+                try {
+                    if (!isLocal && window.q && q.player && this.q7 && q.player.q7 && this.q7.P4 === q.player.q7.P4) isLocal = true;
+                } catch (eL2) {}
+                if (isLocal) {
+                    var key = "diggerz.shirtColor.v1";
+                    var saved = null;
+                    try { saved = localStorage.getItem(key); } catch (eS) {}
+                    if (saved != null && saved !== "" && isFinite(+saved)) {
+                        colorIdx = (+saved) % 10 | 0;
+                    } else {
+                        try { localStorage.setItem(key, String(colorIdx)); } catch (eW) {}
+                    }
+                }
+            } catch (eC) {}
             var a = this.i33.f2("front_shoulder");
             a = a.f2("arm");
             a.Init(f.WHITE_ARM_PNG());
-            a.h4(Wc.e14(this.q7.P4) % Wc.e14(10) | 0);
+            a.h4(colorIdx);
             a = this.i33.f2("back_shoulder");
             a = a.f2("arm_back");
             a.Init(f.WHITE_ARM_PNG());
-            a.h4(Wc.e14(this.q7.P4) % Wc.e14(10) | 0);
+            a.h4(colorIdx);
             a = this.i33.f2("torso");
             a.Init(f.WHITE_TORSO_PNG());
-            a.h4(Wc.e14(this.q7.P4) % Wc.e14(10) | 0)
+            a.h4(colorIdx)
         },
         m38: function(a, b) {
             // Reset idle/walk to defaults BEFORE re-applying wear.
@@ -22256,7 +22277,30 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.hazardCooldown = 0;
         this.lastDigTick = -9999;
         this.adminPvpEnabled = false;
-        this.playerId = (this.mode === "pvp" || this.mode === "digtrade") ? this.guid((Math.random()*4294967296)|0,(Math.random()*4294967296)|0,(Math.random()*4294967296)|0,(Math.random()*4294967296)|0) : this.guid(1145655898, 1229212756, 1380275020, 1162690898);
+        // Shirt/torso color is derived from playerId.P4 (m37). Persist the guid so
+        // every session (and account-less users) keep the same random shirt color forever.
+        this.playerId = (function(self) {
+            if (self.mode !== "pvp" && self.mode !== "digtrade")
+                return self.guid(1145655898, 1229212756, 1380275020, 1162690898);
+            try {
+                var key = "diggerz.playerGuid.v1";
+                var raw = null;
+                try { raw = localStorage.getItem(key); } catch (e0) {}
+                if (raw) {
+                    var parts = JSON.parse(raw);
+                    if (parts && parts.length === 4)
+                        return self.guid(parts[0] | 0, parts[1] | 0, parts[2] | 0, parts[3] | 0);
+                }
+                var a = (Math.random() * 4294967296) | 0;
+                var b = (Math.random() * 4294967296) | 0;
+                var c = (Math.random() * 4294967296) | 0;
+                var d = (Math.random() * 4294967296) | 0;
+                try { localStorage.setItem(key, JSON.stringify([a, b, c, d])); } catch (e1) {}
+                return self.guid(a, b, c, d);
+            } catch (e2) {
+                return self.guid((Math.random() * 4294967296) | 0, (Math.random() * 4294967296) | 0, (Math.random() * 4294967296) | 0, (Math.random() * 4294967296) | 0);
+            }
+        })(this);
         this.pocketId = this.guid(1347374923, 1162627412, 1230193988, 1096040772);
         this.zeroId = this.guid(0, 0, 0, 0);
         // Build 21.17 combat test target. Damage/HP live in the local service, while
@@ -51453,7 +51497,7 @@ return true
                     self._9.push(new vb(self, "", "^1Save failed: ^7" + String(detail).slice(0, 140), new Cd, vb.F39));
                     return;
                 }
-                self._9.push(new vb(self, "", "^2Saved!, new Cd, vb.F39));
+                self._9.push(new vb(self, "", "^2Saved! Account now has your items, coins, name & skin.", new Cd, vb.F39));
             }).catch(function(e) {
                 var msg = (e && e.message) ? e.message : String(e);
                 self._9.push(new vb(self, "", "^1Save failed: ^7" + msg.slice(0, 140), new Cd, vb.F39));
@@ -51475,7 +51519,7 @@ return true
                     self._9.push(new vb(self, "", "^1Load skipped: this browser already has more items than the account.", new Cd, vb.F39));
                     return;
                 }
-                self._9.push(new vb(self, "", "^2Loaded! Applying changes...
+                self._9.push(new vb(self, "", "^2Loaded! Reloading to apply…", new Cd, vb.F39));
                 setTimeout(function(){ location.reload(); }, 700);
             }).catch(function(e) {
                 self._9.push(new vb(self, "", "^1Load failed. Check console / Firestore.", new Cd, vb.F39));
@@ -87450,7 +87494,7 @@ return true
             this.d51.E37("Donate");
             this.d51.b7 = 2;
             this.d51.B8 = 5;
-            this.d51.C33 = function(){ if(window.DiggerzOpenDonateNative) window.DiggerzOpenDonateNative(this); else if(window.DiggerzSupport239) window.DiggerzSupport239.open(); };
+            this.d51.C33 = A(this, function(){ if(window.DiggerzOpenDonateNative) window.DiggerzOpenDonateNative(this); else if(window.DiggerzSupport239) window.DiggerzSupport239.open(); });
             this.d51._1 = "welcome message";
             this._9.push(this.d51);
             c = new xa(0,-70,"Support Diggerz multiplayer");
@@ -87522,7 +87566,7 @@ return true
                 if (window.DiggerzAuth237 && window.DiggerzAuth237.hideGoogleButton)
                     window.DiggerzAuth237.hideGoogleButton();
             } catch (eHide) {}
-            var panel = new ja(440, 360, !0);
+            var panel = new ja(440, 420, !0);
             panel._1 = "diggerz_login_panel";
             panel.c0 = !0;
             // Same click-off as Game Settings
@@ -87558,7 +87602,7 @@ return true
             gLbl.D7(gBg, !0);
             gLbl.b6 = 0;
             gLbl.b7 = 2;
-            try { gLbl.set_local_xScale(gLbl.set_local_yScale(.55)); } catch (eS) {}
+            try { gLbl.set_local_xScale(gLbl.set_local_yScale(.4)); } catch (eS) {}
             gLbl._1 = "diggerz_google_btn";
             gLbl.C33 = A(this, function() {
                 if (window.DiggerzAuth237 && window.DiggerzAuth237.loginWithGoogle)
@@ -87568,10 +87612,50 @@ return true
             });
             gBg._9 = gBg._9 || [];
             gBg._9.push(gLbl);
-            var future = new xa(0, 95, "^6More sign-in options coming soon", q.MAIN_FONT);
-            future.D7(panel, !0);
-            try { future.set_local_xScale(future.set_local_yScale(.75)); } catch (e4) {}
-            panel._9.push(future);
+            // Email magic-link: native textbox + Okay (same dg textbox as Enter Name)
+            var emailBox = new dg(0, 55, "Enter Email", q.MAIN_FONT, !1, 64, 280);
+            try { emailBox.Q30.needsSoftKeyboard = !0; } catch (eKb) {}
+            emailBox.D7(panel, !0);
+            emailBox.c0 = !1;
+            emailBox._1 = "diggerz_email_box";
+            panel._9.push(emailBox);
+            var okBg = new z;
+            okBg.Init(u.YELLOWBUTTON_PNG());
+            okBg.D7(panel, !0);
+            okBg.b6 = 0;
+            okBg.b7 = 120;
+            okBg.set_local_xScale(.65);
+            okBg.set_local_yScale(.5);
+            okBg._1 = "diggerz_email_ok_bg";
+            panel._9.push(okBg);
+            var okLbl = new ob(0, 0, "Send login link", q.MAIN_FONT);
+            okLbl.D7(okBg, !0);
+            okLbl.b6 = 0;
+            okLbl.b7 = 2;
+            try { okLbl.set_local_xScale(okLbl.set_local_yScale(.4)); } catch (eOk) {}
+            okLbl._1 = "diggerz_email_ok";
+            okLbl.C33 = A(this, function() {
+                var email = "";
+                try {
+                    if (emailBox.Q30 && typeof emailBox.Q30.get_text === "function")
+                        email = String(emailBox.Q30.get_text() || "");
+                    else if (emailBox.q35)
+                        email = String(emailBox.q35 || "");
+                } catch (eRead) {}
+                email = email.trim().toLowerCase();
+                if (!email || email.indexOf("@") < 0 || email === "enter email") {
+                    this._9.push(new vb(this, "", "^1Enter a valid email address.", new Cd, vb.F39));
+                    return;
+                }
+                if (window.DiggerzAuth237 && window.DiggerzAuth237.sendEmailLink)
+                    window.DiggerzAuth237.sendEmailLink(email, this);
+                else
+                    this._9.push(new vb(this, "", "^1Email login is not ready yet. Refresh the page.", new Cd, vb.F39));
+            });
+            okBg._9 = okBg._9 || [];
+            okBg._9.push(okLbl);
+            // Taller panel for Google + email row
+            try { panel.d36 && panel.d36(440, 420); } catch (eSz) {}
             this._9.push(panel);
             panel._2 = this;
             window.__diggerzLoginMenu = this;
@@ -117440,102 +117524,11 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
         }
       }catch(e){}
     }
-    function digMusicOpenPanel(){
-      var UI=window.DiggerzNativeUI;
-      if(!UI||!UI.ja||!UI.xa||!UI.ob||!UI.z||!UI.q) return;
-      digMusicClosePanel();
-      digMusicOpenedAt=Date.now();
-      try{
-        var panel=new UI.ja(380,400,!0);
-        panel._1='diggerz_music_panel';
-        panel.c0=!0;
-        panel.a0=0;
-        // Click-off close like Settings, but ignore for 500ms after open
-        // (prevents the open-click from instantly wiping the panel)
-        panel.E7=function(){ return !0; };
-        panel.C39=function(){
-          try{
-            if(Date.now()-digMusicOpenedAt<500) return;
-            if(null==this._8||null==this._8[3]) digMusicClosePanel();
-          }catch(eC){}
-        };
-        panel.A7=UI.q.CENTERX;
-        panel.A8=UI.q.CENTERY;
-        // No open fade animation — keeps children visible the whole time
-        var title=new UI.xa(0,-150,'^9MUSIC',UI.q.MAIN_FONT_BIG);
-        title.D7(panel,!0);
-        panel._9.push(title);
-        var y=-80;
-        for(var ti=0;ti<4;ti++){
-          (function(trackIndex, yy){
-            var bg=new UI.z;
-            try{ bg.Init(UI.u.YELLOWBUTTON_PNG()); }catch(e){}
-            bg.D7(panel,!0);
-            bg.b6=0;
-            bg.b7=yy;
-            bg.set_local_xScale(bg.set_local_yScale(.5));
-            bg.a0=0;
-            panel._9.push(bg);
-            // Label on the button sprite, small font
-            var lbl=new UI.ob(0,0,TRACK_NAMES[trackIndex],UI.q.MAIN_FONT);
-            lbl.D7(bg,!0);
-            lbl.b6=0;
-            lbl.b7=2;
-            lbl.a0=0;
-            try{ lbl.set_local_xScale(lbl.set_local_yScale(.5)); }catch(eS){}
-            lbl.C33=function(){
-              digSetTrack(trackIndex,true);
-              digMusicClosePanel();
-            };
-            bg._9=bg._9||[];
-            bg._9.push(lbl);
-          })(ti, y);
-          y+=58;
-        }
-        digMusicPanel=panel;
-        var root=null;
-        try{ if(window.l&&l.z38) root=l.z38; }catch(eR){}
-        if(!root) try{ if(UI.q.thisMain) root=UI.q.thisMain; }catch(eR2){}
-        if(!root) try{ if(UI.q.children) root=UI.q; }catch(eR3){}
-        if(root&&root._9){ root._9.push(panel); panel._2=root; }
-      }catch(err){ console.warn('[Diggerz Music] panel failed', err); }
-    }
+    function digMusicOpenPanel(){ /* Music UI removed */ }
     function digMusicEnsureBtn(show){
-      var UI=window.DiggerzNativeUI;
-      // Only drop panel ref if engine truly hid it — do not recreate mid-open
-      try{
-        if(digMusicPanel&&digMusicPanel.a0) digMusicPanel=null;
-      }catch(eP){ digMusicPanel=null; }
-      if(!show){
-        try{ if(digMusicBtn){ digMusicBtn.a0=1; digMusicBtn=null; } }catch(e){}
-        digMusicClosePanel();
-        return;
-      }
-      if(!UI||!UI.ob||!UI.z||!UI.q) return;
-      if(digMusicBtn&&!digMusicBtn.a0){
-        try{ digMusicBtn.A7=90; digMusicBtn.A8=88; }catch(eK){}
-        return;
-      }
-      try{
-        var wrap=new UI.z;
-        try{ wrap.Init(UI.u.YELLOWBUTTON_PNG()); }catch(e){}
-        wrap._1='diggerz_music_btn';
-        wrap.A7=90;
-        wrap.A8=88;
-        wrap.a0=0;
-        wrap.set_local_xScale(wrap.set_local_yScale(.5));
-        var lbl=new UI.ob(0,0,'Music',UI.q.MAIN_FONT);
-        lbl.D7(wrap,!0);
-        lbl.b6=0; lbl.b7=2;
-        lbl.a0=0;
-        try{ lbl.set_local_xScale(lbl.set_local_yScale(.55)); }catch(e){}
-        lbl.C33=function(){ digMusicOpenPanel(); };
-        wrap._9=wrap._9||[]; wrap._9.push(lbl);
-        var root=null;
-        try{ if(window.l&&l.z38) root=l.z38; }catch(e){}
-        if(!root) try{ if(UI.q.thisMain) root=UI.q.thisMain; }catch(e2){}
-        if(root&&root._9){ root._9.push(wrap); wrap._2=root; digMusicBtn=wrap; }
-      }catch(err){ console.warn('[Diggerz Music] btn failed', err); }
+      // Music UI removed — nobody used it
+      try{ if(digMusicBtn){ digMusicBtn.a0=1; digMusicBtn=null; } }catch(e){}
+      try{ digMusicClosePanel(); }catch(e2){}
     }
     function startPvpMusic(track,startedAt,fightAt,serverNow){
       track=Number(track);if(!isFinite(track)||track<0||track>3)return;startedAt=+startedAt||Date.now();fightAt=+fightAt||0;pvpOffset=(+serverNow||Date.now())-Date.now();pvpFightAt=fightAt;
@@ -118017,10 +118010,6 @@ function addSupportUI(){
     try {
       if (panelRef) {
         try { panelRef.a0 = 1; } catch (e0) {}
-        try {
-          var UI = window.DiggerzNativeUI;
-          if (UI && UI.E && UI.E.u4) UI.E.u4(panelRef, 0, 300, 1, .5, 0, 1, 0);
-        } catch (e1) {}
         panelRef = null;
       }
     } catch (e2) {}
@@ -118034,28 +118023,38 @@ function addSupportUI(){
     }
     closePanel();
     try {
-      // Same centering as LOGIN (D55)
+      // Parent must be the TITLE MENU (same as LOGIN D55), not the button.
+      var root = null;
+      try {
+        if (menu && menu._9 && typeof menu.D55 === 'function') root = menu;
+      } catch (e0) {}
+      try {
+        if (!root && UI.q && UI.q.thisMain && UI.q.thisMain._9) root = UI.q.thisMain;
+      } catch (e1) {}
+      try {
+        if (!root && menu && menu._9) root = menu;
+      } catch (e2) {}
+
       var panel = new UI.ja(440, 360, !0);
       panel._1 = 'diggerz_donate_panel';
       panel.c0 = !0;
+      panel.a0 = 0;
       panel.E7 = function() { return !0; };
       panel.C39 = function() {
         try {
           if (null == this._8 || null == this._8[3]) closePanel();
         } catch (eC) { closePanel(); }
       };
+      // Exact same centering as LOGIN / Game Settings
       panel.A7 = UI.q.CENTERX;
       panel.A8 = UI.q.CENTERY;
       panel.B8 = 8;
-      try { UI.E.u4(panel, 0, 300, 0, .5, 1, 0, 1); } catch (e) {}
 
-      // Gold title
       var title = new UI.xa(0, -120, '^9Donate', UI.q.MAIN_FONT_BIG);
       title.D7(panel, !0);
       try { title.set_local_xScale(title.set_local_yScale(1.05)); } catch (eT) {}
       panel._9.push(title);
 
-      // Text-only links — use constructor Y (do NOT set b7=2 or they all stack)
       var lime = new UI.ob(0, -40, '^2Lime', UI.q.MAIN_FONT_BIG);
       lime.D7(panel, !0);
       try { lime.set_local_xScale(lime.set_local_yScale(0.95)); } catch (eL) {}
@@ -118078,8 +118077,6 @@ function addSupportUI(){
       closeLbl.C33 = function() { closePanel(); };
       panel._9.push(closeLbl);
 
-      var root = menu || null;
-      try { if (!root && UI.q.thisMain) root = UI.q.thisMain; } catch (e4) {}
       if (root && root._9) {
         root._9.push(panel);
         panel._2 = root;
@@ -118809,6 +118806,82 @@ async function logout() {
     if (state.authenticated && isInGameForCloud()) pushCloudSave(false);
   }, 45000);
 
+
+  var EMAIL_LINK_KEY = 'diggerz.emailLink.email';
+
+  async function sendEmailLink(email, menu) {
+    email = String(email || '').trim().toLowerCase();
+    if (!email || email.indexOf('@') < 0) {
+      if (menu) popup(menu, '^1Enter a valid email address.');
+      return { ok: false, reason: 'bad-email' };
+    }
+    if (state.busy) return { ok: false, reason: 'busy' };
+    state.busy = true;
+    try {
+      if (menu) popup(menu, '^9Sending login link to ^7' + email + '^9…');
+      await initFirebase();
+      var actionCodeSettings = {
+        // User returns to this same page; we complete sign-in on load.
+        url: window.location.origin + window.location.pathname + (window.location.search || ''),
+        handleCodeInApp: true
+      };
+      await auth.sendSignInLinkToEmail(email, actionCodeSettings);
+      try { window.localStorage.setItem(EMAIL_LINK_KEY, email); } catch (e0) {}
+      if (menu) popup(menu, '^2Link sent! Check ^7' + email + '^2 and open it on this device.');
+      try {
+        var panel = window.__diggerzLoginPanel;
+        if (panel) { panel.a0 = 1; window.__diggerzLoginPanel = null; }
+      } catch (eClose) {}
+      return { ok: true };
+    } catch (err) {
+      console.warn('[Diggerz Auth] sendEmailLink failed', err);
+      var msg = (err && err.message) ? err.message : String(err);
+      if (String(msg).indexOf('unauthorized-continue-uri') >= 0 || String(msg).indexOf('invalid-continue-uri') >= 0)
+        msg = 'Add this site domain in Firebase → Authentication → Settings → Authorized domains.';
+      if (menu) popup(menu, '^1Could not send link: ^7' + msg);
+      return { ok: false, error: msg };
+    } finally {
+      state.busy = false;
+    }
+  }
+
+  async function completeEmailLinkIfPresent() {
+    try {
+      await initFirebase();
+      if (!auth.isSignInWithEmailLink(window.location.href)) return false;
+      var email = '';
+      try { email = window.localStorage.getItem(EMAIL_LINK_KEY) || ''; } catch (e0) {}
+      if (!email) {
+        email = window.prompt('Confirm your email to finish sign-in:') || '';
+      }
+      email = String(email || '').trim().toLowerCase();
+      if (!email) return false;
+      state.busy = true;
+      var result = await auth.signInWithEmailLink(email, window.location.href);
+      try { window.localStorage.removeItem(EMAIL_LINK_KEY); } catch (e1) {}
+      // Strip firebase link params from the URL so refresh is clean
+      try {
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      } catch (e2) {}
+      applySession(result.user, true);
+      saveLocal();
+      state.busy = false;
+      // Load cloud save after email link login (same as returning user)
+      try {
+        await pullCloudSave(true);
+      } catch (e3) {}
+      console.log('[Diggerz Auth] email link sign-in ok', state.email);
+      return true;
+    } catch (err) {
+      state.busy = false;
+      console.warn('[Diggerz Auth] completeEmailLink failed', err);
+      return false;
+    }
+  }
+
+
   window.DiggerzAuth237 = {
     state: state,
     openLoginPanel: openLoginPanel,
@@ -118816,6 +118889,8 @@ async function logout() {
     hideGoogleButton: hideGoogleButton,
     positionGoogleButton: positionGoogleButton,
     loginWithGoogle: loginWithGoogle,
+    sendEmailLink: sendEmailLink,
+    completeEmailLinkIfPresent: completeEmailLinkIfPresent,
     logout: logout,
     logoutFromMenu: logoutFromMenu,
     requestLink: requestLink,
@@ -118823,6 +118898,11 @@ async function logout() {
     pushCloudSave: function(force){ return pushCloudSave(!!force); },
     pullCloudSave: function(force){ return pullCloudSave(!!force); }
   };
+
+  // Auto-complete email magic link when the user opens the link from their inbox
+  completeEmailLinkIfPresent().catch(function(e){
+    console.warn('[Diggerz Auth] email link boot failed', e);
+  });
 })();
 </script>
 
