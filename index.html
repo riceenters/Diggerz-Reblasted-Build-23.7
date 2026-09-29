@@ -6465,7 +6465,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.D31.D7(this);
         a = -this.D31.E39() / 2;
         this.D31.b7 = a + 15;
-        l.z38.R35.a2 = !1
+        l.z38.R35.a2 = !1;
+        try { window.__diggerzChatOpen = this; } catch (__c) {}
     };
     v.D30 = Qh;
     Qh.__name__ = "D30";
@@ -6474,6 +6475,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         D31: null,
         y1: function() {
             this.a0 = 1;
+            try { if (window.__diggerzChatOpen === this) window.__diggerzChatOpen = null; } catch (__c2) {}
             l.z38.R35.a2 = !0;
             if (!(0 >= this.D31.q35.length))
                 if ("/people" == this.D31.q35)
@@ -6571,6 +6573,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         D32: function() {
             this.D31 instanceof dg && K.y2(!1);
             this.a0 = 1;
+            try { if (window.__diggerzChatOpen === this) window.__diggerzChatOpen = null; } catch (__c3) {}
             l.z38.R35.a2 = !0
         },
         __class__: Qh
@@ -42077,8 +42080,6 @@ return true
         },
         q45: null,
         q46: function(a, b) {
-            // Layout interactive items (X). Clothing mode (q45) keeps only a4==2.
-            // Background d34 is NOT an X — that is why the blue box can stay while items vanish.
             for (var c = b = 0, d = this._9; c < d.length; ) {
                 var e = d[c];
                 ++c;
@@ -42089,58 +42090,28 @@ return true
             }
             this.q41 = null;
             null != a && (this.e3(),
-            function(self, parent) {
-                var onParent = 0 <= parent._9.indexOf(self);
-                var onWorld = 0 <= l.z38._9.indexOf(self);
-                var already = onParent || onWorld;
-                // CULPRIT FIX: open click sits outside the circle, so C39 immediately
-                // calls q46 again and takes the CLOSE branch. Block close briefly after open.
-                try {
-                    if (already && self.__diggerzUiGuard && Date.now() < self.__diggerzUiGuard) {
-                        self.a0 = 0;
-                        self.a2 = !0;
-                        return;
-                    }
-                } catch (eGuard) {}
-                if (already) {
-                    // CLOSE
-                    E.u4(self, 0, 250, 1, .3, 0, 1, 0);
-                    self.F6(0, 0, Math.PI / 2, 250);
-                    self.F8(3, 1);
-                    self.a0 = 1;
-                    self.__diggerzUiGuard = 0;
-                    if (self._2 instanceof X) {
-                        self._2._2.set_r(1);
-                        self._2._2.set_g(1);
-                        self._2._2.set_b(1);
-                    }
-                } else {
-                    // OPEN
-                    if (null == self.d34._5) self.d34.Init(f.INV_BKND_PNG());
-                    self.q42.x = self.q42.y = 0;
-                    parent._9.push(self);
-                    self._2 = parent;
-                    self.a0 = 0;
-                    self.__diggerzUiGuard = Date.now() + 550;
-                    E.u4(self, 0, 250, 0, .5, 1, 0, 1);
-                    self.set_rot(0);
-                    self.set_r(self.set_g(self.set_b(1)));
-                    self.a2 = !0;
-                    l.z38.R35.d40();
-                }
-                self.e0();
-            }(this, a))
+            0 <= a._9.indexOf(this) || 0 <= l.z38._9.indexOf(this) ? (E.u4(this, 0, 250, 1, .3, 0, 1, 0),
+            this.F6(0, 0, Math.PI / 2, 250),
+            this.F8(3, 1),
+            this.a0 = 1,
+            this._2 instanceof X && (this._2._2.set_r(1),
+            this._2._2.set_g(1),
+            this._2._2.set_b(1))) : (null == this.d34._5 && this.d34.Init(f.INV_BKND_PNG()),
+            this.q42.x = this.q42.y = 0,
+            a._9.push(this),
+            this._2 = a,
+            this.a0 = 0,
+            E.u4(this, 0, 250, 0, .5, 1, 0, 1),
+            this.set_rot(0),
+            this.set_r(this.set_g(this.set_b(1))),
+            this.a2 = !0,
+            l.z38.R35.d40()),
+            this.e0())
         },
         E7: function(a) {
             return !0
         },
         C39: function() {
-            try {
-                if (this.__diggerzUiGuard && Date.now() < this.__diggerzUiGuard) {
-                    q.mClicked = !1;
-                    return;
-                }
-            } catch (eG) {}
             null == this._8[3] && null != this.d34 && null != this.d34._5 && (null == this._2 || E.V4(q.mX, q.mY, 1, this.A7, this.A8, (this.d34._5.width - 20) * this.d34.a8 / 2) || null != this.f4(Df) || null != this.f2("tilepick") || (0 <= l.z38._9.indexOf(this) ? this.q46(l.z38) : this.q46(this._2)),
             q.mClicked = !1)
         },
@@ -43157,24 +43128,9 @@ return true
                 var inventory = l.z39.n38;
                 null == inventory.B30 && (inventory.B30 = []);
                 null == inventory._9 && (inventory._9 = []);
-                // Detach so q46 always OPENs instead of toggling closed
-                try {
-                    function _rm(arr, obj) {
-                        if (!arr) return;
-                        var i = arr.indexOf(obj);
-                        if (i >= 0) arr.splice(i, 1);
-                    }
-                    _rm(l.z38._9, inventory);
-                    _rm(l.z39._9, inventory);
-                    if (inventory._2 && inventory._2._9) _rm(inventory._2._9, inventory);
-                } catch (eD) {}
-                inventory._2 = null;
-                inventory.a0 = 0;
-                inventory.a2 = !0;
                 inventory.q45 = !0;
-                inventory.__diggerzUiGuard = Date.now() + 550;
                 inventory.q46(l.z39, !1);
-                inventory.a0 = 0;
+                0 > l.z38._9.indexOf(inventory) && l.z38._9.push(inventory);
                 inventory.a2 = !0;
                 a.a0 = 0
             }
@@ -43484,20 +43440,6 @@ return true
             T.remove(this._2._9, this);
             this._2._9.push(this);
             l.z39.n38.q45 = !1;
-            try {
-                // Detach inventory so trade open is not treated as a close toggle
-                var inv = l.z39.n38;
-                function _rm2(arr, obj) {
-                    if (!arr) return;
-                    var i = arr.indexOf(obj);
-                    if (i >= 0) arr.splice(i, 1);
-                }
-                _rm2(l.z38._9, inv);
-                if (inv._2 && inv._2._9) _rm2(inv._2._9, inv);
-                inv._2 = null;
-                inv.a0 = 0;
-                inv.__diggerzUiGuard = Date.now() + 550;
-            } catch (eZ) {}
             l.z39.n38.q46(this)
         },
         W44: function() {
@@ -86741,13 +86683,6 @@ return true
             return !0
         },
         C39: function() {
-            // Same open-click bug as inventory: opening Shop counts as outside click and closes it.
-            try {
-                if (this.__diggerzUiGuard && Date.now() < this.__diggerzUiGuard) {
-                    q.mClicked = !1;
-                    return;
-                }
-            } catch (eG) {}
             null != this._8[3] || this.d34.E7() || (this.diggerzClose(),
             this.a0 = 1,
             E.u4(this, 0, 300, 1, .5, 0, 1, 0))
@@ -87225,7 +87160,6 @@ return true
         // Match the recovered original y30 handler: Vg stays screen-space.
         // Parenting it with D7(host) moves it into the scrolling world.
         panel.diggerzShopHost = host || null;
-        try { panel.__diggerzUiGuard = Date.now() + 600; } catch (eGuard) {}
 
         if (host && host._9)
             host._9.push(panel);
@@ -87235,7 +87169,6 @@ return true
         if (panel && typeof panel.diggerzRefresh === "function")
             panel.diggerzRefresh("");
         q.mClicked = !1;
-        try { q.justClicked = !1; } catch (eJ) {}
         return panel
     };
 
@@ -87969,8 +87902,6 @@ return true
         a.b7 = this.d33 / 2 - 470 + 25;
         this._9.push(a);
         this.c0 = !0;
-        try { this.__diggerzUiGuard = Date.now() + 600; } catch (eYd) {}
-        try { q.mClicked = !1; } catch (eMc) {}
         a = (this.A7 - this.d32 / 2 + 40) * q.SCALEDOWN + q.thisMain.get_x();
         b = (this.A8 - this.d33 / 2 + 80) * q.SCALEDOWN + q.thisMain.get_y();
         window.document.getElementById("diggerz-io_300x250").style.left = "" + a + "px";
@@ -88001,25 +87932,6 @@ return true
         },
         E7: function(a) {
             return !0
-        },
-        C39: function() {
-            // Trade panel used to inherit random outside-click closes via E7=!0.
-            // Ignore outside clicks for a short time after the window opens.
-            try {
-                if (!this.__diggerzUiGuard)
-                    this.__diggerzUiGuard = Date.now() + 600;
-                if (Date.now() < this.__diggerzUiGuard) {
-                    q.mClicked = !1;
-                    return;
-                }
-            } catch (eT) {}
-            // After guard: only close if click is truly outside the panel background
-            try {
-                if (null != this._8[3]) return;
-                if (this.d34 && this.d34.E7 && this.d34.E7()) return;
-            } catch (e2) {}
-            q.mClicked = !1;
-            try { this.v41(); } catch (e3) { this.a0 = 1; }
         },
         e1: function() {
             ja.prototype.e1.call(this);
@@ -117641,7 +117553,23 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
       tracks: TRACKS,
       names: TRACK_NAMES
     };
-    // Native Dig+Trade Music UI fully removed (was causing UI flicker on other menus).
+    // Native Music button + track list (Dig+Trade only, under the X)
+    var digMusicBtn=null, digMusicPanel=null, digMusicOpenedAt=0;
+    function digMusicClosePanel(){
+      try{
+        if(digMusicPanel){
+          try{ digMusicPanel.a0=1; }catch(e0){}
+          // No E.u4 fade — fade was making track buttons flicker/vanish
+          digMusicPanel=null;
+        }
+      }catch(e){}
+    }
+    function digMusicOpenPanel(){ /* Music UI removed */ }
+    function digMusicEnsureBtn(show){
+      // Music UI removed — nobody used it
+      try{ if(digMusicBtn){ digMusicBtn.a0=1; digMusicBtn=null; } }catch(e){}
+      try{ digMusicClosePanel(); }catch(e2){}
+    }
     function startPvpMusic(track,startedAt,fightAt,serverNow){
       track=Number(track);if(!isFinite(track)||track<0||track>3)return;startedAt=+startedAt||Date.now();fightAt=+fightAt||0;pvpOffset=(+serverNow||Date.now())-Date.now();pvpFightAt=fightAt;
       var key=track+':'+startedAt;
@@ -117670,7 +117598,7 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
     };
     setInterval(function(){
       var service=P.service,show=!!(P.joined&&P.mode==='digtrade'&&service&&service.mode==='digtrade');
-      // digMusicEnsureBtn removed — no native music HUD
+      digMusicEnsureBtn(show);
       if(!show&&digHowl)try{digHowl.pause()}catch(e){};
       if((P.mode!=='pvp'||!P.joined)&&pvpHowl){stopPvpMusic();return}
       if(P.mode==='pvp'&&P.joined&&pvpFightAt&&pvpKey&&pvpHowl){var rem=pvpFightAt-(Date.now()+pvpOffset),duck=pvpBaseVolume*.25;if(rem<=0){pvpFightAt=0;setPvpMusicVolume(duck,0)}else if(rem<=3000){try{pvpHowl.volume(duck+(pvpBaseVolume-duck)*(rem/3000))}catch(e){}}else try{pvpHowl.volume(pvpBaseVolume)}catch(e){}}
@@ -118204,6 +118132,16 @@ function addSupportUI(){
 })();
 </script>
 
+<script id="diggerz-mobile-chat-enter">
+(function(){
+  // Removed: document keydown/keypress Enter handlers were double-sending chat.
+  // Native chat already binds Enter to y1 via D31.q39 — one send only.
+  try {
+    var old = document.getElementById('diggerz-chat-enter-btn');
+    if (old) old.style.display = 'none';
+  } catch (e) {}
+})();
+</script>
 
 <script id="diggerz-firebase-google-auth">
 (function(){
@@ -119229,7 +119167,52 @@ async function logout() {
 }());
 </script>
 
-<script src="/build239-client.js"></script><script src="/build240-client.js"></script></body>
+<script src="/build239-client.js"></script><script src="/build240-client.js"></script><script id="diggerz-ui-container-refresh-fix">
+(function(){
+  // When an open native inventory/trade container is rebuilt, q44() creates
+  // fresh item X children. Those children begin hidden; q46() is the normal
+  // native pass that applies their visible state. Without it the container
+  // frame remains while its interactive contents disappear.
+  function install(){
+    try{
+      if(typeof l==='undefined'||!l.z38||typeof l.z38.V37!=='function'){
+        setTimeout(install,100); return;
+      }
+      var proto=Object.getPrototypeOf(l.z38);
+      if(!proto||proto.__diggerzUiContainerRefreshFix)return;
+      var old=proto.V37;
+      function collect(node,out,depth,seen){
+        if(!node||depth>6||out.length>64)return;
+        if(seen.indexOf(node)>=0)return;
+        seen.push(node);
+        try{
+          if(typeof node.q46==='function'&&node.B30&&node.d34)out.push(node);
+        }catch(e0){}
+        var kids=node._9;
+        if(!kids||!kids.length)return;
+        for(var i=0;i<kids.length;i++)collect(kids[i],out,depth+1,seen);
+      }
+      proto.V37=function(packet){
+        var r=old.apply(this,arguments);
+        try{
+          var list=[],seen=[];
+          collect(this,list,0,seen);
+          if(l.z39&&l.z39.n38)collect(l.z39.n38,list,0,seen);
+          for(var i=0;i<list.length;i++){
+            var sc=list[i];
+            if(!sc||sc.a0!==0||typeof sc.q46!=='function')continue;
+            try{sc.q46(null,!1)}catch(e1){}
+          }
+        }catch(e2){}
+        return r;
+      };
+      proto.__diggerzUiContainerRefreshFix=true;
+    }catch(e){setTimeout(install,250)}
+  }
+  install();
+})();
+</script>
+</body>
 </html>
 <!-- Other original content may be protected by copyright. -->
 
