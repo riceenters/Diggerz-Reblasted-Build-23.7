@@ -46,9 +46,18 @@
         }
       }
       if(m&&m.t==='peer-left'){
-        // UI-safe peer removal. The normal peer bookkeeping path handles the peer;
-        // do not directly destroy native display objects here because that can
-        // corrupt the shared native UI tree (inventory/shop/trade contents).
+        try{
+          var gone=this.pvpPeerForConnection(m.connectionId);
+          if(gone&&gone.id){
+            var gid=gone.id, self=this;
+            [0,100,300,700].forEach(function(delay){
+              setTimeout(function(){
+                try{self.enqueue(3,1,function(out){out.R8(gid)})}catch(e){}
+                try{var ent=self.game&&self.game.V31?self.game.V31(gid):null; if(ent){try{ent.a0=1}catch(_e){} try{if(ent.e3)ent.e3()}catch(_e){}}}catch(e){}
+              },delay);
+            });
+          }
+        }catch(e){}
       }
       return prevRecv.call(this,m);
     };

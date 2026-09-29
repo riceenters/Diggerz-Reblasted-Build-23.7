@@ -116232,9 +116232,35 @@ return true
       delete peers[cid];
       var self=this;
       function scrubEntity(ent){
-        // ISOLATION: native peer entity scrubbing disabled.
-        // Keep multiplayer bookkeeping/despawn packet behavior intact.
-        return;
+        if(!ent)return;
+        try{ent.a2=false}catch(_e){}
+        try{ent.set_local_alp(0)}catch(_e){}
+        try{ent.set_alp(0)}catch(_e){}
+        try{if(ent.J30){ent.J30.a2=false;try{ent.J30.set_local_alp(0)}catch(_e2){}}}catch(_e){}
+        try{if(ent.i33)ent.i33.a2=false}catch(_e){}
+        // Move off-world so minimap/leaderboard scans skip them.
+        try{ent.b6=-99999;ent.b7=-99999}catch(_e){}
+        try{if(ent.A7!=null)ent.A7=-99999;if(ent.A8!=null)ent.A8=-99999}catch(_e){}
+        try{if(typeof oa!=='undefined'&&oa.MODE_DEAD!=null)ent.i32=oa.MODE_DEAD}catch(_e){}
+        try{if(ent.a0!=null)ent.a0=1}catch(_e){}
+        try{if(typeof ent.e3==='function')ent.e3()}catch(_e){}
+        // Detach from the live scene list so leaderboard/minimap cannot see them.
+        try{
+          var scene=l.z38&&l.z38._9;
+          if(scene){
+            for(var i=scene.length-1;i>=0;i--){
+              if(scene[i]===ent)scene.splice(i,1);
+            }
+          }
+        }catch(_e){}
+        try{
+          var gameKids=self.game&&self.game._9;
+          if(gameKids){
+            for(var j=gameKids.length-1;j>=0;j--){
+              if(gameKids[j]===ent)gameKids.splice(j,1);
+            }
+          }
+        }catch(_e){}
       }
       function despawn(guid){
         if(!guid)return;
@@ -117390,9 +117416,18 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
         }
       }
       if(m&&m.t==='peer-left'){
-        // UI-safe peer removal: pvpRemovePeer handles bookkeeping/trade state.
-        // Do not directly destroy native display objects here; that path was
-        // proven to corrupt the shared native UI tree.
+        try{
+          var gone=this.pvpPeerForConnection(m.connectionId);
+          if(gone&&gone.id){
+            var gid=gone.id, self=this;
+            [0,100,300,700].forEach(function(delay){
+              setTimeout(function(){
+                try{self.enqueue(3,1,function(out){out.R8(gid)})}catch(e){}
+                try{var ent=self.game&&self.game.V31?self.game.V31(gid):null; if(ent){try{ent.a0=1}catch(_e){} try{if(ent.e3)ent.e3()}catch(_e){}}}catch(e){}
+              },delay);
+            });
+          }
+        }catch(e){}
       }
       return prevRecv.call(this,m);
     };
@@ -118123,6 +118158,10 @@ function addSupportUI(){
     measurementId: "G-BPH0E6RM9L"
   };
   var state = { authenticated: false, email: '', username: '', uid: '', busy: false, ready: false };
+   // UI DEBUG TEST: keep Firebase email-link authentication, disable only automatic post-auth cloud DATA PULL/APPLY.
+   // Manual Settings -> Load from Account remains available.
+   var DZG_DISABLE_AUTO_AUTH_PULL = true;
+   console.warn('[Diggerz UI TEST] Firebase auth is ON; automatic post-auth cloud data load/apply is OFF. Manual Load from Account is unchanged.');
   var auth = null;
   var db = null;
   var saveTimer = null;
@@ -118496,7 +118535,7 @@ function addSupportUI(){
       } catch (e) {}
       // After login / page load while signed in: load account into this browser.
       // Reload at most ONCE per uid per tab session — never clear the flag (that caused an infinite reload loop).
-      if (!skipPull) {
+      if (!skipPull && !DZG_DISABLE_AUTO_AUTH_PULL) {
         pullCloudSave(true).then(function(data){
           var hadInv = data && data.inventory && inventoryScore(data.inventory) > 0;
           console.log('[Diggerz Cloud] post-auth pull', hadInv ? 'got items' : 'no items');
@@ -118827,7 +118866,7 @@ async function logout() {
       saveLocal();
       state.busy = false;
       try {
-        var data = await pullCloudSave(true);
+        var data = DZG_DISABLE_AUTO_AUTH_PULL ? null : await pullCloudSave(true);
         var hadInv = data && data.inventory && inventoryScore(data.inventory) > 0;
         var flag = 'diggerz.cloud.appliedReload.' + (state.uid || 'anon');
         if (hadInv && sessionStorage.getItem(flag) !== '1') {
