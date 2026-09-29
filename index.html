@@ -42101,6 +42101,7 @@ return true
             a._9.push(this),
             this._2 = a,
             this.a0 = 0,
+            this.__diggerzUiGuard = Date.now() + 500,
             E.u4(this, 0, 250, 0, .5, 1, 0, 1),
             this.set_rot(0),
             this.set_r(this.set_g(this.set_b(1))),
@@ -42112,6 +42113,14 @@ return true
             return !0
         },
         C39: function() {
+            // Guard: opening clothes/trade/inventory uses the same click that would
+            // immediately count as "outside" and close the wheel. Ignore closes briefly after open.
+            try {
+                if (this.__diggerzUiGuard && Date.now() < this.__diggerzUiGuard) {
+                    q.mClicked = !1;
+                    return;
+                }
+            } catch (eG) {}
             null == this._8[3] && null != this.d34 && null != this.d34._5 && (null == this._2 || E.V4(q.mX, q.mY, 1, this.A7, this.A8, (this.d34._5.width - 20) * this.d34.a8 / 2) || null != this.f4(Df) || null != this.f2("tilepick") || (0 <= l.z38._9.indexOf(this) ? this.q46(l.z38) : this.q46(this._2)),
             q.mClicked = !1)
         },
@@ -43128,72 +43137,12 @@ return true
                 var inventory = l.z39.n38;
                 null == inventory.B30 && (inventory.B30 = []);
                 null == inventory._9 && (inventory._9 = []);
-                // Force OPEN clothing wheel. q46 toggles: if inventory is already
-                // on the player/world list it CLOSES (a0=1) and hides everything.
-                // Detach first so q46 always takes the open branch.
-                try {
-                    if (window.T && T.remove) {
-                        try { T.remove(l.z38._9, inventory); } catch (e0) {}
-                        try { if (l.z39 && l.z39._9) T.remove(l.z39._9, inventory); } catch (e1) {}
-                        try { if (inventory._2 && inventory._2._9) T.remove(inventory._2._9, inventory); } catch (e2) {}
-                    } else {
-                        function _rm(arr, obj) {
-                            if (!arr) return;
-                            var i = arr.indexOf(obj);
-                            if (i >= 0) arr.splice(i, 1);
-                        }
-                        _rm(l.z38._9, inventory);
-                        if (l.z39) _rm(l.z39._9, inventory);
-                        if (inventory._2) _rm(inventory._2._9, inventory);
-                    }
-                } catch (eDet) {}
-                inventory._2 = null;
-                inventory.a0 = 0;
-                inventory.a2 = !0;
                 inventory.q45 = !0;
-                // Show only clothing (a4==2), keep them visible
-                try {
-                    for (var ci = 0; ci < inventory.B30.length; ci++) {
-                        var it = inventory.B30[ci];
-                        if (!it) continue;
-                        if ((it.a4 | 0) === 2 && !it.T40 && !it.t47) {
-                            it.a2 = !0;
-                            it.a0 = 0;
-                        }
-                    }
-                } catch (eVis) {}
+                inventory.__diggerzUiGuard = Date.now() + 500;
                 inventory.q46(l.z39, !1);
-                // q46 may attach to player; also keep on world list for rendering
-                try {
-                    if (0 > l.z38._9.indexOf(inventory)) l.z38._9.push(inventory);
-                } catch (ePush) {}
-                inventory.a0 = 0;
+                0 > l.z38._9.indexOf(inventory) && l.z38._9.push(inventory);
                 inventory.a2 = !0;
-                // Re-assert clothing visibility after q46 filter/layout
-                try {
-                    var shown = 0;
-                    for (var cj = 0; cj < inventory.B30.length; cj++) {
-                        var it2 = inventory.B30[cj];
-                        if (!it2) continue;
-                        if ((it2.a4 | 0) === 2 && !it2.T40 && !it2.t47) {
-                            it2.a2 = !0;
-                            it2.a0 = 0;
-                            shown++;
-                        } else {
-                            it2.a2 = !1;
-                        }
-                    }
-                    // If nothing classified as a4==2, show all non-empty items so the wheel is not blank
-                    if (shown === 0) {
-                        for (var ck = 0; ck < inventory.B30.length; ck++) {
-                            var it3 = inventory.B30[ck];
-                            if (it3 && (it3.g36 | 0) > 0) {
-                                it3.a2 = !0;
-                                it3.a0 = 0;
-                            }
-                        }
-                    }
-                } catch (eVis2) {}
+                inventory.a0 = 0;
                 a.a0 = 0
             }
             ;
@@ -43502,6 +43451,7 @@ return true
             T.remove(this._2._9, this);
             this._2._9.push(this);
             l.z39.n38.q45 = !1;
+            try { l.z39.n38.__diggerzUiGuard = Date.now() + 500; } catch (eZ) {}
             l.z39.n38.q46(this)
         },
         W44: function() {
@@ -117615,23 +117565,7 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
       tracks: TRACKS,
       names: TRACK_NAMES
     };
-    // Native Music button + track list (Dig+Trade only, under the X)
-    var digMusicBtn=null, digMusicPanel=null, digMusicOpenedAt=0;
-    function digMusicClosePanel(){
-      try{
-        if(digMusicPanel){
-          try{ digMusicPanel.a0=1; }catch(e0){}
-          // No E.u4 fade — fade was making track buttons flicker/vanish
-          digMusicPanel=null;
-        }
-      }catch(e){}
-    }
-    function digMusicOpenPanel(){ /* Music UI removed */ }
-    function digMusicEnsureBtn(show){
-      // Music UI removed — nobody used it
-      try{ if(digMusicBtn){ digMusicBtn.a0=1; digMusicBtn=null; } }catch(e){}
-      try{ digMusicClosePanel(); }catch(e2){}
-    }
+    // Native Dig+Trade Music UI fully removed (was causing UI flicker on other menus).
     function startPvpMusic(track,startedAt,fightAt,serverNow){
       track=Number(track);if(!isFinite(track)||track<0||track>3)return;startedAt=+startedAt||Date.now();fightAt=+fightAt||0;pvpOffset=(+serverNow||Date.now())-Date.now();pvpFightAt=fightAt;
       var key=track+':'+startedAt;
@@ -117660,7 +117594,7 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
     };
     setInterval(function(){
       var service=P.service,show=!!(P.joined&&P.mode==='digtrade'&&service&&service.mode==='digtrade');
-      digMusicEnsureBtn(show);
+      // digMusicEnsureBtn removed — no native music HUD
       if(!show&&digHowl)try{digHowl.pause()}catch(e){};
       if((P.mode!=='pvp'||!P.joined)&&pvpHowl){stopPvpMusic();return}
       if(P.mode==='pvp'&&P.joined&&pvpFightAt&&pvpKey&&pvpHowl){var rem=pvpFightAt-(Date.now()+pvpOffset),duck=pvpBaseVolume*.25;if(rem<=0){pvpFightAt=0;setPvpMusicVolume(duck,0)}else if(rem<=3000){try{pvpHowl.volume(duck+(pvpBaseVolume-duck)*(rem/3000))}catch(e){}}else try{pvpHowl.volume(pvpBaseVolume)}catch(e){}}
