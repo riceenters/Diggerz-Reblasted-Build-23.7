@@ -86741,6 +86741,13 @@ return true
             return !0
         },
         C39: function() {
+            // Same open-click bug as inventory: opening Shop counts as outside click and closes it.
+            try {
+                if (this.__diggerzUiGuard && Date.now() < this.__diggerzUiGuard) {
+                    q.mClicked = !1;
+                    return;
+                }
+            } catch (eG) {}
             null != this._8[3] || this.d34.E7() || (this.diggerzClose(),
             this.a0 = 1,
             E.u4(this, 0, 300, 1, .5, 0, 1, 0))
@@ -87218,6 +87225,7 @@ return true
         // Match the recovered original y30 handler: Vg stays screen-space.
         // Parenting it with D7(host) moves it into the scrolling world.
         panel.diggerzShopHost = host || null;
+        try { panel.__diggerzUiGuard = Date.now() + 600; } catch (eGuard) {}
 
         if (host && host._9)
             host._9.push(panel);
@@ -87227,6 +87235,7 @@ return true
         if (panel && typeof panel.diggerzRefresh === "function")
             panel.diggerzRefresh("");
         q.mClicked = !1;
+        try { q.justClicked = !1; } catch (eJ) {}
         return panel
     };
 
@@ -87960,6 +87969,8 @@ return true
         a.b7 = this.d33 / 2 - 470 + 25;
         this._9.push(a);
         this.c0 = !0;
+        try { this.__diggerzUiGuard = Date.now() + 600; } catch (eYd) {}
+        try { q.mClicked = !1; } catch (eMc) {}
         a = (this.A7 - this.d32 / 2 + 40) * q.SCALEDOWN + q.thisMain.get_x();
         b = (this.A8 - this.d33 / 2 + 80) * q.SCALEDOWN + q.thisMain.get_y();
         window.document.getElementById("diggerz-io_300x250").style.left = "" + a + "px";
@@ -87990,6 +88001,25 @@ return true
         },
         E7: function(a) {
             return !0
+        },
+        C39: function() {
+            // Trade panel used to inherit random outside-click closes via E7=!0.
+            // Ignore outside clicks for a short time after the window opens.
+            try {
+                if (!this.__diggerzUiGuard)
+                    this.__diggerzUiGuard = Date.now() + 600;
+                if (Date.now() < this.__diggerzUiGuard) {
+                    q.mClicked = !1;
+                    return;
+                }
+            } catch (eT) {}
+            // After guard: only close if click is truly outside the panel background
+            try {
+                if (null != this._8[3]) return;
+                if (this.d34 && this.d34.E7 && this.d34.E7()) return;
+            } catch (e2) {}
+            q.mClicked = !1;
+            try { this.v41(); } catch (e3) { this.a0 = 1; }
         },
         e1: function() {
             ja.prototype.e1.call(this);
