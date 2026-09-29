@@ -16655,9 +16655,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var a = 0;
             if (l.b41 || null != q.GetChildByType(Qh))
                 return 0;
-            if (null != this.n37)
-                a = 3.4 * this.n37.h32.b6 / this.n37.h36;
-            else {
+            if (null != this.n37) {
+                // Clamp stick to [-1,1] so mobile matches keyboard speed (3.4)
+                var stick = this.n37.h36 ? (this.n37.h32.b6 / this.n37.h36) : 0;
+                if (stick > 1) stick = 1;
+                if (stick < -1) stick = -1;
+                a = 3.4 * stick;
+            } else {
                 if (q.KeyDown(65) || q.KeyDown(37))
                     a = -3.4;
                 if (q.KeyDown(68) || q.KeyDown(39))
@@ -23102,10 +23106,23 @@ return true
         fixLocalAnimations: function() {
             var p = l.z39;
             if (!p || !p.i33) return;
-            // The recovered client can leave WALKING or the mining "hit"
-            // animation latched. Build 21.7 explicitly returns to idle once the
-            // corresponding input has ended instead of relying on a jump reset.
-            var horizontal = q.KeyDown(65) || q.KeyDown(68) || q.KeyDown(37) || q.KeyDown(39);
+            // Keyboard OR on-screen stick (mobile) counts as horizontal input
+            var stickX = 0;
+            try {
+                if (p.n37 && p.n37.h36)
+                    stickX = p.n37.h32.b6 / p.n37.h36;
+            } catch (eStick) {}
+            if (stickX > 1) stickX = 1;
+            if (stickX < -1) stickX = -1;
+            var horizontal = q.KeyDown(65) || q.KeyDown(68) || q.KeyDown(37) || q.KeyDown(39) || Math.abs(stickX) > 0.12;
+            // Ensure walk mode + anim while stick is held (mobile often skipped this)
+            if (horizontal && p.i32 === oa.MODE_IDLE) {
+                p.i32 = oa.MODE_WALKING;
+                try {
+                    if (p.I36 && p.i33 && p.i33.Z28 !== String(p.I36))
+                        p.i33._38(p.I36, !0, 0, 1);
+                } catch (eAnim) {}
+            }
             if (!horizontal && p.i32 === oa.MODE_WALKING) p.i32 = oa.MODE_IDLE;
             var anim = String(p.i33.Z28 || "");
             if (!horizontal && anim === String(p.I36 || "")) {
@@ -51366,6 +51383,16 @@ return true
         a.D7(this, !0);
         a.set_local_xScale(a.set_local_yScale(.7));
         this.Z47._9.push(a);
+        a = 130;
+        b = new ob(0,a,"Save to Account",q.MAIN_FONT_BIG);
+        b.D7(this, !0);
+        b.C33 = A(this, this.diggerzCloudSave);
+        this._9.push(b);
+        a += 55;
+        b = new ob(0,a,"Load from Account",q.MAIN_FONT_BIG);
+        b.D7(this, !0);
+        b.C33 = A(this, this.diggerzCloudLoad);
+        this._9.push(b);
         this.e0()
     };
     v.Z45 = Op;
@@ -51386,6 +51413,49 @@ return true
             var a = new Mp;
             a._1 = "chem";
             this.u40._9.push(a)
+        },
+        diggerzCloudSave: function() {
+            var self = this;
+            if (!window.DiggerzAuth237 || !window.DiggerzAuth237.state || !window.DiggerzAuth237.state.authenticated) {
+                this._9.push(new vb(this, "", "^1Log in first to save to your account.", new Cd, vb.F39));
+                return;
+            }
+            this._9.push(new vb(this, "", "^9Saving this browser's data to your account…", new Cd, vb.F39));
+            Promise.resolve(window.DiggerzAuth237.pushCloudSave(true)).then(function(res) {
+                if (res && res.ok === false && res.reason === 'refuse-empty-wipe') {
+                    self._9.push(new vb(self, "", "^1Blocked: this browser has no items, but your account does. Play here or Load first — save will not wipe the account.", new Cd, vb.F39));
+                    return;
+                }
+                if (res && res.ok === false) {
+                    self._9.push(new vb(self, "", "^1Save did not complete (" + (res.reason || "error") + ").", new Cd, vb.F39));
+                    return;
+                }
+                self._9.push(new vb(self, "", "^2Saved! Account now has your items, coins, name & skin.", new Cd, vb.F39));
+            }).catch(function(e) {
+                self._9.push(new vb(self, "", "^1Save failed. Check console / Firestore.", new Cd, vb.F39));
+            });
+        },
+        diggerzCloudLoad: function() {
+            var self = this;
+            if (!window.DiggerzAuth237 || !window.DiggerzAuth237.state || !window.DiggerzAuth237.state.authenticated) {
+                this._9.push(new vb(this, "", "^1Log in first to load from your account.", new Cd, vb.F39));
+                return;
+            }
+            this._9.push(new vb(this, "", "^9Loading account data into this browser…", new Cd, vb.F39));
+            Promise.resolve(window.DiggerzAuth237.pullCloudSave(true)).then(function(data) {
+                if (!data) {
+                    self._9.push(new vb(self, "", "^1No cloud save found on this account yet. Use Save to Account first.", new Cd, vb.F39));
+                    return;
+                }
+                if (data.skipped) {
+                    self._9.push(new vb(self, "", "^1Load skipped: this browser already has more items than the account.", new Cd, vb.F39));
+                    return;
+                }
+                self._9.push(new vb(self, "", "^2Loaded! Reloading to apply…", new Cd, vb.F39));
+                setTimeout(function(){ location.reload(); }, 700);
+            }).catch(function(e) {
+                self._9.push(new vb(self, "", "^1Load failed. Check console / Firestore.", new Cd, vb.F39));
+            });
         },
         __class__: Op
     });
@@ -87275,6 +87345,16 @@ return true
             c.D7(b, !0);
             c.set_local_xScale(c.set_local_yScale(1.25));
             this._9.push(c);
+            // Restore Google session so menu shows Log Out + email after reload
+            try {
+                if ((!q.thisMain.userPW || !q.thisMain.userPW.length || N.startsWith(q.thisMain.userPW, "NOPASSWORD")) && window.localStorage) {
+                    var __dzAuth = JSON.parse(localStorage.getItem("diggerz.firebase.auth.v1") || "null");
+                    if (__dzAuth && __dzAuth.authenticated && (__dzAuth.email || __dzAuth.uid)) {
+                        q.thisMain.userPW = "SESSION_AUTHENTICATED";
+                        q.thisMain.userEmail = String(__dzAuth.email || "");
+                    }
+                }
+            } catch (__dzE) {}
             N.startsWith(q.thisMain.userPW, "NOPASSWORD") || 0 >= q.thisMain.userPW.length ? (q.thisMain.userEmail = "",
             b = new z,
             b.Init(u.YELLOWBUTTON_PNG()),
@@ -117766,6 +117846,63 @@ function addSupportUI(){
 })();
 </script>
 
+
+<script id="diggerz-mobile-chat-enter">
+(function(){
+  function findChat(list, depth) {
+    if (!list || depth > 12) return null;
+    for (var i = 0; i < list.length; i++) {
+      var o = list[i];
+      if (!o) continue;
+      if (o._1 === 'chat_local') return o;
+      if (o._9) {
+        var f = findChat(o._9, depth + 1);
+        if (f) return f;
+      }
+    }
+    return null;
+  }
+  function pushEnterToChat() {
+    try {
+      if (!window.q) return false;
+      var roots = [];
+      try { if (q.thisMain && q.thisMain._9) roots.push(q.thisMain._9); } catch (e) {}
+      try { if (q.children) roots.push(q.children); } catch (e2) {}
+      try { if (window.l && l.z38 && l.z38._9) roots.push(l.z38._9); } catch (e3) {}
+      var chat = null;
+      for (var r = 0; r < roots.length && !chat; r++) chat = findChat(roots[r], 0);
+      if (!chat) return false;
+      // Prefer direct submit if text is already in the field
+      try {
+        if (chat.D31 && String(chat.D31.q35 || '').length > 0 && typeof chat.y1 === 'function') {
+          chat.y1();
+          return true;
+        }
+      } catch (e4) {}
+      if (!q.mKeyQueue) q.mKeyQueue = [];
+      if (q.mKeyQueue.indexOf(13) < 0) q.mKeyQueue.push(13);
+      q.mKeyDown = q.mKeyDown || [];
+      q.mKeyDown[13] = true;
+      return true;
+    } catch (e) { return false; }
+  }
+  function onKey(ev) {
+    var isEnter = ev.key === 'Enter' || ev.keyCode === 13 || ev.which === 13;
+    if (!isEnter) return;
+    if (pushEnterToChat()) {
+      try { ev.preventDefault(); } catch (e) {}
+    }
+  }
+  document.addEventListener('keydown', onKey, true);
+  document.addEventListener('keypress', onKey, true);
+  document.addEventListener('keyup', function(ev) {
+    if (ev.key === 'Enter' || ev.keyCode === 13) {
+      try { if (window.q && q.mKeyDown) q.mKeyDown[13] = false; } catch (e) {}
+    }
+  }, true);
+})();
+</script>
+
 <script id="diggerz-firebase-google-auth">
 (function(){
   'use strict';
@@ -117924,16 +118061,28 @@ function addSupportUI(){
     } catch (e) { console.warn('[Diggerz Cloud] applyInventory failed', e); }
   }
 
-  async function pullCloudSave() {
+  async function pullCloudSave(force) {
     if (!state.uid || !db) return null;
     try {
       var snap = await db.collection('users').doc(state.uid).get();
       if (!snap.exists) return null;
       var data = snap.data() || {};
+      var localInv = collectInventory();
+      var localScore = inventoryScore(localInv);
+      var cloudScore = inventoryScore(data.inventory);
+      // Safety: Settings Load uses force=true. Never silently replace a fuller local inventory.
+      if (!force && localScore > cloudScore + 1) {
+        console.log('[Diggerz Cloud] skip auto-load: this browser has more items than cloud', localScore, '>', cloudScore);
+        return { skipped: true, reason: 'local-richer', profile: data.profile, inventory: data.inventory, updatedAt: data.updatedAt };
+      }
       if (data.profile) applyProfile(data.profile);
       else applyProfile(data);
-      if (data.inventory) applyInventory(data.inventory);
-      console.log('[Diggerz Cloud] loaded save for', state.uid);
+      if (data.inventory && Array.isArray(data.inventory.slots) && data.inventory.slots.length) {
+        applyInventory(data.inventory);
+      } else if (force && localScore > 0) {
+        console.log('[Diggerz Cloud] cloud has no items; keeping local inventory');
+      }
+      console.log('[Diggerz Cloud] loaded save for', state.uid, 'cloudSlots~', cloudScore);
       return data;
     } catch (e) {
       console.warn('[Diggerz Cloud] pull failed', e);
@@ -117941,33 +118090,93 @@ function addSupportUI(){
     }
   }
 
+  function inventoryScore(inv) {
+    if (!inv || !Array.isArray(inv.slots)) return 0;
+    var n = 0;
+    for (var i = 0; i < inv.slots.length; i++) {
+      var s = inv.slots[i];
+      if (s == null) continue;
+      if (typeof s === 'number' && s > 0) { n++; continue; }
+      if (typeof s === 'object') {
+        var id = s.id != null ? s.id : (s.itemId != null ? s.itemId : (s[0] != null ? s[0] : 0));
+        if (id && id !== 0) n++;
+      }
+    }
+    return n;
+  }
+
+  function localEditTime() {
+    try { return parseInt(localStorage.getItem('diggerz.cloud.localUpdatedAt') || '0', 10) || 0; } catch (e) { return 0; }
+  }
+  function touchLocalEdit() {
+    try { localStorage.setItem('diggerz.cloud.localUpdatedAt', String(Date.now())); } catch (e) {}
+  }
+
   async function pushCloudSave(force) {
-    if (!state.authenticated || !state.uid || !db) return;
+    if (!state.authenticated || !state.uid || !db) return { ok: false, reason: 'not-logged-in' };
     var now = Date.now();
-    if (!force && now - lastCloudPush < 4000) return;
+    if (!force && now - lastCloudPush < 8000) return { ok: false, reason: 'rate' };
     lastCloudPush = now;
     try {
       var profile = collectProfile();
       var inventory = collectInventory();
+      var localScore = inventoryScore(inventory);
+
+      var snap = await db.collection('users').doc(state.uid).get();
+      var cloud = snap.exists ? (snap.data() || {}) : null;
+      var cloudScore = inventoryScore(cloud && cloud.inventory);
+      var cloudAt = (cloud && cloud.updatedAt) ? Number(cloud.updatedAt) : 0;
+
+      // Never wipe a good account save with an empty browser
+      if (localScore === 0 && cloudScore > 0) {
+        console.log('[Diggerz Cloud] blocked save: this browser has 0 items, account has', cloudScore);
+        return { ok: false, reason: 'refuse-empty-wipe', cloudScore: cloudScore };
+      }
+
+      if (!force) {
+        // Auto-save: don't overwrite a richer account save from another device
+        if (cloudScore > localScore + 1 && cloudAt >= localEditTime()) {
+          console.log('[Diggerz Cloud] skip auto-save: account has more items', cloudScore, 'vs local', localScore);
+          return { ok: false, reason: 'cloud-richer', cloudScore: cloudScore, localScore: localScore };
+        }
+      }
+
       var payload = {
         profile: profile,
         email: state.email || '',
-        updatedAt: now
+        updatedAt: now,
+        localEditAt: localEditTime() || now,
+        itemCount: localScore
       };
-      if (inventory && Array.isArray(inventory.slots) && inventory.slots.length) {
-        payload.inventory = inventory;
-      }
+      if (localScore > 0) payload.inventory = inventory;
+
       await db.collection('users').doc(state.uid).set(payload, { merge: true });
-      console.log('[Diggerz Cloud] saved', inventory && inventory.slots ? ('slots=' + inventory.slots.length) : 'profile-only');
+      console.log('[Diggerz Cloud] saved slots~', localScore, force ? '(manual)' : '(auto)');
+      return { ok: true, slots: localScore };
     } catch (e) {
       console.warn('[Diggerz Cloud] push failed', e);
+      return { ok: false, reason: 'error', error: e };
     }
+  }
+
+  function isInGameForCloud() {
+    try {
+      // Dig+Trade / shop service live
+      if (window.P && P.service && P.service.state && Array.isArray(P.service.state.slots)) return true;
+    } catch (e) {}
+    try {
+      // In a live world (not pure title)
+      if (window.l && l.z39 && l.a42 && l.a42 !== '' && String(l.a42).indexOf('Title') < 0) return true;
+    } catch (e2) {}
+    return false;
   }
 
   function scheduleCloudSave() {
     if (!state.authenticated) return;
+    // Only auto-save while actually in-game (never from empty title-screen browser)
+    if (!isInGameForCloud()) return;
     if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(function(){ pushCloudSave(false); }, 2500);
+    saveTimer = setTimeout(function(){ pushCloudSave(false); }, 5000);
   }
 
   function applySession(user, skipPull) {
@@ -117988,23 +118197,18 @@ function addSupportUI(){
           if (typeof q.SaveGlobals === 'function') q.SaveGlobals();
         }
       } catch (e) {}
+      // After login / page load while signed in: load account into this browser
       if (!skipPull) {
-        pullCloudSave().then(function(data){
-          var localInv = collectInventory();
-          var cloudHasInv = data && data.inventory && Array.isArray(data.inventory.slots) && data.inventory.slots.length;
-          if (!data) {
-            pushCloudSave(true);
-          } else if (!cloudHasInv && localInv) {
-            pushCloudSave(true);
-          } else {
-            scheduleCloudSave();
-          }
+        pullCloudSave(true).then(function(data){
           try {
             if (sessionStorage.getItem('diggerz.cloud.reload') === '1') {
               sessionStorage.removeItem('diggerz.cloud.reload');
-              console.log('[Diggerz Cloud] applied after login reload');
             }
           } catch (e2) {}
+          if (data && data.inventory)
+            console.log('[Diggerz Cloud] account loaded after login');
+          else
+            console.log('[Diggerz Cloud] signed in — no cloud inventory yet (play & it will auto-save in-game)');
         });
       }
     } else {
@@ -118167,36 +118371,38 @@ function loadScript(src) {
   async function loginWithGoogle() {
     if (state.busy) return;
     state.busy = true;
-    var btn = document.getElementById('diggerz-login-google');
-    if (btn) btn.disabled = true;
-    var st = document.getElementById('diggerz-login-status');
-    if (st) st.textContent = 'Opening Google sign-in…';
+    var menu = window.__diggerzLoginMenu;
     try {
+      if (menu) popup(menu, '^9Opening Google sign-in…');
       await initFirebase();
       var provider = new firebase.auth.GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       var result = await auth.signInWithPopup(provider);
-      applySession(result.user, true); // skip auto pull; we handle below
-      if (st) st.textContent = 'Saving this browser’s progress to your account…';
-      try { if (window.__diggerzLoginMenu) popup(window.__diggerzLoginMenu, '^9Saving progress to your account…'); } catch (eP2) {}
-      // Force-upload name, country, skin, items, coins from THIS browser
-      await pushCloudSave(true);
+      // Auth only — does NOT push or pull inventory (use Settings → Save/Load)
+      applySession(result.user, true);
+      saveLocal();
+      try {
+        var panel = window.__diggerzLoginPanel;
+        if (panel) {
+          panel.a0 = 1;
+          try { if (window.E && E.u4) E.u4(panel, 0, 300, 1, .5, 0, 1, 0); } catch (eA) {}
+        }
+      } catch (eClose) {}
+      try { hideGoogleButton(); } catch (eH) {}
+      var email = (result.user && result.user.email) ? result.user.email : (state.email || 'your account');
+      if (menu) popup(menu, '^2Signed in as ^7' + email + '^2 — loading account after reload…');
       try { sessionStorage.setItem('diggerz.cloud.reload', '1'); } catch (e) {}
-      if (st) st.textContent = 'Saved! Reloading to apply account data…';
-      setTimeout(function(){ location.reload(); }, 500);
+      setTimeout(function(){ location.reload(); }, 900);
       return;
     } catch (e) {
       console.warn('[Diggerz Auth]', e);
       var msg = (e && e.message) ? e.message : 'Sign-in failed';
       if (e && e.code === 'auth/popup-blocked') msg = 'Popup blocked — allow popups for this site.';
-      if (e && e.code === 'auth/unauthorized-domain') msg = 'Domain not authorized in Firebase. Add this site under Authentication → Settings → Authorized domains.';
-      if (st) st.textContent = msg;
-      var menu2 = window.__diggerzLoginMenu;
-      if (menu2) popup(menu2, '^1' + msg);
+      if (e && e.code === 'auth/unauthorized-domain') msg = 'Domain not authorized in Firebase.';
+      if (menu) popup(menu, '^1' + msg);
     } finally {
       state.busy = false;
-      if (btn) btn.disabled = false;
-      updatePanel();
+      try { updatePanel(); } catch (eU) {}
     }
   }
 
@@ -118211,7 +118417,15 @@ async function logout() {
 
   function logoutFromMenu(menu) {
     logout().then(function() {
-      if (menu) popup(menu, '^9Signed out.');
+      try {
+        localStorage.removeItem('diggerz.firebase.auth.v1');
+        if (window.q && q.thisMain) {
+          q.thisMain.userPW = '';
+          q.thisMain.userEmail = '';
+        }
+      } catch (e) {}
+      if (menu) popup(menu, '^9Signed out — reloading…');
+      setTimeout(function(){ location.reload(); }, 600);
     });
   }
 
@@ -118235,6 +118449,7 @@ async function logout() {
         var oldS = DiggerzService.prototype.save;
         DiggerzService.prototype.save = function(force) {
           var r = oldS.call(this, force);
+          try { touchLocalEdit(); } catch (e0) {}
           try { scheduleCloudSave(); } catch (e) {}
           return r;
         };
@@ -118246,8 +118461,10 @@ async function logout() {
   // Boot
   initFirebase().then(function(){ installSaveHooks(); }).catch(function(e){ console.warn('[Diggerz Auth] init failed', e); });
   setInterval(installSaveHooks, 2000);
-  // Periodic cloud push while logged in
-  setInterval(function(){ if (state.authenticated) pushCloudSave(false); }, 60000);
+  // Periodic cloud push only while in-game
+  setInterval(function(){
+    if (state.authenticated && isInGameForCloud()) pushCloudSave(false);
+  }, 45000);
 
   window.DiggerzAuth237 = {
     state: state,
@@ -118260,8 +118477,8 @@ async function logout() {
     logoutFromMenu: logoutFromMenu,
     requestLink: requestLink,
     refresh: function(){ return Promise.resolve(state); },
-    pushCloudSave: function(){ return pushCloudSave(true); },
-    pullCloudSave: pullCloudSave
+    pushCloudSave: function(force){ return pushCloudSave(!!force); },
+    pullCloudSave: function(force){ return pullCloudSave(!!force); }
   };
 })();
 </script>
