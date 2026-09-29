@@ -104,28 +104,14 @@
     proto.pvpIsPeerGuid=function(id){return !!this.pvpFindPeerByGuid(id)};
     proto.pvpEntityForPeer=function(peer){if(!peer||!peer.id||!this.game||!this.game.V31)return null;try{return this.game.V31(peer.id)}catch(e){return null}};
     proto.pvpRefreshLegacyPeer=function(){var peers=this.pvpEnsurePeers();this.peerId=null;this.peerInfo=null;for(var k in peers){if(peers[k]&&peers[k].id){this.peerId=peers[k].id;this.peerInfo=peers[k].info||null;break}}};
-    proto.pvpRemovePeer=function(cid){
-      var peers=this.pvpEnsurePeers(),peer=peers[cid];
-      if(!peer)return false;
-      var id=peer.id;
-      delete peers[cid];
-      var self=this;
-      // Keep multiplayer bookkeeping/network despawn, but never directly
-      // destroy or detach native display objects/UI children here.
-      function despawn(guid){
-        if(!guid)return;
-        try{self.enqueue(3,1,function(out){out.R8(guid)})}catch(e){}
-      }
-      despawn(id);
-      [80,200,500,1000].forEach(function(delay){setTimeout(function(){
-        despawn(id);
-        try{self.pvpRefreshLeaderboard&&self.pvpRefreshLeaderboard()}catch(_e){}
-      },delay)});
-      if(this.pvpTrade&&this.pvpTrade.partnerConnectionId===cid)this.pvpCancelTradeLocal('Player disconnected.');
-      this.pvpRefreshLegacyPeer();
-      try{this.pvpRefreshLeaderboard&&this.pvpRefreshLeaderboard()}catch(e){}
-      return true
-    };
+  proto.pvpRemovePeer=function(cid){
+    var peers=this.pvpEnsurePeers(),peer=peers[cid];
+    if(!peer)return false;
+    delete peers[cid];
+    if(this.pvpTrade&&this.pvpTrade.partnerConnectionId===cid)this.pvpCancelTradeLocal('Player disconnected.');
+    this.pvpRefreshLegacyPeer();
+    return true
+  };
     proto.pvpSend=function(m){return window.DiggerzIsMultiplayer(this)&&P.send(m)};
     proto.pvpSendHello=function(){
       if(!window.DiggerzIsMultiplayer(this)||!this.playerId)return;
