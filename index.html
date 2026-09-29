@@ -87566,7 +87566,7 @@ return true
                 if (window.DiggerzAuth237 && window.DiggerzAuth237.hideGoogleButton)
                     window.DiggerzAuth237.hideGoogleButton();
             } catch (eHide) {}
-            var panel = new ja(440, 420, !0);
+            var panel = new ja(440, 340, !0);
             panel._1 = "diggerz_login_panel";
             panel.c0 = !0;
             // Same click-off as Game Settings
@@ -87602,7 +87602,7 @@ return true
             gLbl.D7(gBg, !0);
             gLbl.b6 = 0;
             gLbl.b7 = 2;
-            try { gLbl.set_local_xScale(gLbl.set_local_yScale(.4)); } catch (eS) {}
+            try { gLbl.set_local_xScale(gLbl.set_local_yScale(.55)); } catch (eS) {}
             gLbl._1 = "diggerz_google_btn";
             gLbl.C33 = A(this, function() {
                 if (window.DiggerzAuth237 && window.DiggerzAuth237.loginWithGoogle)
@@ -87612,50 +87612,36 @@ return true
             });
             gBg._9 = gBg._9 || [];
             gBg._9.push(gLbl);
-            // Email magic-link: native textbox + Okay (same dg textbox as Enter Name)
-            var emailBox = new dg(0, 55, "Enter Email", q.MAIN_FONT, !1, 64, 280);
-            try { emailBox.Q30.needsSoftKeyboard = !0; } catch (eKb) {}
-            emailBox.D7(panel, !0);
-            emailBox.c0 = !1;
-            emailBox._1 = "diggerz_email_box";
-            panel._9.push(emailBox);
-            var okBg = new z;
-            okBg.Init(u.YELLOWBUTTON_PNG());
-            okBg.D7(panel, !0);
-            okBg.b6 = 0;
-            okBg.b7 = 120;
-            okBg.set_local_xScale(.65);
-            okBg.set_local_yScale(.5);
-            okBg._1 = "diggerz_email_ok_bg";
-            panel._9.push(okBg);
-            var okLbl = new ob(0, 0, "Send login link", q.MAIN_FONT);
-            okLbl.D7(okBg, !0);
-            okLbl.b6 = 0;
-            okLbl.b7 = 2;
-            try { okLbl.set_local_xScale(okLbl.set_local_yScale(.4)); } catch (eOk) {}
-            okLbl._1 = "diggerz_email_ok";
-            okLbl.C33 = A(this, function() {
-                var email = "";
+            // Email: native $b popup (has Okay + Cancel already)
+            var eBg = new z;
+            eBg.Init(u.YELLOWBUTTON_PNG());
+            eBg.D7(panel, !0);
+            eBg.b6 = 0;
+            eBg.b7 = 70;
+            eBg.set_local_xScale(.7);
+            eBg.set_local_yScale(.55);
+            eBg._1 = "diggerz_email_btn_bg";
+            panel._9.push(eBg);
+            var eLbl = new ob(0, 0, "Login with Email", q.MAIN_FONT);
+            eLbl.D7(eBg, !0);
+            eLbl.b6 = 0;
+            eLbl.b7 = 2;
+            try { eLbl.set_local_xScale(eLbl.set_local_yScale(.55)); } catch (eE) {}
+            eLbl._1 = "diggerz_email_btn";
+            eLbl.C33 = A(this, function() {
+                // Close login panel first so the $b popup is clear
                 try {
-                    if (emailBox.Q30 && typeof emailBox.Q30.get_text === "function")
-                        email = String(emailBox.Q30.get_text() || "");
-                    else if (emailBox.q35)
-                        email = String(emailBox.q35 || "");
-                } catch (eRead) {}
-                email = email.trim().toLowerCase();
-                if (!email || email.indexOf("@") < 0 || email === "enter email") {
-                    this._9.push(new vb(this, "", "^1Enter a valid email address.", new Cd, vb.F39));
-                    return;
-                }
-                if (window.DiggerzAuth237 && window.DiggerzAuth237.sendEmailLink)
-                    window.DiggerzAuth237.sendEmailLink(email, this);
-                else
-                    this._9.push(new vb(this, "", "^1Email login is not ready yet. Refresh the page.", new Cd, vb.F39));
+                    if (window.__diggerzLoginPanel) {
+                        window.__diggerzLoginPanel.a0 = 1;
+                        window.__diggerzLoginPanel = null;
+                    }
+                } catch (eClose) {}
+                var popup = new $b(this, "Enter your email", "", 64, A(this, this.D59), 440, 200);
+                popup._1 = "diggerz_email_popup";
+                this._9.push(popup);
             });
-            okBg._9 = okBg._9 || [];
-            okBg._9.push(okLbl);
-            // Taller panel for Google + email row
-            try { panel.d36 && panel.d36(440, 420); } catch (eSz) {}
+            eBg._9 = eBg._9 || [];
+            eBg._9.push(eLbl);
             this._9.push(panel);
             panel._2 = this;
             window.__diggerzLoginMenu = this;
@@ -87670,15 +87656,33 @@ return true
         },
         D58: function(a) {},
         D59: function() {
+            // Okay on the native email $b popup
             var a = q.GetChildByType($b);
             null == a && (a = this.f4($b));
             if (null == a || null == a.F30) return;
-            var email = String(a.F30.q35 || "").trim().toLowerCase();
+            var email = "";
+            try {
+                if (a.F30.Q30 && typeof a.F30.Q30.get_text === "function")
+                    email = String(a.F30.Q30.get_text() || "");
+                else
+                    email = String(a.F30.q35 || "");
+            } catch (eR) {
+                email = String(a.F30.q35 || "");
+            }
+            email = email.trim().toLowerCase();
+            if (!email || email.indexOf("@") < 0) {
+                this._9.push(new vb(this, "", "^1Enter a valid email address.", new Cd, vb.F39));
+                return;
+            }
             q.thisMain.userEmail = email;
-            if (window.DiggerzAuth237 && window.DiggerzAuth237.requestLink)
+            // Close the $b popup
+            try { a.a0 = 1; } catch (eC) {}
+            if (window.DiggerzAuth237 && window.DiggerzAuth237.sendEmailLink)
+                window.DiggerzAuth237.sendEmailLink(email, this);
+            else if (window.DiggerzAuth237 && window.DiggerzAuth237.requestLink)
                 window.DiggerzAuth237.requestLink(email, q.thisMain.userName, this, a);
             else
-                this._9.push(new vb(this,"","Passwordless sign-in is not ready yet. You can continue as a guest.",new Cd,vb.F39))
+                this._9.push(new vb(this, "", "^1Email login is not ready yet. Refresh the page.", new Cd, vb.F39));
         },
         e50: function(a) {
             // Retained for unrelated legacy byte conversions; no credential encoding uses this in Build 23.7.
