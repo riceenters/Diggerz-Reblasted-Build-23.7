@@ -116234,7 +116234,7 @@ return true
       // CLEANUP ISOLATION TEST: keep multiplayer peer bookkeeping, but do not
       // mutate native entities or scene/display lists when a peer is removed.
       function scrubEntity(ent){ return; }
-      function despawn(guid){ return; }catch(_e){}
+      function despawn(guid){ return; }
       [80,200,500,1000].forEach(function(delay){setTimeout(function(){despawn(id);try{self.pvpRefreshLeaderboard&&self.pvpRefreshLeaderboard()}catch(_e){}},delay)});
       if(this.pvpTrade&&this.pvpTrade.partnerConnectionId===cid)this.pvpCancelTradeLocal('Player disconnected.');
       this.pvpRefreshLegacyPeer();
