@@ -1247,10 +1247,11 @@ function placementOverlapsPlayer(player, tileX, tileY) {
   if (!player || !player.position) return false;
   const px=Number(player.position.x), py=Number(player.position.y);
   if (!Number.isFinite(px) || !Number.isFinite(py)) return false;
-  // Distance-based (same idea as client): reject if tile center is within ~1.15 of player.
-  const cx=(tileX|0)+0.5, cy=(tileY|0)+0.5;
-  const dx=cx-px, dy=cy-py;
-  return Math.hypot(dx, dy) < 1.0;
+  // Exactly 1x1 block body (half 0.5) vs the target tile square.
+  const hw=0.5, hh=0.5;
+  const cellL=tileX|0, cellR=cellL+1, cellT=tileY|0, cellB=cellT+1;
+  const pL=px-hw, pR=px+hw, pT=py-hh, pB=py+hh;
+  return !(cellR<=pL || cellL>=pR || cellB<=pT || cellT>=pB);
 }
 
 function placementBlockedByAnyPlayer(room, tileX, tileY) {
