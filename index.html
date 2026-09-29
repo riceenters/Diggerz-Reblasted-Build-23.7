@@ -118338,17 +118338,15 @@ function addSupportUI(){
       localStorage.setItem(key, JSON.stringify(merged));
       console.log('[Diggerz Cloud] wrote localStorage', key, 'filled~', inventoryScore(norm));
 
+      // UI ISOLATION TEST: do not mutate a live in-game DiggerzService from
+      // the asynchronous Firebase pull. The cloud data is already persisted
+      // to localStorage above, and the normal game load/reload path will pick
+      // it up. Mutating the active service here can trigger inventory,
+      // appearance, player-spawn, and native UI lifecycle work mid-session.
+      // That is exactly the path we are isolating.
       var svc = window.P && P.service;
       if (svc && svc.state) {
-        svc.state.slots = norm.slots;
-        svc.state.appearance = norm.appearance;
-        svc.state.appearanceText = norm.appearanceText || '';
-        svc.state.wins = norm.wins | 0;
-        svc.state.coins = norm.coins | 0;
-        svc.state.mined = norm.mined | 0;
-        svc.state.placed = norm.placed | 0;
-        try { if (typeof svc.save === 'function') svc.save(true); } catch (e3) {}
-        try { if (typeof svc.applyAppearance === 'function') svc.applyAppearance(); } catch (e4) {}
+        console.log('[Diggerz Cloud] LIVE SERVICE MUTATION SKIPPED FOR UI ISOLATION TEST');
       }
       return true;
     } catch (e) {
@@ -119167,9 +119165,95 @@ async function logout() {
 }());
 </script>
 
-<script src="/build239-client.js"></script><script src="/build240-client.js"></script><!-- diggerz-ui-container-refresh-fix DISABLED FOR UI ISOLATION TEST -->
+<script src="/build239-client.js"></script><script src="/build240-client.js"></script><script id="diggerz-ui-container-refresh-fix">
+(function(){
+  // When an open native inventory/trade container is rebuilt, q44() creates
+  // fresh item X children. Those children begin hidden; q46() is the normal
+  // native pass that applies their visible state. Without it the container
+  // frame remains while its interactive contents disappear.
+  function install(){
+    try{
+      if(typeof l==='undefined'||!l.z38||typeof l.z38.V37!=='function'){
+        setTimeout(install,100); return;
+      }
+      var proto=Object.getPrototypeOf(l.z38);
+      if(!proto||proto.__diggerzUiContainerRefreshFix)return;
+      var old=proto.V37;
+      function collect(node,out,depth,seen){
+        if(!node||depth>6||out.length>64)return;
+        if(seen.indexOf(node)>=0)return;
+        seen.push(node);
+        try{
+          if(typeof node.q46==='function'&&node.B30&&node.d34)out.push(node);
+        }catch(e0){}
+        var kids=node._9;
+        if(!kids||!kids.length)return;
+        for(var i=0;i<kids.length;i++)collect(kids[i],out,depth+1,seen);
+      }
+      proto.V37=function(packet){
+        var r=old.apply(this,arguments);
+        try{
+          var list=[],seen=[];
+          collect(this,list,0,seen);
+          if(l.z39&&l.z39.n38)collect(l.z39.n38,list,0,seen);
+          for(var i=0;i<list.length;i++){
+            var sc=list[i];
+            if(!sc||sc.a0!==0||typeof sc.q46!=='function')continue;
+            try{sc.q46(null,!1)}catch(e1){}
+          }
+        }catch(e2){}
+        return r;
+      };
+      proto.__diggerzUiContainerRefreshFix=true;
+    }catch(e){setTimeout(install,250)}
+  }
+  install();
+})();
+</script>
 
 <!-- Other original content may be protected by copyright. -->
-<!-- diggerz-native-ui-visibility-fix DISABLED FOR UI ISOLATION TEST -->
+<script id="diggerz-native-ui-visibility-fix">
+(function(){
+  function install(){
+    try{
+      if(typeof l==='undefined'||!l.z38){setTimeout(install,100);return}
+      if(window.__diggerzNativeUiVisibilityFix)return;
+      window.__diggerzNativeUiVisibilityFix=true;
+      function walk(node,seen){
+        if(!node||seen.indexOf(node)>=0)return;
+        seen.push(node);
+        var kids=node._9;
+        if(kids&&kids.length){
+          for(var i=0;i<kids.length;i++){
+            var c=kids[i];
+            if(!c)continue;
+            try{
+              // Native radial/shop/trade item nodes are X objects: category 2,
+              // with a real image and a live UI container parent.
+              if(c.a4===2 && c._5 && !c.T40 && !c.t47){
+                var p=c._2;
+                var activeParent=!!(p&&p.d34&&p.B30);
+                if(activeParent && p.a0===0 && p.a2!==false)c.a2=true;
+              }
+            }catch(e0){}
+            walk(c,seen);
+          }
+        }
+      }
+      function tick(){
+        try{
+          var seen=[];
+          if(l.z38&&l.z38._9){
+            for(var i=0;i<l.z38._9.length;i++)walk(l.z38._9[i],seen);
+          }
+        }catch(e){}
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }catch(e){setTimeout(install,250)}
+  }
+  install();
+})();
+</script>
 </body>
 </html>
