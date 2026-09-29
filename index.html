@@ -6465,7 +6465,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.D31.D7(this);
         a = -this.D31.E39() / 2;
         this.D31.b7 = a + 15;
-        l.z38.R35.a2 = !1
+        l.z38.R35.a2 = !1;
+        try { window.__diggerzChatOpen = this; } catch (__c) {}
     };
     v.D30 = Qh;
     Qh.__name__ = "D30";
@@ -6474,6 +6475,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         D31: null,
         y1: function() {
             this.a0 = 1;
+            try { if (window.__diggerzChatOpen === this) window.__diggerzChatOpen = null; } catch (__c2) {}
             l.z38.R35.a2 = !0;
             if (!(0 >= this.D31.q35.length))
                 if ("/people" == this.D31.q35)
@@ -6571,6 +6573,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         D32: function() {
             this.D31 instanceof dg && K.y2(!1);
             this.a0 = 1;
+            try { if (window.__diggerzChatOpen === this) window.__diggerzChatOpen = null; } catch (__c3) {}
             l.z38.R35.a2 = !0
         },
         __class__: Qh
@@ -51397,6 +51400,21 @@ return true
     };
     v.Z45 = Op;
     Op.__name__ = "Z45";
+    try {
+        window.DiggerzNativeUI = {
+            ja: ja,
+            xa: xa,
+            ob: ob,
+            z: z,
+            u: u,
+            E: E,
+            A: A,
+            q: q,
+            vb: typeof vb !== "undefined" ? vb : null,
+            Cd: typeof Cd !== "undefined" ? Cd : null
+        };
+    } catch (__dui) {}
+
     Op.__super__ = ja;
     Op.prototype = D(ja.prototype, {
         Z47: null,
@@ -51423,16 +51441,22 @@ return true
             this._9.push(new vb(this, "", "^9Saving this browser's data to your account…", new Cd, vb.F39));
             Promise.resolve(window.DiggerzAuth237.pushCloudSave(true)).then(function(res) {
                 if (res && res.ok === false && res.reason === 'refuse-empty-wipe') {
-                    self._9.push(new vb(self, "", "^1Blocked: this browser has no items, but your account does. Play here or Load first — save will not wipe the account.", new Cd, vb.F39));
+                    self._9.push(new vb(self, "", "^1Blocked: this browser has no items, but your account does. Play here or Load first.", new Cd, vb.F39));
                     return;
                 }
                 if (res && res.ok === false) {
-                    self._9.push(new vb(self, "", "^1Save did not complete (" + (res.reason || "error") + ").", new Cd, vb.F39));
+                    var detail = res.error || res.reason || 'error';
+                    if (String(detail).indexOf('permission') >= 0 || res.reason === 'permission-denied')
+                        detail = 'Firestore permission denied — open Firebase Console → Firestore → Rules and allow read/write for logged-in users.';
+                    if (String(detail).indexOf('not-logged') >= 0)
+                        detail = 'Not logged in or Firebase not ready. Refresh and try again.';
+                    self._9.push(new vb(self, "", "^1Save failed: ^7" + String(detail).slice(0, 140), new Cd, vb.F39));
                     return;
                 }
                 self._9.push(new vb(self, "", "^2Saved! Account now has your items, coins, name & skin.", new Cd, vb.F39));
             }).catch(function(e) {
-                self._9.push(new vb(self, "", "^1Save failed. Check console / Firestore.", new Cd, vb.F39));
+                var msg = (e && e.message) ? e.message : String(e);
+                self._9.push(new vb(self, "", "^1Save failed: ^7" + msg.slice(0, 140), new Cd, vb.F39));
             });
         },
         diggerzCloudLoad: function() {
@@ -87416,7 +87440,7 @@ return true
             this.d51.E37("Donate");
             this.d51.b7 = 2;
             this.d51.B8 = 5;
-            this.d51.C33 = function(){ if(window.DiggerzSupport239) window.DiggerzSupport239.open(); else if(window.DiggerzOpenDonateFallback) window.DiggerzOpenDonateFallback(); };
+            this.d51.C33 = function(){ if(window.DiggerzOpenDonateNative) window.DiggerzOpenDonateNative(this); else if(window.DiggerzSupport239) window.DiggerzSupport239.open(); };
             this.d51._1 = "welcome message";
             this._9.push(this.d51);
             c = new xa(0,-70,"Support Diggerz multiplayer");
@@ -117362,24 +117386,102 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
       if(roll<1242){list=DS.COMMON_REWARDS;item=list[Math.floor(hash/642)%list.length];return {category:item.category,id:item.id,count:item.count,tier:item.category===1?'block':'weapon'}}
       return null
     };
-    // --- Music: Dig+Trade player + synchronized PvP pre-match track ---
+    // --- Music: Dig+Trade native panel (not PvP) + synchronized PvP pre-match track ---
     var TRACKS=['music_theme.ogg','music_theme2.ogg','music_theme3.ogg','music_theme4.ogg'];
+    var TRACK_NAMES=['Track 1','Track 2','Track 3','Track 4'];
     var digHowl=null,digTrack=-1,pvpHowl=null,pvpKey='',pvpFightAt=0,pvpOffset=0,pvpBaseVolume=.7;
-    var player=document.createElement('div');player.id='diggerz-music-player';player.innerHTML='<div class="mp-title">MUSIC PLAYER</div><select id="diggerz-music-track"><option value="0">Track 1</option><option value="1">Track 2</option><option value="2">Track 3</option><option value="3">Track 4</option></select><div class="mp-row"><button id="diggerz-music-play">Play</button><button id="diggerz-music-pause">Pause</button></div><div class="mp-row"><button id="diggerz-music-restart">Restart</button><button id="diggerz-music-rewind">-2 sec</button></div>';
-    document.body.appendChild(player);
-    var style=document.createElement('style');style.id='diggerz-build233-style';style.textContent='#diggerz-music-player{display:none;position:fixed;left:10px;top:72px;z-index:2147482305;width:176px;padding:7px;background:rgba(10,17,25,.88);border:2px solid rgba(255,255,255,.72);border-radius:6px;color:#fff;font:700 11px/1.2 Arial,sans-serif;text-shadow:1px 1px #000;box-shadow:0 3px 12px rgba(0,0,0,.45)}#diggerz-music-player .mp-title{text-align:center;margin-bottom:5px;color:#ffe052}#diggerz-music-player select{width:100%;padding:4px;background:#111d2a;color:#fff;border:1px solid #64788e;border-radius:3px;font:inherit}#diggerz-music-player .mp-row{display:flex;gap:4px;margin-top:4px}#diggerz-music-player button{flex:1;padding:4px 2px;background:#263a50;color:#fff;border:1px solid #7b8fa4;border-radius:3px;font:inherit;cursor:pointer}#diggerz-music-player button:hover{background:#36506c}';document.head.appendChild(style);
-    var sel=document.getElementById('diggerz-music-track');
     function newTrackHowl(i,loop,onload){return new Howl({src:[TRACKS[i]],preload:true,loop:!!loop,volume:pvpBaseVolume,onload:onload||null})}
     function digSetTrack(i,play){
       i=Math.max(0,Math.min(3,i|0));
       if(!digHowl||digTrack!==i){if(digHowl)try{digHowl.unload()}catch(e){}digTrack=i;digHowl=newTrackHowl(i,false)}
       if(play)try{digHowl.play()}catch(e){}
     }
-    sel.onchange=function(){digSetTrack(+sel.value,true)};
-    document.getElementById('diggerz-music-play').onclick=function(){digSetTrack(+sel.value,true)};
-    document.getElementById('diggerz-music-pause').onclick=function(){if(digHowl)try{digHowl.pause()}catch(e){}};
-    document.getElementById('diggerz-music-restart').onclick=function(){digSetTrack(+sel.value,false);if(digHowl)try{digHowl.stop();digHowl.play()}catch(e){}};
-    document.getElementById('diggerz-music-rewind').onclick=function(){if(!digHowl)return;try{var pos=Number(digHowl.seek())||0;digHowl.seek(Math.max(0,pos-2))}catch(e){}};
+    window.DiggerzMusic = {
+      setTrack: digSetTrack,
+      pause: function(){ if(digHowl) try{digHowl.pause()}catch(e){} },
+      tracks: TRACKS,
+      names: TRACK_NAMES
+    };
+    // Native Music button + track list (Dig+Trade only, under the X)
+    var digMusicBtn=null, digMusicPanel=null;
+    function digMusicClosePanel(){
+      try{
+        if(digMusicPanel){ digMusicPanel.a0=1; try{ if(window.DiggerzNativeUI&&DiggerzNativeUI.E&&DiggerzNativeUI.E.u4) DiggerzNativeUI.E.u4(digMusicPanel,0,300,1,.5,0,1,0);}catch(e){} digMusicPanel=null; }
+      }catch(e){}
+    }
+    function digMusicOpenPanel(){
+      var UI=window.DiggerzNativeUI;
+      if(!UI||!UI.ja||!UI.xa||!UI.ob||!UI.q) return;
+      digMusicClosePanel();
+      try{
+        var panel=new UI.ja(380,380,!0);
+        panel._1='diggerz_music_panel';
+        panel.c0=!0;
+        panel.A7=UI.q.CENTERX;
+        panel.A8=UI.q.CENTERY;
+        try{ UI.E.u4(panel,0,300,0,.5,1,0,1);}catch(e){}
+        var title=new UI.xa(0,-140,'^9MUSIC',UI.q.MAIN_FONT_BIG);
+        title.D7(panel,!0); panel._9.push(title);
+        var y=-70;
+        for(var ti=0;ti<4;ti++){
+          (function(trackIndex, yy){
+            var bg=new UI.z;
+            try{ bg.Init(UI.u.YELLOWBUTTON_PNG()); }catch(e){}
+            bg.D7(panel,!0); bg.b7=yy; bg.set_local_xScale(bg.set_local_yScale(.5)); panel._9.push(bg);
+            var lbl=new UI.ob(0,yy,TRACK_NAMES[trackIndex],UI.q.MAIN_FONT_BIG);
+            lbl.D7(panel,!0); lbl.b7=2;
+            lbl.C33=function(){
+              digSetTrack(trackIndex,true);
+              digMusicClosePanel();
+            };
+            panel._9.push(lbl);
+          })(ti, y);
+          y+=55;
+        }
+        var closeBg=new UI.z;
+        try{ closeBg.Init(UI.u.REDBUTTON_PNG()); }catch(e){}
+        closeBg.D7(panel,!0); closeBg.b7=y+10; closeBg.set_local_xScale(closeBg.set_local_yScale(.42)); panel._9.push(closeBg);
+        var closeLbl=new UI.ob(0,y+10,'Close',UI.q.MAIN_FONT_BIG);
+        closeLbl.D7(panel,!0); closeLbl.b7=2;
+        closeLbl.C33=function(){ digMusicClosePanel(); };
+        panel._9.push(closeLbl);
+        var root=null;
+        try{ if(window.l&&l.z38) root=l.z38; }catch(e){}
+        if(!root) try{ if(UI.q.thisMain) root=UI.q.thisMain; }catch(e2){}
+        if(root&&root._9){ root._9.push(panel); panel._2=root; }
+        digMusicPanel=panel;
+      }catch(err){ console.warn('[Diggerz Music] panel failed', err); }
+    }
+    function digMusicEnsureBtn(show){
+      var UI=window.DiggerzNativeUI;
+      if(!show){
+        try{ if(digMusicBtn){ digMusicBtn.a0=1; digMusicBtn=null; } }catch(e){}
+        digMusicClosePanel();
+        return;
+      }
+      if(!UI||!UI.ja||!UI.ob||!UI.z||!UI.q) return;
+      if(digMusicBtn&&!digMusicBtn.a0) return;
+      try{
+        // Small button under the top-left X area
+        var wrap=new UI.z;
+        try{ wrap.Init(UI.u.YELLOWBUTTON_PNG()); }catch(e){}
+        wrap._1='diggerz_music_btn';
+        wrap.c0=!0;
+        wrap.A7=70;
+        wrap.A8=95;
+        wrap.set_local_xScale(wrap.set_local_yScale(.35));
+        var lbl=new UI.ob(0,0,'Music',UI.q.MAIN_FONT_BIG);
+        lbl.D7(wrap,!0);
+        lbl.b7=2;
+        try{ lbl.set_local_xScale(lbl.set_local_yScale(.85)); }catch(e){}
+        lbl.C33=function(){ digMusicOpenPanel(); };
+        wrap._9=wrap._9||[]; wrap._9.push(lbl);
+        var root=null;
+        try{ if(window.l&&l.z38) root=l.z38; }catch(e){}
+        if(!root) try{ if(UI.q.thisMain) root=UI.q.thisMain; }catch(e2){}
+        if(root&&root._9){ root._9.push(wrap); wrap._2=root; digMusicBtn=wrap; }
+      }catch(err){ console.warn('[Diggerz Music] btn failed', err); }
+    }
     function startPvpMusic(track,startedAt,fightAt,serverNow){
       track=Number(track);if(!isFinite(track)||track<0||track>3)return;startedAt=+startedAt||Date.now();fightAt=+fightAt||0;pvpOffset=(+serverNow||Date.now())-Date.now();pvpFightAt=fightAt;
       var key=track+':'+startedAt;
@@ -117407,7 +117509,9 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
       return prevReceive233.call(this,m)
     };
     setInterval(function(){
-      var service=P.service,show=!!(P.joined&&P.mode==='digtrade'&&service&&service.mode==='digtrade');player.style.display=show?'block':'none';if(!show&&digHowl)try{digHowl.pause()}catch(e){};
+      var service=P.service,show=!!(P.joined&&P.mode==='digtrade'&&service&&service.mode==='digtrade');
+      digMusicEnsureBtn(show);
+      if(!show&&digHowl)try{digHowl.pause()}catch(e){};
       if((P.mode!=='pvp'||!P.joined)&&pvpHowl){stopPvpMusic();return}
       if(P.mode==='pvp'&&P.joined&&pvpFightAt&&pvpKey&&pvpHowl){var rem=pvpFightAt-(Date.now()+pvpOffset),duck=pvpBaseVolume*.25;if(rem<=0){pvpFightAt=0;setPvpMusicVolume(duck,0)}else if(rem<=3000){try{pvpHowl.volume(duck+(pvpBaseVolume-duck)*(rem/3000))}catch(e){}}else try{pvpHowl.volume(pvpBaseVolume)}catch(e){}}
     },100);
@@ -117847,37 +117951,156 @@ function addSupportUI(){
 </script>
 
 
+
+<script id="diggerz-donate-native">
+(function(){
+  var panelRef = null;
+  var LIME_URL = 'https://ko-fi.com/limeguy314';
+  var HEU_URL = 'https://cash.app/$Houstonswallet';
+
+  function tint(spr, r, g, b) {
+    try {
+      if (spr.set_local_r) spr.set_local_r(r);
+      if (spr.set_local_g) spr.set_local_g(g);
+      if (spr.set_local_b) spr.set_local_b(b);
+    } catch (e) {}
+  }
+
+  function closePanel() {
+    try {
+      if (panelRef) {
+        panelRef.a0 = 1;
+        try {
+          var UI = window.DiggerzNativeUI;
+          if (UI && UI.E && UI.E.u4) UI.E.u4(panelRef, 0, 300, 1, .5, 0, 1, 0);
+        } catch (e) {}
+        panelRef = null;
+      }
+    } catch (e2) {}
+  }
+
+  function openDonateNative(menu) {
+    var UI = window.DiggerzNativeUI;
+    if (!UI || !UI.ja || !UI.xa || !UI.ob || !UI.z || !UI.u || !UI.q) {
+      if (window.DiggerzSupport239) window.DiggerzSupport239.open();
+      return;
+    }
+    closePanel();
+    try {
+      var panel = new UI.ja(420, 360, !0);
+      panel._1 = 'diggerz_donate_panel';
+      panel.c0 = !0;
+      panel.A7 = UI.q.CENTERX;
+      panel.A8 = UI.q.CENTERY;
+      try { UI.E.u4(panel, 0, 300, 0, .5, 1, 0, 1); } catch (e) {}
+
+      var title = new UI.xa(0, -120, '^9Donate', UI.q.MAIN_FONT_BIG);
+      title.D7(panel, !0);
+      panel._9.push(title);
+
+      var hint = new UI.xa(0, -70, '^7Support Diggerz multiplayer', UI.q.MAIN_FONT);
+      hint.D7(panel, !0);
+      try { hint.set_local_xScale(hint.set_local_yScale(.85)); } catch (eH) {}
+      panel._9.push(hint);
+
+      // Lime — green
+      var limeBg = new UI.z;
+      try { limeBg.Init(UI.u.REDBUTTON_PNG()); } catch (e1) {}
+      limeBg.D7(panel, !0);
+      limeBg.b7 = -10;
+      limeBg.set_local_xScale(limeBg.set_local_yScale(.55));
+      tint(limeBg, 0.15, 0.85, 0.25);
+      panel._9.push(limeBg);
+      var limeLbl = new UI.ob(0, -10, 'Lime', UI.q.MAIN_FONT_BIG);
+      limeLbl.D7(panel, !0);
+      limeLbl.b7 = 2;
+      limeLbl.C33 = function() {
+        try { window.open(LIME_URL, '_blank', 'noopener,noreferrer'); } catch (e) { location.href = LIME_URL; }
+      };
+      panel._9.push(limeLbl);
+
+      // Heu — blue
+      var heuBg = new UI.z;
+      try { heuBg.Init(UI.u.REDBUTTON_PNG()); } catch (e2) {}
+      heuBg.D7(panel, !0);
+      heuBg.b7 = 70;
+      heuBg.set_local_xScale(heuBg.set_local_yScale(.55));
+      tint(heuBg, 0.15, 0.45, 0.95);
+      panel._9.push(heuBg);
+      var heuLbl = new UI.ob(0, 70, 'Heu', UI.q.MAIN_FONT_BIG);
+      heuLbl.D7(panel, !0);
+      heuLbl.b7 = 2;
+      heuLbl.C33 = function() {
+        try { window.open(HEU_URL, '_blank', 'noopener,noreferrer'); } catch (e) { location.href = HEU_URL; }
+      };
+      panel._9.push(heuLbl);
+
+      // Close
+      var closeBg = new UI.z;
+      try { closeBg.Init(UI.u.REDBUTTON_PNG()); } catch (e3) {}
+      closeBg.D7(panel, !0);
+      closeBg.b7 = 140;
+      closeBg.set_local_xScale(closeBg.set_local_yScale(.4));
+      panel._9.push(closeBg);
+      var closeLbl = new UI.ob(0, 140, 'Close', UI.q.MAIN_FONT_BIG);
+      closeLbl.D7(panel, !0);
+      closeLbl.b7 = 2;
+      closeLbl.C33 = function() { closePanel(); };
+      panel._9.push(closeLbl);
+
+      var root = menu || null;
+      try { if (!root && UI.q.thisMain) root = UI.q.thisMain; } catch (e4) {}
+      if (root && root._9) {
+        root._9.push(panel);
+        panel._2 = root;
+      }
+      panelRef = panel;
+    } catch (err) {
+      console.warn('[Diggerz Donate] native panel failed', err);
+      if (window.DiggerzSupport239) window.DiggerzSupport239.open();
+    }
+  }
+
+  window.DiggerzOpenDonateNative = openDonateNative;
+})();
+</script>
+
 <script id="diggerz-mobile-chat-enter">
 (function(){
   var btn = null;
-  var style = null;
-
-  function findChat(list, depth) {
-    if (!list || depth > 14) return null;
-    for (var i = 0; i < list.length; i++) {
-      var o = list[i];
-      if (!o) continue;
-      if (o._1 === 'chat_local' && !o.a0) return o;
-      if (o._9) {
-        var f = findChat(o._9, depth + 1);
-        if (f) return f;
-      }
-    }
-    return null;
-  }
 
   function getOpenChat() {
     try {
+      if (window.__diggerzChatOpen && !window.__diggerzChatOpen.a0)
+        return window.__diggerzChatOpen;
+    } catch (e) {}
+    try {
       if (!window.q) return null;
+      function findChat(list, depth) {
+        if (!list || depth > 16) return null;
+        for (var i = 0; i < list.length; i++) {
+          var o = list[i];
+          if (!o) continue;
+          if (o._1 === 'chat_local' && !o.a0) return o;
+          if (o._9) {
+            var f = findChat(o._9, depth + 1);
+            if (f) return f;
+          }
+        }
+        return null;
+      }
       var roots = [];
-      try { if (q.thisMain && q.thisMain._9) roots.push(q.thisMain._9); } catch (e) {}
+      try { if (q.thisMain && q.thisMain._9) roots.push(q.thisMain._9); } catch (e1) {}
       try { if (window.l && l.z38 && l.z38._9) roots.push(l.z38._9); } catch (e2) {}
-      try { if (q.children) roots.push(q.children); } catch (e3) {}
+      try { if (window.l && l.z38 && l.z38.R35 && l.z38.R35._9) roots.push(l.z38.R35._9); } catch (e3) {}
       for (var r = 0; r < roots.length; r++) {
         var c = findChat(roots[r], 0);
-        if (c) return c;
+        if (c) {
+          try { window.__diggerzChatOpen = c; } catch (e4) {}
+          return c;
+        }
       }
-    } catch (e4) {}
+    } catch (e5) {}
     return null;
   }
 
@@ -117885,22 +118108,24 @@ function addSupportUI(){
     var chat = getOpenChat();
     if (!chat) return;
     try {
-      if (chat.D31 && typeof chat.y1 === 'function') {
-        // Ensure text is pulled from soft keyboard field first
+      if (chat.D31) {
         try {
-          if (chat.D31.Q30 && chat.D31.Q30.get_text) {
+          if (chat.D31.Q30 && typeof chat.D31.Q30.get_text === 'function') {
             var t = String(chat.D31.Q30.get_text() || '');
-            if (t && (!chat.D31.q35 || !chat.D31.q35.length)) {
+            if (t) {
               chat.D31.q35 = t;
               try { chat.D31.E37(t); } catch (eE) {}
             }
           }
         } catch (eT) {}
-        chat.y1();
-        return;
+        if (typeof chat.y1 === 'function') {
+          chat.y1();
+          return;
+        }
       }
-    } catch (e) {}
+    } catch (e) { console.warn('[Diggerz Chat] send failed', e); }
     try {
+      if (!window.q) return;
       if (!q.mKeyQueue) q.mKeyQueue = [];
       if (q.mKeyQueue.indexOf(13) < 0) q.mKeyQueue.push(13);
       q.mKeyDown = q.mKeyDown || [];
@@ -117909,29 +118134,32 @@ function addSupportUI(){
   }
 
   function ensureBtn() {
-    if (btn) return btn;
-    style = document.createElement('style');
-    style.textContent = [
-      '#diggerz-chat-enter-btn{display:none;position:fixed;z-index:2147483646;left:50%;transform:translateX(-50%);',
-      'min-width:120px;height:40px;padding:0 18px;border:3px solid #111;border-radius:4px;cursor:pointer;',
-      'background:#d94a38;color:#fff;font:800 18px Arial Black,Arial,sans-serif;text-transform:uppercase;',
-      'letter-spacing:1px;box-shadow:0 4px 0 #8a281c;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}',
-      '#diggerz-chat-enter-btn.show{display:block;}',
-      '#diggerz-chat-enter-btn:active{transform:translateX(-50%) translateY(2px);box-shadow:0 2px 0 #8a281c;}'
-    ].join('');
-    document.head.appendChild(style);
+    if (btn && document.body.contains(btn)) return btn;
+    if (!document.getElementById('diggerz-chat-enter-style')) {
+      var style = document.createElement('style');
+      style.id = 'diggerz-chat-enter-style';
+      style.textContent = [
+        '#diggerz-chat-enter-btn{display:none;position:fixed;z-index:2147483647;left:50%;',
+        'transform:translateX(-50%);min-width:130px;height:44px;padding:0 20px;',
+        'border:3px solid #111;border-radius:6px;cursor:pointer;pointer-events:auto;',
+        'background:#d94a38;color:#fff;font:800 18px Arial Black,Arial,sans-serif;',
+        'text-transform:uppercase;letter-spacing:1px;box-shadow:0 4px 0 #8a281c;',
+        'touch-action:manipulation;-webkit-tap-highlight-color:transparent;}',
+        '#diggerz-chat-enter-btn.show{display:block !important;visibility:visible !important;opacity:1 !important;}',
+        '#diggerz-chat-enter-btn:active{transform:translateX(-50%) translateY(2px);box-shadow:0 2px 0 #8a281c;}'
+      ].join('');
+      document.head.appendChild(style);
+    }
     btn = document.createElement('button');
     btn.id = 'diggerz-chat-enter-btn';
     btn.type = 'button';
     btn.textContent = 'Enter';
-    btn.addEventListener('click', function(ev) {
+    function fire(ev) {
       try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {}
       sendChat();
-    });
-    btn.addEventListener('touchend', function(ev) {
-      try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {}
-      sendChat();
-    }, { passive: false });
+    }
+    btn.addEventListener('click', fire);
+    btn.addEventListener('touchend', fire, { passive: false });
     document.body.appendChild(btn);
     return btn;
   }
@@ -117940,9 +118168,9 @@ function addSupportUI(){
     var el = ensureBtn();
     var canvas = document.querySelector('canvas');
     var rect = canvas ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
-    // Chat box sits near top center (A8 ≈ 50). Place Enter just under it.
     el.style.left = Math.round(rect.left + rect.width * 0.5) + 'px';
-    el.style.top = Math.round(rect.top + Math.max(70, rect.height * 0.11) + 36) + 'px';
+    // Just under the top chat bar
+    el.style.top = Math.round(rect.top + Math.min(110, Math.max(64, rect.height * 0.12)) + 28) + 'px';
   }
 
   function tick() {
@@ -117951,12 +118179,13 @@ function addSupportUI(){
     if (chat) {
       positionBtn();
       el.classList.add('show');
+      el.style.display = 'block';
     } else {
       el.classList.remove('show');
+      el.style.display = 'none';
     }
   }
 
-  // Keyboard Enter still works on mobile soft keyboards
   function onKey(ev) {
     var isEnter = ev.key === 'Enter' || ev.keyCode === 13 || ev.which === 13;
     if (!isEnter) return;
@@ -117966,9 +118195,11 @@ function addSupportUI(){
   }
   document.addEventListener('keydown', onKey, true);
   document.addEventListener('keypress', onKey, true);
-
-  setInterval(tick, 200);
+  setInterval(tick, 150);
   window.addEventListener('resize', function(){ if (btn && btn.classList.contains('show')) positionBtn(); });
+  // Create button node early so it exists in DOM
+  if (document.body) ensureBtn();
+  else document.addEventListener('DOMContentLoaded', ensureBtn);
 })();
 </script>
 
@@ -118204,6 +118435,12 @@ function addSupportUI(){
         try { inv = JSON.parse(data.inventoryJson); } catch (e0) { inv = null; }
       }
       if (!inv && data.inventory) inv = data.inventory;
+      if (!inv && data.digtradeRaw) {
+        try { inv = JSON.parse(data.digtradeRaw); } catch (eR) { inv = null; }
+      }
+      if (data.profileJson && !data.profile) {
+        try { data.profile = JSON.parse(data.profileJson); } catch (eP) {}
+      }
 
       var localInv = collectInventory();
       var localScore = inventoryScore(localInv);
@@ -118285,31 +118522,35 @@ function addSupportUI(){
         return { ok: false, reason: 'nothing' };
       }
 
+      // Separate JSON fields only (Firestore-friendly, no nested array surprises)
       var payload = {
-        profile: profile,
         email: state.email || '',
         updatedAt: now,
-        itemCount: localScore
+        itemCount: localScore,
+        profileJson: JSON.stringify(profile || {}),
+        inventoryJson: inventory ? JSON.stringify(inventory) : ''
       };
-      if (inventory && localScore >= 0) {
-        // Plain object for convenience
-        payload.inventory = inventory;
-        // JSON string is the reliable path for Firestore
-        payload.inventoryJson = JSON.stringify(inventory);
-        try { var pr = localStorage.getItem('diggerz.profile.v1'); if (pr) payload.profileJson = pr; } catch (eP) {}
-      }
-      // Also dump raw localStorage blob as ultimate backup
+      try {
+        var pr = localStorage.getItem('diggerz.profile.v1');
+        if (pr) payload.profileJson = pr;
+      } catch (eP) {}
+      // Cap raw backup size (Firestore doc limit ~1MB)
       try {
         var raw = localStorage.getItem(digtradeStorageKey());
-        if (raw && raw.length < 900000) payload.digtradeRaw = raw;
+        if (raw && raw.length < 700000) payload.digtradeRaw = raw;
       } catch (e2) {}
 
+      console.log('[Diggerz Cloud] writing users/' + state.uid, 'itemCount=', localScore, 'jsonLen=', (payload.inventoryJson || '').length);
       await db.collection('users').doc(state.uid).set(payload, { merge: true });
       console.log('[Diggerz Cloud] SAVED ok slots~', localScore, force ? 'manual' : 'auto');
       return { ok: true, slots: localScore };
     } catch (e) {
       console.warn('[Diggerz Cloud] push failed', e);
-      return { ok: false, reason: 'error', error: String(e && e.message || e) };
+      var code = (e && e.code) ? e.code : '';
+      var msg = (e && e.message) ? e.message : String(e);
+      if (code === 'permission-denied' || msg.indexOf('Missing or insufficient permissions') >= 0)
+        return { ok: false, reason: 'permission-denied', error: 'permission-denied' };
+      return { ok: false, reason: 'error', error: (code ? code + ': ' : '') + msg };
     }
   }
 
