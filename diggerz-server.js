@@ -1250,7 +1250,7 @@ function placementOverlapsPlayer(player, tileX, tileY) {
   // Distance-based (same idea as client): reject if tile center is within ~1.15 of player.
   const cx=(tileX|0)+0.5, cy=(tileY|0)+0.5;
   const dx=cx-px, dy=cy-py;
-  return Math.hypot(dx, dy) < 1.15;
+  return Math.hypot(dx, dy) < 1.0;
 }
 
 function placementBlockedByAnyPlayer(room, tileX, tileY) {
@@ -2469,7 +2469,7 @@ function relayGameMessage(client, message, rawLength) {
       try{console.log('tile REJECT out-of-reach',isMine?'MINE':'PLACE','id='+id,'@'+x+','+y,'dist='+dist.toFixed(2),'from',client.name||client.connectionId)}catch(_){}
       return;
     }
-    if(!isMine && dist<1.05){
+    if(!isMine && dist<1.0){
       try{console.log('tile REJECT too-close PLACE @'+x+','+y,'dist='+dist.toFixed(2),client.name||client.connectionId)}catch(_){}
       return;
     }

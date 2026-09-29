@@ -22277,7 +22277,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.incoming = [];
         // Service must be ready so MODE_CONNECTING can run A18 and build the world.
         // Room-state still applies the shared map/tiles afterward (_pvpWorldSynced).
-        this.ready = true; // world must init; room-state still applies map after connect
+        // Connecting screen: stay not-ready until room-state arrives (white highlight / features depend on this).
+        // R8/q2 are null-safe so missing guids no longer crash with P4.
+        this.ready = !(this.mode === "pvp" || this.mode === "digtrade");
         this._pvpWorldSynced = false;
         this.closed = false;
         this.ticks = 0;
@@ -23226,7 +23228,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             return Math.sqrt(dx * dx + dy * dy)
         },
         // Radius around a tile center that counts as "too close to build".
-        diggerzBuildClearRadius: 1.15,
+        diggerzBuildClearRadius: 1.0,
         diggerzTooCloseBuildMsg: function() {
             try {
                 var now = Date.now();
@@ -23240,7 +23242,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         },
         diggerzSomeoneTooCloseToBuild: function(tileX, tileY, actorX, actorY) {
             // True if the target cell is too near the local player or any peer.
-            var r = this.diggerzBuildClearRadius || 1.15;
+            var r = this.diggerzBuildClearRadius || 1.0;
             var cx = (tileX | 0) + 0.5, cy = (tileY | 0) + 0.5;
             function near(px, py) {
                 if (!isFinite(px) || !isFinite(py)) return false;
@@ -117636,7 +117638,7 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return _rShoe;if(!P.service)
     } else {
       dx = cx - px; dy = cy - py;
     }
-    return Math.sqrt(dx*dx+dy*dy) < 1.15;
+    return Math.sqrt(dx*dx+dy*dy) < 1.0;
   };;
   // Back-compat alias used by older call sites.
   window.DiggerzPlayerOverlapsCell=function(px,py,cx,cy,radius){
