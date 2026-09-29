@@ -43128,10 +43128,72 @@ return true
                 var inventory = l.z39.n38;
                 null == inventory.B30 && (inventory.B30 = []);
                 null == inventory._9 && (inventory._9 = []);
-                inventory.q45 = !0;
-                inventory.q46(l.z39, !1);
-                0 > l.z38._9.indexOf(inventory) && l.z38._9.push(inventory);
+                // Force OPEN clothing wheel. q46 toggles: if inventory is already
+                // on the player/world list it CLOSES (a0=1) and hides everything.
+                // Detach first so q46 always takes the open branch.
+                try {
+                    if (window.T && T.remove) {
+                        try { T.remove(l.z38._9, inventory); } catch (e0) {}
+                        try { if (l.z39 && l.z39._9) T.remove(l.z39._9, inventory); } catch (e1) {}
+                        try { if (inventory._2 && inventory._2._9) T.remove(inventory._2._9, inventory); } catch (e2) {}
+                    } else {
+                        function _rm(arr, obj) {
+                            if (!arr) return;
+                            var i = arr.indexOf(obj);
+                            if (i >= 0) arr.splice(i, 1);
+                        }
+                        _rm(l.z38._9, inventory);
+                        if (l.z39) _rm(l.z39._9, inventory);
+                        if (inventory._2) _rm(inventory._2._9, inventory);
+                    }
+                } catch (eDet) {}
+                inventory._2 = null;
+                inventory.a0 = 0;
                 inventory.a2 = !0;
+                inventory.q45 = !0;
+                // Show only clothing (a4==2), keep them visible
+                try {
+                    for (var ci = 0; ci < inventory.B30.length; ci++) {
+                        var it = inventory.B30[ci];
+                        if (!it) continue;
+                        if ((it.a4 | 0) === 2 && !it.T40 && !it.t47) {
+                            it.a2 = !0;
+                            it.a0 = 0;
+                        }
+                    }
+                } catch (eVis) {}
+                inventory.q46(l.z39, !1);
+                // q46 may attach to player; also keep on world list for rendering
+                try {
+                    if (0 > l.z38._9.indexOf(inventory)) l.z38._9.push(inventory);
+                } catch (ePush) {}
+                inventory.a0 = 0;
+                inventory.a2 = !0;
+                // Re-assert clothing visibility after q46 filter/layout
+                try {
+                    var shown = 0;
+                    for (var cj = 0; cj < inventory.B30.length; cj++) {
+                        var it2 = inventory.B30[cj];
+                        if (!it2) continue;
+                        if ((it2.a4 | 0) === 2 && !it2.T40 && !it2.t47) {
+                            it2.a2 = !0;
+                            it2.a0 = 0;
+                            shown++;
+                        } else {
+                            it2.a2 = !1;
+                        }
+                    }
+                    // If nothing classified as a4==2, show all non-empty items so the wheel is not blank
+                    if (shown === 0) {
+                        for (var ck = 0; ck < inventory.B30.length; ck++) {
+                            var it3 = inventory.B30[ck];
+                            if (it3 && (it3.g36 | 0) > 0) {
+                                it3.a2 = !0;
+                                it3.a0 = 0;
+                            }
+                        }
+                    }
+                } catch (eVis2) {}
                 a.a0 = 0
             }
             ;
