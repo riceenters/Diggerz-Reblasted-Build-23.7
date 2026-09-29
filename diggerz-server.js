@@ -16,7 +16,7 @@ const HOST = process.env.HOST || '0.0.0.0';
 const MAX_ROOM_PLAYERS = 10;
 const MAX_MESSAGE_BYTES = 64 * 1024;
 const MAX_MESSAGES_PER_SECOND = 400;
-const MAX_SOCKET_BACKLOG_BYTES = 512 * 1024;
+const MAX_SOCKET_BACKLOG_BYTES = 1024 * 1024;
 const MAX_SOCKET_HARD_BACKLOG_BYTES = 4 * 1024 * 1024;
 const NATIVE_MOVEMENT_RELAY_MS = 66;
 const ADMIN_SESSION_MS = 8 * 60 * 60 * 1000;
@@ -24,7 +24,7 @@ const ADMIN_FAIL_WINDOW_MS = 10 * 60 * 1000;
 const ADMIN_BLOCK_MS = 15 * 60 * 1000;
 const ADMIN_MAX_FAILURES = 5;
 const HEARTBEAT_INTERVAL_MS = 15 * 1000;
-const HEARTBEAT_TIMEOUT_MS = 45 * 1000;
+const HEARTBEAT_TIMEOUT_MS = 90 * 1000;
 const ROSTER_INTERVAL_MS = 5 * 1000;
 const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const ALLOWED_RELAY_TYPES = new Set(['session', 'hello', 'chat', 'typing', 'health', 'rgb-kpop-state']);
@@ -828,6 +828,15 @@ try {
   if(fs.existsSync(file)) digTradeMap=sanitizeMap(JSON.parse(fs.readFileSync(file,'utf8')),'digtrade.json');
   if(digTradeMap) console.log(`[Diggerz] loaded dedicated Dig+Trade map: ${digTradeMap.name}`);
 } catch(error) { console.warn('[Diggerz] skipped digtrade.json:',error.message); digTradeMap=null; }
+if (!digTradeMap) {
+  try {
+    const canyonsFile = path.join(MAPS_DIR, 'canyons.json');
+    if (fs.existsSync(canyonsFile)) {
+      digTradeMap = sanitizeMap(JSON.parse(fs.readFileSync(canyonsFile, 'utf8')), 'canyons.json');
+      console.log(`[Diggerz] Dig+Trade map fallback: ${digTradeMap.name}`);
+    }
+  } catch (error) { console.warn('[Diggerz] canyons fallback failed:', error.message); }
+}
 
 function pickBattleMap() {
   const rotation=[null,...customBattleMaps];
@@ -917,9 +926,8 @@ function serveBuffer(res, buffer, contentType) {
 function writeFrame(client, frame, transient = false) {
   if (!client || client.closed || !client.socket.writable) return false;
   const backlog = Number(client.socket.writableLength || 0);
-  // Never kick for backlog — drop the frame instead. Constant kicks were
-  // coming from "client too slow" under tile/position traffic spikes.
   if (backlog > MAX_SOCKET_HARD_BACKLOG_BYTES) {
+    // Do not kick — drop this frame so map/sync bursts cannot boot players.
     client.droppedHard = (client.droppedHard || 0) + 1;
     return false;
   }
@@ -928,15 +936,7 @@ function writeFrame(client, frame, transient = false) {
     return false;
   }
   try { client.socket.write(frame); return true; }
-  catch (error) {
-    // Only close on real socket death, not transient write errors
-    try {
-      if (client.socket && (client.socket.destroyed || !client.socket.writable)) {
-        closeClient(client, 1011, 'send failed');
-      }
-    } catch (_) {}
-    return false;
-  }
+  catch (error) { closeClient(client, 1011, 'send failed'); return false; }
 }
 
 function sendJson(client, payload, transient = false) {
@@ -1255,12 +1255,13 @@ function fakeSolid(room,x,y) {
 // leave the native client with an impossible collision state.
 function placementOverlapsPlayer(player, tileX, tileY) {
   if (!player || !player.position) return false;
-  let px=Number(player.position.x), py=Number(player.position.y);
+  const px=Number(player.position.x), py=Number(player.position.y);
   if (!Number.isFinite(px) || !Number.isFinite(py)) return false;
-  // Same-cell only = exactly 1 block. Convert pixels → tiles if needed.
-  if (Math.abs(px) > 256 || Math.abs(py) > 256) { px/=30; py/=30; }
-  const ptx=Math.floor(px), pty=Math.floor(py);
-  return ptx===(tileX|0) && pty===(tileY|0);
+  // Exactly 1x1 block body (half 0.5) vs the target tile square.
+  const hw=0.5, hh=0.5;
+  const cellL=tileX|0, cellR=cellL+1, cellT=tileY|0, cellB=cellT+1;
+  const pL=px-hw, pR=px+hw, pT=py-hh, pB=py+hh;
+  return !(cellR<=pL || cellL>=pR || cellB<=pT || cellT>=pB);
 }
 
 function placementBlockedByAnyPlayer(room, tileX, tileY) {
@@ -2666,8 +2667,7 @@ function onTextMessage(client, text) {
   }
   client.rateCount++;
   if (client.rateCount > MAX_MESSAGES_PER_SECOND) {
-    // Drop excess packets instead of kicking (was disconnecting everyone under load).
-    client.droppedRate = (client.droppedRate || 0) + 1;
+    // Drop excess JSON; never kick (map apply + tile traffic can spike).
     return;
   }
 
@@ -2839,7 +2839,7 @@ function parseFrames(client, chunk) {
       const now=Date.now();
       if(now-client.binaryRateWindow>=1000){client.binaryRateWindow=now;client.binaryRateCount=0;}
       client.binaryRateCount++;
-      if(client.binaryRateCount>MAX_MESSAGES_PER_SECOND){client.droppedBinaryRate=(client.droppedBinaryRate||0)+1;return;}
+      if(client.binaryRateCount>MAX_MESSAGES_PER_SECOND){return;} // drop excess binary, do not kick
       if (!client.room) { sendJson(client, { t: 'server-error', code: 'not-joined', message: 'Join matchmaking before sending Diggerz packets.' }); continue; }
       relayBinary(client, payload);
       continue;
