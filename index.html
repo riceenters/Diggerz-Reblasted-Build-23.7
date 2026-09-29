@@ -51453,7 +51453,7 @@ return true
                     self._9.push(new vb(self, "", "^1Save failed: ^7" + String(detail).slice(0, 140), new Cd, vb.F39));
                     return;
                 }
-                self._9.push(new vb(self, "", "^2Saved! Account now has your items, coins, name & skin.", new Cd, vb.F39));
+                self._9.push(new vb(self, "", "^2Saved!, new Cd, vb.F39));
             }).catch(function(e) {
                 var msg = (e && e.message) ? e.message : String(e);
                 self._9.push(new vb(self, "", "^1Save failed: ^7" + msg.slice(0, 140), new Cd, vb.F39));
@@ -51475,7 +51475,7 @@ return true
                     self._9.push(new vb(self, "", "^1Load skipped: this browser already has more items than the account.", new Cd, vb.F39));
                     return;
                 }
-                self._9.push(new vb(self, "", "^2Loaded! Reloading to apply…", new Cd, vb.F39));
+                self._9.push(new vb(self, "", "^2Loaded! Applying changes...
                 setTimeout(function(){ location.reload(); }, 700);
             }).catch(function(e) {
                 self._9.push(new vb(self, "", "^1Load failed. Check console / Firestore.", new Cd, vb.F39));
