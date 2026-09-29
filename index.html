@@ -4845,8 +4845,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     a = 0;
                     for (b = q.children; a < b.length && (c = b[a],
                     ++a,
-                    0 == c.e0() && (c.e1(),
-                    T.remove(q.children, c)),
+                    0 == c.e0() && c.e1(),
                     !q.paused); )
                         ;
                     0 == q.mState && (q.justClicked = !1);
@@ -4905,7 +4904,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             q.ObjectsDrawn = 0;
             q.GuysDrawn = 0;
             if (null != this.stage && null != this.stage.context3D) {
-                this.removeChildren();
+                // Diggerz render-stability patch: do not clear Main's native display-list every frame.
+                // The world is rendered from q.children directly; clearing the Main display list here can
+                // transiently detach native UI/display children before the frame is presented.
                 q.stateChanges = 0;
                 db.getTimer();
                 var renderContext = this.stage.context3D;
@@ -118162,14 +118163,6 @@ function addSupportUI(){
   var db = null;
   var saveTimer = null;
   var lastCloudPush = 0;
-  var cloudDirty = false;
-  var cloudLastSignature = '';
-  var cloudWasInGame = false;
-  var cloudCheckTimer = null;
-  var cloudDirtyAt = 0;
-  var CLOUD_DEBOUNCE_MS = 3000;
-  var CLOUD_SAFETY_MS = 45000;
-  var cloudLastSafetySave = 0;
 
   function cleanName(v) {
     v = String(v || '').trim();
@@ -118261,7 +118254,7 @@ function addSupportUI(){
     };
   }
 
-  function collectInventory(silent) {
+  function collectInventory() {
     try {
       var rawObj = null;
       var svc = window.P && P.service;
@@ -118286,7 +118279,7 @@ function addSupportUI(){
         }
       }
       var norm = normalizeInventory(rawObj);
-      if (norm && !silent) console.log('[Diggerz Cloud] collectInventory slots=', norm.slots.length, 'filled=', inventoryScore(norm));
+      if (norm) console.log('[Diggerz Cloud] collectInventory slots=', norm.slots.length, 'filled=', inventoryScore(norm));
       return norm;
     } catch (e) {
       console.warn('[Diggerz Cloud] collectInventory failed', e);
@@ -118404,13 +118397,6 @@ function addSupportUI(){
       } else {
         console.log('[Diggerz Cloud] no inventory on account');
       }
-      try {
-        cloudLastSignature = collectPersistentSignature();
-        cloudDirty = false;
-        cloudDirtyAt = 0;
-        localStorage.removeItem('diggerz.cloud.pendingDirty');
-        localStorage.removeItem('diggerz.cloud.pendingSnapshot');
-      } catch (eBase) {}
       return { profile: data.profile || data, inventory: inv, updatedAt: data.updatedAt, itemCount: cloudScore };
     } catch (e) {
       console.warn('[Diggerz Cloud] pull failed', e);
@@ -118497,10 +118483,6 @@ function addSupportUI(){
 
       console.log('[Diggerz Cloud] writing users/' + state.uid, 'itemCount=', localScore, 'jsonLen=', (payload.inventoryJson || '').length);
       await db.collection('users').doc(state.uid).set(payload, { merge: true });
-      cloudDirty = false;
-      cloudDirtyAt = 0;
-      cloudLastSafetySave = now;
-      try { localStorage.removeItem('diggerz.cloud.pendingDirty'); localStorage.removeItem('diggerz.cloud.pendingSnapshot'); } catch (eP2) {}
       console.log('[Diggerz Cloud] SAVED ok slots~', localScore, force ? 'manual' : 'auto');
       return { ok: true, slots: localScore };
     } catch (e) {
@@ -118523,171 +118505,11 @@ function addSupportUI(){
     return false;
   }
 
-  // Cloud saving is deliberately decoupled from the game's normal save/UI lifecycle.
-  // A "dirty" flag means persistent account data changed; walking, chatting, opening UI,
-  // movement, and other transient activity do not cause a cloud write.
-  function collectPersistentSignature() {
-    try {
-      var inv = collectInventory(true);
-      if (inv) {
-        // Position is runtime state and must never make the account dirty.
-        inv = {
-          version: inv.version | 0,
-          slots: inv.slots,
-          appearance: inv.appearance,
-          appearanceText: inv.appearanceText || '',
-          wins: inv.wins | 0,
-          coins: inv.coins | 0,
-          mined: inv.mined | 0,
-          placed: inv.placed | 0,
-          starterLoadoutVersion: inv.starterLoadoutVersion | 0
-        };
-      }
-      var profile = {
-        country_flag: 0,
-        skin_tone: 1,
-        music_volume: 50,
-        sound_volume: 50
-      };
-      try {
-        if (window.q && q.player) {
-          profile.country_flag = q.player.L0 | 0;
-          profile.skin_tone = Number(q.player.l9) || 1;
-          profile.music_volume = q.player.k7 | 0;
-          profile.sound_volume = q.player.k8 | 0;
-        }
-      } catch (e0) {}
-      return JSON.stringify({ inventory: inv, profile: profile });
-    } catch (e) {
-      return '';
-    }
-  }
-
-  function makePersistentSnapshot() {
-    try {
-      var inv = collectInventory(true);
-      var profile = {
-        country_flag: 0,
-        skin_tone: 1,
-        music_volume: 50,
-        sound_volume: 50
-      };
-      if (window.q && q.player) {
-        profile.country_flag = q.player.L0 | 0;
-        profile.skin_tone = Number(q.player.l9) || 1;
-        profile.music_volume = q.player.k7 | 0;
-        profile.sound_volume = q.player.k8 | 0;
-      }
-      if (inv) {
-        inv = {
-          version: inv.version | 0,
-          slots: inv.slots,
-          appearance: inv.appearance,
-          appearanceText: inv.appearanceText || '',
-          wins: inv.wins | 0,
-          coins: inv.coins | 0,
-          mined: inv.mined | 0,
-          placed: inv.placed | 0,
-          starterLoadoutVersion: inv.starterLoadoutVersion | 0
-        };
-      }
-      return { uid: state.uid || '', updatedAt: Date.now(), profile: profile, inventory: inv };
-    } catch (e) {
-      return null;
-    }
-  }
-
-  function markCloudDirty(reason) {
-    if (!state.authenticated || !isInGameForCloud()) return;
-    cloudDirty = true;
-    cloudDirtyAt = Date.now();
-    try {
-      // Keep the actual persistent snapshot locally. If the browser or power dies before
-      // the Firebase write finishes, the next session can still upload this exact snapshot.
-      var pending = makePersistentSnapshot();
-      if (pending) localStorage.setItem('diggerz.cloud.pendingSnapshot', JSON.stringify(pending));
-      localStorage.setItem('diggerz.cloud.pendingDirty', JSON.stringify({
-        uid: state.uid || '',
-        updatedAt: cloudDirtyAt,
-        reason: String(reason || 'change')
-      }));
-    } catch (e) {}
-    if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(function(){ pushCloudSave(false); }, CLOUD_DEBOUNCE_MS);
-  }
-
-  async function flushPendingSnapshot() {
-    if (!state.authenticated || !state.uid || !db) return false;
-    try {
-      var raw = localStorage.getItem('diggerz.cloud.pendingSnapshot');
-      if (!raw) return false;
-      var pending = JSON.parse(raw);
-      if (!pending || pending.uid !== state.uid || !pending.updatedAt) return false;
-
-      var snap = await db.collection('users').doc(state.uid).get();
-      var cloud = snap.exists ? (snap.data() || {}) : {};
-      var cloudUpdated = Number(cloud.updatedAt || 0);
-      if (cloudUpdated >= Number(pending.updatedAt)) {
-        localStorage.removeItem('diggerz.cloud.pendingSnapshot');
-        localStorage.removeItem('diggerz.cloud.pendingDirty');
-        return false;
-      }
-
-      var inv = pending.inventory || null;
-      var score = inventoryScore(inv);
-      if (!inv || score === 0) return false;
-      var payload = {
-        email: state.email || '',
-        updatedAt: Number(pending.updatedAt),
-        itemCount: score,
-        profileJson: JSON.stringify(pending.profile || {}),
-        inventoryJson: JSON.stringify(inv)
-      };
-      await db.collection('users').doc(state.uid).set(payload, { merge: true });
-      localStorage.removeItem('diggerz.cloud.pendingSnapshot');
-      localStorage.removeItem('diggerz.cloud.pendingDirty');
-      console.log('[Diggerz Cloud] recovered pending save', score);
-      return true;
-    } catch (e) {
-      console.warn('[Diggerz Cloud] pending recovery failed', e);
-      return false;
-    }
-  }
-
-  function checkCloudPersistence() {
-    var inGame = isInGameForCloud();
-    if (inGame) {
-      var sig = collectPersistentSignature();
-      if (sig && cloudLastSignature && sig !== cloudLastSignature) markCloudDirty('persistent-change');
-      if (sig) cloudLastSignature = sig;
-
-      // First observation establishes a clean baseline; it doesn't save.
-      if (!cloudWasInGame) cloudWasInGame = true;
-
-      // Safety save only when something persistent actually changed.
-      if (cloudDirty && Date.now() - cloudLastSafetySave >= CLOUD_SAFETY_MS) {
-        cloudLastSafetySave = Date.now();
-        pushCloudSave(false);
-      }
-    } else if (cloudWasInGame) {
-      // Leaving Dig+Trade is an explicit save point.
-      if (cloudDirty) pushCloudSave(true);
-      cloudWasInGame = false;
-      cloudLastSignature = '';
-    }
-  }
-
   function scheduleCloudSave() {
-    // Kept as a compatibility hook for the game's existing SaveGlobals/save calls.
-    // Those calls no longer directly trigger a cloud write.
-    if (!state.authenticated || !isInGameForCloud()) return;
-    var sig = collectPersistentSignature();
-    if (sig && cloudLastSignature && sig !== cloudLastSignature) {
-      cloudLastSignature = sig;
-      markCloudDirty('game-save');
-    } else if (sig && !cloudLastSignature) {
-      cloudLastSignature = sig;
-    }
+    if (!state.authenticated) return;
+    if (!isInGameForCloud()) return;
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){ pushCloudSave(false); }, 3000);
   }
 
   function applySession(user, skipPull) {
@@ -118711,9 +118533,7 @@ function addSupportUI(){
       // After login / page load while signed in: load account into this browser.
       // Reload at most ONCE per uid per tab session — never clear the flag (that caused an infinite reload loop).
       if (!skipPull) {
-        flushPendingSnapshot().then(function(){
-          return pullCloudSave(true);
-        }).then(function(data){
+        pullCloudSave(true).then(function(data){
           var hadInv = data && data.inventory && inventoryScore(data.inventory) > 0;
           console.log('[Diggerz Cloud] post-auth pull', hadInv ? 'got items' : 'no items');
           try {
@@ -118975,27 +118795,10 @@ async function logout() {
   // Boot
   initFirebase().then(function(){ installSaveHooks(); }).catch(function(e){ console.warn('[Diggerz Auth] init failed', e); });
   setInterval(installSaveHooks, 2000);
-  // Poll only for persistent-state changes. This does not touch native UI state.
-  cloudCheckTimer = setInterval(function(){
-    if (state.authenticated) checkCloudPersistence();
-  }, 1000);
-
-  // Best-effort final save when the tab is backgrounded/closed. The dirty marker is
-  // also persisted locally, so a hard crash/power loss can be recovered on a later load.
-  window.addEventListener('pagehide', function(){
-    try {
-      if (state.authenticated && isInGameForCloud() && cloudDirty) {
-        pushCloudSave(true);
-      }
-    } catch (e) {}
-  });
-  window.addEventListener('beforeunload', function(){
-    try {
-      if (state.authenticated && isInGameForCloud() && cloudDirty) {
-        pushCloudSave(true);
-      }
-    } catch (e) {}
-  });
+  // Periodic cloud push only while in-game
+  setInterval(function(){
+    if (state.authenticated && isInGameForCloud()) pushCloudSave(false);
+  }, 45000);
 
 
   var EMAIL_LINK_KEY = 'diggerz.emailLink.email';
@@ -119092,8 +118895,6 @@ async function logout() {
     requestLink: requestLink,
     refresh: function(){ return Promise.resolve(state); },
     pushCloudSave: function(force){ return pushCloudSave(!!force); },
-    markDirty: function(reason){ markCloudDirty(reason || 'explicit-change'); },
-    isDirty: function(){ return !!cloudDirty; },
     pullCloudSave: function(force){ return pullCloudSave(!!force); }
   };
 
@@ -119367,7 +119168,52 @@ async function logout() {
 }());
 </script>
 
-<script src="/build239-client.js"></script><script src="/build240-client.js"></script></body>
+<script src="/build239-client.js"></script><script src="/build240-client.js"></script><script id="diggerz-ui-container-refresh-fix">
+(function(){
+  // When an open native inventory/trade container is rebuilt, q44() creates
+  // fresh item X children. Those children begin hidden; q46() is the normal
+  // native pass that applies their visible state. Without it the container
+  // frame remains while its interactive contents disappear.
+  function install(){
+    try{
+      if(typeof l==='undefined'||!l.z38||typeof l.z38.V37!=='function'){
+        setTimeout(install,100); return;
+      }
+      var proto=Object.getPrototypeOf(l.z38);
+      if(!proto||proto.__diggerzUiContainerRefreshFix)return;
+      var old=proto.V37;
+      function collect(node,out,depth,seen){
+        if(!node||depth>6||out.length>64)return;
+        if(seen.indexOf(node)>=0)return;
+        seen.push(node);
+        try{
+          if(typeof node.q46==='function'&&node.B30&&node.d34)out.push(node);
+        }catch(e0){}
+        var kids=node._9;
+        if(!kids||!kids.length)return;
+        for(var i=0;i<kids.length;i++)collect(kids[i],out,depth+1,seen);
+      }
+      proto.V37=function(packet){
+        var r=old.apply(this,arguments);
+        try{
+          var list=[],seen=[];
+          collect(this,list,0,seen);
+          if(l.z39&&l.z39.n38)collect(l.z39.n38,list,0,seen);
+          for(var i=0;i<list.length;i++){
+            var sc=list[i];
+            if(!sc||sc.a0!==0||typeof sc.q46!=='function')continue;
+            try{sc.q46(null,!1)}catch(e1){}
+          }
+        }catch(e2){}
+        return r;
+      };
+      proto.__diggerzUiContainerRefreshFix=true;
+    }catch(e){setTimeout(install,250)}
+  }
+  install();
+})();
+</script>
+</body>
 </html>
 <!-- Other original content may be protected by copyright. -->
 
