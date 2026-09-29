@@ -87395,7 +87395,7 @@ return true
         },
         D54: null,
         D55: function() {
-            // Native LOGIN panel (ja) + official Google button overlay only.
+            // Native LOGIN panel — Sign in with Google is a real diggerz button (canvas HTML overlays get buried).
             try {
                 for (var li = this._9.length - 1; li >= 0; li--) {
                     var ch = this._9[li];
@@ -87404,18 +87404,40 @@ return true
                     }
                 }
             } catch (e1) {}
-            var panel = new ja(420, 320, !0);
+            try {
+                if (window.DiggerzAuth237 && window.DiggerzAuth237.hideGoogleButton)
+                    window.DiggerzAuth237.hideGoogleButton();
+            } catch (eHide) {}
+            var panel = new ja(420, 340, !0);
             panel._1 = "diggerz_login_panel";
             panel.c0 = !0;
             panel.A7 = q.CENTERX;
             panel.A8 = q.CENTERY;
             panel.B8 = 8;
             try { E.u4(panel, 0, 300, 0, .5, 1, 0, 1); } catch (e2) {}
-            var title = new xa(0, -110, "^9LOGIN", q.MAIN_FONT_BIG);
+            var title = new xa(0, -120, "^9LOGIN", q.MAIN_FONT_BIG);
             title.D7(panel, !0);
             panel._9.push(title);
-            // Middle reserved for Google HTML overlay button
-            var future = new xa(0, 85, "^6More sign-in options coming soon", q.MAIN_FONT);
+            // Native yellow button — always visible in-game (same as Shop / Log In)
+            var gBg = new z;
+            gBg.Init(u.YELLOWBUTTON_PNG());
+            gBg.D7(panel, !0);
+            gBg.b7 = -15;
+            gBg.set_local_xScale(gBg.set_local_yScale(.55));
+            gBg._1 = "diggerz_google_btn_bg";
+            panel._9.push(gBg);
+            var gLbl = new ob(0, -15, "Sign in with Google", q.MAIN_FONT_BIG);
+            gLbl.D7(panel, !0);
+            gLbl.b7 = 2;
+            gLbl._1 = "diggerz_google_btn";
+            gLbl.C33 = A(this, function() {
+                if (window.DiggerzAuth237 && window.DiggerzAuth237.loginWithGoogle)
+                    window.DiggerzAuth237.loginWithGoogle();
+                else
+                    this._9.push(new vb(this, "", "^1Login is not ready yet. Refresh the page.", new Cd, vb.F39));
+            });
+            panel._9.push(gLbl);
+            var future = new xa(0, 90, "^6More sign-in options coming soon", q.MAIN_FONT);
             future.D7(panel, !0);
             try { future.set_local_xScale(future.set_local_yScale(.8)); } catch (e4) {}
             panel._9.push(future);
@@ -87423,14 +87445,6 @@ return true
             panel._2 = this;
             window.__diggerzLoginMenu = this;
             window.__diggerzLoginPanel = panel;
-            // Click shading/outside: close via Escape-style — Close removed; overlay has no forced close btn
-            // Show official Google button over the empty middle of the panel
-            if (window.DiggerzAuth237 && window.DiggerzAuth237.showGoogleButton)
-                window.DiggerzAuth237.showGoogleButton();
-            else if (window.DiggerzAuth237 && window.DiggerzAuth237.openLoginPanel)
-                window.DiggerzAuth237.openLoginPanel(this);
-            else
-                this._9.push(new vb(this, "", "^1Login is not ready yet. Refresh the page.", new Cd, vb.F39));
         },
         D56: function(a) {
             // Build 23.7: account lookup/password prompts are retired. Email magic-link only.
@@ -118164,6 +118178,7 @@ function loadScript(src) {
       var result = await auth.signInWithPopup(provider);
       applySession(result.user, true); // skip auto pull; we handle below
       if (st) st.textContent = 'Saving this browser’s progress to your account…';
+      try { if (window.__diggerzLoginMenu) popup(window.__diggerzLoginMenu, '^9Saving progress to your account…'); } catch (eP2) {}
       // Force-upload name, country, skin, items, coins from THIS browser
       await pushCloudSave(true);
       try { sessionStorage.setItem('diggerz.cloud.reload', '1'); } catch (e) {}
