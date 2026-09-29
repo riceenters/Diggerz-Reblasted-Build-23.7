@@ -19793,7 +19793,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         V37: function(a) {
             var b = a.Q6();
             b = this.V35(b);
-            null != b && (b.q44(a),
+            null != b && ((window.DZ_BLOCK_NATIVE_CONTAINER_REBUILDS ? null : b.q44(a)),
             b == l.z39.n38 && (a = q.GetChildByType(Bd),
             null != a && (a.s42(),
             a.e0(),
@@ -119259,6 +119259,15 @@ async function logout() {
     }catch(e){setTimeout(install,250)}
   }
   install();
+})();
+</script>
+<script id="diggerz-opcode14-container-isolation">
+(function(){
+  // DIAGNOSTIC: block native opcode-14 container rebuilds only.
+  // This leaves WebSocket/JSON multiplayer, Firebase auth, Build 24.0 and the
+  // rest of the native UI running. It prevents V37 from replacing X children.
+  window.DZ_BLOCK_NATIVE_CONTAINER_REBUILDS=true;
+  console.warn('[Diggerz TEST] Native opcode-14 container rebuilds BLOCKED');
 })();
 </script>
 </body>
