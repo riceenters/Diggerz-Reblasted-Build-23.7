@@ -920,21 +920,6 @@
     id=id|0;
     obj._build240CollabId=id;
 
-    // IMPORTANT: h.n7/W48 build the collab item from a recovered base item.
-    // The inventory equip code only allows an item to be worn when the rendered
-    // object's h44 matches the ORIGINAL inventory item id. If h44 stays as the
-    // borrowed base id (Pumpkin Mask 42 / Bazooka 139), item 600 cannot be
-    // re-equipped and item 604 is stored/drawn as the wrong base item.
-    // Restore the virtual collab identity and its real wearable slot here.
-    try{
-      obj.a4=2;
-      obj.h44=id;
-      if(id===NOOB_MASK_ID)obj.t46=1;
-      else if(id===NOOB_SHIRT_ID)obj.t46=2;
-      else if(id===NOOB_PANTS_ID)obj.t46=7;
-      else if(id===NOOB_GLOVES_ID||id===ROBLOX_LAUNCHER_ID)obj.t46=4;
-    }catch(error){}
-
     if(id===NOOB_MASK_ID){
       obj._1='Noob Mask';
     }else if(id===NOOB_SHIRT_ID){
@@ -1002,7 +987,17 @@
   function overlayImg(key,cls,src){
     ensureLayer();
     var img=overlayNodes[key];
-    if(!img){img=document.createElement('img');img.className=cls;img.src=src;img.alt='';overlayLayer.appendChild(img);overlayNodes[key]=img}
+    if(!img){
+      img=document.createElement('img');
+      img.className=cls;img.alt='';
+      img._build240Loaded=false;img._build240Failed=false;
+      img.onload=function(){img._build240Loaded=true;img._build240Failed=false};
+      img.onerror=function(){img._build240Loaded=false;img._build240Failed=true;img.style.display='none'};
+      img.src=src;
+      overlayLayer.appendChild(img);overlayNodes[key]=img;
+    }else if(img.src!==src&&img.getAttribute('src')!==src){
+      img._build240Loaded=false;img._build240Failed=false;img.src=src;
+    }
     return img;
   }
   function hideNativeWear(ent,slotPart,hide){
@@ -1070,18 +1065,23 @@
   }
   function renderPerson(key,ent,ap){
     var m=canvasMetrics();
-    var maskOn=collabEquipped(ent,ap,NOOB_MASK_ID,1);
-    var rocketOn=collabEquipped(ent,ap,ROBLOX_LAUNCHER_ID,4);
+    var maskOn=!!((ap&&((ap[1]|0)===NOOB_MASK_ID))||collabEquipped(ent,ap,NOOB_MASK_ID,1));
+    var rocketOn=!!((ap&&((ap[4]|0)===ROBLOX_LAUNCHER_ID))||collabEquipped(ent,ap,ROBLOX_LAUNCHER_ID,4));
     var mask=overlayNodes[key+':mask'],rocket=overlayNodes[key+':rocket'];
     var face=ent&&ent.i33&&Number(ent.i33.b4)<0?-1:1;
     if(maskOn&&ent){
       var maskNative=collabNode(ent,NOOB_MASK_ID);
       var hp=pointForNode(maskNative)||pointFor(ent,'head');
       if(hp){
-        hideNativeWear(ent,'head',true);
-        hideCollabNative(ent,NOOB_MASK_ID,true);
         mask=overlayImg(key+':mask','diggerz-noob-mask240',NOOB_MASK_SRC);
-        mask.style.display='block';
+        mask.style.display=mask._build240Failed?'none':'block';
+        if(mask._build240Loaded){
+          hideNativeWear(ent,'head',true);
+          hideCollabNative(ent,NOOB_MASK_ID,true);
+        }else{
+          hideNativeWear(ent,'head',false);
+          hideCollabNative(ent,NOOB_MASK_ID,false);
+        }
         mask.style.width=Math.max(28,56*m.s)+'px';
         mask.style.height=Math.max(25,50*m.s)+'px';
         mask.style.left=(m.x+(hp.x-28)*m.s)+'px';
@@ -1096,10 +1096,15 @@
       var rocketNative=collabNode(ent,ROBLOX_LAUNCHER_ID);
       var apnt=pointForNode(rocketNative)||pointFor(ent,'front_arm')||pointFor(ent,'torso');
       if(apnt){
-        hideNativeWear(ent,'front_arm',true);
-        hideCollabNative(ent,ROBLOX_LAUNCHER_ID,true);
         rocket=overlayImg(key+':rocket','diggerz-rbx-launcher240',ROCKET_SRC);
-        rocket.style.display='block';
+        rocket.style.display=rocket._build240Failed?'none':'block';
+        if(rocket._build240Loaded){
+          hideNativeWear(ent,'front_arm',true);
+          hideCollabNative(ent,ROBLOX_LAUNCHER_ID,true);
+        }else{
+          hideNativeWear(ent,'front_arm',false);
+          hideCollabNative(ent,ROBLOX_LAUNCHER_ID,false);
+        }
         rocket.style.width=Math.max(92,112*m.s)+'px';
         rocket.style.height='auto';
         rocket.style.left=(m.x+(apnt.x+(face<0?-101:-11))*m.s)+'px';
@@ -1428,7 +1433,12 @@
     installed=true;
     window.DiggerzBuild240.noobIds={mask:600,shirt:601,pants:602,gloves:603,launcher:604};
     window.DiggerzBuild240.wearingFullNoobSet=fullNoob;
-    window.DiggerzBuild240.isRobloxLauncherEntity=function(ent){var ap=entityAppearance(ent,null);return collabEquipped(ent,ap,ROBLOX_LAUNCHER_ID,4)};
+    window.DiggerzBuild240.isRobloxLauncherEntity=function(ent){
+      var svc=window.q&&q.diggerzService;
+      var local=window.l&&l.z39;
+      var ap=ent===local&&svc&&svc.state?svc.state.appearance:entityAppearance(ent,null);
+      return !!((ap&&((ap[4]|0)===ROBLOX_LAUNCHER_ID))||collabEquipped(ent,ap,ROBLOX_LAUNCHER_ID,4));
+    };
     window.DiggerzBuild240.registerRobloxRocketProjectile=function(projectile,shooter,fromX,fromY,toX,toY){
       try{
         if(!projectile||projectile._build240LaunchPlayed)return;
