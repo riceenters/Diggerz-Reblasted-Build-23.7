@@ -19518,6 +19518,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var b = a.Q6();
             b = this.V35(b);
             null != b && (b.q44(a),
+            b.q46(null, !1),
             b == l.z39.n38 && (a = q.GetChildByType(Bd),
             null != a && (a.s42(),
             a.e0(),
@@ -41604,7 +41605,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 g = a.r5(),
                 null != this.B30[e] && (this.B30[e].g39 = g,
                 h.n7(this.B30[e].a4, this.B30[e], this.B30[e].h44, this.B30[e].b14, 0, 0, null, null, this.B30[e].g39));
-            this.d34.set_local_xScale(this.d34.set_local_yScale(Math.max(1, (2 * c + 100) / this.d34._5.width)))
+            this.d34.set_local_xScale(this.d34.set_local_yScale(Math.max(1, (2 * c + 100) / this.d34._5.width)));
+            // Reapply the native item visibility/layout pass immediately after q44 rebuilds the container.
+            // q44 creates fresh X children whose constructor leaves a2=false when needed.
+            this.q46(null, !1);
         },
         q45: null,
         q46: function(a, b) {
