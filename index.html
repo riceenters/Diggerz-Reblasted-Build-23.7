@@ -51060,6 +51060,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 } catch (e) {}
             }
 
+            var __previewIdleWatch = null;
             var __previewWearer = null;
             // Customize has its own clothing renderer.  It uses the game's
             // clothing assets/attachment metadata, but it never calls the
@@ -51088,27 +51089,18 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 
             function __resetPreviewBody(skel, wearer, tone) {
                 if (!skel || !wearer || typeof skel.f2 !== "function") return;
-                // Default shirt/body, reproduced directly instead of invoking m37().
-                try {
-                    var shirtIndex = 0;
-                    if (wearer.q7 && wearer.q7.P4 != null)
-                        shirtIndex = Wc.e14(wearer.q7.P4) % Wc.e14(10) | 0;
-                    var fs = skel.f2("front_shoulder").f2("arm");
-                    fs.Init(f.WHITE_ARM_PNG()); fs.h4(shirtIndex);
-                    var bs = skel.f2("back_shoulder").f2("arm_back");
-                    bs.Init(f.WHITE_ARM_PNG()); bs.h4(shirtIndex);
-                    var torso = skel.f2("torso");
-                    torso.Init(f.WHITE_TORSO_PNG()); torso.h4(shirtIndex);
-                } catch (eShirt) {}
-                __ensureHeadAndEyes(skel, tone);
-                __tintPreviewSkin(skel, tone);
-                try { skel.f2("front_arm").C2 = !1; skel.f2("back_arm").C2 = !1; } catch (eArm) {}
-                try {
-                    var fa = skel.f2("front_arm");
-                    fa.set_local_r(fa.set_local_g(fa.set_local_b(tone)));
-                    var ba = skel.f2("back_arm");
-                    ba.set_local_r(ba.set_local_g(ba.set_local_b(tone)));
-                } catch (eTone) {}
+                // Reset only the mannequin's base body. These are the game's body
+                // setup routines; they do not equip clothing or touch the live player.
+                // Using them keeps the exported rig's proportions/textures identical
+                // to the normal character body before our private clothing pass runs.
+                try { if (typeof wearer.m33 === "function") wearer.m33(); } catch (e33) {}
+                try { if (typeof wearer.m37 === "function") wearer.m37(); } catch (e37) {}
+                try { if (typeof wearer.m35 === "function") wearer.m35(); } catch (e35) {}
+                try { if (typeof wearer.m36 === "function") wearer.m36(); } catch (e36) {}
+                // m35 uses the exact slider value for the head; m36 does the same
+                // for the exposed arms. Reapply both after the reset for consistency.
+                try { __ensureHeadAndEyes(skel, tone); } catch (eHead) {}
+                try { __tintPreviewSkin(skel, tone); } catch (eSkin) {}
             }
 
             function __renderPreviewClothing(skel, app, tone) {
@@ -51131,7 +51123,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 function item(id, slot) {
                     if (!(id|0) || slot < 0 || slot > 10) return null;
                     try {
-                        var yf = new Yf(wearer, 2, id|0, 0, slot|0, 1, "", 0);
+                        var yf = new Yf(wearer, wearer.a4 != null ? wearer.a4 : 2, id|0, 0, slot|0, 1, "", 0);
                         h.n7(2, yf, id|0, 0);
                         if (!yf.h44) return null;
                         return yf;
@@ -51399,6 +51391,22 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     setTimeout(function() {
                         try { __equipOnPreview(__skel, __app); } catch (eLate2) {}
                     }, 800);
+                    // Exported mannequin rigs can occasionally start before their
+                    // animation channels are fully active. Check periodically, but
+                    // only restart idle when it has actually stopped.
+                    try {
+                        __previewIdleWatch = setInterval(function() {
+                            try {
+                                if (!__previewSkelRef || typeof __previewSkelRef._38 !== "function") return;
+                                var needs = __previewSkelRef.Z28 !== "idle";
+                                try {
+                                    if (!needs && typeof __previewSkelRef._34 === "function")
+                                        needs = !__previewSkelRef._34();
+                                } catch (eWatchCheck) {}
+                                if (needs) __previewSkelRef._38("idle", !0, 100, .5);
+                            } catch (eWatch) {}
+                        }, 500);
+                    } catch (eWatchSetup) {}
                 } catch (eAttach) { __skel = null; }
             }
 
@@ -51735,12 +51743,21 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                             __tintPreviewSkin(__previewSkelRef, __t2);
                             try { __tintPreviewShirt(__previewSkelRef); } catch (eShirtLive) {}
                             try {
-                                // Do NOT call _38 every frame: _38 resets the
-                                // animation timeline to frame 0. Only restart idle
-                                // when another state has actually replaced it.
-                                if (typeof __previewSkelRef._38 === "function" &&
-                                    __previewSkelRef.Z28 !== "idle")
-                                    __previewSkelRef._38("idle", !0, 100, .5);
+                                // Keep the mannequin in a real looping idle state.
+                                // Some exported/title-screen skeletons can lose their
+                                // animation channels after their clothing children are
+                                // rebuilt, so only restart when the idle state is no
+                                // longer actually running. Never restart a healthy
+                                // animation every frame (that would freeze frame 0).
+                                if (typeof __previewSkelRef._38 === "function") {
+                                    var __idleNeedsKick = (__previewSkelRef.Z28 !== "idle");
+                                    try {
+                                        if (!__idleNeedsKick && typeof __previewSkelRef._34 === "function")
+                                            __idleNeedsKick = !__previewSkelRef._34();
+                                    } catch (eIdleCheck) {}
+                                    if (__idleNeedsKick)
+                                        __previewSkelRef._38("idle", !0, 100, .5);
+                                }
                             } catch (eId) {}
                         }
                     } catch (eLiveSkin) {}
