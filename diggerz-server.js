@@ -45,10 +45,9 @@ const RGB_LIGHTSWORD_IDS = new Set([516,517,566,567]);
 const GAME_HTML_PATH = path.join(__dirname, 'index.html');
 const BUILD239_CLIENT_PATH = path.join(__dirname, 'build239-client.js');
 const BUILD240_CLIENT_PATH = path.join(__dirname, 'build240-client.js');
+const MAP_EDITOR_PATH = path.join(__dirname, 'map-editor.html');
 const TILES_PNG_PATH = path.join(__dirname, 'tiles.png');
 const BKND_PNG_PATH = path.join(__dirname, 'bknd.png');
-const REBLASTED_PNG_PATH = path.join(__dirname, 'reblasted.png');
-const FAVICON_PNG_PATH = path.join(__dirname, 'favicon.png');
 const LEVELUP_OGG_PATH = path.join(__dirname, 'levelup.ogg');
 const MUSIC_OGG_PATHS = [1,2,3,4].map((n,i)=>path.join(__dirname, i===0?'music_theme.ogg':`music_theme${n}.ogg`));
 const BALLOON_POP_OGG_PATH = path.join(__dirname, 'balloon_pop.ogg');
@@ -183,8 +182,26 @@ function patchGameHtmlForBuild239(input) {
     html = html.replace(from, to);
   }
 
-  // Build 24.x: keep Log In menu + Firebase Google auth client script.
-  // (Previously Build 23.8 replaced Log In with Donate and wiped DiggerzAuth237.)
+  // Build 23.8: the game is guest-only. Remove the Log In / Log Out menu block
+  // and retire the 23.7 passwordless account client entirely.
+  const loginStart = html.indexOf('            N.startsWith(q.thisMain.userPW, "NOPASSWORD")');
+  const shopText = loginStart >= 0 ? html.indexOf('            this.d51.E37("Shop");', loginStart) : -1;
+  const shopStart = shopText >= 0 ? html.lastIndexOf('            b = new z;', shopText) : -1;
+  if (loginStart >= 0 && shopStart > loginStart) {
+    const supportMenuBlock = "            q.thisMain.userEmail = \"\";\n            q.thisMain.userPW = \"\";\n            b = new z;\n            b.Init(u.YELLOWBUTTON_PNG());\n            b.D7(this);\n            b.b7 = d;\n            d += 80;\n            b.b6 = q.SCREENWIDTH / 2 - 150;\n            b.set_local_xScale(b.set_local_yScale(.5));\n            b._1 = \"support message\";\n            b.F6(5, 0, 1, 500);\n            this._9.push(b);\n            this.d51 = new ob(0,0,\"\",q.MAIN_FONT_BIG);\n            this.d51.D7(b);\n            this.d51.E37(\"Donate\");\n            this.d51.b7 = 2;\n            this.d51.B8 = 5;\n            this.d51.C33 = function(){ if(window.DiggerzSupport239) window.DiggerzSupport239.open(); };\n            this.d51._1 = \"welcome message\";\n            this._9.push(this.d51);\n            c = new xa(0,-70,\"Support Diggerz multiplayer\");\n            c.D7(b, !0);\n            c.set_local_xScale(c.set_local_yScale(1.25));\n            this._9.push(c);\n";
+    html = html.slice(0, loginStart) + supportMenuBlock + html.slice(shopStart);
+  } else {
+    console.warn('[Diggerz 23.9] login/support menu block was not found.');
+  }
+
+  const authScriptStart = html.indexOf('<script id="diggerz-build23-7-security-patch">');
+  const authScriptEnd = authScriptStart >= 0 ? html.indexOf('</script>', authScriptStart) : -1;
+  if (authScriptStart >= 0 && authScriptEnd > authScriptStart) {
+    const noLoginScript = '<script id="diggerz-build23-8-no-login-patch">(function(){try{localStorage.removeItem("diggerz.resurrection.accounts.v1");localStorage.removeItem("diggerz.resurrection.boundEmail.v1");sessionStorage.removeItem("diggerz.auth.active.v1");delete window.DiggerzAuth237}catch(e){}var n=0,t=setInterval(function(){n++;try{if(window.q&&q.thisMain){q.thisMain.userEmail="";q.thisMain.userPW="";if(typeof q.SaveGlobals==="function")q.SaveGlobals();clearInterval(t)}}catch(e){}if(n>100)clearInterval(t)},100)}());</script>';
+    html = html.slice(0, authScriptStart) + noLoginScript + html.slice(authScriptEnd + 9);
+  } else {
+    console.warn('[Diggerz 23.8] legacy auth client script was not found.');
+  }
 
   // Build 23.8 itch/Railway split: static browser clients always use Railway
   // for multiplayer and protected admin HTTP endpoints.
@@ -378,10 +395,9 @@ function patchGameHtmlForBuild239(input) {
 let gameHtml = null;
 let build239ClientJs = null;
 let build240ClientJs = null;
+let mapEditorHtml = null;
 let tilesPng = null;
 let bkndPng = null;
-let reblastedPng = null;
-let faviconPng = null;
 let levelupOgg = null;
 let musicOgg = [null,null,null,null];
 let balloonPopOgg = null;
@@ -392,10 +408,9 @@ let muleOgg = null;
 try { gameHtml = patchGameHtmlForBuild239(fs.readFileSync(GAME_HTML_PATH)); } catch (error) { console.warn('[Diggerz] index.html not found at startup:', error.message); }
 try { build239ClientJs = fs.readFileSync(BUILD239_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build239-client.js not found:', error.message); }
 try { build240ClientJs = fs.readFileSync(BUILD240_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build240-client.js not found:', error.message); }
+try { mapEditorHtml = fs.readFileSync(MAP_EDITOR_PATH); } catch (error) { console.warn('[Diggerz] map-editor.html not found:', error.message); }
 try { tilesPng = fs.readFileSync(TILES_PNG_PATH); } catch (error) { console.warn('[Diggerz] tiles.png not found:', error.message); }
 try { bkndPng = fs.readFileSync(BKND_PNG_PATH); } catch (error) { console.warn('[Diggerz] bknd.png not found:', error.message); }
-try { reblastedPng = fs.readFileSync(REBLASTED_PNG_PATH); } catch (error) { console.warn('[Diggerz] reblasted.png not found:', error.message); }
-try { faviconPng = fs.readFileSync(FAVICON_PNG_PATH); } catch (error) { console.warn('[Diggerz] favicon.png not found:', error.message); }
 try { levelupOgg = fs.readFileSync(LEVELUP_OGG_PATH); } catch (error) { console.warn('[Diggerz] levelup.ogg not found:', error.message); }
 for (let i=0;i<MUSIC_OGG_PATHS.length;i++) try { musicOgg[i]=fs.readFileSync(MUSIC_OGG_PATHS[i]); } catch(error) { console.warn(`[Diggerz] music theme ${i+1} not found:`,error.message); }
 try { balloonPopOgg=fs.readFileSync(BALLOON_POP_OGG_PATH); } catch(error) { console.warn('[Diggerz] balloon_pop.ogg not found:',error.message); }
@@ -432,7 +447,6 @@ try {
 
 const rooms = new Map();
 const adminSessions = new Map();
-const adminInventoryRequests = new Map();
 const adminAuthAttempts = new Map();
 let bans = [];
 let knownPlayers = [];
@@ -736,9 +750,6 @@ knownPlayers = loadKnownPlayers();
 donations = loadDonations();
 pruneExpiredBans(true);
 
-const BACKDROP_BLOCK_IDS = new Set([118,119,143,158,159,160,161,162,189,191,213,214,272,273]);
-function expectedBlockLayer(id) { return BACKDROP_BLOCK_IDS.has(Number(id)|0) ? 2 : 0; }
-
 function sanitizeMap(raw, filename = '') {
   if (!raw || typeof raw !== 'object' || raw.format !== 'diggerz-pvp-map-v1') return null;
   if ((Number(raw.width)|0) !== 128 || (Number(raw.height)|0) !== 80 || !Array.isArray(raw.tiles)) return null;
@@ -760,24 +771,7 @@ function sanitizeMap(raw, filename = '') {
     if(!Array.isArray(row)||row.length<3)continue; const x=Number(row[0])|0,y=Number(row[1])|0,id=Number(row[2])|0,variant=(Number(row[3])|0)&31,flags=(Number(row[4])|0)&15;
     if(x<0||x>=128||y<0||y>=80||id<=0||id>2047)continue; const key=`${x},${y}`; if(seenBg.has(key))continue; seenBg.add(key); backgroundTiles.push(flags?[x,y,id,variant,flags]:[x,y,id,variant]);
   }
-  // Build 24.0.34: repair maps that contain a block in the wrong layer.
-  // The block catalog is authoritative here: backdrop/decorative IDs belong
-  // on layer 2; normal playable blocks belong on layer 0. This also makes
-  // imported maps self-healing instead of leaving an unmineable/unmodifiable
-  // tile stranded on the opposite layer.
-  const normalizedTiles=[]; const normalizedBackgroundTiles=[];
-  const seenFg=new Set(), seenBg2=new Set();
-  for(const row of tiles){
-    const x=row[0]|0,y=row[1]|0,id=row[2]|0,key=`${x},${y}`;
-    if(expectedBlockLayer(id)===2){ if(seenBg2.has(key))continue; seenBg2.add(key); normalizedBackgroundTiles.push(row); }
-    else { if(seenFg.has(key))continue; seenFg.add(key); normalizedTiles.push(row); }
-  }
-  for(const row of backgroundTiles){
-    const x=row[0]|0,y=row[1]|0,id=row[2]|0,key=`${x},${y}`;
-    if(expectedBlockLayer(id)===2){ if(seenBg2.has(key))continue; seenBg2.add(key); normalizedBackgroundTiles.push(row); }
-    else { if(seenFg.has(key))continue; seenFg.add(key); normalizedTiles.push(row); }
-  }
-  return { format:'diggerz-pvp-map-v1', name, width:128, height:80, background:Math.max(0,Math.min(9,Number(raw.background)|0)), tiles:normalizedTiles, backgroundTiles:normalizedBackgroundTiles };
+  return { format:'diggerz-pvp-map-v1', name, width:128, height:80, background:Math.max(0,Math.min(9,Number(raw.background)|0)), tiles, backgroundTiles };
 }
 
 function loadCustomMaps() {
@@ -947,221 +941,10 @@ function sendBinary(client, payload, transient = false) {
   catch (error) { closeClient(client, 1011, 'binary send failed'); return false; }
 }
 
-function nativeWriteFixed(parts, value) {
-  value = Number(value) || 0;
-  const whole = Math.floor(value);
-  const frac = Math.floor(100000 * (value - whole));
-  const b = Buffer.allocUnsafe(8);
-  b.writeInt32LE(whole, 0);
-  b.writeInt32LE(frac, 4);
-  parts.push(b);
-}
-function nativeWriteGuid(parts, id) {
-  const a = Array.isArray(id) ? id : [0,0,0,0];
-  const b = Buffer.allocUnsafe(16);
-  for (let i=0;i<4;i++) b.writeInt32LE(a[i]|0, i*4);
-  parts.push(b);
-}
-function nativeWriteString(parts, value) {
-  const text = String(value == null ? '' : value);
-  const bytes = Buffer.from(text, 'utf8');
-  const len = Buffer.allocUnsafe(4);
-  // Match the recovered client's R9 framing: UTF-16 string length + null terminator.
-  len.writeInt32LE(text.length + 1, 0);
-  parts.push(len, bytes, Buffer.from([0]));
-}
-function buildFakeNativeSpawn(fake) {
-  const parts=[Buffer.from([5,0,1,0])];
-  nativeWriteGuid(parts,fake.id);
-  nativeWriteString(parts,String(fake.name||'Fake Player').slice(0,24));
-  nativeWriteFixed(parts,fake.x); nativeWriteFixed(parts,0);
-  nativeWriteFixed(parts,fake.y); nativeWriteFixed(parts,0);
-  const ap=Array.isArray(fake.appearance)?fake.appearance.slice(0,11):[0,247,0,0,326,0,0,0,0,0,0];
-  const n=Buffer.allocUnsafe(2); n.writeUInt16LE(ap.length,0); parts.push(n);
-  for(const v of ap){const b=Buffer.allocUnsafe(2);b.writeUInt16LE((v|0)&65535,0);parts.push(b);}
-  nativeWriteString(parts,String(fake.appearanceText||''));
-  let b=Buffer.allocUnsafe(2);b.writeUInt16LE(0,0);parts.push(b);
-  parts.push(Buffer.from([0]));
-  b=Buffer.allocUnsafe(2);b.writeUInt16LE(0,0);parts.push(b);
-  parts.push(Buffer.from([0]));
-  b=Buffer.allocUnsafe(2);b.writeUInt16LE(Math.max(0,Math.min(65535,fake.wins|0)),0);parts.push(b);
-  nativeWriteGuid(parts,[0,0,0,0]);
-  parts.push(Buffer.from([0]));
-  nativeWriteFixed(parts,Number(fake.skin)||1.44);
-  nativeWriteFixed(parts,1);
-  return Buffer.concat(parts);
-}
-function buildFakeNativeMove(fake) {
-  const parts=[Buffer.from([6,0,1,0])];
-  nativeWriteGuid(parts,fake.id);
-  nativeWriteFixed(parts,fake.x); nativeWriteFixed(parts,fake.y);
-  nativeWriteFixed(parts,fake.vx||0); nativeWriteFixed(parts,fake.vy||0);
-  nativeWriteFixed(parts,0); nativeWriteFixed(parts,1);
-  let b=Buffer.allocUnsafe(2);b.writeUInt16LE(0,0);parts.push(b);
-  b=Buffer.allocUnsafe(4);b.writeInt32LE(0,0);parts.push(b);
-  b=Buffer.allocUnsafe(4);b.writeInt32LE(0,0);parts.push(b);
-  b=Buffer.allocUnsafe(2);b.writeUInt16LE(Math.max(0,Math.min(65535,Math.round(fake.x||0))),0);parts.push(b);
-  b=Buffer.allocUnsafe(2);b.writeUInt16LE(Math.max(0,Math.min(65535,Math.round(fake.y||0))),0);parts.push(b);
-  return Buffer.concat(parts);
-}
-function buildFakeNativeDespawn(fake) {
-  return Buffer.concat([Buffer.from([3,0,1,0]), (()=>{const b=Buffer.allocUnsafe(16);const a=fake&&Array.isArray(fake.id)?fake.id:[0,0,0,0];for(let i=0;i<4;i++)b.writeInt32LE(a[i]|0,i*4);return b;})()]);
-}
-function sendFakeNativeSpawn(room,fake,onlyClient=null){
-  if(!room||!fake)return;
-  const payload=buildFakeNativeSpawn(fake);
-  for(const c of room.clients){if(onlyClient&&c!==onlyClient)continue;sendBinary(c,payload);}
-}
-function sendFakeNativeMove(room,fake){
-  if(!room||!fake)return;
-  const payload=buildFakeNativeMove(fake);
-  for(const c of room.clients)sendBinary(c,payload,true);
-}
-function sendFakeNativeDespawn(room,fake){
-  if(!room||!fake)return;
-  const payload=buildFakeNativeDespawn(fake);
-  for(const c of room.clients)sendBinary(c,payload);
-}
-
-function readNativeFixedBE(buf, offset) {
-  // The game's tb/DataView writer uses the default big-endian byte order.
-  // r8() writes two signed int32 values: whole units, then 1e-5 fractional units.
-  if (!buf || offset < 0 || offset + 8 > buf.length) return NaN;
-  const whole = buf.readInt32BE(offset);
-  const frac = buf.readInt32BE(offset + 4);
-  return whole + frac / 100000;
-}
-
-function readNativeFixedLE(buf, offset) {
-  if (!buf || offset < 0 || offset + 8 > buf.length) return NaN;
-  return buf.readInt32LE(offset) + buf.readInt32LE(offset + 4) / 100000;
-}
-
-function nativePlacementBlocked(client, payload) {
-  // Coaster Town's actual K.X8() packet layout:
-  //   R2(11)             opcode
-  //   r8(player.b6)      8 bytes
-  //   r8(0)              8 bytes
-  //   r8(player.b7)      8 bytes
-  //   r8(0)              8 bytes
-  //   R2(tileId)         2 bytes
-  //   R0(tileX)          4 bytes
-  //   R0(tileLayer)      4 bytes
-  //   R0(tileY)          4 bytes
-  //   R2(tileCatalog)    2 bytes
-  //   R2(blockData)      2 bytes
-  //   s0(flag)           1 byte
-  // The tb/DataView implementation uses the default big-endian order.
-  if (!client || !client.room || !payload || payload.length < 53) return true;
-  try {
-    const opcode = payload.readUInt16BE(0);
-    if (opcode !== 11) return false;
-
-    const actorX = readNativeFixedBE(payload, 2);
-    const actorY = readNativeFixedBE(payload, 18);
-    const id = payload.readUInt16BE(34);
-    const tileX = payload.readInt32BE(36);
-    const layer = payload.readInt32BE(40);
-    const tileY = payload.readInt32BE(44);
-
-    if (![actorX, actorY].every(Number.isFinite) ||
-        !Number.isFinite(tileX) || !Number.isFinite(tileY)) return true;
-    if (id === 0) return false;
-    if (layer < 0 || layer > 2) return true;
-
-    // Use the exact native actor position from K.X8 rather than the last
-    // JSON movement update. The native engine rounds the clicked location to
-    // the same grid before constructing this packet.
-    const actor = {
-      position: {x: actorX, y: actorY},
-      alive: client.alive,
-      eliminated: client.eliminated
-    };
-    if (placementOverlapsPlayer(actor, tileX, tileY)) return true;
-
-    for (const other of client.room.clients) {
-      if (other === client || !other.alive || other.eliminated || !other.position) continue;
-      if (placementOverlapsPlayer(other, tileX, tileY)) return true;
-    }
-    return false;
-  } catch {
-    return true;
-  }
-}
-
-function applyNativeTileToRoom(client, payload) {
-  // Mirror native opcode-11 place/mine into the authoritative room tile maps
-  // and broadcast a JSON tile so every client (and late joiners) see the change.
-  if (!client || !client.room || !payload || payload.length < 53) return;
-  try {
-    const id = payload.readUInt16BE(34);
-    const tileX = payload.readInt32BE(36);
-    let layer = payload.readInt32BE(40);
-    const tileY = payload.readInt32BE(44);
-    if (!Number.isFinite(tileX) || !Number.isFinite(tileY)) return;
-    if (tileX < 0 || tileX >= 128 || tileY < 0 || tileY >= 80) return;
-    if (layer < 0 || layer > 2) layer = 0;
-    const room = client.room;
-    ensureRoomState(room);
-    const key = `${tileX},${tileY}`;
-    const variant = 0;
-    if (id === 0) {
-      // Mine / clear — record empty so late joiners get the hole.
-      room.tiles.set(key, {x:tileX,y:tileY,id:0,variant:0,layer:0,ownerConnectionId:client.connectionId,cleared:true});
-      room.backgroundTiles.delete(key);
-      room.cottonMachines.delete(key);
-      room.turretCooldowns.delete(key);
-      if (room.speaker && room.speaker.x === tileX && room.speaker.y === tileY) room.speaker = null;
-      broadcastRoom(room, {
-        t: 'tile', x: tileX, y: tileY, id: 0, variant: 0, layer,
-        _serverFrom: client.connectionId, _serverName: client.name, replace: true
-      });
-      return;
-    }
-    // Place — prefer catalog layer (backdrop ids go to layer 2).
-    const BACKDROP = new Set([118,119,143,158,159,160,161,162,189,191,213,214,272,273]);
-    const desiredLayer = BACKDROP.has(id) ? 2 : (layer === 2 ? 2 : 0);
-    const store = desiredLayer === 2 ? room.backgroundTiles : room.tiles;
-    const other = desiredLayer === 2 ? room.tiles : room.backgroundTiles;
-    other.delete(key);
-    const tile = {
-      x: tileX, y: tileY, id: id | 0, variant, layer: desiredLayer,
-      ownerConnectionId: client.connectionId
-    };
-    store.set(key, tile);
-    broadcastRoom(room, Object.assign({
-      t: 'tile',
-      _serverFrom: client.connectionId,
-      _serverName: client.name,
-      replace: true
-    }, tile));
-  } catch (e) {
-    console.warn('[Diggerz] native tile room apply failed:', e.message);
-  }
-}
-
 function relayBinary(client, payload) {
   if (!client.room) return;
   let opcode = 0;
-  try { if (payload.length >= 2) opcode = payload.readUInt16BE(0); } catch {}
-
-  // Native placement bypasses the JSON t:'tile' handler entirely. Gate the
-  // actual binary opcode before it is broadcast so the server enforces the
-  // same no-place-on-player rule for the real game input path.
-  if (opcode === 11 && nativePlacementBlocked(client, payload)) return;
-  // Persist + JSON-broadcast so peers and late joiners always see the change.
-  if (opcode === 11) applyNativeTileToRoom(client, payload);
-
-  // Native movement packets also carry the player's position. Keep the
-  // canonical position fresh even when the JSON fallback is throttled.
-  if (opcode === 6 && payload.length >= 18) {
-    try {
-      const x = readNativeFixedBE(payload, 2);
-      const y = readNativeFixedBE(payload, 18);
-      if (Number.isFinite(x) && Number.isFinite(y)) client.position = {x,y};
-    } catch {}
-  }
-
+  try { if (payload.length >= 2) opcode = payload.readUInt16LE(0); } catch {}
   const now = Date.now();
   if (opcode === 6) {
     if (now - (client.lastNativeMovementRelayAt || 0) < NATIVE_MOVEMENT_RELAY_MS) return;
@@ -1173,205 +956,12 @@ function relayBinary(client, payload) {
   for (const peer of client.room.clients) if (peer !== client) writeFrame(peer, frame, transient);
 }
 
-function fakePlayerSnapshot(fake) {
-  return {
-    connectionId: fake.connectionId,
-    name: fake.name,
-    mode: fake.mode || 'digtrade',
-    fake: true,
-    x: Number(fake.x) || 0,
-    y: Number(fake.y) || 0,
-    vx: Number(fake.vx) || 0,
-    vy: Number(fake.vy) || 0,
-    id: Array.isArray(fake.id) ? fake.id.slice(0,4) : [0,0,0,0],
-    appearance: Array.isArray(fake.appearance) ? fake.appearance.slice(0,11) : [0,247,0,0,326,0,0,0,0,0,0],
-    appearanceText: String(fake.appearanceText || ''),
-    skin: Number.isFinite(fake.skin) ? fake.skin : 1.44,
-    wins: Number(fake.wins) || 0,
-    adminEffects: {god:false,fly:false,noclip:false,invis:false},
-    bot: true,
-    inventory:Array.isArray(fake.inventory)?fake.inventory.map(item=>({category:item.category|0,id:item.id|0,count:item.count|0})):[],
-    equippedWeapon:fake.equippedWeapon|0,
-    miningTool:fake.miningTool|0
-  };
-}
-
-function findRoomTarget(room, connectionId) {
-  const id=String(connectionId||'');
-  const client=findRoomClient(room,id);
-  if(client) return client;
-  return room && room.fakePlayers ? room.fakePlayers.get(id) || null : null;
-}
-
-function mapTileAt(room,x,y) {
-  x=x|0; y=y|0;
-  if(x<0||x>=128||y<0||y>=80) return null;
-  const key=`${x},${y}`;
-  if(room && room.tiles && room.tiles.has(key)) return room.tiles.get(key);
-  const rows=room && room.map && Array.isArray(room.map.tiles) ? room.map.tiles : [];
-  for(let i=0;i<rows.length;i++) {
-    const r=rows[i];
-    if((r[0]|0)===x && (r[1]|0)===y) return {x,y,id:r[2]|0,variant:r[3]|0};
-  }
-  return null;
-}
-
-function fakeSolid(room,x,y) {
-  const t=mapTileAt(room,x,y);
-  return !!(t && (t.id|0)!==0);
-}
-
-// Build 24.0.30 placement safety: a block is a 1x1 world square and may not
-// overlap a player's actual body footprint.  The old point-distance check
-// could still allow a corner/edge of a block into the player, which could
-// leave the native client with an impossible collision state.
-function placementOverlapsPlayer(player, tileX, tileY) {
-  if (!player || !player.position) return false;
-  const px=Number(player.position.x), py=Number(player.position.y);
-  if (!Number.isFinite(px) || !Number.isFinite(py)) return false;
-
-  // Floating player placement shield: left block + body + right block.
-  // Coordinates are continuous world-tile units that FOLLOW the player and
-  // never snap to the grid.  Any placement cell that intersects this shield
-  // is rejected so blocks cannot be planted on a player and break the grid.
-  const cellHalf=0.5;
-  const left=Number(tileX)-cellHalf, right=Number(tileX)+cellHalf;
-  const top=Number(tileY)-cellHalf, bottom=Number(tileY)+cellHalf;
-
-  const hw=0.50, hh=0.50, margin=0.05; // tight 1x1 player shield
-  const L=px-hw-margin, R=px+hw+margin, T=py-hh-margin, B=py+hh+margin;
-  if (!(right < L || left > R || bottom < T || top > B)) return true;
-
-  // Secondary continuous corner check (slightly larger than before).
-  const cx=Math.max(left,Math.min(px,right));
-  const cy=Math.max(top,Math.min(py,bottom));
-  return Math.hypot(cx-px,cy-py) <= 1.35;
-}
-
-function placementBlockedByAnyPlayer(room, tileX, tileY) {
-  if (!room) return false;
-  for (const other of room.clients) {
-    if (!other.alive || other.eliminated || !other.position) continue;
-    if (placementOverlapsPlayer(other,tileX,tileY)) return true;
-  }
-  return false;
-}
-
-function fakeFloorY(room,x,y,fromY=0) {
-  const cols=[Math.floor(x),Math.floor(x-0.34),Math.floor(x+0.34)];
-  const start=Math.max(0,Math.floor(y));
-  let best=Infinity;
-  for(const cx of cols){
-    if(cx<0||cx>=128) continue;
-    for(let ty=start;ty<80;ty++){
-      if(fakeSolid(room,cx,ty)){best=Math.min(best,ty);break;}
-    }
-  }
-  return Number.isFinite(best)?best:null;
-}
-
-function fakeBreakTile(room,fake,x,y) {
-  x=x|0; y=y|0;
-  if(x<0||x>=128||y<0||y>=80) return false;
-  const t=mapTileAt(room,x,y);
-  if(!t || (t.id|0)===0) return false;
-  // Decorative/top-world objects are left alone; the bot digs normal mine blocks.
-  if(y<18) return false;
-  room.tiles.set(`${x},${y}`,{x,y,id:0,variant:0,ownerConnectionId:fake.connectionId});
-  broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,_serverFrom:fake.connectionId,_serverName:fake.name});
-  broadcastWorldSound(room,'swap',x,y);
-  return true;
-}
-
-function fakeBotChat(room,fake,text) {
-  const now=Date.now();
-  if(now-(fake.lastBotChatAt||0)<1500) return;
-  fake.lastBotChatAt=now;
-  broadcastRoom(room,{t:'chat',text:String(text||'').slice(0,180),_serverFrom:fake.connectionId,_serverName:fake.name,impersonated:true,bot:true});
-}
-
-function makeFakePlayer(room, name, sourceClient) {
-  ensureRoomState(room);
-  const clean=normalizeName(name||'Fake Player');
-  let finalName=clean || 'Fake Player';
-  const used=new Set([...room.clients].map(c=>normalizeName(c.name).toLowerCase()));
-  for(const f of room.fakePlayers.values()) used.add(normalizeName(f.name).toLowerCase());
-  if(used.has(finalName.toLowerCase())) {
-    let n=2; while(used.has((finalName+' '+n).toLowerCase())) n++; finalName=(finalName+' '+n).slice(0,24);
-  }
-  const bytes=crypto.randomBytes(16), id=[bytes.readInt32LE(0),bytes.readInt32LE(4),bytes.readInt32LE(8),bytes.readInt32LE(12)];
-  const fake={
-    connectionId:'FAKE-'+bytes.toString('hex').slice(0,12).toUpperCase(),
-    name:finalName,mode:room.mode,
-    x:Math.max(4,Math.min(WORLD_WIDTH-4,Number(sourceClient&&sourceClient.position&&sourceClient.position.x)||16)),
-    y:2,vx:0,vy:0,grounded:false,
-    id,
-    appearance:[0,247,0,0,604,0,0,0,0,0,0],
-    appearanceText:'',
-    skin:1.44,
-    inventory:[{category:2,id:604,count:1},{category:2,id:240,count:1},{category:2,id:247,count:1}],
-    equippedWeapon:604,
-    miningTool:240,
-    wins:0,createdAt:Date.now(),
-    botState:'falling',botStartedAt:Date.now(),botPhaseUntil:Date.now()+3500,
-    botDir:Math.random()<.5?-1:1,botRow:0,botDigSide:Math.random()<.5?-1:1,
-    botNextActionAt:0,botLastMineAt:0,lastBotChatAt:0,controlledBy:''
-  };
-  room.fakePlayers.set(fake.connectionId,fake);
-  fakeBotChat(room,fake,'/notrades');
-  return fake;
-}
-
-function tickFakePlayers(room, now) {
-  // Fake players are intentionally NOT simulated by the server.
-  // They are spawned through the same native player-spawn path as real
-  // players, so each client creates the normal dynamic player body and
-  // runs the game's normal gravity/collision physics on it.
-  // Do not send periodic position/velocity corrections here: those would
-  // fight the native physics and can make the player fall through terrain.
-  if (!room || !room.fakePlayers || !room.fakePlayers.size) return;
-  for (const fake of room.fakePlayers.values()) {
-    if (!Number.isFinite(fake.x)) fake.x = randomSpawnX(room);
-    if (!Number.isFinite(fake.y)) fake.y = 2;
-    fake.vx = 0;
-    fake.vy = 0;
-    fake.grounded = false;
-  }
-}
-
-function makeDefaultMap() {
-  const tiles=[];
-  for(let x=0;x<128;x++) for(let y=0;y<80;y++) {
-    let id=0,v=0;
-    if(y===79){id=222;v=25;}
-    else if(y===18){id=222;v=25;}
-    else if(y>18){const depth=y-18,cave=depth>7&&y<77&&Math.sin(x*.31+y*.17)+Math.sin(x*.09-y*.37)>1.25;if(!cave){id=222;v=25;}}
-    if(id) tiles.push([x,y,id,v]);
-  }
-  const objs=[[5,256,0],[12,244,0],[19,256,1],[27,242,0],[34,242,1],[41,242,2],[49,256,0],[56,244,1],[63,233,0],[70,256,1],[78,242,0],[85,242,1],[92,242,2],[100,244,2],[108,256,0],[116,256,1],[123,244,0]];
-  for(const [x,id,v] of objs) tiles.push([x,17,id,v]);
-  return {format:'diggerz-pvp-map-v1',name:'Default Map',width:128,height:80,background:0,tiles,backgroundTiles:[]};
-}
-
 function roomSnapshot(room) {
-  const real=[...room.clients].filter(client => client && !client.closed).map(client => ({
+  return [...room.clients].filter(client => client && !client.closed).map(client => ({
     connectionId: client.connectionId,
     name: client.name,
-    mode: client.mode,
-    alive: client.alive !== false && !client.eliminated,
-    eliminated: !!client.eliminated,
-    x: client.position && Number.isFinite(client.position.x) ? client.position.x : 0,
-    y: client.position && Number.isFinite(client.position.y) ? client.position.y : 2,
-    wins: Math.max(0, client.wins | 0),
-    kills: Math.max(0, client.kills | 0),
-    appearance: Array.isArray(client.appearance) ? client.appearance.slice(0, 11) : [],
-    appearanceText: String(client.appearanceText || ''),
-    skin: Number.isFinite(client.skin) ? client.skin : 1.44,
-    adminEffects: client.adminEffects ? {...client.adminEffects} : {god:false,fly:false,noclip:false,invis:false},
-    adminModifiers: client.adminModifiers ? {...client.adminModifiers} : {speed:1,jump:1,size:1,breakSpeed:1}
+    mode: client.mode
   }));
-  const fakes=room.fakePlayers ? [...room.fakePlayers.values()].map(fakePlayerSnapshot) : [];
-  return real.concat(fakes);
 }
 
 function broadcastRoster(room) {
@@ -1399,14 +989,10 @@ function randomSpawnX(room) {
 function ensureRoomState(room) {
   if (!room.drops) room.drops = new Map();
   if (!room.tiles) room.tiles = new Map();
-  if (!room.backgroundTiles) room.backgroundTiles = new Map();
   if (!room.coins) room.coins = new Map();
   if (!room.cottonMachines) room.cottonMachines = new Map();
   if (!room.turretCooldowns) room.turretCooldowns = new Map();
-  if (!room.fakePlayers) room.fakePlayers = new Map();
   if (room.speaker === undefined) room.speaker = null;
-  if (room.adminBackground === undefined) room.adminBackground = null;
-  if (room.adminPvpOverride === undefined) room.adminPvpOverride = false;
   if (room.mode === 'pvp' && !room.battle) {
     room.battle = {
       phase: 'waiting',
@@ -1586,16 +1172,8 @@ function eliminateOrRespawn(victim, attacker, source) {
 function dealPvpDamage(attacker, victim, amount, source) {
   if (!attacker || !victim || attacker === victim || !attacker.room || attacker.room !== victim.room) return false;
   const room = attacker.room;
-  // Dig+Trade: no damage. PvP: only after fight countdown (fight/elimination).
-  if (room.mode === 'digtrade') return false;
-  if (room.mode !== 'pvp') return false;
-  if (!room.battle || (room.battle.phase !== 'fight' && room.battle.phase !== 'elimination')) return false;
+  if (room.mode !== 'pvp' || !room.battle || (room.battle.phase !== 'fight' && room.battle.phase !== 'elimination')) return false;
   if (!victim.alive || victim.eliminated) return false;
-  if (victim.adminEffects && victim.adminEffects.invis) return false;
-  if (victim.adminEffects && victim.adminEffects.god) {
-    sendJson(attacker, {t:'hit-confirm', targetConnectionId:victim.connectionId, targetName:victim.name, health:victim.pvpHealth, blockedByGod:true});
-    return false;
-  }
   const damage = Math.max(1, Math.min(3, Number(amount)|0));
   victim.lastAttackerConnectionId = attacker.connectionId;
   victim.lastDamagedAt = Date.now();
@@ -1604,17 +1182,7 @@ function dealPvpDamage(attacker, victim, amount, source) {
   sendJson(victim, { t:'damage', amount:damage, source:String(source||'weapon'), attackerConnectionId:attacker.connectionId, attackerName:attacker.name });
   sendJson(attacker, { t:'hit-confirm', targetConnectionId:victim.connectionId, targetName:victim.name, health:victim.pvpHealth });
   broadcastRoom(room, { t:'health', current:victim.pvpHealth, maximum:3, _serverFrom:victim.connectionId, _serverName:victim.name }, victim);
-  if (victim.pvpHealth <= 0) {
-    if(room.mode==='pvp') eliminateOrRespawn(victim, attacker, source);
-    else {
-      const deathPos={x:victim.position.x,y:victim.position.y};
-      broadcastRoom(room,{t:'death',x:deathPos.x,y:deathPos.y,_serverFrom:victim.connectionId,_serverName:victim.name});
-      const sx=attacker&&attacker.position?attacker.position.x:randomSpawnX(room), sy=attacker&&attacker.position?attacker.position.y-1:2;
-      victim.pvpHealth=0;victim.alive=false;victim.eliminated=false;
-      setTimeout(()=>{if(!victim.closed&&victim.room===room){victim.pvpHealth=3;victim.alive=true;victim.position={x:sx,y:sy};sendJson(victim,{t:'force-respawn',x:sx,y:sy,health:3});broadcastRoom(room,{t:'respawn',x:sx,y:sy,_serverFrom:victim.connectionId,_serverName:victim.name},victim);}},1850).unref?.();
-      broadcastRoom(room,{t:'kill-feed',killerName:attacker&&attacker.name||'Player',killerConnectionId:attacker&&attacker.connectionId||'',victimName:victim.name,victimConnectionId:victim.connectionId,kills:attacker?((attacker.kills|0)):0,source:String(source||'weapon')});
-    }
-  }
+  if (victim.pvpHealth <= 0) eliminateOrRespawn(victim, attacker, source);
   return true;
 }
 
@@ -1625,7 +1193,7 @@ function lineHitTarget(attacker, message) {
   const vx=tx-fx, vy=ty-fy, vv=vx*vx+vy*vy;
   let best=null, bestT=2;
   for (const target of room.clients) {
-    if (target===attacker || !target.alive || target.eliminated || target.hidden || !target.position || (target.adminEffects&&target.adminEffects.invis)) continue;
+    if (target===attacker || !target.alive || target.eliminated || !target.position) continue;
     const px=target.position.x, py=target.position.y;
     let t=vv>0?((px-fx)*vx+(py-fy)*vy)/vv:0;
     if (t<0 || t>1) continue;
@@ -1733,7 +1301,7 @@ function tickTurrets(room,now) {
     const range=turret.id===364?20:18;
     let best=null,bestD=range+1;
     for(const target of room.clients){
-      if(!target.alive||target.eliminated||!target.position||target===owner||(target.adminEffects&&target.adminEffects.invis))continue;
+      if(!target.alive||target.eliminated||!target.position||target===owner)continue;
       const d=Math.hypot(target.position.x-turret.x,target.position.y-turret.y);
       if(d<bestD){best=target;bestD=d;}
     }
@@ -1750,7 +1318,7 @@ function tickTurrets(room,now) {
   }
 }
 
-function specialWorldTick(room,now){ tickSpeaker(room,now); tickCottonCandy(room,now); tickTurrets(room,now); tickFakePlayers(room,now); }
+function specialWorldTick(room,now){ tickSpeaker(room,now); tickCottonCandy(room,now); tickTurrets(room,now); }
 
 function battleTick(room, now) {
   if (!room || room.mode !== 'pvp') return;
@@ -1812,34 +1380,12 @@ function addClientToRoom(client, room, mode, name) {
     mapName: room.map ? String(room.map.name||'Custom Map') : (room.mode==='pvp' ? battleMapName(room) : 'Default Dig+Trade'),
     mapAuthor: room.mode==='pvp' ? battleMapAuthor(room) : '',
     mapMusic: room.mode==='pvp' ? battleMapMusic(room) : '',
-    adminBackground: Number.isFinite(room.adminBackground) ? room.adminBackground : null,
-    adminPvpOverride: !!room.adminPvpOverride,
-    // Full peer roster with positions so the joiner can spawn everyone
-    // before their local player is considered "ready".
-    peers: roomSnapshot(room).filter(p => p.connectionId !== client.connectionId),
-    players: roomSnapshot(room),
-    fakePlayers: room.fakePlayers ? [...room.fakePlayers.values()].map(fakePlayerSnapshot) : [],
-    tiles: [...room.tiles.values()], backgroundTiles: [...room.backgroundTiles.values()], drops: [...room.drops.values()], coins: [...room.coins.values()], speaker: room.speaker ? {...room.speaker} : null, serverNow: Date.now()
+    tiles: [...room.tiles.values()], drops: [...room.drops.values()], coins: [...room.coins.values()], speaker: room.speaker ? {...room.speaker} : null, serverNow: Date.now()
   });
   if (mode === 'pvp') sendBattleState(client);
-  // Fake players are real native player entities on every browser. Send the same
-  // recovered opcode-5 spawn packet used by an actual connected player.
-  if (room.fakePlayers) for (const fake of room.fakePlayers.values()) sendFakeNativeSpawn(room,fake,client);
 
   broadcastRoom(room, { t:'player-count', room:room.code, count:room.clients.size, max:MAX_ROOM_PLAYERS });
   broadcastRoster(room);
-  // One join line for EVERYONE including the joiner: "Name is now here."
-  broadcastRoom(room, {
-    t: 'player-joined',
-    connectionId: client.connectionId,
-    name: client.name,
-    room: room.code,
-    count: room.clients.size,
-    max: MAX_ROOM_PLAYERS,
-    _serverFrom: client.connectionId,
-    _serverName: client.name,
-    serverNow: Date.now()
-  });
   log(`${client.connectionId} (${name}) joined ${room.code}. ${room.clients.size}/${MAX_ROOM_PLAYERS}`);
 
   // room-ready is a one-time transition. Broadcasting it again for player 3,
@@ -1888,7 +1434,6 @@ function matchmake(client, message) {
       matchmaking: true,
       drops: new Map(),
       tiles: new Map(),
-      backgroundTiles: new Map(),
       map: mode === 'pvp' ? pickBattleMap() : (mode === 'digtrade' ? digTradeMap : null)
     };
     rooms.set(code, room);
@@ -1934,7 +1479,6 @@ function joinRoom(client, message) {
       createdAt: Date.now(),
       drops: new Map(),
       tiles: new Map(),
-      backgroundTiles: new Map(),
       map: mode === 'pvp' ? pickBattleMap() : (mode === 'digtrade' ? digTradeMap : null)
     };
     rooms.set(roomCode, room);
@@ -2065,171 +1609,7 @@ function relayGameMessage(client, message, rawLength) {
   ensureRoomState(room);
   const envelope=Object.assign({},message,{_serverFrom:client.connectionId,_serverName:client.name});
 
-  if (message.t==='hello') {
-    const newName=normalizeName(message.name||client.name), changed=newName!==client.name;
-    client.name=newName;
-    client.appearance=Array.isArray(message.appearance)?message.appearance.slice(0,11):client.appearance||[0,247,0,0,326,0,0,0,0,0,0];
-    client.appearanceText=String(message.appearanceText||client.appearanceText||'').slice(0,180);
-    client.skin=Number.isFinite(Number(message.skin))?Number(message.skin):1.44;
-    if(Number.isFinite(Number(message.wins))) client.wins=Math.max(0,Number(message.wins)|0);
-    if(Number.isFinite(Number(message.x))&&Number.isFinite(Number(message.y))) client.position={x:Number(message.x),y:Number(message.y)};
-    if(changed){rememberPlayer(client,client.name,client.clientId);broadcastRoom(room,{t:'peer-rename',connectionId:client.connectionId,name:client.name,oldName:message.oldName||'',_serverFrom:client.connectionId,_serverName:client.name});broadcastRoster(room);}
-    broadcastRoom(room,{t:'hello',id:message.id,name:client.name,appearance:message.appearance,appearanceText:message.appearanceText||'',x:client.position.x,y:client.position.y,skin:message.skin,wins:message.wins||0,mode:client.mode,adminEffects:{...client.adminEffects},adminModifiers:{...client.adminModifiers},_serverFrom:client.connectionId,_serverName:client.name},client);
-    return;
-  }
-  if (message.t==='admin-control-start') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const target=findRoomTarget(room,String(message.targetConnectionId||''));
-    if(!target){sendJson(client,{t:'server-error',code:'player-not-found',message:'Player not found.'});return;}
-    if(target.fake){ target.controlledBy=client.connectionId; sendJson(client,{t:'admin-control-started',connectionId:target.connectionId,name:target.name,fake:true,x:target.x,y:target.y}); return; }
-    if(target===client){sendJson(client,{t:'server-error',code:'admin-control-self',message:'You cannot control yourself.'});return;}
-    if(target.controlledBy && target.controlledBy!==client.connectionId){sendJson(client,{t:'server-error',code:'admin-control-busy',message:'That player is already being controlled.'});return;}
-    target.controlledBy=client.connectionId;
-    sendJson(client,{t:'admin-control-started',connectionId:target.connectionId,name:target.name,fake:false,x:target.position.x,y:target.position.y});
-    sendJson(target,{t:'admin-being-controlled',controllerName:client.name});
-    return;
-  }
-  if (message.t==='admin-control-stop') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const target=findRoomTarget(room,String(message.targetConnectionId||''));
-    if(target && target.controlledBy===client.connectionId){ target.controlledBy=''; if(target.fake){target.botState='falling';target.vy=0;target.botPhaseUntil=Date.now()+1800;} }
-    sendJson(client,{t:'admin-control-stopped',connectionId:String(message.targetConnectionId||'')});
-    return;
-  }
-  if (message.t==='admin-control-state') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const target=findRoomTarget(room,String(message.targetConnectionId||''));
-    if(!target || (!target.fake && target.controlledBy!==client.connectionId)){return;}
-    const x=Number(message.x),y=Number(message.y),vx=Number(message.vx)||0,vy=Number(message.vy)||0;
-    if(!Number.isFinite(x)||!Number.isFinite(y))return;
-    if(target.fake){target.x=Math.max(-20,Math.min(WORLD_WIDTH+20,x));target.y=Math.max(-30,Math.min(120,y));target.vx=vx;target.vy=vy;target.botState='controlled';broadcastRoom(room,{t:'admin-fake-player-state',connectionId:target.connectionId,x:target.x,y:target.y,vx:target.vx,vy:target.vy,name:target.name,botState:'controlled'},undefined,true);return;}
-    target.position={x:Math.max(-20,Math.min(WORLD_WIDTH+20,x)),y:Math.max(-30,Math.min(120,y))};
-    broadcastRoom(room,{t:'peer-state',x:target.position.x,y:target.position.y,vx,vy,controlled:true,_serverFrom:target.connectionId,_serverName:target.name},undefined,true);
-    return;
-  }
-  if (message.t==='admin-chat-as') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const target=findRoomTarget(room,String(message.targetConnectionId||'')); if(!target){sendJson(client,{t:'server-error',code:'player-not-found',message:'Player not found.'});return;}
-    const text=String(message.text||'').replace(/[\x00-\x1F\x7F]/g,' ').trim().slice(0,180); if(!text)return;
-    broadcastRoom(room,{t:'chat',text,_serverFrom:target.connectionId,_serverName:target.name,impersonated:true});
-    return;
-  }
-  if (message.t==='admin-fake-player-spawn') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const fake=makeFakePlayer(room,message.name,client);
-    broadcastRoom(room,{t:'admin-fake-player-add',player:fakePlayerSnapshot(fake)});
-    sendFakeNativeSpawn(room,fake);
-    broadcastRoster(room);
-    return;
-  }
-  if (message.t==='admin-fake-player-remove') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const id=String(message.targetConnectionId||''); const fake=room.fakePlayers && room.fakePlayers.get(id); if(!fake)return;
-    room.fakePlayers.delete(id); sendFakeNativeDespawn(room,fake); broadcastRoom(room,{t:'admin-fake-player-remove',connectionId:id,name:fake.name}); broadcastRoster(room); return;
-  }
-  if (message.t==='admin-fake-player-remove-all') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const removed=[...room.fakePlayers.values()]; room.fakePlayers.clear(); for(const f of removed){sendFakeNativeDespawn(room,f);broadcastRoom(room,{t:'admin-fake-player-remove',connectionId:f.connectionId,name:f.name});} broadcastRoster(room); return;
-  }
-  if (message.t==='admin-map-apply') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    let map=message.map===null?makeDefaultMap():sanitizeMap(message.map,'admin-upload.json');
-    if(!map){sendJson(client,{t:'server-error',code:'invalid-map',message:'Invalid Diggerz map JSON.'});return;}
-    room.map=map.name==='Default Map' && message.useDefault===true ? makeDefaultMap() : map;
-    room.tiles.clear();room.backgroundTiles.clear();room.drops.clear();room.coins.clear();room.cottonMachines.clear();room.turretCooldowns.clear();room.adminBackground=null;
-    if(room.mode==='pvp'&&room.battle){room.battle.phase='waiting';room.battle.fightAt=0;room.battle.nextShrinkAt=0;room.battle.shrinkStage=0;room.battle.warningStage=0;room.battle.inset=0;room.battle.left=BATTLE_MIN_LEFT;room.battle.right=BATTLE_MAX_RIGHT;room.battle.elimination=false;room.battle.winnerConnectionId='';room.battle.finishedAt=0;}
-    for(const c of room.clients){c.alive=true;c.eliminated=false;c.pvpHealth=3;c.position={x:randomSpawnX(room),y:2};sendJson(c,{t:'force-respawn',x:c.position.x,y:c.position.y,health:3});}
-    for(const f of room.fakePlayers.values()){f.x=Math.max(4,Math.min(WORLD_WIDTH-4,f.x));f.y=2;f.vy=0;}
-    broadcastRoom(room,{t:'admin-map-replaced',map:room.map,tiles:[],backgroundTiles:[],drops:[],coins:[],serverNow:Date.now()});
-    broadcastRoom(room,{t:'room-state',room:room.code,map:room.map,tiles:[],backgroundTiles:[],drops:[],coins:[],adminBackground:null,adminPvpOverride:!!room.adminPvpOverride,fakePlayers:[...room.fakePlayers.values()].map(fakePlayerSnapshot),serverNow:Date.now()});
-    if(room.mode==='pvp'){broadcastBattleState(room);if(room.clients.size>=2)startBattleBuild(room);}
-    return;
-  }
-
-  if (message.t==='admin-modifiers') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const target=findRoomClient(room,String(message.targetConnectionId||'')); if(!target){sendJson(client,{t:'server-error',code:'player-not-found',message:'Player not found.'});return;}
-    const old=target.adminModifiers||{speed:1,jump:1,size:1,breakSpeed:1};
-    const clamp=(v,min,max)=>Math.max(min,Math.min(max,Number.isFinite(Number(v))?Number(v):1));
-    target.adminModifiers={speed:clamp(message.speed,.1,10),jump:clamp(message.jump,.1,10),size:clamp(message.size,.25,4),breakSpeed:clamp(message.breakSpeed,.1,10)};
-    broadcastRoom(room,{t:'admin-modifiers',connectionId:target.connectionId,modifiers:{...target.adminModifiers},previous:{...old}});
-    return;
-  }
-  if (message.t==='admin-effect') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const target=findRoomTarget(room,String(message.targetConnectionId||'')); if(!target){sendJson(client,{t:'server-error',code:'player-not-found',message:'Player not found.'});return;}
-    const effect=String(message.effect||''); if(!['god','fly','noclip','invis'].includes(effect)){sendJson(client,{t:'server-error',code:'bad-effect',message:'Unknown admin effect.'});return;}
-    if(target.fake){sendJson(client,{t:'server-error',code:'fake-effect-unsupported',message:'Fake players do not use live player effects.'});return;}
-    target.adminEffects[effect]=!!message.enabled;
-    if(effect==='invis') target.hidden=target.adminEffects[effect];
-    broadcastRoom(room,{t:'admin-effect',connectionId:target.connectionId,effect,enabled:target.adminEffects[effect],effects:{...target.adminEffects}});
-    if(effect==='invis') broadcastRoom(room,{t:'admin-peer-visibility',connectionId:target.connectionId,hidden:target.hidden,name:target.name});
-    return;
-  }
-  if (message.t==='admin-bring') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target){sendJson(client,{t:'server-error',code:'player-not-found',message:'Player not found.'});return;}
-    if(target===client){sendJson(client,{t:'server-error',code:'admin-bring-self',message:'You are already here.'});return;}
-    target.position={x:Number(client.position&&client.position.x)||0,y:(Number(client.position&&client.position.y)||0)-1};
-    broadcastRoom(room,{t:'peer-state',x:target.position.x,y:target.position.y,_serverFrom:target.connectionId,_serverName:target.name});
-    return;
-  }
-  if (message.t==='admin-fake-leave') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target){sendJson(client,{t:'server-error',code:'player-not-found',message:'Player not found.'});return;}
-    target.hidden=true; broadcastRoom(room,{t:'admin-fake-leave',connectionId:target.connectionId,name:target.name}); broadcastRoom(room,{t:'chat',text:'^1'+target.name+' has exited this area.',_serverFrom:target.connectionId,_serverName:target.name,systemPresence:true});
-    return;
-  }
-  if (message.t==='admin-fake-return') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target){sendJson(client,{t:'server-error',code:'player-not-found',message:'Player not found.'});return;}
-    target.hidden=false; broadcastRoom(room,{t:'admin-fake-return',connectionId:target.connectionId,name:target.name}); broadcastRoom(room,{t:'chat',text:'^2'+target.name+' is now here.',_serverFrom:target.connectionId,_serverName:target.name,systemPresence:true});
-    return;
-  }
-  if (message.t==='admin-pvp') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    room.adminPvpOverride=!!message.enabled;
-    broadcastRoom(room,{t:'admin-pvp-state',enabled:room.adminPvpOverride});
-    return;
-  }
-
-  if (message.t==='admin-rename') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const target=findRoomClient(room,String(message.targetConnectionId||'')); if(!target){sendJson(client,{t:'server-error',code:'player-not-found',message:'Player not found.'});return;}
-    const newName=normalizeName(message.name), oldName=target.name; target.name=newName; rememberPlayer(target,newName,target.clientId);
-    broadcastRoom(room,{t:'peer-rename',connectionId:target.connectionId,name:newName,oldName,_serverFrom:target.connectionId,_serverName:newName});
-    sendJson(target,{t:'admin-rename',name:newName}); broadcastRoster(room); return;
-  }
-  if (message.t==='admin-background') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const theme=Math.max(0,Math.min(9,Number(message.background)|0)); room.adminBackground=theme; broadcastRoom(room,{t:'admin-background',background:theme}); return;
-  }
-  if (message.t==='admin-inventory-request') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const target=findRoomClient(room,String(message.targetConnectionId||'')); if(!target){sendJson(client,{t:'server-error',code:'player-not-found',message:'Player not found.'});return;}
-    const requestId='AIR-'+crypto.randomBytes(8).toString('hex').toUpperCase(); adminInventoryRequests.set(requestId,{requester:client.connectionId,target:target.connectionId,expiresAt:Date.now()+10000});
-    sendJson(target,{t:'admin-inventory-request',requestId}); return;
-  }
-  if (message.t==='admin-inventory-data') {
-    const id=String(message.requestId||''), req=adminInventoryRequests.get(id); if(!req||req.expiresAt<Date.now()||req.target!==client.connectionId){adminInventoryRequests.delete(id);return;}
-    adminInventoryRequests.delete(id); const requester=findRoomClient(room,req.requester); if(!requester)return;
-    const slots=Array.isArray(message.slots)?message.slots.slice(0,127).map(sanitizeItem):[]; sendJson(requester,{t:'admin-inventory-data',requestId:id,targetConnectionId:client.connectionId,targetName:client.name,slots}); return;
-  }
-  if (message.t==='admin-inventory-action') {
-    if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
-    const target=findRoomClient(room,String(message.targetConnectionId||'')); if(!target){sendJson(client,{t:'server-error',code:'player-not-found',message:'Player not found.'});return;}
-    const action=String(message.action||''); if(!['remove','clear','take'].includes(action)){sendJson(client,{t:'server-error',code:'bad-inventory-action',message:'Unknown inventory action.'});return;}
-    const requestId='AIA-'+crypto.randomBytes(8).toString('hex').toUpperCase(); adminInventoryRequests.set(requestId,{requester:client.connectionId,target:target.connectionId,expiresAt:Date.now()+10000,action});
-    sendJson(target,{t:'admin-inventory-action',requestId,action,slot:Math.max(0,Math.min(126,Number(message.slot)|0)),count:Math.max(1,Math.min(65535,Number(message.count)||1))}); return;
-  }
-  if (message.t==='admin-inventory-action-result') {
-    const id=String(message.requestId||''), req=adminInventoryRequests.get(id); if(!req||req.expiresAt<Date.now()||req.target!==client.connectionId){adminInventoryRequests.delete(id);return;}
-    adminInventoryRequests.delete(id); const requester=findRoomClient(room,req.requester); if(!requester)return;
-    const items=Array.isArray(message.items)?message.items.map(sanitizeItem).filter(Boolean):[]; sendJson(requester,{t:'admin-inventory-action-result',requestId:id,action:req.action,targetConnectionId:client.connectionId,targetName:client.name,items}); return;
-  }
-
   if (message.t==='state') {
-    if(client.controlledBy) return;
     let x=Number(message.x), y=Number(message.y);
     if (Number.isFinite(x)&&Number.isFinite(y)) {
       if(room.mode==='pvp'&&room.battle&&(room.battle.phase==='fight'||room.battle.phase==='elimination')){
@@ -2256,23 +1636,33 @@ function relayGameMessage(client, message, rawLength) {
   }
 
   if (message.t==='attack') {
-    if (room.mode==='pvp' || (room.mode==='digtrade' && room.adminPvpOverride)) {
+    if (room.mode==='pvp') {
       const b=room.battle;
-      if (room.mode==='pvp' && (!b || (b.phase!=='fight'&&b.phase!=='elimination'))) { sendJson(client,{t:'fire-blocked'}); return; }
-      if (!client.alive || client.eliminated) { sendJson(client,{t:'fire-blocked'}); return; }
+      if (!b || (b.phase!=='fight'&&b.phase!=='elimination') || !client.alive || client.eliminated) {
+        sendJson(client,{t:'fire-blocked'});
+        return;
+      }
       client.shots=(client.shots|0)+1;
-      broadcastRoom(room,envelope,client);
+      broadcastRoom(room,envelope,client); // projectile / weapon visuals
       const attackType=Number(message.attackType)|0;
-      if (!PROJECTILE_ATTACKS.has(attackType)) { const target=lineHitTarget(client,message); if(target)dealPvpDamage(client,target,1,'weapon'); }
+      if (!PROJECTILE_ATTACKS.has(attackType)) {
+        const target=lineHitTarget(client,message);
+        if (target) dealPvpDamage(client,target,1,'weapon');
+      }
       return;
     }
-    if (room.mode==='digtrade') { sendJson(client,{t:'freedig-fire-blocked'}); return; }
+    // Free Dig / Dig+Trade is intentionally non-combat. Do not relay weapon
+    // attacks even if an older or modified client manages to send one.
+    if (room.mode==='digtrade') {
+      sendJson(client,{t:'freedig-fire-blocked'});
+      return;
+    }
     broadcastRoom(room,envelope,client);
     return;
   }
 
   if (message.t==='tool-attack') {
-    if ((room.mode!=='pvp' && !(room.mode==='digtrade'&&room.adminPvpOverride)) || (room.mode==='pvp' && (!room.battle || (room.battle.phase!=='fight'&&room.battle.phase!=='elimination'))) || !client.alive || client.eliminated) return;
+    if (room.mode!=='pvp' || !room.battle || (room.battle.phase!=='fight'&&room.battle.phase!=='elimination') || !client.alive || client.eliminated) return;
     const itemId=Number(message.itemId)|0;
     if(itemId!==239 && !(itemId>=379&&itemId<=394) && !RGB_LIGHTSWORD_IDS.has(itemId)) return;
     const fx=Number(message.fromX),fy=Number(message.fromY),tx=Number(message.toX),ty=Number(message.toY);
@@ -2289,7 +1679,7 @@ function relayGameMessage(client, message, rawLength) {
   }
 
   if (message.t==='impact') {
-    if ((room.mode!=='pvp' && !(room.mode==='digtrade'&&room.adminPvpOverride)) || (room.mode==='pvp' && (!room.battle || (room.battle.phase!=='fight'&&room.battle.phase!=='elimination'))) || !client.alive || client.eliminated) return;
+    if (room.mode!=='pvp' || !room.battle || (room.battle.phase!=='fight'&&room.battle.phase!=='elimination') || !client.alive || client.eliminated) return;
     const x=Number(message.x),y=Number(message.y),impactType=Number(message.impactType)|0;
     if (!Number.isFinite(x)||!Number.isFinite(y)) return;
     for (const target of room.clients) {
@@ -2351,139 +1741,26 @@ function relayGameMessage(client, message, rawLength) {
 
   if (ALLOWED_RELAY_TYPES.has(message.t)) { broadcastRoom(room,envelope,client); return; }
 
-  function normalizeRoomTileAt(room,x,y){
-    const key=`${x},${y}`;
-    const fg=room.tiles.get(key)||null, bg=room.backgroundTiles.get(key)||null;
-    const repairs=[];
-    if(fg && expectedBlockLayer(fg.id)===2){
-      room.tiles.delete(key);
-      if(!room.backgroundTiles.has(key)){
-        const moved={...fg,layer:2};
-        room.backgroundTiles.set(key,moved);
-        repairs.push({fromLayer:0,toLayer:2,tile:moved});
-      } else {
-        // A canonical background tile already exists at this coordinate.
-        // The stale foreground copy still has to be removed from every client.
-        repairs.push({fromLayer:0,toLayer:2,tile:null});
-      }
-    }
-    const bg2=room.backgroundTiles.get(key)||null;
-    if(bg2 && expectedBlockLayer(bg2.id)!==2){
-      room.backgroundTiles.delete(key);
-      if(!room.tiles.has(key)){
-        const moved={...bg2,layer:0};
-        room.tiles.set(key,moved);
-        repairs.push({fromLayer:2,toLayer:0,tile:moved});
-      } else {
-        repairs.push({fromLayer:2,toLayer:0,tile:null});
-      }
-    }
-    // IMPORTANT: the previous build repaired only the server's Maps. That left
-    // the client's old layer intact, so the block could become visible but
-    // unmineable/unmodifiable. Push the actual layer repair to every client.
-    for(const repair of repairs){
-      broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:repair.fromLayer,_serverCorrection:true,_serverLayerRepair:true});
-      if(repair.tile){
-        broadcastRoom(room,{t:'tile',x,y,id:repair.tile.id|0,variant:repair.tile.variant|0,layer:repair.toLayer,_serverCorrection:true,_serverLayerRepair:true,replace:true});
-      }
-    }
-    return {corrected:repairs.length>0,repairs,fg:room.tiles.get(key)||null,bg:room.backgroundTiles.get(key)||null};
-  }
-  function sendLayerCorrection(room,client,x,y,oldLayer,oldTile,newLayer,newTile){
-    if(oldLayer!==newLayer){
-      broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:oldLayer,_serverCorrection:true,_serverFrom:client.connectionId,_serverName:client.name});
-    }
-    if(newTile){
-      broadcastRoom(room,{t:'tile',x,y,id:newTile.id|0,variant:newTile.variant|0,layer:newLayer,_serverCorrection:true,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
-    }
-  }
-
-  if (message.t==='replace-block') {
-    const x=Number(message.x)|0,y=Number(message.y)|0,id=Number(message.id)|0,variant=Number(message.variant)|0;
-    if(x<0||x>=128||y<0||y>=80||id<=0)return;
-    if(!client.position||!client.alive||client.eliminated)return;
-    if(Math.hypot(client.position.x-x,client.position.y-y)>5)return;
-    if(placementBlockedByAnyPlayer(room,x,y))return;
-    normalizeRoomTileAt(room,x,y);
-    const desired=expectedBlockLayer(id),key=`${x},${y}`;
-    const priorStore=desired===2?room.backgroundTiles:room.tiles, otherStore=desired===2?room.tiles:room.backgroundTiles;
-    const prior=priorStore.get(key)||otherStore.get(key);
-    if(!prior || (prior.id|0)!==id)return;
-    const inv=message.inventoryItem||{};
-    if((inv.category|0)!==1 || (inv.id|0)!==id)return;
-    const now=Date.now();
-    if(now-(client.lastReplaceBlockAt||0)<55)return;
-    client.lastReplaceBlockAt=now;
-    const oldLayer=otherStore.has(key)?(desired===2?0:2):desired;
-    otherStore.delete(key);
-    const next={x,y,id,variant,layer:desired,ownerConnectionId:client.connectionId};
-    priorStore.set(key,next);
-    room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
-    sendLayerCorrection(room,client,x,y,oldLayer,prior,desired,next);
-    return;
-  }
-  if (message.t==='block-variant') {
-    const x=Number(message.x)|0,y=Number(message.y)|0,id=Number(message.id)|0,variant=Math.max(0,Math.min(31,Number(message.variant)|0));
-    if(x<0||x>=128||y<0||y>=80||!client.alive||client.eliminated)return;
-    if(Math.hypot(client.position.x-x,client.position.y-y)>5)return;
-    if(placementBlockedByAnyPlayer(room,x,y))return;
-    normalizeRoomTileAt(room,x,y);
-    const desired=expectedBlockLayer(id),key=`${x},${y}`,want=desired===2?room.backgroundTiles:room.tiles,other=desired===2?room.tiles:room.backgroundTiles;
-    const prior=want.get(key)||other.get(key);
-    if(!prior || (prior.id|0)!==id)return;
-    const oldLayer=other.has(key)?(desired===2?0:2):desired;
-    other.delete(key);
-    const next={x,y,id,variant,layer:desired,ownerConnectionId:client.connectionId};
-    want.set(key,next);
-    sendLayerCorrection(room,client,x,y,oldLayer,prior,desired,next);
-    return;
-  }
-
   if (message.t==='tile') {
-    // 23.7-main style: accept and broadcast so all peers see place/mine.
-    const x = Number(message.x) | 0;
-    const y = Number(message.y) | 0;
-    const id = Number(message.id) | 0;
-    const variant = Number(message.variant) | 0;
-    let layer = Number(message.layer) | 0;
-    if (layer === 1) return; // never a legal tile layer
-    layer = layer === 2 ? 2 : 0;
-    if (x < 0 || x >= 128 || y < 0 || y >= 80) return;
-    // Track live position from client when provided (does not reject).
-    const packetPX = Number(message.px), packetPY = Number(message.py);
-    if (Number.isFinite(packetPX) && Number.isFinite(packetPY)) {
-      client.position = { x: packetPX, y: packetPY };
-    }
-    const key = layer === 2 ? `bg:${x},${y}` : `${x},${y}`;
-    const tile = { x, y, id, variant, layer, ownerConnectionId: client.connectionId };
-    if (room.mode === 'digtrade' && id === 122 && layer === 0) {
-      if (room.speaker && (room.speaker.x !== x || room.speaker.y !== y)) {
-        const prior = room.tiles.get(key);
-        sendJson(client, { t: 'speaker-place-blocked', x, y, tile: prior ? { id: prior.id | 0, variant: prior.variant | 0 } : { id: 0, variant: 0 } });
-        return;
+    const tile={x:Number(message.x)|0,y:Number(message.y)|0,id:Number(message.id)|0,variant:Number(message.variant)|0,ownerConnectionId:client.connectionId};
+    if(tile.x<0||tile.x>=128||tile.y<0||tile.y>=80)return;
+    const key=`${tile.x},${tile.y}`, prior=room.tiles.get(key);
+    if(room.mode==='digtrade'&&tile.id===122){
+      if(room.speaker && (room.speaker.x!==tile.x||room.speaker.y!==tile.y)){
+        sendJson(client,{t:'speaker-place-blocked',x:tile.x,y:tile.y,tile:prior?{id:prior.id|0,variant:prior.variant|0}:{id:0,variant:0}});return;
       }
-      room.speaker = { x, y, on: false, trackIndex: 0, startedAt: 0, ownerConnectionId: client.connectionId };
+      room.speaker={x:tile.x,y:tile.y,on:false,trackIndex:0,startedAt:0,ownerConnectionId:client.connectionId};
     }
-    if (layer === 2) {
-      if (!room.backgroundTiles) room.backgroundTiles = new Map();
-      room.backgroundTiles.set(key, tile);
-    } else {
-      room.tiles.set(key, tile);
+    room.tiles.set(key,tile);
+    if(tile.id===0){
+      if(prior&&prior.id===122&&room.speaker&&room.speaker.x===tile.x&&room.speaker.y===tile.y)room.speaker=null;
+      room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
     }
-    if (id === 0) {
-      if (room.speaker && room.speaker.x === x && room.speaker.y === y) room.speaker = null;
-      try { room.cottonMachines.delete(`${x},${y}`); } catch (_) {}
-      try { room.turretCooldowns.delete(`${x},${y}`); } catch (_) {}
-    }
-    broadcastRoom(room, Object.assign({ t: 'tile' }, tile, {
-      _serverFrom: client.connectionId,
-      _serverName: client.name
-    }));
-    if ((id === 122 || (room.speaker && room.speaker.x === x && room.speaker.y === y)) && typeof syncSpeaker === 'function') {
-      try { syncSpeaker(room); } catch (_) {}
-    }
+    broadcastRoom(room,Object.assign({t:'tile'},tile,{_serverFrom:client.connectionId,_serverName:client.name}));
+    if((prior&&prior.id===122)||tile.id===122)syncSpeaker(room);
     return;
   }
+
   if(message.t==='speaker-toggle'){
     if(room.mode!=='digtrade'||!room.speaker)return;
     const x=Number(message.x)|0,y=Number(message.y)|0;if(room.speaker.x!==x||room.speaker.y!==y)return;
@@ -2517,11 +1794,9 @@ function relayGameMessage(client, message, rawLength) {
   }
 
   if (message.t==='damage') {
-    // Dig+Trade: no player damage ever.
-    // PvP: client-sent damage ignored (server-authoritative combat).
-    if (room.mode==='digtrade') return;
+    // PvP damage is authoritative in Build 23.3. Ignore old client-side hit guesses.
     if (room.mode==='pvp') return;
-    const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target||target===client)return;if(target.adminEffects&&target.adminEffects.god)return;sendJson(target,envelope);return;
+    const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target||target===client)return;sendJson(target,envelope);return;
   }
 
   if (message.t==='admin-message') {
@@ -2634,7 +1909,6 @@ function leaveRoom(client) {
   if (!room) return;
 
   if (client.trade) cancelTrade(client, 'Player disconnected.');
-  for(const other of room.clients){if(other!==client&&other.controlledBy===client.connectionId){other.controlledBy='';sendJson(other,{t:'admin-control-released'});}}
   room.clients.delete(client);
   client.room = null;
 
@@ -2859,30 +2133,6 @@ async function handleAdminApi(req, res, urlPath) {
     pruneExpiredBans(true);
     sendApiJson(res,200,{ok:true,bans:bans.map(publicBan)}); return true;
   }
-  if (urlPath === '/api/admin/maps' && req.method === 'GET') {
-    const session=adminSessionForRequest(req); if(!session){sendApiJson(res,401,{ok:false,error:'admin-auth'});return true;}
-    const mapsOnDisk=loadCustomMaps();
-    const maps=[{name:'Default Map',map:makeDefaultMap()}].concat(mapsOnDisk.map(m=>({name:m.name,map:m})));
-    sendApiJson(res,200,{ok:true,maps}); return true;
-  }
-  if (urlPath === '/api/admin/map/apply' && req.method === 'POST') {
-    const session=adminSessionForRequest(req); if(!session){sendApiJson(res,401,{ok:false,error:'admin-auth'});return true;}
-    let body; try{body=await readJsonBody(req,2*1024*1024)}catch{sendApiJson(res,400,{ok:false,error:'bad-request'});return true;}
-    const roomCode=String(body&&body.roomCode||'').trim().toUpperCase(); const room=rooms.get(roomCode);
-    if(!room){sendApiJson(res,404,{ok:false,error:'room-not-found'});return true;}
-    const map=body&&body.map===null?makeDefaultMap():sanitizeMap(body&&body.map,'admin-upload.json');
-    if(!map){sendApiJson(res,400,{ok:false,error:'invalid-map'});return true;}
-    room.map=map; room.tiles.clear();room.backgroundTiles.clear();room.drops.clear();room.coins.clear();room.cottonMachines.clear();room.turretCooldowns.clear();room.adminBackground=null;
-    if(room.mode==='pvp'&&room.battle){room.battle.phase='waiting';room.battle.fightAt=0;room.battle.nextShrinkAt=0;room.battle.shrinkStage=0;room.battle.warningStage=0;room.battle.inset=0;room.battle.left=BATTLE_MIN_LEFT;room.battle.right=BATTLE_MAX_RIGHT;room.battle.elimination=false;room.battle.winnerConnectionId='';room.battle.finishedAt=0;}
-    for(const c of room.clients){c.alive=true;c.eliminated=false;c.pvpHealth=3;c.position={x:randomSpawnX(room),y:2};sendJson(c,{t:'force-respawn',x:c.position.x,y:c.position.y,health:3});}
-    for(const f of room.fakePlayers.values()){f.y=2;f.vy=0;}
-    broadcastRoom(room,{t:'admin-map-replaced',map:room.map,tiles:[],backgroundTiles:[],drops:[],coins:[],serverNow:Date.now()});
-    broadcastRoom(room,{t:'room-state',room:room.code,map:room.map,tiles:[],backgroundTiles:[],drops:[],coins:[],adminBackground:null,adminPvpOverride:!!room.adminPvpOverride,fakePlayers:[...room.fakePlayers.values()].map(fakePlayerSnapshot),serverNow:Date.now()});
-    if(room.mode==='pvp'){broadcastBattleState(room);if(room.clients.size>=2)startBattleBuild(room);}
-    log(`Admin ${session.role} replaced map in room ${room.code} with ${map.name}.`);
-    sendApiJson(res,200,{ok:true,mapName:map.name,room:room.code}); return true;
-  }
-
   if (urlPath === '/api/admin/donations' && req.method === 'GET') {
     const session = adminSessionForRequest(req);
     if (!session) { sendApiJson(res,401,{ok:false,error:'admin-auth'}); return true; }
@@ -2992,7 +2242,7 @@ function buildItchClientZip() {
 
   let itchHtml = gameHtml.toString('utf8');
   const localAssets = [
-    'tiles.png','bknd.png','reblasted.png','favicon.png','levelup.ogg',
+    'tiles.png','bknd.png','levelup.ogg',
     'music_theme.ogg','music_theme2.ogg','music_theme3.ogg','music_theme4.ogg',
     'balloon_pop.ogg','swap.ogg','mule.ogg','build239-client.js','build240-client.js'
   ];
@@ -3012,8 +2262,6 @@ function buildItchClientZip() {
     { name: 'index.html', data: Buffer.from(itchHtml, 'utf8') },
     { name: 'tiles.png', data: tilesPng },
     { name: 'bknd.png', data: bkndPng },
-    { name: 'reblasted.png', data: reblastedPng },
-    { name: 'favicon.png', data: faviconPng },
     { name: 'levelup.ogg', data: levelupOgg },
     { name: 'music_theme.ogg', data: musicOgg[0] },
     { name: 'music_theme2.ogg', data: musicOgg[1] },
@@ -3069,22 +2317,6 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (urlPath === '/banned') { const body=Buffer.from(banPageHtml(),'utf8'); res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Content-Length':body.length,'Cache-Control':'no-store'}); res.end(body); return; }
-  if (urlPath === '/map-editor') {
-    try {
-      const editorPath = path.join(__dirname, 'map-editor.html');
-      const body = fs.readFileSync(editorPath);
-      res.writeHead(200, {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Content-Length': body.length,
-        'Cache-Control': 'no-store'
-      });
-      res.end(body);
-    } catch (error) {
-      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
-      res.end('Diggerz map editor is missing on the server.\n');
-    }
-    return;
-  }
   if (urlPath === '/') {
     if (!gameHtml) {
       res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -3101,22 +2333,9 @@ const server = http.createServer(async (req, res) => {
   }
   if (urlPath === '/build239-client.js') { serveBuffer(res,build239ClientJs,'application/javascript; charset=utf-8'); return; }
   if (urlPath === '/build240-client.js') { serveBuffer(res,build240ClientJs,'application/javascript; charset=utf-8'); return; }
+  if (urlPath === '/map-editor' || urlPath === '/map-editor.html') { serveBuffer(res,mapEditorHtml,'text/html; charset=utf-8'); return; }
   if (urlPath === '/tiles.png') { serveBuffer(res,tilesPng,'image/png'); return; }
   if (urlPath === '/bknd.png') { serveBuffer(res,bkndPng,'image/png'); return; }
-  if (urlPath === '/reblasted.png') { serveBuffer(res,reblastedPng,'image/png'); return; }
-  if (urlPath === '/favicon.png') { serveBuffer(res,faviconPng,'image/png'); return; }
-  if (urlPath === '/favicon.ico') {
-    // Many browsers request /favicon.ico by default; serve the PNG with a
-    // compatible type so the tab icon still appears.
-    if (!faviconPng) { res.writeHead(404,{'Content-Type':'text/plain; charset=utf-8'}); res.end('Missing file.\n'); return; }
-    res.writeHead(200,{
-      'Content-Type':'image/x-icon',
-      'Content-Length':faviconPng.length,
-      'Cache-Control':'public, max-age=86400'
-    });
-    res.end(faviconPng);
-    return;
-  }
   if (urlPath === '/levelup.ogg') { serveBuffer(res,levelupOgg,'audio/ogg'); return; }
   if (urlPath === '/music_theme.ogg') { serveBuffer(res,musicOgg[0],'audio/ogg'); return; }
   if (urlPath === '/music_theme2.ogg') { serveBuffer(res,musicOgg[1],'audio/ogg'); return; }
@@ -3209,8 +2428,6 @@ server.on('upgrade', (req, socket) => {
     binaryRateCount: 0,
     trade: null,
     pvpHealth: 3, alive: true, eliminated: false, kills: 0, shots: 0, hits: 0,
-    adminEffects: {god:false,fly:false,noclip:false,invis:false},
-    adminModifiers: {speed:1,jump:1,size:1,breakSpeed:1},
     position: {x:12,y:2}, aim: {x:12,y:16}, lastAttackerConnectionId: '', lastDamagedAt: 0
   };
 
