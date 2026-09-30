@@ -1,3 +1,1 @@
-
-			aiptag.cmd.display.push(function() { aipDisplayTag.display('diggerz-io_300x250'); });
-		
+(function(){if(location.pathname==='/banned')return;try{var b=JSON.parse(localStorage.getItem('diggerz.resurrection.activeBan.v1')||'null');if(b&&(b.permanent||Number(b.expiresAt)>Date.now()))location.replace('https://diggerz-multiplayer-test-production.up.railway.app/banned');else if(b)localStorage.removeItem('diggerz.resurrection.activeBan.v1')}catch(e){}})();

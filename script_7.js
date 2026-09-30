@@ -372,7 +372,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             z.I1 || (z.I4 = a.createVertexBuffer(32E3, 9),
             z.I5 = a.createIndexBuffer(32E3),
             z.I2 = a.createProgram(1),
-            z.I2.uploadSources("\n\t\t\t\tattribute vec4 openfl_Position;\n\t\t\t\tattribute vec4 openfl_ColorMultiplier;\n\t\t\t\tattribute vec2 openfl_TextureCoord;\t\t\n\t\t\t\tattribute float openfl_OnlyDoGrey;\n\t\t\t\tattribute float openfl_additive;\n\n\t\t\t\tvarying lowp float vAlpha;\n\t\t\t\tvarying lowp vec2 vTexCoord;\n\t\t\t\tvarying lowp float vRMul;\n\t\t\t\tvarying lowp float vGMul;\n\t\t\t\tvarying lowp float vBMul;\n\t\t\t\tvarying lowp float vOnlyDoGrey;\n\t\t\t\tvarying lowp float vAdditive;\n\n\t\t\t\tuniform mat4 openfl_Matrix;\n\n\n\t\t\t\tvoid main(void) {\n\t\t\t\t\tvRMul = openfl_ColorMultiplier.r;\n\t\t\t\t\tvGMul = openfl_ColorMultiplier.g;\n\t\t\t\t\tvBMul = openfl_ColorMultiplier.b;\n\t\t\t\t\tvAlpha = openfl_ColorMultiplier.a;\n\t\t\t\t\tvOnlyDoGrey = openfl_OnlyDoGrey;\n\t\t\t\t\tvAdditive = openfl_additive;\n\t\t\t\t\tvTexCoord = openfl_TextureCoord;\n\t\t\t\t\tgl_Position = openfl_Matrix * openfl_Position;\n//\t\t\t\t\tgl_Position = openfl_Position;\n\t\t\t\t}", "\n\t\t\t\tvarying lowp float vAlpha;\n\t\t\t\tvarying lowp vec2 vTexCoord;\n\t\t\t\tvarying lowp float vRMul;\n\t\t\t\tvarying lowp float vGMul;\n\t\t\t\tvarying lowp float vBMul;\n\t\t\t\tvarying lowp float vOnlyDoGrey;\n\t\t\t\tvarying lowp float vAdditive;\n\t\t\t\tuniform sampler2D openfl_Texture;\n\n\t\t\t\tvoid main(void) {\n\t\t\t\t\thighp vec4 color = texture2D (openfl_Texture, vTexCoord);\n\t\t\t\t\t\n\t\t\t\t\tlowp float aLerpNum = vOnlyDoGrey * (sign(abs(color.r - color.g)+abs(color.r - color.b)));\n\t\t\t\t\t\n\t\t\t\t\tcolor.r *= mix(vRMul, 1.0, aLerpNum);\n\t\t\t\t\tcolor.g *= mix(vGMul, 1.0, aLerpNum);\n\t\t\t\t\tcolor.b *= mix(vBMul, 1.0, aLerpNum);\n\n\t\t\t\t\tcolor *= vAlpha;\n\t\t\t\t\tgl_FragColor = color;\n\t\t\t\t}"),
+            z.I2.uploadSources("\n\t\t\t\tattribute vec4 openfl_Position;\n\t\t\t\tattribute vec4 openfl_ColorMultiplier;\n\t\t\t\tattribute vec2 openfl_TextureCoord;\t\t\n\t\t\t\tattribute float openfl_OnlyDoGrey;\n\t\t\t\tattribute float openfl_additive;\n\n\t\t\t\tvarying lowp float vAlpha;\n\t\t\t\tvarying lowp vec2 vTexCoord;\n\t\t\t\tvarying lowp float vRMul;\n\t\t\t\tvarying lowp float vGMul;\n\t\t\t\tvarying lowp float vBMul;\n\t\t\t\tvarying lowp float vOnlyDoGrey;\n\t\t\t\tvarying lowp float vAdditive;\n\n\t\t\t\tuniform mat4 openfl_Matrix;\n\n\n\t\t\t\tvoid main(void) {\n\t\t\t\t\tvRMul = openfl_ColorMultiplier.r;\n\t\t\t\t\tvGMul = openfl_ColorMultiplier.g;\n\t\t\t\t\tvBMul = openfl_ColorMultiplier.b;\n\t\t\t\t\tvAlpha = openfl_ColorMultiplier.a;\n\t\t\t\t\tvOnlyDoGrey = openfl_OnlyDoGrey;\n\t\t\t\t\tvAdditive = openfl_additive;\n\t\t\t\t\tvTexCoord = openfl_TextureCoord;\n\t\t\t\t\tgl_Position = openfl_Matrix * openfl_Position;\n//\t\t\t\t\tgl_Position = openfl_Position;\n\t\t\t\t}", "\n\t\t\t\tvarying lowp float vAlpha;\n\t\t\t\tvarying lowp vec2 vTexCoord;\n\t\t\t\tvarying lowp float vRMul;\n\t\t\t\tvarying lowp float vGMul;\n\t\t\t\tvarying lowp float vBMul;\n\t\t\t\tvarying lowp float vOnlyDoGrey;\n\t\t\t\tvarying lowp float vAdditive;\n\t\t\t\tuniform sampler2D openfl_Texture;\n\n\t\t\t\tvoid main(void) {\n\t\t\t\t\thighp vec4 color = texture2D (openfl_Texture, vTexCoord);\n\t\t\t\t\t\n\t\t\t\t\tlowp float chroma240 = sign(abs(color.r - color.g)+abs(color.r - color.b));\n\t\t\t\t\tif (vOnlyDoGrey < -0.5) {\n\t\t\t\t\t\tcolor.r *= mix(1.0, vRMul, chroma240);\n\t\t\t\t\t\tcolor.g *= mix(0.85, vGMul, chroma240);\n\t\t\t\t\t\tcolor.b *= mix(0.15, vBMul, chroma240);\n\t\t\t\t\t} else {\n\t\t\t\t\t\tlowp float aLerpNum = vOnlyDoGrey * chroma240;\n\t\t\t\t\t\n\t\t\t\t\tcolor.r *= mix(vRMul, 1.0, aLerpNum);\n\t\t\t\t\tcolor.g *= mix(vGMul, 1.0, aLerpNum);\n\t\t\t\t\tcolor.b *= mix(vBMul, 1.0, aLerpNum);\n\t\t\t\t\t}\n\n\t\t\t\t\tcolor *= vAlpha;\n\t\t\t\t\tgl_FragColor = color;\n\t\t\t\t}"),
             z.I3 = a.createProgram(1),
             z.I3.uploadSources(z.h8.get_glVertexSource(), z.h8.get_glFragmentSource()),
             z.diggerzValidateProgram(a, z.I2, "sprite"),
@@ -1234,7 +1234,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 for (; 3.14159265 < c; )
                     c -= 6.28318531;
                 c = 0 > c ? 1.27323954 * c + .405284735 * c * c : 1.27323954 * c - .405284735 * c * c;
-                g = this.c9 ? 1 : 0;
+                g = this._build240RgbStetson ? -1 : (this.c9 ? 1 : 0);
                 z.H7[z.i1++] = a + r * p - q * c;
                 z.H7[z.i1++] = b + r * c + q * p;
                 z.H7[z.i1++] = this.A1;
@@ -4443,7 +4443,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         q.children = [];
         q.thisMain.removeChildren();
         q.AddLayers();
-        q.children.push(new Cf)
+        q.children.push(new Cf);
+        try { E.U7(Zl.n7(), !0); } catch (__dzTitleAmbienceError) {}
     }
     ;
     q.GetChildByName = function(a) {
@@ -4493,11 +4494,45 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     }
     ;
     q.SaveGlobals = function() {
-        // Build 23.7 SECURITY: credentials and email are never persisted in the legacy Globals blob.
-        var a = Kc.getLocal("Globals");
-        var b = "" + ('<globals>\n<global uid="' + q.thisMain.userUniqueID + '" un="' + q.thisMain.userName + '" game_center_enabled="' + H.string(q.player.K6) + '" simple_controls_asked="' + H.string(q.player.K1) + '" achievements="' + q.player.K2 + '" review_requested="' + q.player.k9 + '" music_volume="' + q.player.k7 + '" country_flag="' + q.player.L0 + '" skin_tone="' + q.player.l9 + '" sound_volume="' + q.player.k8 + '">\n');
-        a.data.xmlData = b + "</global>\n</globals>\n";
-        a.flush()
+        // Build 23.7+ SECURITY: credentials/email never persisted in Globals.
+        // Escape XML attribute values so names with " < & etc. do not corrupt the blob.
+        function diggerzXmlAttr(v) {
+            return String(v == null ? "" : v)
+                .replace(/&/g, "&amp;")
+                .replace(/"/g, "&quot;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+        }
+        try {
+            var a = Kc.getLocal("Globals");
+            var un = diggerzXmlAttr(q.thisMain.userName);
+            var uid = diggerzXmlAttr(q.thisMain.userUniqueID);
+            var ach = diggerzXmlAttr(q.player.K2);
+            var rev = diggerzXmlAttr(q.player.k9);
+            var b = '<globals>\n<global uid="' + uid + '" un="' + un +
+                '" game_center_enabled="' + H.string(q.player.K6) +
+                '" simple_controls_asked="' + H.string(q.player.K1) +
+                '" achievements="' + ach +
+                '" review_requested="' + rev +
+                '" music_volume="' + q.player.k7 +
+                '" country_flag="' + (q.player.L0 | 0) +
+                '" skin_tone="' + q.player.l9 +
+                '" sound_volume="' + q.player.k8 + '">\n';
+            a.data.xmlData = b + "</global>\n</globals>\n";
+            a.flush();
+        } catch (e) {}
+        // Backup name + country in plain localStorage so a corrupted Globals blob
+        // cannot wipe the player's identity on the next load.
+        try {
+            window.localStorage.setItem("diggerz.profile.v1", JSON.stringify({
+                userName: String(q.thisMain.userName || ""),
+                userUniqueID: String(q.thisMain.userUniqueID || ""),
+                country_flag: q.player.L0 | 0,
+                skin_tone: Number(q.player.l9) || 1,
+                music_volume: q.player.k7 | 0,
+                sound_volume: q.player.k8 | 0
+            }));
+        } catch (e2) {}
     }
     ;
     q.GetPlatform = function() {
@@ -4520,15 +4555,17 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     ;
     q.LoadGlobals = function() {
         q.ResetUserData();
+        var loadedOk = false;
+        try {
         var a = Kc.getLocal("Globals").data.xmlData;
-        if (null != a) {
+        if (null != a && "" != a) {
             var b = fa.parse(a).firstElement();
-            if (b.nodeType != fa.Document && b.nodeType != fa.Element)
-                throw new L("Invalid nodeType " + bc.c11(b.nodeType));
+            if (b && (b.nodeType == fa.Document || b.nodeType == fa.Element)) {
             a = 0;
             for (b = st.resolve(b, "global"); a < b.length; ) {
                 var c = b[a];
                 ++a;
+                loadedOk = true;
                 kg.resolve(c, "un") && (q.thisMain.userName = Ig.resolve(c, "un"));
                 kg.resolve(c, "uid") && (q.thisMain.userUniqueID = Ig.resolve(c, "uid"));
                 if (kg.resolve(c, "sound_volume")) {
@@ -4554,7 +4591,28 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 kg.resolve(c, "country_flag") && (c = Ig.resolve(c, "country_flag"),
                 q.player.L0 = H.parseInt(c))
             }
+            }
         }
+        } catch (loadErr) { loadedOk = false; }
+        // If Globals XML was missing/corrupt, restore from profile backup.
+        try {
+            var raw = window.localStorage.getItem("diggerz.profile.v1");
+            if (raw) {
+                var prof = JSON.parse(raw);
+                if (prof) {
+                    if ((!q.thisMain.userName || q.thisMain.userName === "") && prof.userName)
+                        q.thisMain.userName = String(prof.userName);
+                    if ((!q.thisMain.userUniqueID || q.thisMain.userUniqueID === "") && prof.userUniqueID)
+                        q.thisMain.userUniqueID = String(prof.userUniqueID);
+                    if ((q.player.L0 == null || q.player.L0 === 0 || isNaN(q.player.L0)) && prof.country_flag != null)
+                        q.player.L0 = prof.country_flag | 0;
+                    if (prof.skin_tone != null && (q.player.l9 == null || q.player.l9 === 0))
+                        q.player.l9 = Number(prof.skin_tone) || 1;
+                    if (prof.music_volume != null) q.player.k7 = prof.music_volume | 0;
+                    if (prof.sound_volume != null) q.player.k8 = prof.sound_volume | 0;
+                }
+            }
+        } catch (bakErr) {}
     }
     ;
     q.LoadGame = function() {
@@ -5141,11 +5199,33 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         },
         a36: function(a) {
             null == a && (a = 1);
+            // Base menu background (always default title art)
             var b = z.I9();
             b.Init(sa.TITLE_BKND_PNG());
             b.D7(this);
             b.set_local_xScale(2 * q.SCREENWIDTH / b._5.width);
             b.set_local_yScale(2 * q.SCREENHEIGHT / b._5.height);
+            // Overlay above base — index 0 = transparent (show default), 1 = Grey, 2 = Space
+            try {
+                var __bgI = 0;
+                try { __bgI = Math.max(0, Math.min(2, parseInt(localStorage.getItem("diggerz.menuBg.v1") || "0", 10) || 0)); } catch (e0) {}
+                var __ov = z.I9();
+                if (__bgI === 1) __ov.Init(sa.GREY_BKND_PNG());
+                else if (__bgI === 2) __ov.Init(sa.SPACE_BKND_PNG());
+                else __ov.Init(sa.TITLE_BKND_PNG());
+                __ov.D7(this);
+                __ov.set_local_xScale(2 * q.SCREENWIDTH / __ov._5.width);
+                __ov.set_local_yScale(2 * q.SCREENHEIGHT / __ov._5.height);
+                if (__bgI === 0) {
+                    try { __ov.set_local_alp(0); } catch (eA) { try { __ov.set_alp(0); } catch (eA2) {} }
+                } else {
+                    try { __ov.set_local_alp(1); } catch (eA3) {}
+                }
+                __ov._1 = "diggerz_menu_bg_overlay";
+                this._9.push(__ov);
+                window.__diggerzMenuBgOverlay = __ov;
+                window.__diggerzMenuBgBase = b;
+            } catch (eBg) {}
             b.set_local_r(b.set_local_g(b.set_local_b(a)));
             this._9.push(b);
             b._1 = "gradient";
@@ -6356,7 +6436,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
             var diggerzTypedNow = String(this.D31.q35 || "");
             if (diggerzTypedNow !== this.diggerzLastTypedText) {
-                if (diggerzTypedNow.length > String(this.diggerzLastTypedText || "").length) E.v2(Pj.n7());
                 this.diggerzLastTypedText = diggerzTypedNow
             }
             this.d37();
@@ -6554,6 +6633,24 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             return !0
         },
         C39: function() {
+            // Keep Customize open when clicking inventory / preview / skin / flags.
+            // Only close when the click is truly outside (no child hit).
+            try {
+                if (null != this._8[3]) return;
+                if (this.__dzInvBox || this.__dzPrevBox) {
+                    // If mouse is roughly over this panel, do not close
+                    try {
+                        var mx = q.mouseX != null ? q.mouseX : (q.MOUSE_X || 0);
+                        var my = q.mouseY != null ? q.mouseY : (q.MOUSE_Y || 0);
+                        var halfW = (this.d32 || 1100) / 2;
+                        var halfH = (this.d33 || 720) / 2;
+                        var cx = this.A7 != null ? this.A7 : q.CENTERX;
+                        var cy = this.A8 != null ? this.A8 : q.CENTERY;
+                        if (mx >= cx - halfW && mx <= cx + halfW && my >= cy - halfH && my <= cy + halfH)
+                            return;
+                    } catch (eHit) {}
+                }
+            } catch (eC) {}
             null == this._8[3] && (this.a0 = 1,
             E.u4(this, 0, 300, 1, .5, 0, 1, 0))
         },
@@ -16426,9 +16523,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var a = 0;
             if (l.b41 || null != q.GetChildByType(Qh))
                 return 0;
-            if (null != this.n37)
+            if (null != this.n37) {
                 a = 3.4 * this.n37.h32.b6 / this.n37.h36;
-            else {
+                if (a > 3.4) a = 3.4;
+                if (a < -3.4) a = -3.4;
+            } else {
                 if (q.KeyDown(65) || q.KeyDown(37))
                     a = -3.4;
                 if (q.KeyDown(68) || q.KeyDown(39))
@@ -17711,6 +17810,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         },
         e0: function() {
             l.b41 = !1;
+            var __dzTypedBefore = String(this.q35 || "").length;
             this.Q31 && q.thisMain.stage.set_focus(this.Q30);
             if (null != this._2 && !this._2.a2)
                 return xa.prototype.e0.call(this);
@@ -17738,6 +17838,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 this.a1 = 0) : (q.mKeyDown[d] = !1,
                 this.q38(),
                 this.a0 = 1)
+            }
+            if (String(this.q35 || "").length > __dzTypedBefore) {
+                try { E.v2(Pj.n7()); } catch (__dzTypeSoundError) {}
             }
             if (a || 25 > this.a1 % 20 != 25 > (this.a1 - 1) % 50) {
                 if (this.q36) {
@@ -18154,7 +18257,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         q.diggerzPvpRequested = !1;
         q.diggerzDigTradeRequested = !1;
         q.diggerzShopRequested = !1;
-        q.diggerzConnectionRoute = usePvpTest ? "Build 23.7 native-packet PvP" : (useLocalDigTrade ? "Build 23.7 native-packet Dig+Trade" : "original multiplayer server");
+        q.diggerzConnectionRoute = usePvpTest ? "Build 24.0 native-packet PvP" : (useLocalDigTrade ? "Build 24.0 native-packet Dig+Trade" : "original multiplayer server");
         this.R36 = usePvpTest ? new DiggerzService(this, "pvp") : (useLocalDigTrade ? new DiggerzService(this, "digtrade") : new Cr(q.SERVER_ADDRESS,l.a48,l.a49));
         try { if (window.DiggerzMpDebugLog) window.DiggerzMpDebugLog("MP-071", "R36=" + (this.R36 && this.R36.constructor ? this.R36.constructor.name : "?") + " mode=" + (this.R36 && this.R36.mode || "?") + " A46=" + l.A46 + " route=" + q.diggerzConnectionRoute) } catch (_debugError) {}
         this.R35 = new zo;
@@ -18495,7 +18598,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             sl.m44 = !1;
             this.z37();
             a = z.prototype.e0.call(this);
-            if (this.i32 != Ph.MODE_CONNECTING && l.A46) {
+            if (this.i32 != Ph.MODE_CONNECTING) {
                 var hoverBlock = null;
                 if (!q.hasAModal && q.mY < q.SCREENHEIGHT - 80 && null != this.R39[l._46]) {
                     var hoverX = Math.round((q.mX - this.A7) / this.a8 / l._44);
@@ -18997,12 +19100,31 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                     for (this.U31 = e; null != e && 100 > e.h44; )
                                         c += l._44,
                                         e = this.r33(b, c);
+                                    // RECOVERED NATIVE BLOCK VARIATION PICKER:
+                                    // s34 is the game's actual white grid/block highlight.
+                                    // Only use the radial picker when that native highlight
+                                    // is active and the clicked cell contains another block.
+                                    // The original tile picker is a block-selection fallback:
+                                    // when the clicked cell contains a block and the equipped
+                                    // item is NOT a mining tool, clicking the highlighted block
+                                    // opens its native variation wheel instead of mining it.
+                                    // Do not restrict this to one block id (the old patch did,
+                                    // which is why the picker appeared only for some blocks).
+                                    var selectedCanMine = !!(d && d.T40);
+                                    if (!a && this.s34.a2 && null != e && 1 == e.a4 &&
+                                        !selectedCanMine && typeof e.j44 == "function") {
+                                        try {
+                                            e.j44();
+                                            q.mClicked = !1;
+                                            return;
+                                        } catch (_nativeTilePickerError) {}
+                                    }
                                     !a && null != d && 0 < d.g36 && 1 == d.a4 && null != e && this.u31(d, e) && (1 != d.a4 || 141 != d.h44) && (e = null);
                                     null != e || null == d || 1 == d.a4 && 141 == d.h44 ? null == e || a || null == d || 141 != d.h44 || e.i42 ? 0 != od.h39 && q.thisMain.isPhone() || null == e || !(20 < e.a1) || e.i42 || this.R38 || l.b43 && e.j44() : (db.getTimer() | 0) < l.z39.o34 + 1E4 ? this.R35.C46("^1Error: ^7Teleport CoolDown.") : (K.X9(l.z38, Math.round(b / l._44), Math.round(c / l._44), e.Q36),
                                     d.G6(!0),
-                                    e.i42 = !0) : 1 == d.a4 ? (l.z39.O33(b, c),
-                                    K.X8(this, l.z39, l.z39.n38.q43, b, c, d.Q36, !1),
-                                    this.R38 = !0) : this.R35.C46("^1You can't place this tile.")
+                                    e.i42 = !0) : 1 == d.a4 ? ((window.DiggerzCanPlaceNative ? window.DiggerzCanPlaceNative(this, Math.round(b / l._44), Math.round(c / l._44), d) : false) ? (l.z39.O33(b, c),
+                                    K.X8(this, l.z39, l.z39.n38.q43, b, c, DiggerzPlacementLayer(d), !1),
+                                    this.R38 = !0) : null) : this.R35.C46("^1You can't place this tile.")
                                 }
                                 q.mClicked = !1
                             } else
@@ -21703,6 +21825,25 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     }
     ;
     K.z4 = function(a, b, c, d, e) {
+        // The original game uses opcode 282 for block-variant changes. In the
+        // rebuilt multiplayer path that opcode is not handled by the custom
+        // WebSocket server, so preserve the native picker locally and mirror the
+        // exact same x/y/layer/id/variant through the multiplayer room protocol.
+        try {
+            var svc = window.DiggerzPvp22 && window.DiggerzPvp22.service;
+            if (svc && window.DiggerzIsMultiplayer && window.DiggerzIsMultiplayer(svc)) {
+                svc.pvpSend({t:"block-variant",x:a|0,y:b|0,layer:c|0,id:d|0,variant:e|0});
+                try {
+                    var layer = c|0;
+                    var cell = l.z38 && l.z38.R39 && l.z38.R39[layer] ? l.z38.R39[layer].r33((a|0)*l._44,(b|0)*l._44) : null;
+                    if (cell && cell.a4 === 1) {
+                        cell.b14 = e|0;
+                        h.n7(1,cell,d|0,e|0);
+                    }
+                } catch (_localVariantVisual) {}
+                return;
+            }
+        } catch (_multiplayerVariant) {}
         var g = new tb;
         g.R2(a);
         g.R2(c);
@@ -22047,7 +22188,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         getIo:function(){ return Io }, getZ:function(){ return z }, getF:function(){ return f },
         getE:function(){ return E }, getXa:function(){ return xa }, getOb:function(){ return ob },
         getFc:function(){ return Fc }, getK:function(){ return K }, getU:function(){ return u },
-        getAi:function(){ return ai }, getH:function(){ return h }, getCg:function(){ return cg }
+        getAi:function(){ return ai }, getH:function(){ return h }, getCg:function(){ return cg }, getYf:function(){ return Yf }, getF:function(){ return f }
     };
     // Version 3 starts clean so unrestricted catalog rewards from the earlier
     // reconstruction cannot carry into the corrected rarity economy.
@@ -22439,8 +22580,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 this.sendInventory();
                 this.sendAccess();
                 this.sendCoins();
-                this.message("^2Dig+Trade ready. ^7WASD moves; equip the pickaxe and click nearby ground to dig.");
-                this.message("^7Inventory and cosmetics save in this browser; the Dig+Trade terrain resets when you rejoin.")
                 break;
             case 6:
                 this.readMovement(packet);
@@ -22703,11 +22842,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 packet.R0(coins)
             })
         },
-        sendTile: function(x, y, id, variant) {
+        sendTile: function(x, y, id, variant, layer) {
+            layer = layer == null ? 0 : (layer | 0);
             this.enqueue(11, 1, function(packet) {
                 packet.R2(1);
                 packet.R0(x);
-                packet.R0(0);
+                packet.R0(layer);
                 packet.R0(y);
                 packet.R2((id & 2047) | ((variant || 0) & 31) << 11)
             })
@@ -22739,16 +22879,41 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             return x >= 0 && y >= 0 && x < this.state.width && y < this.state.height ?
                 this.state.tiles[x + y * this.state.width] : 0
         },
-        setTile: function(x, y, id, variant) {
+        setTile: function(x, y, id, variant, layer) {
+            layer = layer == null ? 0 : (layer | 0);
             if (x < 0 || y < 0 || x >= this.state.width || y >= this.state.height) return false;
             var index = x + y * this.state.width;
             variant = variant || 0;
-            var prevId = this.state.tiles[index] | 0;
-            this.state.tiles[index] = id;
-            if (this.state.variants) this.state.variants[index] = variant;
+            var isBackground = layer === 2;
+            if (isBackground) {
+                if (!this.state.backgroundTiles) this.state.backgroundTiles = new Array(this.state.width * this.state.height).fill(0);
+                if (!this.state.backgroundVariants) this.state.backgroundVariants = new Array(this.state.width * this.state.height).fill(0);
+            }
+            var prevId = isBackground ? (this.state.backgroundTiles[index] | 0) : (this.state.tiles[index] | 0);
+            if (isBackground) {
+                this.state.backgroundTiles[index] = id;
+                this.state.backgroundVariants[index] = variant;
+            } else {
+                this.state.tiles[index] = id;
+                if (this.state.variants) this.state.variants[index] = variant;
+            }
             if (!id) delete this.damage[x + ":" + y];
-            this.sendTile(x, y, id, variant);
+            this.sendTile(x, y, id, variant, layer);
             this.markDirty();
+            // If a native block-variation wheel is open for a block that was just
+            // broken/replaced, close it immediately. Otherwise the Sc/tilepick
+            // object can remain alive while its target renderer has disappeared,
+            // leaving an invisible/click-blocking radial menu behind.
+            if (prevId && !id) {
+                try {
+                    var openPick = l.z38 && l.z38.f2 ? l.z38.f2("tilepick") : null;
+                    if (openPick) {
+                        openPick.a0 = 1;
+                        if (l.z38 && l.z38._9 && l.z38._9.indexOf(openPick) >= 0)
+                            T.remove(l.z38._9, openPick);
+                    }
+                } catch (_closeTilePickError) {}
+            }
             // Glowing mining particles (same E.V0 WHITE_PARTICLE path as original packet 68 / X36)
             if (prevId && !id && !this._pvpApplyingTile) {
                 try {
@@ -22768,23 +22933,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var dx = x - px, dy = y - py;
             return Math.sqrt(dx * dx + dy * dy)
         },
-        placementBlockedByLocalPlayer: function(x, y) {
-            var px = l.z39 ? l.z39.b6 / l._44 : this.state.x;
-            var py = l.z39 ? l.z39.b7 / l._44 : this.state.y;
-            if (!isFinite(px) || !isFinite(py)) return false;
-            // Build 24.0.36: mirror the native player Trade interaction
-            // footprint for placement safety. PvP has no Trade GUI, but the
-            // player still needs the same no-build interaction area. Use the
-            // continuous player position rather than rounded grid coordinates.
-            var left = x - 0.5, right = x + 0.5;
-            var top = y - 0.5, bottom = y + 0.5;
-            var hw = 0.78 + 0.06, hh = 1.08 + 0.06;
-            if (!(right < px - hw || left > px + hw ||
-                  bottom < py - hh || top > py + hh)) return true;
-            var cx = Math.max(left, Math.min(px, right));
-            var cy = Math.max(top, Math.min(py, bottom));
-            return Math.hypot(cx - px, cy - py) <= 0.92;
-        },
         fixLocalAnimations: function() {
             var p = l.z39;
             if (!p || !p.i33) return;
@@ -22792,13 +22940,18 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             // animation latched. Build 21.7 explicitly returns to idle once the
             // corresponding input has ended instead of relying on a jump reset.
             var horizontal = q.KeyDown(65) || q.KeyDown(68) || q.KeyDown(37) || q.KeyDown(39);
+            // Mobile pad counts as horizontal movement (walk anim + no forced idle)
+            try {
+                if (!horizontal && typeof od !== "undefined" && od.h39 > 0) horizontal = !0;
+                if (!horizontal && p.n37 && p.n37.h32 && Math.abs(p.n37.h32.b6) > 4) horizontal = !0;
+            } catch (eH) {}
             if (!horizontal && p.i32 === oa.MODE_WALKING) p.i32 = oa.MODE_IDLE;
             var anim = String(p.i33.Z28 || "");
             if (!horizontal && anim === String(p.I36 || "")) {
                 p.i32 = oa.MODE_IDLE;
                 p.i33._38(p.I32, !0, 0, 1)
             }
-            if (q.mState === 0 && this.ticks - this.lastDigTick > 4 && (anim === "hit" || anim === "build")) {
+            if (q.mState === 0 && this.ticks - this.lastDigTick > 4 && anim === "hit") {
                 p.i32 = oa.MODE_IDLE;
                 p.i33.Z28 = "";
                 p.i33._38(p.I32, !0, 0, 1)
@@ -22970,7 +23123,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     packet.R0(item.price);
                     packet.R9(item.name);
                     packet.R9(item.description);
-                    packet.R9(item.display || ("{2," + item.itemId + ",1}"))
+                    packet.R9(item.display || ("{2," + item.itemId + "," + Math.max(1,Number(item.quantity)||1) + "}"))
                 }
             })
         },
@@ -22992,6 +23145,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             // Dragon Pack resolves only after the player has enough coins. Every
             // dragon has equal odds and the resolved dragon is what gets saved.
             var purchaseItemId = item.itemId | 0;
+            var purchaseQuantity = Math.max(1, Math.min(65535, Number(item.quantity || 1) | 0));
             if (item.randomIds && item.randomIds.length)
                 purchaseItemId = item.randomIds[Math.floor(Math.random() * item.randomIds.length)] | 0;
 
@@ -23000,7 +23154,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 var current = slots[i];
                 if (current && current.category === 2 && current.id === purchaseItemId &&
                     current.variant === 0 && (current.text || "") === "" &&
-                    current.count > 0 && current.count < 65535) {
+                    current.count > 0 && current.count <= 65535 - purchaseQuantity) {
                     targetSlot = i; stackExisting = true; break
                 }
             }
@@ -23017,8 +23171,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 extra:slots[targetSlot].extra|0, text:slots[targetSlot].text||""
             } : null;
             try {
-                if (stackExisting) slots[targetSlot].count += 1;
-                else slots[targetSlot] = this.item(2, purchaseItemId, 0, 1, 0, "");
+                if (stackExisting) slots[targetSlot].count += purchaseQuantity;
+                else slots[targetSlot] = this.item(2, purchaseItemId, 0, purchaseQuantity, 0, "");
                 this.state.coins = beforeCoins - item.price;
                 this.dirty = true;
                 if (!window.localStorage) throw new Error("Local storage unavailable");
@@ -23037,7 +23191,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             q.diggerzLastShopPurchase = {shopId:item.shopId, itemId:purchaseItemId, name:rewardName,
                 price:item.price, slot:targetSlot, beforeCoins:beforeCoins, afterCoins:this.state.coins, time:Date.now()};
             return {ok:true, message:(item.randomIds ? "Dragon Pack opened: " + rewardName + "!" :
-                "Purchased " + item.name + " for " + item.price + " coins.") +
+                "Purchased " + item.name + (purchaseQuantity > 1 ? " x" + purchaseQuantity : "") + " for " + item.price + " coins.") +
                 " Balance: " + this.state.coins + ".", item:item, itemId:purchaseItemId, slot:targetSlot,
                 beforeCoins:beforeCoins, coins:this.state.coins}
         },
@@ -23124,7 +23278,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         adminCatalog: function(category) {
             category = category | 0;
             if (category !== 1 && category !== 2) return [];
-            var out = [], max = category === 1 ? 700 : 450, id, display, name;
+            var out = [], max = category === 1 ? 700 : 700, id, display, name;
             for (id = 1; id <= max; id++) {
                 try {
                     display = new X(null, category, id, 0, 0, 1, 0, "", 0);
@@ -23200,6 +23354,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             return {ok:true, message:"PvP override " + (this.adminPvpEnabled ? "enabled" : "disabled") + "."}
         },
         adminTargetConnection:function(name){var mp=window.DiggerzPvp22;name=String(name||'').trim();if(!mp)return '';if(!name||name===this.playerName())return mp.connectionId||'';var peer=this.pvpFindPeerByName(name);return peer?peer.connectionId:''},
+        adminSetModifiers:function(name,mods){var mp=window.DiggerzPvp22;if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!mp||!mp.joined)return {ok:false,message:'Multiplayer server required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};mods=mods||{};this.pvpSend({t:'admin-modifiers',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid,speed:Math.max(.1,Math.min(10,Number(mods.speed)||1)),jump:Math.max(.1,Math.min(10,Number(mods.jump)||1)),size:Math.max(.25,Math.min(4,Number(mods.size)||1)),breakSpeed:Math.max(.1,Math.min(10,Number(mods.breakSpeed)||1))});return {ok:true,message:'Player modifiers applied to '+String(name||'player')+'.'}},
         adminSendEffect:function(effect,name,enabled){var mp=window.DiggerzPvp22;if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!mp||!mp.joined)return {ok:false,message:'Multiplayer server required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};this.pvpSend({t:'admin-effect',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid,effect:String(effect),enabled:!!enabled});return {ok:true,message:String(effect)+' '+(enabled?'enabled':'disabled')+'.'}},
         adminRenameLive:function(name,newName){var mp=window.DiggerzPvp22;if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!mp||!mp.joined)return {ok:false,message:'Multiplayer server required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};newName=String(newName||'').replace(/[\x00-\x1F\x7F]/g,' ').trim().slice(0,24);if(!newName)return {ok:false,message:'Name is empty.'};this.pvpSend({t:'admin-rename',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid,name:newName});return {ok:true,message:'Rename requested: '+newName+'.'}},
         adminBringToMe:function(name){var mp=window.DiggerzPvp22;if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!mp||!mp.joined)return {ok:false,message:'Multiplayer server required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};if(cid===mp.connectionId)return {ok:true,message:'You are already here.'};this.pvpSend({t:'admin-bring',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid});return {ok:true,message:'Bring requested for '+String(name||'player')+'.'}},
@@ -23334,6 +23489,19 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 return "Item " + id
             }
         },
+        // Recovered native block-variation wheel.  The original client already
+        // contains the Sc/X radial inventory UI used by the clothing screen;
+        // reuse those exact engine objects for block variants instead of making
+        // a DOM imitation.
+        openBlockVariantPicker: function(targetBlock, blockId, x, y) {
+            try {
+                if (targetBlock && typeof targetBlock.j44 === "function") {
+                    targetBlock.j44();
+                    return true;
+                }
+            } catch (_nativePicker) {}
+            return false;
+        },
         dig: function(packet) {
             this.lastDigTick = this.ticks;
             var attackX = packet.Q4(), attackY = packet.Q4();
@@ -23372,7 +23540,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             } catch (heldError) {}
             var isMining = !!(heldRendered && heldRendered.T40) || attackType === 25 || attackType === 21 || attackType === 36 || attackType === 40;
             var heldId = heldItem && heldItem.category === 2 ? (heldItem.id | 0) : 0;
-            var isToolWeapon = heldId === 239 || (heldId >= 379 && heldId <= 394);
+            var isToolWeapon = heldId === 239 || (heldId >= 379 && heldId <= 394) || (window.DiggerzBuild240 && window.DiggerzBuild240.isRgbWeaponId && window.DiggerzBuild240.isRgbWeaponId(heldId));
             // Excalibur and Lightswords keep their recovered tool/mining behavior, but
             // during active Battle Royale they also count as melee PvP attacks. They
             // never send PvP damage in Dig+Trade.
@@ -23445,8 +23613,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             // take damage, which prevents accidental radius/vein mining.
             var id = this.tileAt(targetX, targetY);
             if (!id || this.distanceToPlayer(targetX, targetY) > 3.6) return;
+            // Block-variation clicks are handled by the recovered native U32()
+            // click path. It requires the real s34 placement/highlight target, then
+            // opens the original F.j44() radial picker on that exact block.
             var key = targetX + ":" + targetY;
-            var hits = (this.damage[key] || 0) + 1;
+            var breakRaw=Number(this.adminModifiers&&this.adminModifiers.breakSpeed);var breakMod=isFinite(breakRaw)?Math.max(.1,Math.min(10,breakRaw)):1;var hits = (this.damage[key] || 0) + breakMod;
             var specialServerBlock = id === 211 || id === 127 || id === 212;
             var durability = (id === 211 || id === 127) ? 1 : 5;
             this.damage[key] = hits;
@@ -23464,7 +23635,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
             this.setTile(targetX, targetY, 0);
             this.state.mined++;
-            this.addItem(1, id, 0, 1, 0, "");
+            // Build 24.0: mined terrain is consumed instead of being copied into inventory.
+            // Randomized mining rewards are handled separately below.
             // Bonus items are tied to the mined coordinate and cannot be
             // rerolled. Protected catalog items only enter through today's
             // super-rare rotation; normal finds are blocks or normal weapons,
@@ -23475,13 +23647,27 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.markDirty()
         },
         build: function(packet) {
-            packet.Q4(); packet.Q4(); packet.Q4(); packet.Q4();
+            // Match the recovered native opcode-11 packet exactly. X8() writes
+            // the actor position first as two fixed-point int32 pairs, then the
+            // tile id/x/layer/y. Keep that placement-time actor position for
+            // the collision gate instead of using a later movement sample.
+            var actorX = packet.Q4() + packet.Q4() / 100000;
+            var actorY = packet.Q4() + packet.Q4() / 100000;
             var id = packet.Q9(), x = packet.Q7(), layer = packet.Q7(), y = packet.Q7();
             var slot = packet.Q9(), variant = packet.Q9();
             packet.r6();
-            if (layer !== 0 || this.tileAt(x, y) || this.distanceToPlayer(x, y) > 5 ||
-                y <= 0 || y >= this.state.height - 1 || this.placementBlockedByLocalPlayer(x, y) ||
-                this.distanceToPlayer(x, y) < 1.1) return;
+            if (layer < 0 || layer > 2 || (layer === 0 && this.tileAt(x, y)) || this.distanceToPlayer(x, y) > 5 ||
+                y <= 0 || y >= this.state.height - 1 || this.distanceToPlayer(x, y) < 1.1) return;
+            // CT uses the actual native player body for the placement decision.
+            // Reject the exact grid cell if it intersects the player's live
+            // physics footprint at the moment opcode 11 was generated.
+            try {
+                if (window.DiggerzPlayerOverlapsCell && window.DiggerzPlayerOverlapsCell(actorX,actorY,x,y,
+                    (l.z39&&l.z39.b34&&l.z39.b34.tBJ&&isFinite(l.z39.b34.tBJ.radius)) ? Number(l.z39.b34.tBJ.radius)/l._44 : 0.72)) return;
+            } catch (_nativeBuildOverlap) {}
+            if (window.DiggerzIsMultiplayer && window.DiggerzIsMultiplayer(this)) {
+                this._diggerzPlacementActor={x:actorX,y:actorY};
+            }
             // Rapid building can queue a packet for a slot that was just emptied or
             // moved by the prior placement. Recover by finding the same block stack
             // instead of permanently rejecting every later placement from that drag.
@@ -23498,8 +23684,33 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             if (!item) return;
             item.count--;
             if (!item.count) this.state.slots[slot] = this.emptyItem();
-            this.state.placed++;
-            this.setTile(x, y, id, variant);
+            // In the recovered client O33() starts the real 400ms placement animation.
+            // The old multiplayer rebuild applied the tile immediately, which caused
+            // the renderer's tile refresh to delete the native "fx" object on the same
+            // frame, making the placement animation appear to never play. Keep the game
+            // state authoritative, but commit the visible tile after the native animation.
+            var placeKey = x + ":" + y;
+            if (window.DiggerzIsMultiplayer && window.DiggerzIsMultiplayer(this)) {
+                if (!this._diggerzPendingPlacements) this._diggerzPendingPlacements = {};
+                if (this._diggerzPendingPlacements[placeKey]) return;
+                this._diggerzPendingPlacements[placeKey] = {id:id,variant:variant,layer:layer};
+                var self = this;
+                setTimeout(function(){
+                    try {
+                        var pending = self._diggerzPendingPlacements && self._diggerzPendingPlacements[placeKey];
+                        if (!pending) return;
+                        delete self._diggerzPendingPlacements[placeKey];
+                        if (self.tileAt(x,y)) return;
+                        self.state.placed++;
+                        self.setTile(x,y,pending.id,pending.variant,pending.layer);
+                        self.markDirty();
+                    } catch (_placeCommit) {}
+                }, 410);
+            } else {
+                this.state.placed++;
+                this.setTile(x, y, id, variant, layer);
+                this.markDirty();
+            }
             E.v2(Vm.n7());
             this.sendInventory();
             this.markDirty()
@@ -26375,7 +26586,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             a.d34.F6(0, 0, 2 * Math.PI, 35E3, !0);
             a._9.push(a.d34);
             var b = 0;
-            this.j43(31, a, b);
+            // The red X is the cancel/close entry used by the generic tile picker.
+            // Block modification should close through the normal menu flow instead,
+            // so the native block-variation wheel contains only actual variations.
             this.j43(25, a, b);
             this.j43(26, a, b);
             this.j43(27, a, b);
@@ -50125,18 +50338,19 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     };
     var Mp = function() {
         this.u40 = q.GetChildByType(Cf);
-        ja.call(this, 560, 600, !0);
+        ja.call(this, 1100, 720, !0);
         E.u4(this, 0, 300, 0, .5, 1, 0, 1);
         this.c0 = !0;
         this.A7 = q.CENTERX;
         this.A8 = q.CENTERY;
-        var a = -250
+        var a = -320
           , b = new xa(0,a,"^9Customize",q.MAIN_FONT_BIG);
         b.D7(this, !0);
         this._9.push(b);
         a += 85;
-        this.y42 = new vl(this,0,a,400,50,2,f.HEAD_PNG(),Th.n7(),null,q.player.l9);
-        this.y42.b7 = a;
+        this.y42 = new vl(this,0,a,280,50,2,f.HEAD_PNG(),Th.n7(),null,q.player.l9);
+        this.y42.b7 = -240; // user layout
+        this.y42.b6 = 95; // user layout
         this.y42.d49.set_alp(0);
         this._9.push(this.y42);
         this.y43 = z.I9();
@@ -50147,12 +50361,20 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.y43.b2 = !0;
         this.y43.set_r(this.y43.set_g(this.y43.set_b(1)));
         this.y42._9.push(this.y43);
-        b = new xa(0,a,"Skin Tone",q.MAIN_FONT_BIG);
-        b.D7(this, !0);
+        b = new xa(0,0,"Skin Tone",q.MAIN_FONT_BIG);
+        b.D7(this.y42, !0);
+        b.b6 = 0;
+        b.b7 = -28;
         b.set_local_xScale(b.set_local_yScale(.7));
         this.y42._9.push(b);
-        a += 75;
-        b = -250;
+        this.__dzSkinLabel = b;
+        // Keep the skin slider in the saved layout position. Native vl hit-testing
+        // remains untouched so the little HEAD_PNG handle is draggable.
+        this.y42.b6 = 95;
+        this.y42.b7 = -240;
+        a += 70;
+        a += -60; // user countries.y offset
+        b = -480; // -520 + user countries.x (40)
         for (var c = 0; 255 > c; ) {
             var d = c++
               , e = new ra;
@@ -50398,15 +50620,1072 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             e.b6 = b,
             e.b7 = a,
             e.set_local_xScale(e.set_local_yScale(2)),
-            b += 36,
-            250 <= e.b6 && (b = -250,
-            a += 24),
+            b += 34,
+            -240 <= e.b6 && (b = -480,
+            a += 22), // user layout column
             e.C33 = A(this, this.y46),
             e.C34 = d,
-            e._1 = "" + d)
+            e._1 = "" + d,
+            e.__dzCountryFlag = !0) // tag for live layout move
         }
+        // Snapshot base positions for countries group move
+        this.__dzCountryFlags = [];
+        this.__dzCountryBase = [];
+        for (var __ci = 0; __ci < this._9.length; __ci++) {
+            try {
+                var __cf = this._9[__ci];
+                if (__cf && __cf.__dzCountryFlag) {
+                    this.__dzCountryFlags.push(__cf);
+                    this.__dzCountryBase.push({ x: __cf.b6, y: __cf.b7 });
+                }
+            } catch (eCF) {}
+        }
+        this.__dzCountryOff = { x: 0, y: 0 };
+
         this.y45();
+
+        // --- Extended Customize: engine idle rig + shop-style inventory ---
+        var __previewSkelRef = null;
+        try {
+            var __self = this;
+
+            // --- Live layout API (works while Customize is open) ---
+            window.__dzCustomizePanel = this;
+            window.DiggerzCustomizeLayout = (function() {
+                function findPanel() {
+                    if (window.__dzCustomizePanel && window.__dzCustomizePanel.__dzPrevBox)
+                        return window.__dzCustomizePanel;
+                    try {
+                        if (typeof q !== "undefined" && q && q._9) {
+                            for (var i = 0; i < q._9.length; i++) {
+                                var c = q._9[i];
+                                if (c && (c.__dzPrevBox || c.__dzInvBox || c.y42)) return c;
+                            }
+                        }
+                    } catch (e) {}
+                    try {
+                        if (typeof Mp !== "undefined" && q && typeof q.GetChildByType === "function") {
+                            var p = q.GetChildByType(Mp);
+                            if (p) return p;
+                        }
+                    } catch (e2) {}
+                    return window.__dzCustomizePanel || null;
+                }
+                function setPos(obj, x, y) {
+                    if (!obj) return false;
+                    try {
+                        if (x != null) {
+                            obj.b6 = x;
+                            if (typeof obj.set_x === "function") obj.set_x(x);
+                            if (obj.A7 != null) obj.A7 = x;
+                        }
+                        if (y != null) {
+                            obj.b7 = y;
+                            if (typeof obj.set_y === "function") obj.set_y(y);
+                            if (obj.A8 != null) obj.A8 = y;
+                        }
+                        return true;
+                    } catch (e) { return false; }
+                }
+                function get() {
+                    try {
+                        var raw = localStorage.getItem("diggerz.customize.layout.v1");
+                        if (raw) return JSON.parse(raw);
+                    } catch (e) {}
+                    var p = findPanel();
+                    if (p && p.__dzLayout) return p.__dzLayout;
+                    return {
+                        preview: { x: 0, y: 50 },
+                        inventory: { x: 350, y: 10 },
+                        skin: { x: 95, y: -240 },
+                        title: { x: 0, y: -320 },
+                        countries: { x: 40, y: -60 }
+                    };
+                }
+                function apply(L) {
+                    if (!L) L = get();
+                    var p = findPanel();
+                    if (!p) {
+                        console.warn("[Layout] Open Customize first, then run the command again.");
+                        try { localStorage.setItem("diggerz.customize.layout.v1", JSON.stringify(L)); } catch (e) {}
+                        return L;
+                    }
+                    p.__dzLayout = L;
+                    var ok = [];
+                    if (L.preview) {
+                        var box = p.__dzPrevBox;
+                        if (box && setPos(box, L.preview.x, L.preview.y)) ok.push("preview");
+                    }
+                    if (L.inventory) {
+                        var inv = p.__dzInvBox;
+                        if (inv && setPos(inv, L.inventory.x, L.inventory.y)) ok.push("inventory");
+                    }
+                    if (L.skin && p.y42) {
+                        if (setPos(p.y42, L.skin.x, L.skin.y)) ok.push("skin");
+                    }
+                    // Countries = group of flags; L.countries.x/y are OFFSETS from original layout
+                    if (L.countries && p.__dzCountryFlags && p.__dzCountryBase) {
+                        var ox = Number(L.countries.x) || 0;
+                        var oy = Number(L.countries.y) || 0;
+                        p.__dzCountryOff = { x: ox, y: oy };
+                        for (var fi = 0; fi < p.__dzCountryFlags.length; fi++) {
+                            try {
+                                var fl = p.__dzCountryFlags[fi];
+                                var base = p.__dzCountryBase[fi];
+                                if (fl && base) setPos(fl, base.x + ox, base.y + oy);
+                            } catch (eF) {}
+                        }
+                        ok.push("countries(" + p.__dzCountryFlags.length + ")");
+                    }
+                    if (L.title && p._9) {
+                        for (var i = 0; i < p._9.length; i++) {
+                            var n = p._9[i];
+                            try {
+                                var txt = (n && (n.E37 && n.E37.toString)) ? "" : "";
+                                // xa title often has MAIN_FONT_BIG and y around -320
+                                if (n && n.b7 != null && n.b7 < -200 && n.b7 > -400 && !n.d32) {
+                                    setPos(n, L.title.x, L.title.y);
+                                    ok.push("title");
+                                    break;
+                                }
+                            } catch (eT) {}
+                        }
+                    }
+                    try { localStorage.setItem("diggerz.customize.layout.v1", JSON.stringify(L)); } catch (eS) {}
+                    console.log("[Layout] applied:", ok.join(", ") || "(nothing moved — panel refs missing)");
+                    return L;
+                }
+                return {
+                    get: get,
+                    show: function() {
+                        var L = get();
+                        console.log("%c" + JSON.stringify(L, null, 2), "color:#9ad");
+                        return L;
+                    },
+                    apply: apply,
+                    move: function(part, dx, dy) {
+                        var L = get();
+                        if (!L[part]) L[part] = {};
+                        L[part].x = (Number(L[part].x) || 0) + (Number(dx) || 0);
+                        L[part].y = (Number(L[part].y) || 0) + (Number(dy) || 0);
+                        console.log(part, "->", L[part].x, L[part].y);
+                        return apply(L);
+                    },
+                    set: function(part, props) {
+                        var L = get();
+                        if (!L[part]) L[part] = {};
+                        for (var k in props) L[part][k] = props[k];
+                        return apply(L);
+                    },
+                    copy: function() {
+                        var t = JSON.stringify(get(), null, 2);
+                        try { navigator.clipboard.writeText(t); console.log("Copied"); } catch (e) {}
+                        console.log(t);
+                        return t;
+                    },
+                    panel: findPanel
+                };
+            })();
+
+            function __loadDigSave() {
+                try {
+                    var best = null;
+                    var keys = [
+                        "diggerz.digtrade.rebuild.v3",
+                        "diggerz.digtrade.v1",
+                        "diggerz.inventory.v1",
+                        "digtrade_save"
+                    ];
+                    for (var ki = 0; ki < keys.length; ki++) {
+                        try {
+                            var raw = localStorage.getItem(keys[ki]);
+                            if (!raw) continue;
+                            var data = JSON.parse(raw);
+                            if (!data) continue;
+                            if (data.slots || data.appearance) {
+                                // Prefer the save with the most non-empty slots
+                                var n = 0;
+                                if (data.slots) {
+                                    for (var si = 0; si < data.slots.length; si++)
+                                        if (data.slots[si] && (data.slots[si].id|0) && (data.slots[si].count|0)) n++;
+                                }
+                                if (!best || n > (best.__n || 0)) {
+                                    data.__n = n;
+                                    best = data;
+                                }
+                            }
+                        } catch (eOne) {}
+                    }
+                    try {
+                        if (q.diggerzService && q.diggerzService.state) {
+                            var st = q.diggerzService.state;
+                            var n2 = 0;
+                            if (st.slots) {
+                                for (var sj = 0; sj < st.slots.length; sj++)
+                                    if (st.slots[sj] && (st.slots[sj].id|0) && (st.slots[sj].count|0)) n2++;
+                            }
+                            if (!best || n2 >= (best.__n || 0)) best = st;
+                        }
+                    } catch (eS) {}
+                    return best;
+                } catch (e) {}
+                return null;
+            }
+
+            function __appearanceFromSave(data) {
+                var app = [0,0,0,0,0,0,0,0,0,0,0];
+                try {
+                    if (data && data.appearance && data.appearance.length)
+                        for (var i = 0; i < 11 && i < data.appearance.length; i++)
+                            app[i] = data.appearance[i]|0;
+                    else if (q.player && q.player.J33 && q.player.J33.length)
+                        for (var j = 0; j < 11 && j < q.player.J33.length; j++)
+                            app[j] = q.player.J33[j]|0;
+                } catch (e) {}
+                return app;
+            }
+
+            function __skinColor(tone) {
+                // Use the exact value assigned to the native slider head by vl: q.player.l9.
+                tone = Number(tone);
+                if (!isFinite(tone)) tone = (q.player && q.player.l9 != null) ? Number(q.player.l9) : 45;
+                tone = Math.max(0, Math.min(100, tone));
+                return tone;
+            }
+            function __getStoredShirtColor() {
+                try {
+                    if (typeof window.DiggerzGetShirtColor === "function")
+                        return (Number(window.DiggerzGetShirtColor())|0) % __shirtPalette.length;
+                } catch (e) {}
+                try {
+                    var sc = parseInt(localStorage.getItem("diggerz.shirtColor.v1") || "0", 10);
+                    if (isFinite(sc)) return ((sc % __shirtPalette.length) + __shirtPalette.length) % __shirtPalette.length;
+                } catch (e2) {}
+                return 0;
+            }
+            function __tintPreviewShirt(skel) {
+                // Intentionally empty. The authoritative m38 -> m37 path applies
+                // the player's real/default shirt texture and color.
+            }
+            function __tintPreviewSkin(skel, tone) {
+                if (!skel || typeof skel.f2 !== "function") return;
+                var c = __skinColor(tone);
+                var slots = ["head", "front_arm", "back_arm"];
+                for (var i = 0; i < slots.length; i++) {
+                    try {
+                        var part = skel.f2(slots[i]);
+                        if (!part) continue;
+                        if (typeof part.set_local_r === "function")
+                            part.set_local_r(part.set_local_g(part.set_local_b(c)));
+                    } catch (eSlot) {}
+                }
+            }
+            // Match player m35: reset head texture + attach eyes; tone is the exact slider value
+            function __ensureHeadAndEyes(skel, tone) {
+                if (!skel || typeof skel.f2 !== "function") return;
+                try {
+                    var head = skel.f2("head");
+                    if (!head) return;
+                    try { head.F5(); } catch (eF) {}
+                    try { head.Init(f.HEAD_PNG()); } catch (eI) {}
+                    try { head.F5(); } catch (eF2) {}
+                    try { head.C2 = !1; } catch (eC) {}
+                    var c = __skinColor(tone);
+                    try { head.set_local_r(head.set_local_g(head.set_local_b(c))); } catch (eT) {}
+                    // Remove old eyes if any, then add fresh eyes (same offsets as m35)
+                    try {
+                        if (head._9) {
+                            for (var i = head._9.length - 1; i >= 0; i--) {
+                                try {
+                                    if (head._9[i] && head._9[i]._1 === "eyes")
+                                        head._9.splice(i, 1);
+                                } catch (eR) {}
+                            }
+                        }
+                    } catch (eOld) {}
+                    try {
+                        var eyes = z.I9();
+                        eyes.D7(head, !0);
+                        eyes.Init(f.EYES_PNG());
+                        eyes.b6 = -7;
+                        eyes.b7 = -3;
+                        eyes.b2 = !0;
+                        eyes._1 = "eyes";
+                        eyes.set_r(eyes.set_g(eyes.set_b(1)));
+                        if (!head._9) head._9 = [];
+                        head._9.push(eyes);
+                    } catch (eEyes) {}
+                } catch (e) {}
+            }
+
+            var __previewIdleWatch = null;
+            var __previewWearer = null;
+            // Customize has its own clothing renderer.  It uses the game's
+            // clothing assets/attachment metadata, but it never calls the
+            // player's m38() pipeline and never asks the live player rig to
+            // render the mannequin.
+            function __clearPreviewWear(skel) {
+                if (!skel || typeof skel.f2 !== "function") return;
+                var bones = ["head","front_arm","back_arm","front_foot","back_foot","torso","pants"];
+                for (var bi = 0; bi < bones.length; bi++) {
+                    try {
+                        var bone = skel.f2(bones[bi]);
+                        if (!bone || !bone._9) continue;
+                        for (var wi = bone._9.length - 1; wi >= 0; wi--) {
+                            var ch = bone._9[wi];
+                            if (ch && ch._1 === "wear") bone._9.splice(wi, 1);
+                        }
+                    } catch (eBone) {}
+                }
+                try { skel.f2("front_foot").a2 = !0; } catch (eF1) {}
+                try { skel.f2("back_foot").a2 = !0; } catch (eF2) {}
+                try { skel.f2("leg").C2 = !1; } catch (eL1) {}
+                try { skel.f2("leg_back").C2 = !1; } catch (eL2) {}
+                try { skel.f2("front_lowerleg").f2("leg").C2 = !1; } catch (eLL1) {}
+                try { skel.f2("back_lowerleg").f2("leg_back").C2 = !1; } catch (eLL2) {}
+            }
+
+            function __resetPreviewBody(skel, wearer, tone) {
+                if (!skel || typeof skel.f2 !== "function") return;
+                var c = __skinColor(tone);
+                // Rebuild the exported mannequin's base body directly. This is the
+                // same body setup as the player, but it is private to Customize and
+                // never calls the player's equipment renderer.
+                try {
+                    var ll = skel.f2("front_lowerleg").f2("leg");
+                    ll.Init(f.LEG_PNG()); ll.C2 = !1; ll.set_local_r(ll.set_local_g(ll.set_local_b(1))); ll.c9 = !1;
+                    var llb = skel.f2("back_lowerleg").f2("leg_back");
+                    llb.Init(f.LEG_BACK_PNG()); llb.set_local_r(llb.set_local_g(llb.set_local_b(1))); llb.c9 = !1; llb.C2 = !1;
+                    var pants = skel.f2("pants");
+                    pants.Init(f.PANTS_PNG()); pants.set_local_r(pants.set_local_g(pants.set_local_b(1))); pants.c9 = !1;
+                } catch (e33) {}
+                try {
+                    var head = skel.f2("head");
+                    head.F5(); head.Init(f.HEAD_PNG()); head.F5(); head.C2 = !1;
+                    head.set_local_r(head.set_local_g(head.set_local_b(c)));
+                    if (head._9) for (var i = head._9.length - 1; i >= 0; i--)
+                        try { if (head._9[i] && head._9[i]._1 === "eyes") head._9.splice(i,1); } catch(eEyeRm) {}
+                    var eyes = z.I9(); eyes.D7(head, !0); eyes.Init(f.EYES_PNG()); eyes.b6=-7; eyes.b7=-3; eyes.b2=!0; eyes._1="eyes"; eyes.set_r(eyes.set_g(eyes.set_b(1))); head._9.push(eyes);
+                } catch (e35) {}
+                try {
+                    var fa = skel.f2("front_arm");
+                    for (var ai=0; ai<fa._9.length; ai++) fa._9[ai].C2=!1;
+                    fa.C2=!1; fa.set_local_r(fa.set_local_g(fa.set_local_b(c)));
+                    var ba = skel.f2("back_arm");
+                    for (var aj=0; aj<ba._9.length; aj++) ba._9[aj].C2=!1;
+                    ba.C2=!1; ba.set_local_r(ba.set_local_g(ba.set_local_b(c)));
+                } catch (e36) {}
+                try {
+                    var q7 = null;
+                    if (typeof l !== "undefined" && l.z39 && l.z39.q7) q7 = l.z39.q7;
+                    else if (q.player && q.player.q7) q7 = q.player.q7;
+                    if (q7) {
+                        var a = skel.f2("front_shoulder").f2("arm");
+                        a.Init(f.WHITE_ARM_PNG()); a.h4(Wc.e14(q7.P4)%Wc.e14(10)|0);
+                        var b = skel.f2("back_shoulder").f2("arm_back");
+                        b.Init(f.WHITE_ARM_PNG()); b.h4(Wc.e14(q7.P4)%Wc.e14(10)|0);
+                        var torso = skel.f2("torso");
+                        torso.Init(f.WHITE_TORSO_PNG()); torso.h4(Wc.e14(q7.P4)%Wc.e14(10)|0);
+                    } else {
+                        skel.f2("front_shoulder").f2("arm").Init(f.WHITE_ARM_PNG());
+                        skel.f2("back_shoulder").f2("arm_back").Init(f.WHITE_ARM_PNG());
+                        skel.f2("torso").Init(f.WHITE_TORSO_PNG());
+                    }
+                } catch (e37) {}
+            }
+
+            function __renderPreviewClothing(skel, app, tone) {
+                if (!skel) return;
+                var wearer = __previewWearer;
+                if (!wearer) {
+                    try { wearer = Object.create(q.player || {}); } catch (eW) { wearer = {}; }
+                    __previewWearer = wearer;
+                }
+                wearer.i33 = skel;
+                wearer.l9 = Number(tone);
+                try { wearer.a4 = (l.z39 && l.z39.a4 != null) ? l.z39.a4 : (q.player && q.player.a4 != null ? q.player.a4 : 2); } catch(eA4) { wearer.a4=2; }
+                try { wearer.q7 = (l.z39 && l.z39.q7) ? l.z39.q7 : (q.player && q.player.q7 ? q.player.q7 : null); } catch(eQ7) {}
+                __clearPreviewWear(skel);
+                __resetPreviewBody(skel, wearer, tone);
+                var wanted = (app && app.slice) ? app.slice(0,11) : [];
+                while (wanted.length < 11) wanted.push(0);
+                wearer.J33 = wanted.slice();
+
+                function item(id, slot) {
+                    if (!(id|0) || slot < 0 || slot > 10) return null;
+                    try {
+                        var yf = new Yf(wearer, wearer.a4 != null ? wearer.a4 : 2, id|0, 0, slot|0, 1, "", 0);
+                        h.n7(2, yf, id|0, 0);
+                        return yf.h44 ? yf : null;
+                    } catch(eItem) { return null; }
+                }
+                function visual(id, yf, boneName, insertAt) {
+                    if (!yf) return null;
+                    try {
+                        var bone = skel.f2(boneName);
+                        var v = Yf.W48(id|0, wearer); // IMPORTANT: W48 gets the ITEM ID, exactly like m38().
+                        v.D7(bone); yf.D6(v);
+                        v.b6=yf.t44; v.b7=yf.t45; v._1="wear";
+                        v.set_r(v.b8); v.set_g(v.b9); v.set_b(v.B0); v.b2=!0;
+                        if (insertAt == null) bone._9.push(v); else bone._9.splice(insertAt,0,v);
+                        return v;
+                    } catch(eV) { return null; }
+                }
+
+                var d=false, yf, g, e;
+                // These cases mirror m38()'s placement rules, but operate only on
+                // the standalone mannequin skeleton.
+                yf=item(wanted[0],0);
+                visual(wanted[0],yf,"head",null);
+                yf=item(wanted[1],1);
+                if(yf){
+                    g=skel.f2("head"); e=Yf.W48(wanted[1]|0,wearer); e.D7(g); yf.D6(e); e.b6=yf.t44; e.b7=yf.t45; e._1="wear"; e.set_r(e.b8); e.set_g(e.b9); e.set_b(e.B0); e.b2=!0;
+                    if(yf.T41){ for(var hi=0;hi<g._9.length;hi++) try{g._9[hi].C2=!0}catch(ex){}; g.C2=!0; g.set_local_r(g.set_local_g(g.set_local_b(1))); d=true; }
+                    g._9.splice(2,0,e);
+                }
+                yf=item(wanted[2],2);
+                if(yf){
+                    try{
+                        g=skel.f2("front_shoulder").f2("arm"); if(yf._9[0]){g._3=yf._9[0]._3;g._5=yf._9[0]._5;g.c9=yf._9[0].c9;yf.T48?g.set_local_r(g.set_local_g(g.set_local_b(__skinColor(tone)))):(g.set_local_r(yf.b8),g.set_local_g(yf.b9),g.set_local_b(yf.B0));}
+                        g=skel.f2("back_shoulder").f2("arm_back"); if(yf._9[0]){g._3=yf._9[0]._3;g._5=yf._9[0]._5;g.c9=yf._9[0].c9;yf.T48?g.set_local_r(g.set_local_g(g.set_local_b(__skinColor(tone)))):(g.set_local_r(yf.b8),g.set_local_g(yf.b9),g.set_local_b(yf.B0));}
+                        g=skel.f2("torso"); g._3=yf._3;g._5=yf._5;g.c9=yf.c9;g.set_local_r(yf.b8);g.set_local_g(yf.b9);g.set_local_b(yf.B0);
+                    }catch(ex2){}
+                }
+                yf=item(wanted[3],3);
+                if(yf){
+                    g=skel.f2("front_foot"); e=Yf.W48(wanted[3]|0,wearer); e.D7(g); yf.D6(e); e.b6=yf.t44;e.b7=yf.t45;e._1="wear";yf.T48?g.set_local_r(g.set_local_g(g.set_local_b(__skinColor(tone)))):(e.set_local_r(yf.b8),e.set_local_g(yf.b9),e.set_local_b(yf.B0));e.c9=yf.c9;g._9.push(e);
+                    g=skel.f2("back_foot"); e=Yf.W48(wanted[3]|0,wearer); e.D7(g); yf.D6(e); e.b6=yf.t44;e.b7=yf.t45;e._1="wear";yf.T48?g.set_local_r(g.set_local_g(g.set_local_b(__skinColor(tone)))):(e.set_local_r(.9*yf.b8),e.set_local_g(.9*yf.b9),e.set_local_b(.9*yf.B0));e.c9=yf.c9;g._9.push(e);
+                }
+                // Slot 4 is weapons/tools and is deliberately not rendered.
+                yf=item(wanted[5],5);
+                if(yf){ g=skel.f2("torso"); e=Yf.W48(wanted[5]|0,wearer); e.D7(g); yf.D6(e); e.b6=yf.t44;e.b7=yf.t45;e.A4=yf.A4;e.A5=yf.A5;e._1="wear";g._9.push(e);e.b2=!0;e.set_r(e.b8);e.set_g(e.b9);e.set_b(e.B0);g.C3=yf.T47||g.C3; var cw=yf.f0("cw"); if(cw!=null){var cv=z.I9();cv.D7(e,!0);cw.D6(cv);e._9.push(cv);cv.A4=cw.A4;cv.A5=cw.A5;cv._1="cw";} }
+                yf=item(wanted[6],6);
+                if(yf&&!d){ g=skel.f2("head"); try{var eyes2=g.f0("eyes");if(yf.T43&&eyes2)eyes2.a0=1}catch(ex6){} e=Yf.W48(wanted[6]|0,wearer);e.D7(g);yf.D6(e);e.b6=yf.t44;e.b7=yf.t45;e._1="wear";e.set_r(e.b8);e.set_g(e.b9);e.set_b(e.B0);e.b2=!0;g._9.splice(1,0,e); }
+                yf=item(wanted[7],7);
+                if(yf){
+                    if(yf.T44){skel.f2("front_foot").a2=!1;skel.f2("back_foot").a2=!1;}
+                    if(yf.T41){ g=skel.f2("pants");e=Yf.W48(wanted[7]|0,wearer);e.D7(g);yf.D6(e);e.b6=yf.t44;e.b7=yf.t45;e.set_local_r(yf.b8);e.set_local_g(yf.b9);e.set_local_b(yf.B0);e.c9=yf.c9;e._1="wear";g._9.push(e);skel.f2("leg").C2=!0;skel.f2("leg_back").C2=!0; }
+                    else if(yf._9[0]){ g=skel.f2("front_lowerleg").f2("leg");g._3=yf._9[0]._3;g._5=yf._9[0]._5;yf.T48?g.set_local_r(g.set_local_g(g.set_local_b(__skinColor(tone)))):(g.set_local_r(yf.b8),g.set_local_g(yf.b9),g.set_local_b(yf.B0));g.c9=yf.c9;g=skel.f2("back_lowerleg").f2("leg_back");g._3=yf._9[0]._3;g._5=yf._9[0]._5;yf.T48?g.set_local_r(g.set_local_g(g.set_local_b(__skinColor(tone)))):(g.set_local_r(yf.b8),g.set_local_g(yf.b9),g.set_local_b(yf.B0));g.c9=yf.c9;g=skel.f2("pants");g._3=yf._3;g._5=yf._5;g.set_local_r(yf.b8);g.set_local_g(yf.b9);g.set_local_b(yf.B0);g.c9=yf.c9; }
+                }
+                yf=item(wanted[9],9); if(yf&&!d) visual(wanted[9],yf,"head",2);
+                try{skel.a2=1;skel.e0();}catch(eDone){}
+            }
+
+            function __equipOnPreview(skel, app) {
+                if (!skel) return;
+                var tone = 90;
+                try { if (q.player && q.player.l9 != null) tone = q.player.l9; } catch (eT) {}
+                try {
+                    if (!__previewWearer || __previewWearer.__dzSkeleton !== skel) {
+                        __previewWearer = Object.create(q.player || {});
+                        __previewWearer.__dzSkeleton = skel;
+                    }
+                    __previewWearer.i33 = skel;
+                    __previewWearer.l9 = tone;
+                    __previewWearer.a4 = q.player && q.player.a4;
+                    __previewWearer.q7 = q.player && q.player.q7;
+                    __renderPreviewClothing(skel, app, tone);
+                    if (typeof skel._38 === "function") skel._38("idle", !0, 100, .5);
+                } catch (e) {
+                    try { __ensureHeadAndEyes(skel, tone); __tintPreviewSkin(skel, tone); } catch (eFallback) {}
+                }
+                try { skel.a2 = 1; } catch (eActive) {}
+            }
+
+            function __makeItemIcon(parent, itemId, category, count) {
+                // Same pattern the dig/trade inventory uses: X + h.n7
+                try {
+                    var cat = (category|0) || 2;
+                    var id = itemId|0;
+                    if (!id) return null;
+                    var icon = new X(parent, cat, id, 0, 0, count|1, 0, 0);
+                    try { h.n7(cat, icon, id, 0); } catch (eN) {}
+                    try { if (typeof icon.N23 === "function") icon.N23(); } catch (eN23) {}
+                    try {
+                        if (typeof icon.set_local_xScale === "function")
+                            icon.set_local_xScale(icon.set_local_yScale(0.55));
+                    } catch (eS) {}
+                    return icon;
+                } catch (e) { return null; }
+            }
+
+            function __applyLive(app, text) {
+                try {
+                    if (q.player && typeof q.player.m38 === "function" && q.player.i33 && q.player.i33.Z28 != null)
+                        q.player.m38(app.slice(), text || "");
+                } catch (e) {}
+                try {
+                    if (__previewSkelRef) __equipOnPreview(__previewSkelRef, app);
+                } catch (e2) {}
+                // Keep the live Dig+Trade service in sync too. Otherwise the
+                // Customize preview changes visually but the authoritative cached
+                // appearance immediately snaps back when the panel is reopened.
+                try {
+                    if (q.diggerzService && q.diggerzService.state) {
+                        q.diggerzService.state.appearance = app.slice(0, 11);
+                        while (q.diggerzService.state.appearance.length < 11)
+                            q.diggerzService.state.appearance.push(0);
+                        if (typeof q.diggerzService.markDirty === "function") q.diggerzService.markDirty();
+                        if (typeof q.diggerzService.save === "function") q.diggerzService.save(true);
+                    }
+                } catch (eServiceAppearance) {}
+                try {
+                    var save = __loadDigSave() || { version: 6, slots: [], appearance: app.slice() };
+                    save.appearance = app.slice();
+                    try {
+                        var rawKey = localStorage.getItem("diggerz.digtrade.rebuild.v3");
+                        if (rawKey) {
+                            var full = JSON.parse(rawKey);
+                            full.appearance = app.slice();
+                            localStorage.setItem("diggerz.digtrade.rebuild.v3", JSON.stringify(full));
+                        } else {
+                            localStorage.setItem("diggerz.digtrade.rebuild.v3", JSON.stringify(save));
+                        }
+                    } catch (eKey) {
+                        localStorage.setItem("diggerz.digtrade.v1", JSON.stringify(save));
+                    }
+                } catch (e3) {}
+            }
+
+            var __save = __loadDigSave();
+            var __slots = (__save && __save.slots) ? __save.slots : [];
+            // The live player is the authority. J33 is exactly what m38() uses
+            // for the outfit currently equipped on the player. Do not infer worn
+            // items from inventory variants or from a second cache.
+            var __app = [];
+            try {
+                if (q.player && Array.isArray(q.player.J33) && q.player.J33.length)
+                    __app = q.player.J33.slice(0, 11);
+            } catch (eLive) {}
+            if (!__app.length) __app = __appearanceFromSave(__save);
+            while (__app.length < 11) __app.push(0);
+
+            // ---- Center: player preview box (engine idle rig) ----
+            var __prev = new ja(240, 360, !0);
+            __prev.b6 = 0;   // user layout
+            __prev.b7 = 50;  // user layout
+            __prev.D7(this, !0);
+            this._9.push(__prev);
+            this.__dzPrevBox = __prev;
+            window.__dzCustomizePanel = this;
+            var __pt = new xa(0, -175, "^7Your Character", q.MAIN_FONT);
+            __pt.D7(__prev, !0);
+
+            var __skel = null;
+            try {
+                if (typeof Fc !== "undefined" && Fc.n30 && Fc.n30.length > 0)
+                    __skel = Fc.n30.pop();
+            } catch (ePool) {}
+            if (!__skel) {
+                try {
+                    var __maker = new z;
+                    var __scaleArg = 1;
+                    try { if (q.player && q.player.l0 != null) __scaleArg = q.player.l0; } catch (eSc) {}
+                    __skel = __maker.G2("guy_anims", "guyskin", f, Fc.M39, __scaleArg, !0);
+                } catch (eG2) {
+                    try { __skel = (new z).G2("guy_anims", "guyskin", f, null, 1, !0); } catch (eG2b) {}
+                }
+            }
+
+            if (__skel) {
+                try {
+                    __skel.D7(__prev, !0);
+                    __skel.b6 = 0;
+                    __skel.b7 = 50;
+                    try { __skel.a0 = 0; } catch (eA0) {}
+                    try {
+                        var __rigScale = 1;
+                        try { if (q.player && q.player.l0 != null) __rigScale = Number(q.player.l0); } catch (eRigScale) {}
+                        if (!isFinite(__rigScale) || __rigScale <= 0) __rigScale = 1;
+                        if (typeof __skel.set_local_xScale === "function")
+                            __skel.set_local_xScale(__skel.set_local_yScale(__rigScale));
+                    } catch (eScale) {}
+                    try { __prev._9.push(__skel); } catch (ePush) {}
+                    // Force idle (loop)
+                    try {
+                        if (typeof __skel._38 === "function") {
+                            __skel._38("idle", !0, 100, .5);
+                            // second kick in case first is ignored on title
+                            setTimeout(function() {
+                                try { __skel._38("idle", !0, 100, .5); } catch (e2) {}
+                            }, 200);
+                        } else if (typeof __skel.G7 === "function") {
+                            __skel.G7("idle");
+                        }
+                    } catch (eIdle) {}
+                    __previewSkelRef = __skel;
+                    this.__diggerzPreviewSkel = __skel;
+                    // Wear items after a tick so bones exist (title-screen pool skels need this)
+                    __equipOnPreview(__skel, __app);
+                    setTimeout(function() {
+                        try {
+                            __equipOnPreview(__skel, __app);
+                            if (typeof __skel._38 === "function") __skel._38("idle", !0, 100, .5);
+                        } catch (eLate) {}
+                    }, 300);
+                    setTimeout(function() {
+                        try { __equipOnPreview(__skel, __app); } catch (eLate2) {}
+                    }, 800);
+                    // Exported mannequin rigs can occasionally start before their
+                    // animation channels are fully active. Check periodically, but
+                    // only restart idle when it has actually stopped.
+                    try {
+                        __previewIdleWatch = setInterval(function() {
+                            try {
+                                if (!__previewSkelRef || typeof __previewSkelRef._38 !== "function") return;
+                                var needs = __previewSkelRef.Z28 !== "idle";
+                                try {
+                                    if (!needs && typeof __previewSkelRef._34 === "function")
+                                        needs = !__previewSkelRef._34();
+                                } catch (eWatchCheck) {}
+                                if (needs) __previewSkelRef._38("idle", !0, 100, .5);
+                            } catch (eWatch) {}
+                        }, 500);
+                    } catch (eWatchSetup) {}
+                } catch (eAttach) { __skel = null; }
+            }
+
+            if (!__skel) {
+                // Simple stand-in body so the panel is never empty
+                try {
+                    var __body = z.I9();
+                    __body.D7(__prev, !0);
+                    __body.Init(f.HEAD_PNG());
+                    __body.b7 = -40;
+                    __body.set_local_xScale(__body.set_local_yScale(1.2));
+                    try {
+                        var __tone = (q.player && q.player.l9) ? q.player.l9 : 90;
+                        var __c = __skinColor(__tone);
+                        __body.set_local_r(__body.set_local_g(__body.set_local_b(__c)));
+                    } catch (eT) {}
+                    var __eyes = z.I9();
+                    __eyes.D7(__body, !0);
+                    __eyes.Init(f.EYES_PNG());
+                    __eyes.b6 = -7; __eyes.b7 = -3;
+                    var __shirt = z.I9();
+                    __shirt.D7(__prev, !0);
+                    try { __shirt.Init(f.SHIRT_PNG ? f.SHIRT_PNG() : f.HEAD_PNG()); } catch (eSh) {
+                        try { __shirt.Init(f.HEAD_PNG()); } catch (e2) {}
+                    }
+                    __shirt.b7 = 10;
+                    __shirt.set_local_xScale(__shirt.set_local_yScale(1.1));
+                    // default shirt green-ish
+                    try { __shirt.set_local_r(.3); __shirt.set_local_g(.7); __shirt.set_local_b(.3); } catch (eC) {}
+                    this.__dzFallbackBody = __prev;
+                } catch (eFb) {
+                    var __fb = new xa(0, 0, "^8Rig loading...", q.MAIN_FONT);
+                    __fb.D7(__prev, !0);
+                }
+            }
+
+            // ---- Right: vertical inventory with real slots + clipped up/down scroll ----
+            // This inventory intentionally uses the game's real inventory-grid art
+            // instead of empty JA containers, and renders the full 50-slot save.
+            var __layout = null;
+            try {
+                var __lj = localStorage.getItem("diggerz.customize.layout.v1");
+                if (__lj) __layout = JSON.parse(__lj);
+            } catch (eL) {}
+            function __L(key, field, fallback) {
+                try {
+                    if (__layout && __layout[key] && __layout[key][field] != null)
+                        return __layout[key][field];
+                } catch (e) {}
+                return fallback;
+            }
+
+            // Keep the preview where the layout editor put it.
+            try {
+                __prev.b6 = __L("preview", "x", 0);
+                __prev.b7 = __L("preview", "y", 50);
+            } catch (ePrev) {}
+
+            var __invW = __L("inventory", "w", 320);
+            var __invH = __L("inventory", "h", 500);
+            var __invBox = new ja(__invW, __invH, !0);
+            __invBox.b6 = __L("inventory", "x", 350);
+            __invBox.b7 = __L("inventory", "y", 10);
+            __invBox.D7(this, !0);
+            this._9.push(__invBox);
+            this.__dzInvBox = __invBox;
+
+            var __invT = new xa(0, -__invH / 2 + 18, "^9Your Items", q.MAIN_FONT);
+            __invT.D7(__invBox, !0);
+            try { __invBox._9.push(__invT); } catch (eTitlePush) {}
+            try { __invT.set_local_xScale(__invT.set_local_yScale(.75)); } catch (eTitleScale) {}
+
+            // The viewport mask belongs on the fixed inventory box, NOT on the
+            // scrolling content. The content moves; the mask must stay put.
+            function __applyInvClip() {
+                try {
+                    if (typeof __invBox.set_scrollRect === "function")
+                        __invBox.set_scrollRect(new r(
+                            -__invW / 2 + 6,
+                            -__invH / 2 + 42,
+                            __invW - 12,
+                            __invH - 82
+                        ));
+                } catch (eClip) {}
+            }
+            __applyInvClip();
+
+            var __invContent = z.I9();
+            __invContent.D7(__invBox, !0);
+            try { __invBox._9.push(__invContent); } catch (eContentPush) {}
+            __invContent.b6 = 0;
+            __invContent.b7 = 0;
+            this.__dzInvContent = __invContent;
+
+            // Pull the authoritative inventory from the live service first, then
+            // fall back to the local saved copy. Empty slots are retained so the
+            // customize UI actually looks/behaves like an inventory.
+            var __rawSlots = null;
+            try {
+                var __stNow = q.diggerzService && q.diggerzService.state;
+                if (__stNow && Array.isArray(__stNow.slots)) __rawSlots = __stNow.slots;
+            } catch (eSvcSlots) {}
+            if (!__rawSlots) {
+                try {
+                    var __saveNow = __loadDigSave();
+                    if (__saveNow && Array.isArray(__saveNow.slots)) __rawSlots = __saveNow.slots;
+                } catch (eSaveSlots) {}
+            }
+            if (!Array.isArray(__rawSlots)) __rawSlots = [];
+
+            // Customize is a CLOTHING inventory, not the normal item inventory.
+            // These are the mannequin's wearable appearance slots.  Weapon/tool
+            // slot 4, non-clothing slot 10, blocks and other gameplay items are
+            // deliberately excluded.
+            var __clothingWearSlots = {0:1,1:1,2:1,3:1,5:1,6:1,7:1,9:1};
+
+            var __cols = 4;
+            var __slotSize = 70;
+            var __rowH = 72;
+            var __gridW = __cols * __slotSize;
+            var __startX = -__gridW / 2 + __slotSize / 2;
+            var __startY = -__invH / 2 + 62;
+            var __clothingItems = [];
+
+            function __wearSlotForItem(item, slotIndex) {
+                if (!item || !(item.id|0)) return -1;
+                // Prefer the live inventory entry at the exact slot. This keeps
+                // duplicate copies of the same item from equipping the wrong
+                // cosmetic slot.
+                try {
+                    var invExact = l.z39 && l.z39.n38 && l.z39.n38.B30;
+                    var exact = invExact && invExact[slotIndex|0];
+                    if (exact && exact.a4 === 2 && exact.h44 === (item.id|0) &&
+                        exact.t46 >= 0 && exact.t46 <= 10)
+                        return exact.t46|0;
+                } catch (eExactWear) {}
+                // The real item renderer gets the authoritative appearance slot
+                // from h.n7/O27. Use a temporary icon so we don't guess slot 1.
+                try {
+                    var probe = new X(__invContent, item.category|0, item.id|0,
+                        item.variant|0, 0, Math.max(1, item.count|0), item.b14|0, item.g39);
+                    var ws = probe.t46;
+                    if (ws != null && ws >= 0 && ws <= 10) return ws|0;
+                } catch (eProbe) {}
+                // If the item is currently equipped, the live inventory object
+                // remains the most reliable source.
+                try {
+                    var invLive = l.z39 && l.z39.n38 && l.z39.n38.B30;
+                    if (invLive) {
+                        for (var wi = 0; wi < invLive.length; wi++) {
+                            var live = invLive[wi];
+                            if (live && live.h44 === (item.id|0) && live.a4 === 2 &&
+                                live.t46 >= 0 && live.t46 <= 10)
+                                return live.t46|0;
+                        }
+                    }
+                } catch (eLiveWear) {}
+                return -1;
+            }
+
+            for (var __ri = 0; __ri < __rawSlots.length; __ri++) {
+                var __riItem = __rawSlots[__ri];
+                if (!__riItem || !(__riItem.id|0) || !(__riItem.count|0)) continue;
+                var __riWear = __wearSlotForItem(__riItem, __ri);
+                if (__clothingWearSlots[__riWear]) {
+                    __clothingItems.push({ item: __riItem, wear: __riWear, sourceIndex: __ri });
+                }
+            }
+            var __slotCount = __clothingItems.length;
+            var __rows = Math.max(1, Math.ceil(Math.max(1, __slotCount) / __cols));
+
+            function __makeRealSlot(parent, x, y) {
+                var slot = new ra;
+                try { slot.X6(f.INVENTORYGRID_PNG()); } catch (eGrid) {}
+                slot.D7(parent, !0);
+                // ja is non-interactive by default. Give the cell a 60x60 hitbox;
+                // its child icon is visual-only so clicking an item cannot invoke
+                // the game's normal inventory C39 (which can rebuild/hide slots).
+                try { slot.d35 = !0; slot.c39 = new r(0,0,60,60); } catch (eCellHit) {}
+                try { parent._9.push(slot); } catch (eSlotPush) {}
+                slot.b6 = x;
+                slot.b7 = y;
+                try {
+                    var sx = Math.min(.92, (__slotSize - 4) / Math.max(1, slot._5.width));
+                    slot.set_local_xScale(slot.set_local_yScale(sx));
+                } catch (eScaleSlot) {}
+                return slot;
+            }
+
+            function __putInventoryIcon(slot, item) {
+                if (!item || !(item.id|0) || !(item.count|0)) return null;
+                try {
+                    var icon = new X(slot, item.category|0, item.id|0,
+                        item.variant|0, 0, item.count|0, item.b14|0, item.g39);
+                    icon.N23();
+                    try { icon.E7 = function() { return !1; }; } catch (eIconHit) {}
+                    try { slot._9.push(icon); } catch (eIconPush) {}
+                    icon.b6 = 0;
+                    icon.b7 = 0;
+                    try {
+                        icon.set_local_xScale(icon.set_local_yScale(.72));
+                    } catch (eIconScale) {}
+                    return icon;
+                } catch (eIcon) {
+                    return null;
+                }
+            }
+
+            var __dzInvCells = [];
+            var __equippedNow = (__app && __app.slice) ? __app.slice() : [];
+            while (__equippedNow.length < 11) __equippedNow.push(0);
+
+            for (var __slotIndex = 0; __slotIndex < __slotCount; __slotIndex++) {
+                var __row = Math.floor(__slotIndex / __cols);
+                var __col = __slotIndex % __cols;
+                var __sx = __startX + __col * __slotSize;
+                var __sy = __startY + __row * __rowH;
+                var __cell = __makeRealSlot(__invContent, __sx, __sy);
+                __dzInvCells.push(__cell);
+                var __clothEntry = __clothingItems[__slotIndex];
+                var __item = __clothEntry.item;
+                var __icon = __putInventoryIcon(__cell, __item);
+                var __wear = __clothEntry.wear;
+                var __isWorn = (__wear >= 0 && (__equippedNow[__wear]|0) === (__item.id|0));
+
+                if (__isWorn) {
+                    try {
+                        var __eq = new xa(0, 23, "^2EQ", q.MAIN_FONT_SMALL);
+                        __eq.D7(__cell, !0);
+                        try { __cell._9.push(__eq); } catch (eEqPush) {}
+                        __eq.set_local_xScale(__eq.set_local_yScale(.62));
+                    } catch (eEq) {}
+                }
+
+                // Empty slots are still visible, but have no click action.
+                if (__item.id && __item.count) {
+                    (function(item, wearSlot, cell) {
+                        cell.C33 = function() {
+                            try {
+                                if (wearSlot < 0 || wearSlot > 10 || wearSlot === 8) return;
+                                var next = __equippedNow.slice();
+                                while (next.length < 11) next.push(0);
+                                next[wearSlot] = ((next[wearSlot]|0) === (item.id|0)) ? 0 : (item.id|0);
+                                __equippedNow = next;
+                                __app = next.slice();
+                                __applyLive(next, "");
+                                // Rebuild on the next frame so EQ markers and the
+                                // preview always reflect the newly selected item.
+                                setTimeout(function() {
+                                    try {
+                                        if (__previewSkelRef) __equipOnPreview(__previewSkelRef, __equippedNow);
+                                    } catch (eRefresh) {}
+                                }, 0);
+                            } catch (eClick) {}
+                        };
+                    })(__item, __wear, __cell);
+                }
+            }
+
+            this.__dzInvScroll = 0;
+            this.__dzInvMaxScroll = Math.max(0,
+                (__rows * __rowH) - (__invH - 82));
+            this.__dzInvH = __invH;
+            this.__dzInvW = __invW;
+            this.__dzInvCells = __dzInvCells;
+
+            var __hint = new xa(0, __invH / 2 - 18, "^8mouse wheel / arrows", q.MAIN_FONT);
+            __hint.D7(__invBox, !0);
+            try { __invBox._9.push(__hint); } catch (eHintPush) {}
+            try { __hint.set_local_xScale(__hint.set_local_yScale(.52)); } catch (eHint) {}
+
+            // Apply the saved layout after the panel's children exist.
+            try {
+                var __forceL = {
+                    preview: { x: __L("preview", "x", 0), y: __L("preview", "y", 50) },
+                    inventory: {
+                        x: __L("inventory", "x", 350),
+                        y: __L("inventory", "y", 10),
+                        w: __invW,
+                        h: __invH
+                    },
+                    skin: { x: __L("skin", "x", 95), y: __L("skin", "y", -240) },
+                    title: { x: __L("title", "x", 0), y: __L("title", "y", -320) },
+                    countries: { x: __L("countries", "x", 0), y: __L("countries", "y", 0) }
+                };
+                try { localStorage.setItem("diggerz.customize.layout.v1", JSON.stringify(__forceL)); } catch (eFL) {}
+                if (this.__dzPrevBox) {
+                    this.__dzPrevBox.b6 = __forceL.preview.x;
+                    this.__dzPrevBox.b7 = __forceL.preview.y;
+                }
+                if (this.__dzInvBox) {
+                    this.__dzInvBox.b6 = __forceL.inventory.x;
+                    this.__dzInvBox.b7 = __forceL.inventory.y;
+                }
+                if (this.y42) {
+                    this.y42.b6 = __forceL.skin.x;
+                    this.y42.b7 = __forceL.skin.y;
+                }
+                var __selfForce = this;
+                setTimeout(function() {
+                    try {
+                        if (__selfForce.__dzPrevBox) {
+                            __selfForce.__dzPrevBox.b6 = __forceL.preview.x;
+                            __selfForce.__dzPrevBox.b7 = __forceL.preview.y;
+                        }
+                        if (__selfForce.__dzInvBox) {
+                            __selfForce.__dzInvBox.b6 = __forceL.inventory.x;
+                            __selfForce.__dzInvBox.b7 = __forceL.inventory.y;
+                        }
+                        if (__selfForce.y42) {
+                            __selfForce.y42.b6 = __forceL.skin.x;
+                            __selfForce.y42.b7 = __forceL.skin.y;
+                        }
+                        if (window.DiggerzCustomizeLayout && window.DiggerzCustomizeLayout.apply)
+                            window.DiggerzCustomizeLayout.apply(__forceL);
+                    } catch (eT) {}
+                }, 50);
+            } catch (eForce) {}
+
+            // Leave the native vl slider hit testing/dragging intact. The slider
+            // itself carries HEAD_PNG, so its native E7 hitbox is the little head;
+            // the d49 child is the background track.
+
+            // Live skin + idle + inventory scroll. q.mWheel is the engine's actual
+            // one-frame wheel value; the old code read q.mouseWheel, which never exists.
+            try {
+                var __mpE0 = Mp.prototype.e0;
+                this.e0 = function() {
+                    var __ret = __mpE0.call(this);
+                    try {
+                        if (__previewSkelRef) {
+                            var __t2 = (q.player && q.player.l9 != null) ? q.player.l9 :
+                                (this.y42 ? this.y42.D43 : 45);
+                            __tintPreviewSkin(__previewSkelRef, __t2);
+                            try { __tintPreviewShirt(__previewSkelRef); } catch (eShirtLive) {}
+                            try {
+                                // Keep the mannequin in a real looping idle state.
+                                // Some exported/title-screen skeletons can lose their
+                                // animation channels after their clothing children are
+                                // rebuilt, so only restart when the idle state is no
+                                // longer actually running. Never restart a healthy
+                                // animation every frame (that would freeze frame 0).
+                                if (typeof __previewSkelRef._38 === "function") {
+                                    var __idleNeedsKick = (__previewSkelRef.Z28 !== "idle");
+                                    try {
+                                        if (!__idleNeedsKick && typeof __previewSkelRef._34 === "function")
+                                            __idleNeedsKick = !__previewSkelRef._34();
+                                    } catch (eIdleCheck) {}
+                                    if (__idleNeedsKick)
+                                        __previewSkelRef._38("idle", !0, 100, .5);
+                                }
+                            } catch (eId) {}
+                        }
+                    } catch (eLiveSkin) {}
+
+                    try {
+                        if (this.__dzInvContent) {
+                            var __wheel = 0;
+                            try {
+                                __wheel = q.mWheel|0;
+                                // Only steal wheel input when the pointer is over the
+                                // inventory. Arrow keys still work anywhere in Customize.
+                                if (__wheel && this.__dzInvBox) {
+                                    var __mx = Number(q.mX), __my = Number(q.mY);
+                                    var __cx = Number(this.__dzInvBox.A7), __cy = Number(this.__dzInvBox.A8);
+                                    if (!isFinite(__mx) || !isFinite(__my) ||
+                                        Math.abs(__mx - __cx) > (this.__dzInvW || 320) / 2 ||
+                                        Math.abs(__my - __cy) > (this.__dzInvH || 500) / 2)
+                                        __wheel = 0;
+                                }
+                            } catch (eW) {} 
+                            var __keyDir = 0;
+                            try {
+                                if (q.KeyDown && q.KeyDown(38)) __keyDir = -1;
+                                if (q.KeyDown && q.KeyDown(40)) __keyDir = 1;
+                            } catch (eK) {}
+                            if (__wheel || __keyDir) {
+                                // Wheel up = move content up; wheel down = move content down.
+                                var __delta = __wheel ? -__wheel * 64 : __keyDir * 64;
+                                this.__dzInvScroll = Math.max(0, Math.min(
+                                    this.__dzInvMaxScroll || 0,
+                                    (this.__dzInvScroll || 0) + __delta
+                                ));
+                                this.__dzInvContent.b7 = -this.__dzInvScroll;
+                                // The fixed __invBox scrollRect above does the clipping.
+                                // Never toggle a0 on cells: that made off-screen slots
+                                // disappear permanently instead of reappearing.
+                                try { __applyInvClip(); } catch (eReclip) {}
+                                // Consume the engine's one-frame wheel event only here.
+                                try { q.mWheel = 0; } catch (eConsume) {}
+                            }
+                            try { __applyInvClip(); } catch (eClip2) {}
+                        }
+                        // Keep the Customize inventory layer alive. Some of the
+                        // game's normal item/equipment paths can toggle a0/C2 on
+                        // descendants while rebuilding visuals; those flags must
+                        // never be allowed to hide our private inventory UI.
+                        try {
+                            this.__dzInvBox.a0 = 1;
+                            this.__dzInvContent.a0 = 1;
+                            this.__dzInvContent.C2 = !1;
+                            if (this.__dzInvCells) {
+                                for (var __ic = 0; __ic < this.__dzInvCells.length; __ic++) {
+                                    var __keepCell = this.__dzInvCells[__ic];
+                                    if (!__keepCell) continue;
+                                    __keepCell.a0 = 1;
+                                    __keepCell.C2 = !1;
+                                    if (__keepCell._9) for (var __ik = 0; __ik < __keepCell._9.length; __ik++) {
+                                        var __keepChild = __keepCell._9[__ik];
+                                        if (__keepChild && __keepChild._1 !== "bknd") __keepChild.a0 = 1;
+                                    }
+                                }
+                            }
+                        } catch (eInvKeepAlive) {}
+                    } catch (eScroll) {}
+
+                    // Clicking outside the Customize JA closes it. A click on any
+                    // child (including an inventory slot or the skin handle) sets
+                    // q.clickedFunction, so those clicks are left alone.
+                    try {
+                        if (q.mClicked && q.clickedFunction == null) {
+                            var __outside = false;
+                            var __px = Number(this.A7), __py = Number(this.A8);
+                            var __pw = Number(this.d32), __ph = Number(this.d33);
+                            if (isFinite(__px) && isFinite(__py) && isFinite(__pw) && isFinite(__ph)) {
+                                __outside = q.mX < __px - __pw / 2 || q.mX > __px + __pw / 2 ||
+                                            q.mY < __py - __ph / 2 || q.mY > __py + __ph / 2;
+                            }
+                            if (__outside) {
+                                this.C39();
+                                q.mClicked = !1;
+                            }
+                        }
+                    } catch (eOutside) {}
+                    return __ret;
+                };
+            } catch (eE0) {}
+
+        } catch (__eCust) {
+            try { console.warn("[Customize]", __eCust); } catch (e) {}
+        }
         this.e0()
+
+
     };
     v.y40 = Mp;
     Mp.__name__ = "y40";
@@ -50440,14 +51719,15 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         y46: function(a) {
             this.a0 = 0;
             q.player.L0 = a;
-            this.y45()
+            this.y45();
+            try { q.SaveGlobals(); } catch (e) {}
         },
         E7: function(a) {
             return !0
         },
         e0: function() {
             this.y42.set_local_r(this.y42.set_local_g(this.y42.set_local_b(.45 + 1.1 * this.y42.D43 / 100)));
-            q.player.l9 = Math.max(.01, this.y42.D43);
+            q.player.l9 = Math.max(q.player.k7, Math.min(q.player.k8, this.y42.D43));
             return ja.prototype.e0.call(this)
         },
         C39: function() {
@@ -50957,6 +52237,50 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         a.D7(this, !0);
         a.set_local_xScale(a.set_local_yScale(.7));
         this.Z47._9.push(a);
+        a = 170;
+        // Menu background cycle
+        var bgNames = ["Default (clear)", "Grey", "Space"];
+        var bgKey = "diggerz.menuBg.v1";
+        var bgIdx = 0;
+        try { bgIdx = Math.max(0, Math.min(2, parseInt(localStorage.getItem(bgKey) || "0", 10) || 0)); } catch (eBg) {}
+        var bgLbl = new ob(0, a, "^9Background: ^7" + bgNames[bgIdx], q.MAIN_FONT);
+        bgLbl.D7(this, !0);
+        bgLbl.C33 = A(this, function() {
+            try {
+                var i = Math.max(0, Math.min(2, parseInt(localStorage.getItem(bgKey) || "0", 10) || 0));
+                i = (i + 1) % 3;
+                localStorage.setItem(bgKey, String(i));
+                try { bgLbl.E37("^9Background: ^7" + bgNames[i]); } catch (eL) {}
+                if (window.DiggerzApplyMenuBackground) window.DiggerzApplyMenuBackground();
+            } catch (eC) {}
+        });
+        this._9.push(bgLbl);
+        a += 55;
+        var saveBtn = new ob(0, a, "^2Save to Account", q.MAIN_FONT);
+        saveBtn.D7(this, !0);
+        saveBtn.C33 = A(this, function() {
+            if (window.DiggerzAuth237 && window.DiggerzAuth237.pushCloudSave)
+                window.DiggerzAuth237.pushCloudSave(true).then(function(r) {
+                    var msg = (r && r.ok) ? "^2Saved to account!" : "^1Save failed.";
+                    try { q.thisMain && q.thisMain.stage; } catch (e) {}
+                    alert((r && r.ok) ? "Saved to account!" : ("Save failed: " + ((r && (r.error||r.reason)) || "error")));
+                });
+            else alert("Log in first.");
+        });
+        this._9.push(saveBtn);
+        a += 50;
+        var loadBtn = new ob(0, a, "^3Load from Account", q.MAIN_FONT);
+        loadBtn.D7(this, !0);
+        loadBtn.C33 = A(this, function() {
+            if (window.DiggerzAuth237 && window.DiggerzAuth237.pullCloudSave)
+                window.DiggerzAuth237.pullCloudSave(true).then(function(d) {
+                    if (!d) { alert("No cloud save found."); return; }
+                    alert("Loaded. Reloading…");
+                    location.reload();
+                });
+            else alert("Log in first.");
+        });
+        this._9.push(loadBtn);
         this.e0()
     };
     v.Z45 = Op;
@@ -51148,7 +52472,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         E.u4(this, 0, 300, 0, .5, 1, 0, 1);
         var c = -177
           , d = l.A47 || l.A48 ? "^9Private Game" : "^9Battle Royale";
-        "Free Dig" == l.a42 && (d = "^9Dig & Trade");
+        (!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && "Free Dig" == l.a42 && (d = "^9Dig & Trade");
         d = new xa(0,c,d,q.MAIN_FONT_BIG);
         d.D7(this, !0);
         this._9.push(d);
@@ -51156,7 +52480,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         d = "^7The last player remaining is the winner! Use your pickaxe to dig for more weapons or, if you're lucky, a ^3RARE ITEM!";
         if (l.A47 || l.A48)
             d = "^7This is a private game. Only you and friends can join. Copy the url for them to use to join!";
-        "Free Dig" == l.a42 && (d = "^7Click on other players to trade with them. ^9ALL TRADES ARE FINAL! ^7Be smart, don't get scammed! You can also dig for ^3RARE ITEMS!");
+        (!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && "Free Dig" == l.a42 && (d = "^7Click on other players to trade with them. ^9ALL TRADES ARE FINAL! ^7Be smart, don't get scammed! You can also dig for ^3RARE ITEMS!");
         d = new xa(0,c,d,q.MAIN_FONT);
         d.f30(500);
         d.D7(this, !0);
@@ -51208,11 +52532,19 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             ;
             this._9.push(e)
         } else {
-            d = new xa(0,c,"^2TODAY'S SUPER RARES",q.MAIN_FONT_BIG);
+            var rgbWeekend240=!!(window.DiggerzBuild240&&window.DiggerzBuild240.isRgbWeekend&&window.DiggerzBuild240.isRgbWeekend());
+            d = new xa(0,c,rgbWeekend240?"^6RGB WEEKEND!":"^2TODAY'S SUPER RARES",q.MAIN_FONT_BIG);
             d.D7(this, !0);
             d.set_local_xScale(d.set_local_yScale(.65));
             this._9.push(d);
             c += 65;
+            if(rgbWeekend240){
+                var rgbInfo240=new xa(0,c,"^6RGB Weekend! ^0These 3 limited-time RGB variants are more common than normal featured Super Rares.\n^0Get them before Monday! Off-week RGB finds become EXTREMELY RARE True RGB items -- the highest-value variants!",q.MAIN_FONT_SMALL);
+                rgbInfo240.D7(this,!0);
+                rgbInfo240.set_local_xScale(rgbInfo240.set_local_yScale(.42));
+                this._9.push(rgbInfo240);
+                c += 52
+            }
             d = -150;
             for (var g = 0; 3 > g; ) {
                 g++;
@@ -51226,7 +52558,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 d += 150
             }
             c += 100;
-            "Free Dig" == l.a42 && (a = new xa(0,c,"^0(Click on another player to trade.)",q.MAIN_FONT),
+            (!window.DiggerzPvp22 || window.DiggerzPvp22.mode !== "pvp") && "Free Dig" == l.a42 && (a = new xa(0,c,"^0(Click on another player to trade.)",q.MAIN_FONT),
             a.D7(this, !0),
             this._9.push(a),
             c += 65)
@@ -51240,6 +52572,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         a58: null,
         F36: function(a, b, c, d, e, g) {
             var f = new ja(70,70,!0);
+            if(window.DiggerzBuild240&&window.DiggerzBuild240.isRgbWeekend&&window.DiggerzBuild240.isRgbWeekend()&&window.DiggerzBuild240.decorateRgbWeekendBox)window.DiggerzBuild240.decorateRgbWeekendBox(f);
             f._1 = "added";
             f.D7(this);
             f.b6 = a;
@@ -85979,6 +87312,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         Jb.call(this, a, b, c, d, e, g, p);
         this.Init(f.MISSILE_PNG());
         this.O23(b, c, d, e);
+        if(window.DiggerzBuild240&&window.DiggerzBuild240.isRobloxLauncherEntity&&window.DiggerzBuild240.isRobloxLauncherEntity(p)){this._build240RobloxRocket=true;try{window.DiggerzBuild240.registerRobloxRocketProjectile(this,p,b,c,d,e)}catch(_e){}}
         a = this.b33;
         a.tBJ.immutable_midstep("Body::gravMass");
         a.tBJ.gravMassMode = 1;
@@ -86277,7 +87611,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         a.Init(f.AURA_PNG()),
         c = h.N24(a, "{2,125,1}"),
         a._9.push(c)) :
-        0 <= c.indexOf("{") ? (a = new z,
+        0 === c.indexOf("data:image/") ? (a = new z,
+        a.D8(c)) : 0 <= c.indexOf("{") ? (a = new z,
         a.Init(f.AURA_PNG()),
         c = h.N24(a, c),
         a._9.push(c)) : (a = new z,
@@ -86635,17 +87970,14 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         // Build 23.7 logo branding as a real OpenFL/Lime child of the original
         // Diggerz logo.  This is intentionally NOT a DOM overlay: the extension
         // is loaded as an in-game display object and follows the logo animation.
-        this.C60 = z.I9();
+                this.C60 = z.I9();
         this.C60.D8("reblasted.png");
         this.C60.D7(this.C58);
-        this.C60.set_local_xScale(this.C60.set_local_yScale(.22));
+        this.C60.set_local_xScale(this.C60.set_local_yScale(.27));
         this.C60.B8 = 6;
         this.C60._1 = "reblasted_logo_extension";
         this.C58._9.push(this.C60);
 
-        // D8 loads asynchronously, so center the extension once its real
-        // dimensions are available.  The supplied artwork is transparently
-        // cropped to its visible bounds before being packaged.
         var reblastedLogoExtension = this.C60;
         var reblastedLogoParent = this.C58;
         var reblastedLogoTries = 0;
@@ -86655,12 +87987,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     window.setTimeout(positionReblastedLogo, 50);
                 return;
             }
-            var extensionScale = .22;
-            reblastedLogoExtension.A7 =
-                (reblastedLogoParent._5.width -
-                 reblastedLogoExtension._5.width * extensionScale) / 2;
-            reblastedLogoExtension.A8 =
-                reblastedLogoParent._5.height + 8;
+            var extensionScale = .27;
+            var gap = 1;
+            reblastedLogoExtension.b6 = 0;
+            reblastedLogoExtension.b7 =
+                reblastedLogoParent._5.height / 4.90
+                + (reblastedLogoExtension._5.height * extensionScale) / 2
+                + gap;
         };
         positionReblastedLogo();
 
@@ -86831,7 +88164,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.d51.b7 = 2;
             this.d51.C33 = A(this, this.e54);
             this._9.push(this.d51);
-            var d = q.SCREENHEIGHT / 2 - 250;
+            var d = q.SCREENHEIGHT / 2 - 380;
             b = new z;
             b.Init(u.REDBUTTON_PNG());
             b.D7(this);
@@ -86857,6 +88190,17 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             c.D7(b, !0);
             c.set_local_xScale(c.set_local_yScale(1.25));
             this._9.push(c);
+            // Restore Firebase session so menu shows Log Out + email
+            try {
+                if (window.localStorage) {
+                    var __dzAuth = null;
+                    try { __dzAuth = JSON.parse(localStorage.getItem("diggerz.firebase.auth.v1") || "null"); } catch (eA) {}
+                    if (__dzAuth && __dzAuth.authenticated && (__dzAuth.email || __dzAuth.uid)) {
+                        q.thisMain.userPW = "SESSION_AUTHENTICATED";
+                        q.thisMain.userEmail = String(__dzAuth.email || __dzAuth.uid || "");
+                    }
+                }
+            } catch (__dzE) {}
             N.startsWith(q.thisMain.userPW, "NOPASSWORD") || 0 >= q.thisMain.userPW.length ? (q.thisMain.userEmail = "",
             b = new z,
             b.Init(u.YELLOWBUTTON_PNG()),
@@ -86903,6 +88247,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             c.D7(b, !0),
             c.set_local_xScale(c.set_local_yScale(1.25)),
             this._9.push(c));
+            // Donate — center JA with clickable text (no sprite buttons)
             b = new z;
             b.Init(u.YELLOWBUTTON_PNG());
             b.D7(this);
@@ -86910,21 +88255,53 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             d += 80;
             b.b6 = q.SCREENWIDTH / 2 - 150;
             b.set_local_xScale(b.set_local_yScale(.5));
-            b._1 = "weap message";
+            b._1 = "support message";
             b.F6(5, 0, 1, 500);
             this._9.push(b);
             this.d51 = new ob(0,0,"",q.MAIN_FONT_BIG);
-            this.d51._1 = "spg";
             this.d51.D7(b);
-            this.d51.E37("Shop");
+            this.d51.E37("Donate");
             this.d51.b7 = 2;
-            this.d51.B8 = 5;
-            this.d51.C33 = A(this, this.e56);
-            this.d51.C34 = "shop";
-            this.d51.B8 = 5;
+            this.d51.C33 = A(this, function() {
+                var panel = new ja(420, 300, !0);
+                panel._1 = "diggerz_donate_panel";
+                panel.c0 = !0;
+                panel.A7 = q.CENTERX;
+                panel.A8 = q.CENTERY;
+                try { E.u4(panel, 0, 300, 0, .5, 1, 0, 1); } catch (eD) {}
+                panel.E7 = function() { return !0; };
+                panel.C39 = function() {
+                    try {
+                        if (null == this._8 || null == this._8[3]) {
+                            this.a0 = 1;
+                            try { E.u4(this, 0, 300, 1, .5, 0, 1, 0); } catch (eC) {}
+                        }
+                    } catch (eC2) {}
+                };
+                var t1 = new xa(0, -100, "^9DONATE", q.MAIN_FONT_BIG);
+                t1.D7(panel, !0);
+                panel._9.push(t1);
+                var lime = new ob(0, -20, "^2Lime", q.MAIN_FONT_BIG);
+                lime.D7(panel, !0);
+                lime.C33 = function() {
+                    try { window.open("https://ko-fi.com/limeguy314/", "_blank", "noopener,noreferrer"); } catch (eL) {}
+                };
+                panel._9.push(lime);
+                var heu = new ob(0, 50, "^3Heu", q.MAIN_FONT_BIG);
+                heu.D7(panel, !0);
+                heu.C33 = function() {
+                    try { window.open("https://cash.app/$Houstonswallet", "_blank", "noopener,noreferrer"); } catch (eH) {}
+                };
+                panel._9.push(heu);
+                var cl = new ob(0, 110, "^1Close", q.MAIN_FONT);
+                cl.D7(panel, !0);
+                cl.C33 = function() { try { panel.a0 = 1; } catch (eX) {} };
+                panel._9.push(cl);
+                this._9.push(panel);
+            });
             this.d51._1 = "welcome message";
             this._9.push(this.d51);
-            c = new xa(0,-70,"Get weapons and clothes!");
+            c = new xa(0,-70,"Support Diggerz");
             c.D7(b, !0);
             c.set_local_xScale(c.set_local_yScale(1.25));
             this._9.push(c)
@@ -86955,19 +88332,79 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         },
         D54: null,
         D55: function() {
-            for (var a = 0, b = this._9; a < b.length; ) {
-                var c = b[a];
-                ++a;
-                null != c._1 && N.startsWith(c._1, "welcome message") && (c.e3(),
-                c.a0 = 1)
-            }
-            a = new $b(this,"Email Address:",q.thisMain.userEmail,64,A(this, this.D59),400,200,!0,!1);
-            a._1 = "getemail";
-            a.B8 = 4;
-            this.D54 = !0;
-            a.c0 = !0;
-            q.children.push(a);
-            q.thisMain.stage.set_focus(a.F30.Q30)
+            // Center JA login — clickable TEXT only (no yellow buttons)
+            var self = this;
+            try {
+                for (var li = this._9.length - 1; li >= 0; li--) {
+                    var ch = this._9[li];
+                    if (ch && (ch._1 === "diggerz_login_panel" || ch._1 === "getemail")) {
+                        try { ch.a0 = 1; } catch (e0) {}
+                    }
+                }
+            } catch (e1) {}
+            var panel = new ja(480, 380, !0);
+            panel._1 = "diggerz_login_panel";
+            panel.c0 = !0;
+            panel.A7 = q.CENTERX;
+            panel.A8 = q.CENTERY;
+            panel.B8 = 8;
+            try { E.u4(panel, 0, 300, 0, .5, 1, 0, 1); } catch (e2) {}
+            // click-off close (same pattern as Game Settings)
+            panel.E7 = function() { return !0; };
+            panel.C39 = function() {
+                try {
+                    if (null == this._8 || null == this._8[3]) {
+                        this.a0 = 1;
+                        try { E.u4(this, 0, 300, 1, .5, 0, 1, 0); } catch (eC) {}
+                    }
+                } catch (eC2) {}
+            };
+            var y = -130;
+            var title = new xa(0, y, "^9LOGIN", q.MAIN_FONT_BIG);
+            title.D7(panel, !0);
+            panel._9.push(title);
+            y += 70;
+            var sub = new xa(0, y, "^7Choose a sign-in method", q.MAIN_FONT);
+            sub.D7(panel, !0);
+            try { sub.set_local_xScale(sub.set_local_yScale(.85)); } catch (eS) {}
+            panel._9.push(sub);
+            y += 75;
+            // Gmail — clickable text
+            var gmail = new ob(0, y, "^3Gmail", q.MAIN_FONT_BIG);
+            gmail.D7(panel, !0);
+            gmail.C33 = A(this, function() {
+                try { panel.a0 = 1; } catch (eG0) {}
+                if (window.DiggerzAuth237 && window.DiggerzAuth237.loginWithGoogle)
+                    window.DiggerzAuth237.loginWithGoogle();
+                else
+                    this._9.push(new vb(this, "", "^1Google login is not ready. Refresh the page.", new Cd, vb.F39));
+            });
+            panel._9.push(gmail);
+            y += 65;
+            // Email — native diggerz $b textbox
+            var emailBtn = new ob(0, y, "^9Email", q.MAIN_FONT_BIG);
+            emailBtn.D7(panel, !0);
+            emailBtn.C33 = A(this, function() {
+                try { panel.a0 = 1; } catch (eE0) {}
+                var box = new $b(this, "Email Address:", q.thisMain.userEmail || "", 80, A(this, this.D59), 420, 210, !0, !1);
+                box._1 = "getemail";
+                box.B8 = 4;
+                this.D54 = !0;
+                box.c0 = !0;
+                window.__diggerzEmailPopup = box;
+                q.children.push(box);
+                try { q.thisMain.stage.set_focus(box.F30.Q30); } catch (eF) {}
+            });
+            panel._9.push(emailBtn);
+            y += 70;
+            var closeT = new ob(0, y, "^1Close", q.MAIN_FONT);
+            closeT.D7(panel, !0);
+            closeT.C33 = A(this, function() {
+                try { panel.a0 = 1; E.u4(panel, 0, 300, 1, .5, 0, 1, 0); } catch (eCl) {}
+            });
+            panel._9.push(closeT);
+            this._9.push(panel);
+            panel._2 = this;
         },
         D56: function(a) {
             // Build 23.7: account lookup/password prompts are retired. Email magic-link only.
@@ -86978,17 +88415,67 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         },
         D58: function(a) {},
         D59: function() {
-            var a = q.GetChildByType($b);
-            null == a && (a = this.f4($b));
-            if (null == a || null == a.F30) return;
-            var email = String(a.F30.q35 || "").trim().toLowerCase();
+            var a = window.__diggerzEmailPopup || null;
+            try { if (!a || a.a0) a = q.GetChildByType($b); } catch (e0) {}
+            try { if (!a || a.a0) a = this.f4($b); } catch (e1) {}
+            if (null == a || null == a.F30) {
+                this._9.push(new vb(this, "", "^1Could not read email. Try again.", new Cd, vb.F39));
+                return;
+            }
+            var email = "";
+            try {
+                var field = a.F30;
+                try {
+                    if (field.Q30 && typeof field.Q30.get_text === "function") {
+                        var pending = String(field.Q30.get_text() || "");
+                        if (pending) {
+                            field.q35 = String(field.q35 || "") + pending;
+                            try { field.Q30.set_text(""); } catch (e2) {}
+                            try { field.E37(field.q35); } catch (e3) {}
+                        }
+                    }
+                } catch (e4) {}
+                email = String(field.q35 || field.E32 || "").replace(/\^\d/g, "").trim().toLowerCase();
+            } catch (eR) { email = ""; }
+            var at = email.indexOf("@");
+            if (!(email.length >= 3 && at > 0 && at < email.length - 1)) {
+                this._9.push(new vb(this, "", "^1Enter a valid email address.", new Cd, vb.F39));
+                return;
+            }
             q.thisMain.userEmail = email;
-            if (window.DiggerzAuth237 && window.DiggerzAuth237.requestLink)
-                window.DiggerzAuth237.requestLink(email, q.thisMain.userName, this, a);
-            else
-                this._9.push(new vb(this,"","Passwordless sign-in is not ready yet. You can continue as a guest.",new Cd,vb.F39))
+            try { a.a0 = 1; } catch (eClose) {}
+            window.__diggerzEmailPopup = null;
+            var self = this;
+            function showSent() {
+                var msg = new ja(420, 180, !0);
+                msg._1 = "diggerz_sent_popup";
+                msg.c0 = !0;
+                msg.A7 = q.CENTERX;
+                msg.A8 = q.CENTERY;
+                try { E.u4(msg, 0, 300, 0, .5, 1, 0, 1); } catch (eM) {}
+                var line = new xa(0, -10, "^2Sent! ^7Check spam folder if unable to find.", q.MAIN_FONT);
+                line.D7(msg, !0);
+                msg._9.push(line);
+                var ok = new ob(0, 50, "^9Okay", q.MAIN_FONT);
+                ok.D7(msg, !0);
+                ok.C33 = function() { try { msg.a0 = 1; } catch (eO) {} };
+                msg._9.push(ok);
+                self._9.push(msg);
+            }
+            if (window.DiggerzAuth237 && window.DiggerzAuth237.requestLink) {
+                Promise.resolve(window.DiggerzAuth237.requestLink(email, q.thisMain.userName, this, null)).then(function(ok) {
+                    if (ok === false) {
+                        self._9.push(new vb(self, "", "^1Could not send login email. Check Firebase settings.", new Cd, vb.F39));
+                    } else showSent();
+                }).catch(function(err) {
+                    var m = (err && err.message) ? err.message : String(err);
+                    self._9.push(new vb(self, "", "^1Email error: ^7" + m.slice(0, 100), new Cd, vb.F39));
+                });
+            } else {
+                this._9.push(new vb(this, "", "^1Login service not ready. Refresh the page.", new Cd, vb.F39));
+            }
         },
-        e50: function(a) {
+e50: function(a) {
             // Retained for unrelated legacy byte conversions; no credential encoding uses this in Build 23.7.
             for (var b = new Ya(new ArrayBuffer(a.length)), c = 0, d = a.length; c < d; ) {
                 var e = c++, g = a.charCodeAt(e);
@@ -87076,6 +88563,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             l.z39 = null);
             null != this.d52 && N.startsWith(this.d52.q35, "Enter Name") && "Enter Name" != this.d52.q35 && (this.d52.q35 = T.substr(this.d52.q35, 10, null),
             this.d52.E32 = this.d52.q35);
+            // Persist name while typing so a refresh before Play still keeps it.
+            if (null != this.d52 && this.d52.q35 && "Enter Name" != this.d52.q35 && 0 < this.d52.q35.length) {
+                if (q.thisMain.userName !== this.d52.q35) {
+                    q.thisMain.userName = this.d52.q35;
+                    try { q.SaveGlobals(); } catch (e) {}
+                }
+            }
             var a = z.prototype.e0.call(this);
             this.T31();
             var b = 45 * q.SCALEDOWN + q.thisMain.get_x()
@@ -87700,7 +89194,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.G56._9.push(this.G59),
         this.G56.F6(3, 0, -1, 800));
         this.G57 = this.g53._5.width;
-        null != l.z39 && 50 < l.z39.a1 && E.v2(Um.n7())
+        null != l.z39 && 50 < l.z39.a1 && (!window.__diggerzLightswordSfxAt || Date.now() - window.__diggerzLightswordSfxAt >= 120) && (window.__diggerzLightswordSfxAt = Date.now(), E.v2(Um.n7(), new fh(I.__cast(q.player.k8, md) / 100 * .3)))
     };
     v.G54 = Pk;
     Pk.__name__ = "G54";

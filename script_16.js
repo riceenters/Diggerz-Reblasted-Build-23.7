@@ -1,130 +1,110 @@
 
 (function(){
-  function install231(){
+  function install(){
     var P=window.DiggerzPvp22,DS=window.DiggerzService,q=window.q,l=window.l;
-    if(!P||!DS||!DS.prototype||!P.hooksInstalled||!q||!l){setTimeout(install231,50);return}
-    var proto=DS.prototype;if(proto.__build231)return;proto.__build231=true;
-    var ACCOUNT_KEY='diggerz.resurrection.accounts.v1',BOUND_KEY='diggerz.resurrection.boundEmail.v1';
-    var speaker={state:null,serverOffset:0,audios:[],track:-1,volume:0,lastTint:null};
-    var leftFill=document.createElement('div'),rightFill=document.createElement('div');
-    leftFill.id='diggerz-br-left-fill';rightFill.id='diggerz-br-right-fill';document.body.appendChild(leftFill);document.body.appendChild(rightFill);
-    var css=document.createElement('style');css.id='diggerz-build231-style';css.textContent=`
-      #diggerz-diagnostics{display:none!important}
-      .diggerz-br-border{background:rgba(255,255,255,.95)!important;box-shadow:none!important;width:2px!important}
-      #diggerz-br-left,#diggerz-br-right{display:none;position:fixed;z-index:2147482400;pointer-events:none;width:2px;background:rgba(255,255,255,0.95);box-shadow:none;transition:none}
-      #diggerz-br-left-fill,#diggerz-br-right-fill{display:none;position:fixed;z-index:2147482399;pointer-events:none;background:rgba(40,140,255,.22)}
-      #diggerz-trade-review{font-family:Arial,sans-serif!important;background:rgba(0,0,0,.55)!important}
-      #diggerz-trade-review .box{width:min(520px,calc(100vw - 30px))!important;background:linear-gradient(#4a4a4a,#232323)!important;border:4px solid #d4d4d4!important;border-radius:2px!important;box-shadow:inset 0 0 0 2px #111,0 8px 0 #111,0 15px 35px #000!important;padding:14px!important;text-align:center!important}
-      #diggerz-trade-review h2{margin:3px 0 14px!important;color:#ff3434!important;text-shadow:2px 2px 0 #111!important;font-size:23px!important}
-      #diggerz-trade-receive{list-style:none!important;padding:0!important;margin:8px auto 17px!important;display:flex!important;gap:12px!important;justify-content:center!important;min-height:94px!important}
-      #diggerz-trade-receive .trade-review-slot{width:116px;height:88px;box-sizing:border-box;background:linear-gradient(#858585,#4c4c4c);border:3px solid #d7d7d7;box-shadow:inset 0 0 0 3px #262626;display:flex;align-items:center;justify-content:center;padding:5px;color:white;text-shadow:1px 2px #111;font-weight:bold;font-size:13px;overflow:hidden}
-      #diggerz-trade-review .warn{display:none!important}
-      #diggerz-trade-review .row{justify-content:center!important;gap:20px!important}
-      #diggerz-trade-review button{min-width:125px!important;border:3px solid #eee!important;border-radius:2px!important;box-shadow:inset 0 0 0 2px rgba(0,0,0,.45),0 4px 0 #111!important;color:#fff!important;text-shadow:2px 2px #111!important;font-size:17px!important;padding:9px 14px!important}
-      #diggerz-trade-confirm{background:linear-gradient(#f2c92e,#a77900)!important}
-      #diggerz-trade-back{background:linear-gradient(#e34848,#8f1717)!important}
-      .diggerz-turret-tracer{position:fixed;height:3px;transform-origin:0 50%;pointer-events:none;z-index:2147482300;background:#fff7a8;box-shadow:0 0 5px #ffca38;opacity:.95;transition:opacity .16s linear}
-    `;document.head.appendChild(css);
-
-    var review=document.getElementById('diggerz-trade-review'),reviewList=document.getElementById('diggerz-trade-receive'),confirmBtn=document.getElementById('diggerz-trade-confirm'),cancelBtn=document.getElementById('diggerz-trade-back');
-    if(review){var h=review.querySelector('h2');if(h)h.textContent='You will get these items.';if(confirmBtn)confirmBtn.textContent='Comfirm';if(cancelBtn)cancelBtn.textContent='Cancel'}
-
-    function chat(service,text){try{service.message(text)}catch(e){}}
-    function refreshBoard(service){try{var board=service&&service.game&&service.game.f4?service.game.f4(window.Ao):null;if(board&&board.Z44)board.Z44()}catch(e){}}
-    function nameWins(e,w){try{if(e&&e.J30&&e.J30.E32)e.J30.E32.E37(String(e._1||'Player')+' ^9'+Math.max(0,w|0))}catch(_e){}} function applyWins(service){try{if(service&&l.z39)nameWins(l.z39,service.state.wins|0);refreshBoard(service)}catch(e){}}
-    function setRemoteWins(service,cid,wins){try{var peer=service.pvpPeerForConnection(cid),e=peer&&service.pvpEntityForPeer(peer);if(peer&&peer.info)peer.info.wins=Math.max(0,wins|0);if(e)nameWins(e,wins);refreshBoard(service)}catch(err){}}
-    function smallPrompt(service,text){
-      if(!service||!text)return;
-      try{
-        var game=service.game||l.z38;if(!game||!game._9){service.centerMessage(text);return}
-        for(var i=0;i<game._9.length;i++){var old=game._9[i];if(old&&old._1==='BattleSmallText'){old.a0=1;try{old.e3()}catch(e){}}}
-        var a=new xa(q.CENTERX,q.CENTERY-55,String(text),q.MAIN_FONT_SMALL);a._1='BattleSmallText';a.set_local_xScale(a.set_local_yScale(1.25));a.F6(5,1,0,1550);game._9.push(a)
-      }catch(e){try{service.centerMessage(text)}catch(_e){}}
-    }
-    function reviewItemName(service,item){item=item||{};if(!item.category||!item.count)return 'Empty';var name='Item';try{name=service.itemName(item.category|0,item.id|0)}catch(e){}return (item.count>1?item.count+' × ':'')+name}
-    function showTradeReview(service,m){
-      if(!review||!reviewList||!service.pvpTrade)return;
-      reviewList.innerHTML='';var items=Array.isArray(m.receive)?m.receive:[];
-      for(var i=0;i<3;i++){var d=document.createElement('div');d.className='trade-review-slot';d.textContent=reviewItemName(service,items[i]);reviewList.appendChild(d)}
-      service.pvpTrade.reviewOpen=true;service.pvpTrade.reviewToken=String(m.reviewToken||'');if(confirmBtn)confirmBtn.disabled=false;review.style.display='flex'
-    }
-    function closeTradeReview(){if(review)review.style.display='none';if(confirmBtn)confirmBtn.disabled=false}
-    if(confirmBtn)confirmBtn.onclick=function(){var s=P.service,tr=s&&s.pvpTrade;if(!s||!tr||!tr.reviewOpen)return;confirmBtn.disabled=true;s.pvpSend({t:'trade-confirm',tradeId:tr.id,reviewToken:tr.reviewToken})};
-    if(cancelBtn)cancelBtn.onclick=function(){var s=P.service,tr=s&&s.pvpTrade;if(tr){tr.reviewOpen=false;s.pvpSend({t:'trade-review-back',tradeId:tr.id})}closeTradeReview()};
-
-    function canvasTransform(service,x,y){
-      try{var game=service.game||l.z38,canvas=document.querySelector('#openfl-content canvas'),r=canvas?canvas.getBoundingClientRect():{left:0,top:0,width:q.SCREENWIDTH,height:q.SCREENHEIGHT};var sx=r.width/(q.SCREENWIDTH||r.width||1),sy=r.height/(q.SCREENHEIGHT||r.height||1);return {x:r.left+(game.A7+x*l._44*(game.a8||1))*sx,y:r.top+(game.A8+y*l._44*(game.a9||1))*sy,rect:r}}catch(e){return null}
-    }
-    function renderBarrier(service){ hideDomBars(); }
-    function audioFor(i){if(!speaker.audios[i]){var a=new Audio('/music_theme'+(i?i+1:'')+'.ogg');a.preload='auto';speaker.audios[i]=a}return speaker.audios[i]}
-    function stopSpeaker(){for(var i=0;i<speaker.audios.length;i++)if(speaker.audios[i]){speaker.audios[i].pause();speaker.audios[i].volume=0}speaker.track=-1;speaker.volume=0}
-    function setSpeakerState(m){speaker.state=m&&m.speaker?Object.assign({},m.speaker):null;speaker.serverOffset=(+m.serverNow||Date.now())-Date.now();if(!speaker.state||!speaker.state.on)stopSpeaker()}
-    function findTileEntity(x,y){try{if(l.z38&&l.z38.R39&&l.z38.R39[l._46])return l.z38.R39[l._46].r33(x*l._44,y*l._44)}catch(e){}return null}
-    function tintSpeaker(state,on){var ent=state&&findTileEntity(state.x|0,state.y|0);if(!ent)return;var phase=Date.now()/430,r=.5+.5*Math.sin(phase),g=.5+.5*Math.sin(phase+2.094),b=.5+.5*Math.sin(phase+4.188);if(!on)r=g=b=1;var targets=[ent];if(ent._9)for(var i=0;i<ent._9.length;i++)targets.push(ent._9[i]);for(i=0;i<targets.length;i++){var t=targets[i];try{if(t.set_local_r)t.set_local_r(r);if(t.set_local_g)t.set_local_g(g);if(t.set_local_b)t.set_local_b(b)}catch(e){}}}
-    function tickSpeaker(service){
-      var st=speaker.state;if(!st){return}tintSpeaker(st,!!st.on);if(!st.on||!l.z39){stopSpeaker();return}
-      var dist=Math.hypot(l.z39.b6/l._44-(+st.x||0),l.z39.b7/l._44-(+st.y||0)),radius=16,target=dist>=radius?0:Math.min(.72,Math.pow(1-dist/radius,1.35)*.72),idx=Math.max(0,Math.min(3,st.trackIndex|0));
-      if(speaker.track!==idx){for(var i=0;i<speaker.audios.length;i++)if(speaker.audios[i]&&i!==idx){speaker.audios[i].pause();speaker.audios[i].volume=0}speaker.track=idx}
-      var a=audioFor(idx);speaker.volume+=(target-speaker.volume)*.18;a.volume=Math.max(0,Math.min(1,speaker.volume));
-      if(target<=.002){if(!a.paused)a.pause();return}
-      var elapsed=Math.max(0,(Date.now()+speaker.serverOffset-(+st.startedAt||Date.now()))/1000);if(isFinite(a.duration)&&a.duration>0)elapsed=Math.min(Math.max(0,elapsed),Math.max(0,a.duration-.1));
-      try{if(Math.abs((a.currentTime||0)-elapsed)>1.8)a.currentTime=elapsed}catch(e){}
-      if(a.paused)a.play().catch(function(){})
-    }
-    function positionalSound(path,x,y,radius){if(!l.z39)return;var d=Math.hypot(l.z39.b6/l._44-(+x||0),l.z39.b7/l._44-(+y||0));radius=radius||11;if(d>=radius)return;try{var a=new Audio(path);a.volume=Math.max(.05,Math.min(.9,(1-d/radius)*.85));a.play().catch(function(){})}catch(e){}}
-
-    function tracer(service,m){var A=canvasTransform(service,+m.x||0,+m.y||0),B=canvasTransform(service,+m.toX||0,+m.toY||0);if(!A||!B)return;var dx=B.x-A.x,dy=B.y-A.y,d=Math.hypot(dx,dy),el=document.createElement('div');el.className='diggerz-turret-tracer';el.style.left=A.x+'px';el.style.top=A.y+'px';el.style.width=d+'px';el.style.transform='rotate('+Math.atan2(dy,dx)+'rad)';document.body.appendChild(el);setTimeout(function(){el.style.opacity='0';setTimeout(function(){el.remove()},180)},55)}
-    function turretVisual(service,m){var tx=Math.floor(+m.x||0),ty=Math.round(+m.y||0),ent=findTileEntity(tx,ty);if(!ent)ent=findTileEntity(tx,Math.floor(+m.y||0));try{if(ent&&ent.I46)ent.I46((+m.toX||0)*l._44,(+m.toY||0)*l._44)}catch(e){}tracer(service,m)}
-
-    // Target Dummy is gone from Free Dig as well as PvP.
-    proto.sendTestNpc=function(){this.testNpc=null;try{this.removeTestNpc()}catch(e){}};
-
-    // Wins belong to the yellow number on the player nameplate. Leaderboard k31 remains round kills.
-    var oldHello=proto.pvpSendHello;proto.pvpSendHello=function(){applyWins(this);return oldHello.call(this)};
-    var oldReceive=proto.pvpReceive;proto.pvpReceive=function(m){
-      if(!m)return;
-      if(m.t==='trade-review'&&this.pvpTrade&&m.tradeId===this.pvpTrade.id){showTradeReview(this,m);return}
-      if(m.t==='trade-review-close'&&this.pvpTrade&&m.tradeId===this.pvpTrade.id){this.pvpTrade.localAccepted=false;this.pvpTrade.partnerAccepted=false;this.pvpTrade.locked=false;this.pvpTrade.reviewOpen=false;closeTradeReview();return}
-      if(m.t==='speaker-state'){setSpeakerState(m);return}
-      if(m.t==='speaker-place-blocked'){
-        this._pvpApplyingTile=true;try{var old=m.tile||{};this.setTile(m.x|0,m.y|0,old.id|0,old.variant|0)}finally{this._pvpApplyingTile=false}
-        this.addItem(1,122,0,1,0,'');this.sendInventory();chat(this,'^9Someone has allreaddy placed a bluetooth speaker!');return
+    if(!P||!DS||!DS.prototype||!P.hooksInstalled||!q||!l){setTimeout(install,50);return}
+    var proto=DS.prototype;if(proto.__release230)return;proto.__release230=true;
+    var review=document.getElementById('diggerz-trade-review'),reviewList=document.getElementById('diggerz-trade-receive'),confirmBtn=document.getElementById('diggerz-trade-confirm'),backBtn=document.getElementById('diggerz-trade-back');
+    function chat(s){try{if(P.service&&P.service.message)P.service.message(s)}catch(e){}}
+    function nativePrompt(service,text){if(!service||!text)return;var raw=String(text);var isBattle=/FIGHT!|ELIMINATION HAS BEGUN!|SHRINK!| wins!$/i.test(raw)||/^\^[0-9][123]$/.test(raw);if(!isBattle){try{service.centerMessage(raw)}catch(e){}return}try{var game=service.game||l.z38;if(!game||!game._9){service.centerMessage(raw);return}for(var i=0;i<game._9.length;i++){var old=game._9[i];if(old&&old._1==='BattleBigText'){old.a0=1;try{old.e3()}catch(_e){}}}var winner=/ wins!$/i.test(raw),y=winner?Math.round(q.SCREENHEIGHT*.31):Math.round(q.SCREENHEIGHT*.40),a=new xa(q.CENTERX,y,raw,q.MAIN_FONT_BIG);a._1='BattleBigText';var start=winner?1.8:2.15,end=winner?1.45:1.15;a.set_alp(0);a.set_local_xScale(a.set_local_yScale(start));a.F6(5,0,1,120);a.F6(3,start,end,260);a.F6(4,start,end,260);a.F6(5,1,0,320,!1,winner?2250:620);game._9.push(a);setTimeout(function(){try{a.a0=1}catch(_e){}},winner?2700:1100)}catch(e){try{service.centerMessage(raw)}catch(_e){}}}
+    function smallPrompt(service,text){if(!service||!text)return;var raw=String(text);if(/^\^[0-9][123]$/.test(raw)){nativePrompt(service,raw);return}try{var game=service.game||l.z38;if(!game||!game._9){nativePrompt(service,raw);return}for(var i=0;i<game._9.length;i++){var old=game._9[i];if(old&&old._1==='BattleSmallText'){old.a0=1;try{old.e3()}catch(_e){}}}var a=new xa(q.CENTERX,Math.round(q.SCREENHEIGHT*.14),raw,q.MAIN_FONT_SMALL);a._1='BattleSmallText';a.set_local_xScale(a.set_local_yScale(1.05));a.F6(5,1,0,1450);game._9.push(a)}catch(e){nativePrompt(service,raw)}}
+    // Build 23 map files are sparse on disk. Rebuild a complete 128x80 world locally,
+    // then send only changed cells through the recovered native tile packet in manageable batches.
+    proto.pvpApplyMapTransforms=function(map){
+      if(!map||!l.z38||!l.z38.R39)return false;
+      function applyRows(rows,layer){
+        if(!Array.isArray(rows))return;
+        var worldLayer=l.z38.R39[layer];if(!worldLayer||!worldLayer.r33)return;
+        for(var r=0;r<rows.length;r++){
+          var row=rows[r];if(!Array.isArray(row)||row.length<5)continue;
+          var flags=(row[4]|0)&15;if(!flags)continue;
+          var x=row[0]|0,y=row[1]|0,obj=null;
+          try{obj=worldLayer.r33(x*l._44,y*l._44)}catch(_e){obj=null}
+          if(!obj)continue;
+          try{
+            if(flags&1){var xs=Number(obj.b4);if(!isFinite(xs)||xs===0)xs=1;obj.set_local_xScale(-Math.abs(xs))}
+            if(flags&2){var ys=Number(obj.b5);if(!isFinite(ys)||ys===0)ys=1;obj.set_local_yScale(-Math.abs(ys))} if(flags&8){try{if(typeof obj.set_rot==='function')obj.set_rot(-Math.PI/2);else if(typeof obj.set_rotation==='function')obj.set_rotation(-90)}catch(_rotErr){}} else if(flags&4){try{if(typeof obj.set_rot==='function')obj.set_rot(Math.PI/2);else if(typeof obj.set_rotation==='function')obj.set_rotation(90)}catch(_rotErr){}}
+          }catch(_e2){}
+        }
       }
-      if(m.t==='world-sound'){var path=m.sound==='balloon_pop'?'/balloon_pop.ogg':m.sound==='swap'?'/swap.ogg':'';if(path)positionalSound(path,m.x,m.y,11);return}
-      if(m.t==='cotton-item-award'){if(this.addItem(m.category|0,m.id|0,0,Math.max(1,m.count|0),0,'')>=0){this.markDirty();this.save(true)}return}
-      if(m.t==='turret-fire'){turretVisual(this,m);return}
-      if(m.t==='tool-attack'){return} // server owns the damage; native equipped animation already travels in player state.
-      if(m.t==='battle-event'&&m.kind==='build-start'){P.battle.winCounted=false}
-      if(m.t==='winner'&&String(m.connectionId||'')===String(P.connectionId||'')&&!P.battle.winCounted){P.battle.winCounted=true;this.state.wins=Math.max(0,(this.state.wins|0)+1);this.markDirty();this.save(true);applyWins(this);setTimeout(this.pvpSendHello.bind(this),80)}
-      var r=oldReceive.call(this,m);
-      if(m.t==='hello'){setRemoteWins(this,m._serverFrom,Math.max(0,m.wins|0));applyWins(this)}
-      if(m.t==='kill-confirm'||m.t==='kill-feed')refreshBoard(this);
-      return r
+      applyRows(map.backgroundTiles,2);applyRows(map.tiles,0);return true
+    };
+    proto.pvpApplyBaseMap=function(map){
+      if((this.mode!=='pvp'&&this.mode!=='digtrade')||!map||map.format!=='diggerz-pvp-map-v1'||(map.width|0)!==128||(map.height|0)!==80||!Array.isArray(map.tiles))return false;
+      var total=128*80,oldTiles=(this.state&&this.state.tiles)||[],oldVariants=(this.state&&this.state.variants)||[],oldFlags=(this.state&&this.state.mapTileFlags)||[],oldBg=(this.state&&this.state.backgroundTiles)||[],oldBgV=(this.state&&this.state.backgroundVariants)||[],oldBgF=(this.state&&this.state.mapBackgroundFlags)||[],tiles=new Array(total),variants=new Array(total),flags=new Array(total),bgTiles=new Array(total),bgVariants=new Array(total),bgFlags=new Array(total),i;
+      for(i=0;i<total;i++){tiles[i]=0;variants[i]=0;flags[i]=0;bgTiles[i]=0;bgVariants[i]=0;bgFlags[i]=0}
+      var BACKDROP_IDS={118:1,119:1,143:1,158:1,159:1,160:1,161:1,162:1,189:1,191:1,213:1,214:1,272:1,273:1};
+      function loadRows(rows,toTiles,toVars,toFlags){if(!Array.isArray(rows))return;for(var r=0;r<rows.length;r++){var row=rows[r];if(!Array.isArray(row)||row.length<3)continue;var x=row[0]|0,y=row[1]|0,id=row[2]|0,v=(row[3]|0)&31,f=(row[4]|0)&15;if(x<0||x>=128||y<0||y>=80||id<=0||id>2047)continue;var at=x+y*128;toTiles[at]=id;toVars[at]=v;toFlags[at]=f}}
+      // Build 24.0.34: self-heal imported/legacy maps whose block was saved
+      // on the opposite layer. Backdrop catalog IDs always belong to layer 2.
+      function loadNormalized(rows,srcLayer){if(!Array.isArray(rows))return;for(var r=0;r<rows.length;r++){var row=rows[r];if(!Array.isArray(row)||row.length<3)continue;var x=row[0]|0,y=row[1]|0,id=row[2]|0,v=(row[3]|0)&31,f=(row[4]|0)&15;if(x<0||x>=128||y<0||y>=80||id<=0||id>2047)continue;var want=BACKDROP_IDS[id]?2:0,at=x+y*128;if(want===2){bgTiles[at]=id;bgVariants[at]=v;bgFlags[at]=f}else{tiles[at]=id;variants[at]=v;flags[at]=f}}}
+      loadNormalized(map.backgroundTiles,2);loadNormalized(map.tiles,0);
+      var changed=[],changedBg=[];for(i=0;i<total;i++){if((oldTiles[i]||0)!==(tiles[i]||0)||(oldVariants[i]||0)!==(variants[i]||0)||(oldFlags[i]||0)!==(flags[i]||0))changed.push(i);if((oldBg[i]||0)!==(bgTiles[i]||0)||(oldBgV[i]||0)!==(bgVariants[i]||0)||(oldBgF[i]||0)!==(bgFlags[i]||0))changedBg.push(i)}
+      this.state.width=128;this.state.height=80;this.state.tiles=tiles;this.state.variants=variants;this.state.mapTileFlags=flags;this.state.backgroundTiles=bgTiles;this.state.backgroundVariants=bgVariants;this.state.mapBackgroundFlags=bgFlags;this.damage={};this._pvpBaseMapName=String(map.name||'Custom Map');this._pvpBaseMapApplied=true;
+      function queueLayer(service,cells,layer,ids,vars){for(var start=0;start<cells.length;start+=300){(function(batch){service.enqueue(11,1,function(packet){packet.R2(batch.length);for(var j=0;j<batch.length;j++){var n=batch[j],tx=n%128,ty=(n/128)|0;packet.R0(tx);packet.R0(layer);packet.R0(ty);packet.R2((ids[n]&2047)|((vars[n]&31)<<11))}})})(cells.slice(start,start+300))}}
+      queueLayer(this,changedBg,2,bgTiles,bgVariants);queueLayer(this,changed,0,tiles,variants);
+      var theme=Math.max(0,Math.min(9,map.background|0));this.enqueue(102,1,function(packet){packet.R2(theme)});
+      var self=this;[0,80,220,600,1200].forEach(function(delay){setTimeout(function(){if(self&&self.pvpApplyMapTransforms)self.pvpApplyMapTransforms(map)},delay)});
+      this.markDirty();return true
+    };
+    var releaseRoomState=proto.pvpApplyRoomState;proto.pvpApplyRoomState=function(m){if(m&&m.map&&(this.mode==='pvp'||this.mode==='digtrade'))this.pvpApplyBaseMap(m.map);return releaseRoomState.call(this,m)};
+    function refreshBoard(service){try{if(l.z38&&l.z38.R37&&l.z38.R37.Z44)l.z38.R37.Z44()}catch(e){}}
+    function setNameWins(e,w){try{if(e&&e.J30&&e.J30.E32)e.J30.E32.E37(String(e._1||'Player')+' ^9'+Math.max(0,w|0))}catch(_e){}} function resetScores(service){try{if(l.z39){l.z39.k31=0;setNameWins(l.z39,service&&service.state?service.state.wins|0:0)}var peers=service&&service.pvpEnsurePeers?service.pvpEnsurePeers():{};for(var k in peers){var peer=peers[k],e=service.pvpEntityForPeer(peer);if(e){e.k31=0;setNameWins(e,peer&&peer.info?peer.info.wins|0:0)}}refreshBoard(service)}catch(e){}}
+    function setScore(service,cid,kills){try{var e=String(cid||'')===String(P.connectionId||'')?l.z39:(service.pvpPeerForConnection(cid)&&service.pvpEntityForPeer(service.pvpPeerForConnection(cid)));if(e)e.k31=Math.max(0,kills|0);refreshBoard(service)}catch(_e){}}
+    function itemLine(service,item){item=item||{};if(!item.category||!item.count)return null;return (item.count>1?item.count+' × ':'')+service.itemName(item.category|0,item.id|0)}
+    function closeReview(){if(review)review.style.display='none'}
+    function showReview(service,m){if(!review||!service.pvpTrade)return;if(confirmBtn)confirmBtn.disabled=false;var items=Array.isArray(m.receive)?m.receive:[];reviewList.innerHTML='';var any=false;for(var i=0;i<items.length;i++){var line=itemLine(service,items[i]);if(!line)continue;any=true;var li=document.createElement('li');li.textContent=line;reviewList.appendChild(li)}if(!any){var li=document.createElement('li');li.textContent='Nothing';reviewList.appendChild(li)}service.pvpTrade.reviewOpen=true;service.pvpTrade.reviewToken=String(m.reviewToken||'');review.style.display='flex'}
+    if(confirmBtn)confirmBtn.onclick=function(){var s=P.service,tr=s&&s.pvpTrade;if(!s||!tr||!tr.reviewOpen)return;confirmBtn.disabled=true;s.pvpSend({t:'trade-confirm',tradeId:tr.id,reviewToken:tr.reviewToken})};
+    if(backBtn)backBtn.onclick=function(){var s=P.service,tr=s&&s.pvpTrade;if(tr){tr.reviewOpen=false;s.pvpSend({t:'trade-review-back',tradeId:tr.id})}closeReview()};
+
+    // Trade remains editable until both users have reviewed the exact snapshots and confirmed.
+    var prevStart=proto.pvpStartTrade;proto.pvpStartTrade=function(m){closeReview();var r=prevStart.call(this,m);if(this.pvpTrade){this.pvpTrade.locked=false;this.pvpTrade.reviewOpen=false;this.pvpTrade.reviewToken=''}return r};
+    var prevOffer=proto.pvpTradeOffer;proto.pvpTradeOffer=function(){if(this.pvpTrade){this.pvpTrade.localAccepted=false;this.pvpTrade.partnerAccepted=false;this.pvpTrade.locked=false;this.pvpTrade.reviewOpen=false;closeReview()}return prevOffer.call(this)};
+    var prevComplete=proto.pvpCompleteTrade;proto.pvpCompleteTrade=function(receive){closeReview();if(confirmBtn)confirmBtn.disabled=false;return prevComplete.call(this,receive)};
+    var prevCancel=proto.pvpCancelTradeLocal;proto.pvpCancelTradeLocal=function(reason){closeReview();if(confirmBtn)confirmBtn.disabled=false;return prevCancel.call(this,reason)};
+    // Existing first-stage handler used locked=true. Undo that immediately after it runs.
+    var prevA17=proto.A17;proto.A17=function(opcode,body,c){if(opcode===170&&this.pvpTrade){if(!this.pvpTrade.localAccepted){this.pvpTrade.localAccepted=true;this.pvpTrade.locked=false;this.pvpSend({t:'trade-accept',tradeId:this.pvpTrade.id})}return}return prevA17.call(this,opcode,body,c)};
+    var prevSwap=proto.swap;proto.swap=function(packet){if(this.pvpTrade)this.pvpTrade.locked=false;return prevSwap.call(this,packet)};
+
+    // Coin drops now use the original item-drop entity and pickup animation.
+    proto.pvpCoinGuid=function(id){return this.pvpTradeGuid('coin:'+String(id||''),'kill-coin')};
+    proto.pvpAddCoinDrop=function(c){if(!c||!c.id)return;var id=String(c.id),guid=this.pvpCoinGuid(id),key=this.pvpGuidKey(guid);if(this.drops[key])return;var drop={guid:guid,category:1,id:0,count:1,x:+c.x||0,y:+c.y||0,text:'',tier:'coin',isCoin:true,coinId:id};this.drops[key]=drop;this.enqueue(15,1,function(packet){packet.R8(guid);packet.R4(1);packet.r8(drop.x);packet.r8(0);packet.r8(drop.y);packet.r8(drop.x);packet.r8(0);packet.r8(drop.y-.35);packet.R2(0);packet.R2(1);packet.R0(0);packet.s0(true);packet.R9('')})};
+    proto.pvpRemoveCoinDrop=function(id){var guid=this.pvpCoinGuid(String(id||'')),key=this.pvpGuidKey(guid),drop=this.drops[key];if(!drop)return;delete this.drops[key];this.removeDrop(drop)};
+    var prevRoom=proto.pvpApplyRoomState;proto.pvpApplyRoomState=function(m){var copy=m;if(m&&Array.isArray(m.coins)){copy=Object.assign({},m,{coins:[]})}var r=prevRoom.call(this,copy);if(m&&Array.isArray(m.coins))for(var i=0;i<m.coins.length;i++)this.pvpAddCoinDrop(m.coins[i]);return r};
+    var prevPickup=proto.pickup;proto.pickup=function(packet){if((this.mode==='pvp'||this.mode==='digtrade')&&P.joined){var pos=packet.Q0,guid=packet.Q6(),key=this.pvpGuidKey(guid),drop=this.drops[key];packet.Q0=pos;if(drop&&drop.isCoin){if(this.distanceToPlayer(drop.x,drop.y)<=4)this.pvpSend({t:'coin-pickup',id:drop.coinId});return}}return prevPickup.call(this,packet)};
+
+    // Rare-item native center text is the canonical Battle Royale prompt font.
+    var prevReceive=proto.pvpReceive;proto.pvpReceive=function(m){
+      if(!m)return;
+      if(m.t==='trade-review'&&this.pvpTrade&&m.tradeId===this.pvpTrade.id){showReview(this,m);return}
+      if(m.t==='trade-review-close'&&this.pvpTrade&&m.tradeId===this.pvpTrade.id){this.pvpTrade.localAccepted=false;this.pvpTrade.partnerAccepted=false;this.pvpTrade.locked=false;this.pvpTrade.reviewOpen=false;closeReview();if(confirmBtn)confirmBtn.disabled=false;return}
+      if(m.t==='trade-partner-accepted'&&this.pvpTrade&&m.tradeId===this.pvpTrade.id){this.pvpTrade.partnerAccepted=true;this.pvpTrade.locked=false;var sid=this.pvpTrade.sessionGuid;this.enqueue(169,1,function(p){p.R8(sid)});return}
+      if(m.t==='admin-message'){nativePrompt(this,String(m.message||''));return}
+      if(m.t==='coin-spawn'){this.pvpAddCoinDrop(m.coin);return}
+      if(m.t==='coin-remove'){this.pvpRemoveCoinDrop(m.id);return}
+      if(m.t==='battle-event'){
+        if(m.kind==='build-start'){resetScores(this);smallPrompt(this,'^1Match begins in 40 seconds. Build your defence now!')}
+        else if(m.kind==='fight'){nativePrompt(this,'^1FIGHT!')}
+        else if(m.kind==='shrink-warning'){smallPrompt(this,'^1World Shrink Coming!')}
+        else if(m.kind==='shrink'){nativePrompt(this,'^3SHRINK!')}
+        else if(m.kind==='elimination'){nativePrompt(this,'^6ELIMINATION HAS BEGUN!')}
+      }
+      if(m.t==='kill-confirm'){setScore(this,P.connectionId,m.kills|0)}
+      if(m.t==='kill-feed'){setScore(this,m.killerConnectionId,m.kills|0)}
+      if(m.t==='winner'){nativePrompt(this,'^3'+String(m.name||'Player')+' wins!');if(String(m.connectionId||'')===String(P.connectionId||'')){try{var a=new Audio('/levelup.ogg');a.volume=.8;a.play().catch(function(){})}catch(e){}}}
+      return prevReceive.call(this,m)
     };
 
-    var oldRoom=proto.pvpApplyRoomState;proto.pvpApplyRoomState=function(m){var r=oldRoom.call(this,m);if(m&&('speaker' in m))setSpeakerState({speaker:m.speaker,serverNow:m.serverNow});return r};
+    // Native countdown font, one message per second/event, rather than Arial DOM overlays.
+    var lastPrompt='';setInterval(function(){var s=P.service,b=P.battle;if(!s||P.mode!=='pvp')return;var now=Date.now()+(b.serverOffset||0),txt='';if(b.phase==='build'&&b.fightAt){var rem=Math.max(0,Math.ceil((b.fightAt-now)/1000));if(rem>3)txt='^1Match begins in '+rem+' seconds. Build your defence now!';else if(rem>0)txt='^1'+rem}else if(b.shrinkAt){var sr=Math.max(0,Math.ceil((b.shrinkAt-now)/1000));if(sr>3)txt='^1World Shrink Coming!';else if(sr>0)txt='^1'+sr}if(txt&&txt!==lastPrompt){lastPrompt=txt;smallPrompt(s,txt)}if(!txt)lastPrompt=''},250);
 
-    // Clicking a Bluetooth Speaker toggles it before the normal attack/mining gate can consume the click.
-    var oldA17=proto.A17;proto.A17=function(opcode,body,c){
-      if(opcode===287&&this.mode==='digtrade'&&P.joined&&body){var pos=body.Q0,tx,ty;try{body.Q0=0;body.Q4();body.Q4();tx=body.Q4();ty=body.Q4()}catch(e){}finally{body.Q0=pos}try{var game=this.game||l.z38,mx=Math.round((q.mX-game.A7)/(game.a8||1)/l._44),my=Math.round((q.mY-game.A8)/(game.a9||1)/l._44);if(this.tileAt(mx,my)===122){tx=mx;ty=my}}catch(e){}tx=Math.round(+tx||0);ty=Math.round(+ty||0);if(this.tileAt(tx,ty)===122&&this.distanceToPlayer(tx,ty)<=5){if(!this._speakerToggleAt||Date.now()-this._speakerToggleAt>450){this._speakerToggleAt=Date.now();this.pvpSend({t:'speaker-toggle',x:tx,y:ty})}return}}
-      return oldA17.call(this,opcode,body,c)
-    };
+    // White barrier is solid: clamp local player inside it and cancel outward velocity.
+    var prevTick=proto.pvpTick;proto.pvpTick=function(){var r=prevTick.call(this);if(this.mode==='pvp'&&P.mode==='pvp'&&l.z39&&(P.battle.phase==='fight'||P.battle.phase==='elimination')){var min=P.battle.left+.5,max=P.battle.right+.5,x=l.z39.b6/l._44,clamped=Math.max(min,Math.min(max,x));if(clamped!==x){try{l.z39.l38(clamped*l._44,l.z39.b7)}catch(e){l.z39.b6=clamped*l._44}try{var body=l.z39.b33.tBJ;body.wrap_vel||body.setupVelocity();if((x<min&&body.wrap_vel.tBJ.x<0)||(x>max&&body.wrap_vel.tBJ.x>0))body.wrap_vel.tBJ.x=0}catch(e){}}}return r};
 
-    var oldTick=proto.pvpTick;proto.pvpTick=function(){var r=oldTick.call(this);applyWins(this);try{renderBarrier(this)}catch(_e){};if(this.mode==='digtrade')tickSpeaker(this);return r};
-
-    // Build 23.7 SECURITY: the browser-local password database has been retired.
-    // Preserve the currently bound account's saved game once, then erase password hashes/email bindings.
-    try {
-      var oldAccounts=JSON.parse(localStorage.getItem('diggerz.resurrection.accounts.v1')||'{}')||{};
-      var oldBound=String(localStorage.getItem('diggerz.resurrection.boundEmail.v1')||'').trim().toLowerCase();
-      if(oldBound&&oldAccounts[oldBound]&&oldAccounts[oldBound].saved&&!localStorage.getItem(DS.STORAGE_KEY))
-        localStorage.setItem(DS.STORAGE_KEY,oldAccounts[oldBound].saved);
-      localStorage.removeItem('diggerz.resurrection.accounts.v1');
-      localStorage.removeItem('diggerz.resurrection.boundEmail.v1');
-    } catch(e) {}
-
-    // The old 23.0 score helpers are intentionally neutralized: kills stay round stats.
-    try{applyWins(P.service||null)}catch(e){}
+    // Admin typed-name actions + rare-font announcements.
+    proto.adminScreenMessage=function(text,scope){if(!this.adminIsAdminAuthorized())return {ok:false,message:'Admin authentication required.'};text=String(text||'').trim().slice(0,180);if(!text)return {ok:false,message:'Message is empty.'};scope=scope==='global'?'global':'server';if(this.mode==='pvp'||this.mode==='digtrade'){this.pvpSend({t:'admin-message',adminToken:window.DiggerzAdminSessionToken||'',scope:scope,message:text});nativePrompt(this,text)}else nativePrompt(this,text);return {ok:true,message:(scope==='global'?'Global':'This-server')+' message sent.'}};
+    var baseAdminKill=proto.adminKillPlayer;proto.adminKillPlayer=function(name){return baseAdminKill.call(this,String(name||'').trim())};
+    var baseAdminTeleport=proto.adminTeleportTo;proto.adminTeleportTo=function(name){name=String(name||'').trim();if(!this.adminIsAdminAuthorized())return {ok:false,message:'Admin authentication required.'};if(!name||name===this.playerName())return {ok:true,message:'You are already there.'};if((this.mode==='pvp'||this.mode==='digtrade')&&this.pvpFindPeerByName){var peer=this.pvpFindPeerByName(name),entity=peer&&this.pvpEntityForPeer(peer);if(!peer)return {ok:false,message:'Player not found.'};var tx=null,ty=null;if(entity&&entity.a2){tx=entity.b6;ty=entity.b7}else if(peer.lastX!=null&&peer.lastY!=null){tx=peer.lastX*l._44;ty=peer.lastY*l._44}else if(peer.info&&isFinite(+peer.info.x)&&isFinite(+peer.info.y)){tx=(+peer.info.x)*l._44;ty=(+peer.info.y)*l._44}if(tx==null||ty==null||!isFinite(tx)||!isFinite(ty))return {ok:false,message:name+' position is unknown.'};if(!l.z39)return {ok:false,message:'Your player is not spawned yet.'};try{l.z39.l38(tx,ty)}catch(e){l.z39.b6=tx;l.z39.b7=ty}this.state.x=tx/l._44;this.state.y=ty/l._44;try{this.pvpSendNativeMovement()}catch(_e){}return {ok:true,message:'Teleported to '+name+'.'}}return baseAdminTeleport.call(this,name)};
   }
-  install231();
+  install();
 }());
