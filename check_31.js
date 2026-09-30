@@ -1,23 +1,34 @@
 
 (function(){
-  // Hook common save points after game boots
-  function tryHook() {
+  window.DiggerzMenuBgList = [
+    { name: "Default (clear)", key: "title", alpha: 0 },
+    { name: "Grey", key: "grey", alpha: 1 },
+    { name: "Space", key: "space", alpha: 1 }
+  ];
+  function bgAsset(key) {
     try {
-      if (!window.q || !window.DiggerzDirtySave) return;
-      // Volume changes already in settings via sliders — mark dirty when settings close
-      var _orig = null;
+      if (key === "grey" && sa.GREY_BKND_PNG) return sa.GREY_BKND_PNG();
+      if (key === "space" && sa.SPACE_BKND_PNG) return sa.SPACE_BKND_PNG();
+      if (sa.TITLE_BKND_PNG) return sa.TITLE_BKND_PNG();
     } catch (e) {}
+    return null;
   }
-  setInterval(function(){
+  window.DiggerzApplyMenuBackground = function() {
     try {
-      if (!window.DiggerzDirtySave || !window.q) return;
-      // detect inventory localStorage changes
-      var cur = localStorage.getItem("diggerz.digtrade.v1") || "";
-      if (window.__dzInvSnap === undefined) window.__dzInvSnap = cur;
-      if (cur !== window.__dzInvSnap) {
-        window.__dzInvSnap = cur;
-        window.DiggerzDirtySave("inventory");
+      var list = window.DiggerzMenuBgList;
+      var idx = Math.max(0, Math.min(list.length - 1, parseInt(localStorage.getItem("diggerz.menuBg.v1") || "0", 10) || 0));
+      var entry = list[idx];
+      var ov = window.__diggerzMenuBgOverlay;
+      if (!ov) return; // never reload
+      var img = bgAsset(entry.key);
+      if (img) {
+        try { ov.Init(img); } catch (e2) {}
+        try {
+          ov.set_local_xScale(2 * q.SCREENWIDTH / ov._5.width);
+          ov.set_local_yScale(2 * q.SCREENHEIGHT / ov._5.height);
+        } catch (e3) {}
       }
+      try { ov.set_local_alp(entry.alpha); } catch (e4) { try { ov.set_alp(entry.alpha); } catch (e5) {} }
     } catch (e) {}
-  }, 3000);
+  };
 })();
