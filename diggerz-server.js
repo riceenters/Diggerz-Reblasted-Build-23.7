@@ -183,8 +183,26 @@ function patchGameHtmlForBuild239(input) {
     html = html.replace(from, to);
   }
 
-  // Build 24.x: keep Log In menu + Firebase Google auth client script.
-  // (Previously Build 23.8 replaced Log In with Donate and wiped DiggerzAuth237.)
+  // Build 23.8: the game is guest-only. Remove the Log In / Log Out menu block
+  // and retire the 23.7 passwordless account client entirely.
+  const loginStart = html.indexOf('            N.startsWith(q.thisMain.userPW, "NOPASSWORD")');
+  const shopText = loginStart >= 0 ? html.indexOf('            this.d51.E37("Shop");', loginStart) : -1;
+  const shopStart = shopText >= 0 ? html.lastIndexOf('            b = new z;', shopText) : -1;
+  if (loginStart >= 0 && shopStart > loginStart) {
+    const supportMenuBlock = "            q.thisMain.userEmail = \"\";\n            q.thisMain.userPW = \"\";\n            b = new z;\n            b.Init(u.YELLOWBUTTON_PNG());\n            b.D7(this);\n            b.b7 = d;\n            d += 80;\n            b.b6 = q.SCREENWIDTH / 2 - 150;\n            b.set_local_xScale(b.set_local_yScale(.5));\n            b._1 = \"support message\";\n            b.F6(5, 0, 1, 500);\n            this._9.push(b);\n            this.d51 = new ob(0,0,\"\",q.MAIN_FONT_BIG);\n            this.d51.D7(b);\n            this.d51.E37(\"Donate\");\n            this.d51.b7 = 2;\n            this.d51.B8 = 5;\n            this.d51.C33 = function(){ if(window.DiggerzSupport239) window.DiggerzSupport239.open(); };\n            this.d51._1 = \"welcome message\";\n            this._9.push(this.d51);\n            c = new xa(0,-70,\"Support Diggerz multiplayer\");\n            c.D7(b, !0);\n            c.set_local_xScale(c.set_local_yScale(1.25));\n            this._9.push(c);\n";
+    html = html.slice(0, loginStart) + supportMenuBlock + html.slice(shopStart);
+  } else {
+    console.warn('[Diggerz 23.9] login/support menu block was not found.');
+  }
+
+  const authScriptStart = html.indexOf('<script id="diggerz-build23-7-security-patch">');
+  const authScriptEnd = authScriptStart >= 0 ? html.indexOf('</script>', authScriptStart) : -1;
+  if (authScriptStart >= 0 && authScriptEnd > authScriptStart) {
+    const noLoginScript = '<script id="diggerz-build23-8-no-login-patch">(function(){try{localStorage.removeItem("diggerz.resurrection.accounts.v1");localStorage.removeItem("diggerz.resurrection.boundEmail.v1");sessionStorage.removeItem("diggerz.auth.active.v1");delete window.DiggerzAuth237}catch(e){}var n=0,t=setInterval(function(){n++;try{if(window.q&&q.thisMain){q.thisMain.userEmail="";q.thisMain.userPW="";if(typeof q.SaveGlobals==="function")q.SaveGlobals();clearInterval(t)}}catch(e){}if(n>100)clearInterval(t)},100)}());</script>';
+    html = html.slice(0, authScriptStart) + noLoginScript + html.slice(authScriptEnd + 9);
+  } else {
+    console.warn('[Diggerz 23.8] legacy auth client script was not found.');
+  }
 
   // Build 23.8 itch/Railway split: static browser clients always use Railway
   // for multiplayer and protected admin HTTP endpoints.
@@ -1586,10 +1604,8 @@ function eliminateOrRespawn(victim, attacker, source) {
 function dealPvpDamage(attacker, victim, amount, source) {
   if (!attacker || !victim || attacker === victim || !attacker.room || attacker.room !== victim.room) return false;
   const room = attacker.room;
-  // Dig+Trade: no damage. PvP: only after fight countdown (fight/elimination).
-  if (room.mode === 'digtrade') return false;
-  if (room.mode !== 'pvp') return false;
-  if (!room.battle || (room.battle.phase !== 'fight' && room.battle.phase !== 'elimination')) return false;
+  if (room.mode !== 'pvp' && !(room.mode === 'digtrade' && room.adminPvpOverride)) return false;
+  if (room.mode === 'pvp' && (!room.battle || (room.battle.phase !== 'fight' && room.battle.phase !== 'elimination'))) return false;
   if (!victim.alive || victim.eliminated) return false;
   if (victim.adminEffects && victim.adminEffects.invis) return false;
   if (victim.adminEffects && victim.adminEffects.god) {
@@ -2440,48 +2456,98 @@ function relayGameMessage(client, message, rawLength) {
   }
 
   if (message.t==='tile') {
-    // 23.7-main style: accept and broadcast so all peers see place/mine.
-    const x = Number(message.x) | 0;
-    const y = Number(message.y) | 0;
-    const id = Number(message.id) | 0;
-    const variant = Number(message.variant) | 0;
-    let layer = Number(message.layer) | 0;
-    if (layer === 1) return; // never a legal tile layer
-    layer = layer === 2 ? 2 : 0;
-    if (x < 0 || x >= 128 || y < 0 || y >= 80) return;
-    // Track live position from client when provided (does not reject).
-    const packetPX = Number(message.px), packetPY = Number(message.py);
-    if (Number.isFinite(packetPX) && Number.isFinite(packetPY)) {
-      client.position = { x: packetPX, y: packetPY };
+    let requestedLayer=Number(message.layer)|0;
+    // Native layer 1 belongs to players/pets and their interaction bodies.
+    // It is never a legal tile layer. Reject an explicit layer-1 packet
+    // instead of coercing it to foreground, so this invariant cannot be
+    // bypassed by an old client or malformed packet.
+    if(requestedLayer===1)return;
+    requestedLayer=requestedLayer===2?2:0;
+    const x=Number(message.x)|0,y=Number(message.y)|0,id=Number(message.id)|0,variant=Number(message.variant)|0;
+    if(x<0||x>=128||y<0||y>=80)return; if(!client.position)client.position={x:x,y:y}; // still allow tile sync if flags lag
+    // Prefer live packet position, else last known server position.
+    const packetPX=Number(message.px), packetPY=Number(message.py);
+    if(Number.isFinite(packetPX)&&Number.isFinite(packetPY)){
+      client.position={x:packetPX,y:packetPY};
     }
-    const key = layer === 2 ? `bg:${x},${y}` : `${x},${y}`;
-    const tile = { x, y, id, variant, layer, ownerConnectionId: client.connectionId };
-    if (room.mode === 'digtrade' && id === 122 && layer === 0) {
-      if (room.speaker && (room.speaker.x !== x || room.speaker.y !== y)) {
-        const prior = room.tiles.get(key);
-        sendJson(client, { t: 'speaker-place-blocked', x, y, tile: prior ? { id: prior.id | 0, variant: prior.variant | 0 } : { id: 0, variant: 0 } });
-        return;
+    const placementPos=client.position||{x:x,y:y};
+    // Same radii as the client block zone:
+    //   place max 5 tiles, mine max 3.6 tiles, place min ~1.1 (body).
+    // Anything outside that player's own radius is rejected server-side so
+    // broken clients cannot place far outside the zone.
+    const dist=Math.hypot(placementPos.x-x,placementPos.y-y);
+    const isMine=(id===0);
+    const maxReach=isMine?3.6:5;
+    if(dist>maxReach){
+      try{console.log('tile REJECT out-of-reach',isMine?'MINE':'PLACE','id='+id,'@'+x+','+y,'dist='+dist.toFixed(2),'from',client.name||client.connectionId)}catch(_){}
+      return;
+    }
+    if(!isMine && dist<1.05){
+      try{console.log('tile REJECT too-close PLACE @'+x+','+y,'dist='+dist.toFixed(2),client.name||client.connectionId)}catch(_){}
+      return;
+    }
+    // Soft local-overlap only: use slightly tighter check for the placer so
+    // laggy position samples don't reject every nearby place. Peers still use
+    // the full shield.
+    if(id!==0 && placementOverlapsPlayer({position:placementPos},x,y)){
+      // Allow if the packet is a replace of an existing empty / same-owner cell
+      // already stored — still block true body overlap for peers below.
+    }
+    if(id!==0 && placementBlockedByAnyPlayer(room,x,y)){
+      // If only the placer overlaps (no other player), still allow — local
+      // client already gated placement. This recovers desynced position.
+      let otherHit=false;
+      for(const other of room.clients){
+        if(other===client||!other.alive||other.eliminated||!other.position)continue;
+        if(placementOverlapsPlayer(other,x,y)){otherHit=true;break;}
       }
-      room.speaker = { x, y, on: false, trackIndex: 0, startedAt: 0, ownerConnectionId: client.connectionId };
+      if(otherHit)return;
     }
-    if (layer === 2) {
-      if (!room.backgroundTiles) room.backgroundTiles = new Map();
-      room.backgroundTiles.set(key, tile);
-    } else {
-      room.tiles.set(key, tile);
+    normalizeRoomTileAt(room,x,y);
+    const key=`${x},${y}`;
+    if(id===0){
+      // Always accept clears. Base-map blocks are not always in room.tiles
+      // (only deltas are). Previously we returned early when prior was null,
+      // so peers never saw natural terrain being mined.
+      let actualLayer=requestedLayer;
+      let prior=(requestedLayer===2?room.backgroundTiles:room.tiles).get(key)||null;
+      if(!prior){ actualLayer=requestedLayer===2?0:2; prior=(actualLayer===2?room.backgroundTiles:room.tiles).get(key)||null; }
+      if(!prior) actualLayer=requestedLayer;
+      // Record the hole so late joiners also get an empty cell.
+      room.tiles.set(key,{x,y,id:0,variant:0,layer:0,ownerConnectionId:client.connectionId,cleared:true});
+      room.backgroundTiles.delete(key);
+      if(prior&&prior.id===122&&room.speaker&&room.speaker.x===x&&room.speaker.y===y) room.speaker=null;
+      room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
+      // Broadcast to everyone INCLUDING the miner so visuals stay authoritative.
+      broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:actualLayer,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
+      try{console.log('tile CLEAR @'+x+','+y+' layer='+actualLayer+' by '+(client.name||client.connectionId))}catch(_){}
+      // Also clear the other layer so no ghost block remains.
+      if(actualLayer!==2) broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:2,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
+      else broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:0,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
+      if(prior&&prior.id===122)syncSpeaker(room);
+      return;
     }
-    if (id === 0) {
-      if (room.speaker && room.speaker.x === x && room.speaker.y === y) room.speaker = null;
-      try { room.cottonMachines.delete(`${x},${y}`); } catch (_) {}
-      try { room.turretCooldowns.delete(`${x},${y}`); } catch (_) {}
+    const catalogLayer=expectedBlockLayer(id);
+    const desiredLayer=requestedLayer===1?1:catalogLayer;
+    const store=desiredLayer===2?room.backgroundTiles:room.tiles;
+    const other=desiredLayer===2?room.tiles:room.backgroundTiles;
+    const wrong=other.get(key)||null;
+    if(wrong)other.delete(key);
+    if(room.mode==='digtrade'&&id===122&&desiredLayer!==0)return;
+    if(room.mode==='digtrade'&&id===122){
+      if(room.speaker && (room.speaker.x!==x||room.speaker.y!==y)){
+        const prior=store.get(key)||null;
+        sendJson(client,{t:'speaker-place-blocked',x,y,tile:prior?{id:prior.id|0,variant:prior.variant|0,layer:desiredLayer}:{id:0,variant:0,layer:desiredLayer}});return;
+      }
+      room.speaker={x,y,on:false,trackIndex:0,startedAt:0,ownerConnectionId:client.connectionId};
     }
-    broadcastRoom(room, Object.assign({ t: 'tile' }, tile, {
-      _serverFrom: client.connectionId,
-      _serverName: client.name
-    }));
-    if ((id === 122 || (room.speaker && room.speaker.x === x && room.speaker.y === y)) && typeof syncSpeaker === 'function') {
-      try { syncSpeaker(room); } catch (_) {}
-    }
+    const tile={x,y,id,variant,layer:desiredLayer,ownerConnectionId:client.connectionId};
+    store.set(key,tile);
+    room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
+    if(wrong) broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:desiredLayer===2?0:2,_serverCorrection:true,_serverFrom:client.connectionId,_serverName:client.name});
+    broadcastRoom(room,Object.assign({t:'tile'},tile,{_serverCorrection:desiredLayer!==requestedLayer,_serverFrom:client.connectionId,_serverName:client.name,replace:true}));
+    try{console.log('tile PLACE id='+id+' @'+x+','+y+' layer='+desiredLayer+' by '+(client.name||client.connectionId))}catch(_){}
+    if(id===122)syncSpeaker(room);
     return;
   }
   if(message.t==='speaker-toggle'){
@@ -2517,10 +2583,15 @@ function relayGameMessage(client, message, rawLength) {
   }
 
   if (message.t==='damage') {
-    // Dig+Trade: no player damage ever.
-    // PvP: client-sent damage ignored (server-authoritative combat).
-    if (room.mode==='digtrade') return;
+    // Normal PvP is server-authoritative. In Dig+Trade, admin PvP override
+    // explicitly opens the same authoritative damage path.
     if (room.mode==='pvp') return;
+    if (room.mode==='digtrade' && room.adminPvpOverride) {
+      const target=findRoomClient(room,String(message.targetConnectionId||''));
+      if(target) dealPvpDamage(client,target,Number(message.amount)||1,String(message.source||'weapon'));
+      return;
+    }
+    if (room.mode==='digtrade') return;
     const target=findRoomClient(room,String(message.targetConnectionId||''));if(!target||target===client)return;if(target.adminEffects&&target.adminEffects.god)return;sendJson(target,envelope);return;
   }
 
