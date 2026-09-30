@@ -183,7 +183,7 @@ function patchGameHtmlForBuild239(input) {
     html = html.replace(from, to);
   }
 
-  // Build 24.x: keep Log In menu + Firebase Google auth client script.
+  // Build 24.x: keep Log In menu.
   // (Previously Build 23.8 replaced Log In with Donate and wiped DiggerzAuth237.)
 
   // Build 23.8 itch/Railway split: static browser clients always use Railway
