@@ -6778,6 +6778,24 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             return !0
         },
         C39: function() {
+            // Keep Customize open when clicking inventory / preview / skin / flags.
+            // Only close when the click is truly outside (no child hit).
+            try {
+                if (null != this._8[3]) return;
+                if (this.__dzInvBox || this.__dzPrevBox) {
+                    // If mouse is roughly over this panel, do not close
+                    try {
+                        var mx = q.mouseX != null ? q.mouseX : (q.MOUSE_X || 0);
+                        var my = q.mouseY != null ? q.mouseY : (q.MOUSE_Y || 0);
+                        var halfW = (this.d32 || 1100) / 2;
+                        var halfH = (this.d33 || 720) / 2;
+                        var cx = this.A7 != null ? this.A7 : q.CENTERX;
+                        var cy = this.A8 != null ? this.A8 : q.CENTERY;
+                        if (mx >= cx - halfW && mx <= cx + halfW && my >= cy - halfH && my <= cy + halfH)
+                            return;
+                    } catch (eHit) {}
+                }
+            } catch (eC) {}
             null == this._8[3] && (this.a0 = 1,
             E.u4(this, 0, 300, 1, .5, 0, 1, 0))
         },
@@ -50486,12 +50504,18 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.y42._9.push(this.y43);
         b = new xa(0,0,"Skin Tone",q.MAIN_FONT_BIG);
         b.D7(this.y42, !0);
+        b.b6 = 0;
         b.b7 = -28;
         b.set_local_xScale(b.set_local_yScale(.7));
         this.y42._9.push(b);
-        // Force final skin position (constructor args otherwise leave it wrong until live move)
+        this.__dzSkinLabel = b;
+        // Force skin BAR position (label is parented to bar so it stays on it)
         this.y42.b6 = 95;
         this.y42.b7 = -240;
+        try {
+            this.y42.C33 = function() {}; // absorb clicks
+            this.y42.E7 = function() { return !0; };
+        } catch (eSk) {}
         a += 70;
         a += -60; // user countries.y offset
         b = -480; // -520 + user countries.x (40)
@@ -51172,8 +51196,36 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
 
             if (!__skel) {
-                var __fb = new xa(0, 0, "^8Rig loading...", q.MAIN_FONT);
-                __fb.D7(__prev, !0);
+                // Simple stand-in body so the panel is never empty
+                try {
+                    var __body = z.I9();
+                    __body.D7(__prev, !0);
+                    __body.Init(f.HEAD_PNG());
+                    __body.b7 = -40;
+                    __body.set_local_xScale(__body.set_local_yScale(1.2));
+                    try {
+                        var __tone = (q.player && q.player.l9) ? q.player.l9 : 90;
+                        var __c = .45 + 1.1 * (Math.min(100, __tone) / 100);
+                        __body.set_local_r(__body.set_local_g(__body.set_local_b(__c)));
+                    } catch (eT) {}
+                    var __eyes = z.I9();
+                    __eyes.D7(__body, !0);
+                    __eyes.Init(f.EYES_PNG());
+                    __eyes.b6 = -7; __eyes.b7 = -3;
+                    var __shirt = z.I9();
+                    __shirt.D7(__prev, !0);
+                    try { __shirt.Init(f.SHIRT_PNG ? f.SHIRT_PNG() : f.HEAD_PNG()); } catch (eSh) {
+                        try { __shirt.Init(f.HEAD_PNG()); } catch (e2) {}
+                    }
+                    __shirt.b7 = 10;
+                    __shirt.set_local_xScale(__shirt.set_local_yScale(1.1));
+                    // default shirt green-ish
+                    try { __shirt.set_local_r(.3); __shirt.set_local_g(.7); __shirt.set_local_b(.3); } catch (eC) {}
+                    this.__dzFallbackBody = __prev;
+                } catch (eFb) {
+                    var __fb = new xa(0, 0, "^8Rig loading...", q.MAIN_FONT);
+                    __fb.D7(__prev, !0);
+                }
             }
 
             // ---- Right: vertical inventory with clip (shop-style up/down scroll) ----
@@ -51217,7 +51269,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             // Clip everything inside the inventory JA so rows past the box are hidden
             try {
                 if (typeof __invBox.set_scrollRect === "function")
-                    __invBox.set_scrollRect(new r(0, 0, __invW, __invH));
+                    __invBox.set_scrollRect(new r(-__invW / 2, -__invH / 2, __invW, __invH));
             } catch (eClip) {}
 
             // Content root — we move its b7 for vertical scroll
@@ -51316,7 +51368,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 var __it = __items[__ii];
                 var __cy = __startY + __shown * __rowH;
 
-                var __cellJa = new ja(__invW - 36, 48, !1); // no bknd frame (less messy)
+                var __cellJa = new ja(__invW - 36, 48, !0); // visible row box
                 __cellJa.b6 = 0;
                 __cellJa.b7 = __cy;
                 __cellJa.D7(__invContent, !0);
@@ -51380,6 +51432,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.__dzInvContent = __invContent;
             this.__dzInvBox = __invBox;
             window.__dzCustomizePanel = this;
+            try {
+                __invBox.E7 = function() { return !0; };
+                __invBox.C33 = function() {};
+                __prev.E7 = function() { return !0; };
+            } catch (eAbs) {}
             try { if (window.DiggerzCustomizeLayout) console.log("%c[Customize] DiggerzCustomizeLayout ready — try DiggerzCustomizeLayout.move('inventory', 40, 0)", "color:#7dffa0"); } catch (eR) {}
 
             // Force user layout on open (same path as live console move)
@@ -51452,7 +51509,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                             // Keep clip tight every frame so rows past the box stay hidden
                             try {
                                 if (this.__dzInvBox && typeof this.__dzInvBox.set_scrollRect === "function")
-                                    this.__dzInvBox.set_scrollRect(new r(0, 0, this.__dzInvW || 320, this.__dzInvH || 480));
+                                    this.__dzInvBox.set_scrollRect(new r(-(this.__dzInvW || 320) / 2, -(this.__dzInvH || 480) / 2, this.__dzInvW || 320, this.__dzInvH || 480));
                             } catch (eClip2) {}
                         }
                     } catch (eScroll) {}
