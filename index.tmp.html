@@ -50509,13 +50509,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         b.set_local_xScale(b.set_local_yScale(.7));
         this.y42._9.push(b);
         this.__dzSkinLabel = b;
-        // Force skin BAR position (label is parented to bar so it stays on it)
+        // Keep the skin slider in its saved layout position.
+        // IMPORTANT: do not override C33/E7 here. The engine's vl slider uses
+        // its own hit testing so only the draggable head/handle enters C39;
+        // overriding those callbacks makes the handle impossible to grab.
         this.y42.b6 = 95;
         this.y42.b7 = -240;
-        try {
-            this.y42.C33 = function() {}; // absorb clicks
-            this.y42.E7 = function() { return !0; };
-        } catch (eSk) {}
         a += 70;
         a += -60; // user countries.y offset
         b = -480; // -520 + user countries.x (40)
@@ -51585,28 +51584,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 }, 50);
             } catch (eForce) {}
 
-            // Only the little head/handle may start a skin-tone drag. Clicking the
-            // track itself must not jump the value or start dragging.
-            try {
-                var __origSkinC39 = this.y42.C39;
-                this.y42.C39 = function() {
-                    var handle = this.d49;
-                    var hit = false;
-                    try {
-                        var hw = (handle && handle._5) ? handle._5.width * Math.abs(handle.a8 || 1) : 24;
-                        var hh = (handle && handle._5) ? handle._5.height * Math.abs(handle.a9 || 1) : 24;
-                        var hx = handle ? Number(handle.A7) : Number(this.A7);
-                        var hy = handle ? Number(handle.A8) : Number(this.A8);
-                        hit = Math.abs(q.mX - hx) <= hw / 2 &&
-                              Math.abs(q.mY - hy) <= hh / 2;
-                    } catch (eHandleHit) {}
-                    if (!hit) {
-                        this.i32 = 1;
-                        return;
-                    }
-                    return __origSkinC39.call(this);
-                };
-            } catch (eSkinGuard) {}
+            // Skin-tone dragging is handled by the engine's vl slider itself.
+            // Its draggable head is the slider object; the bar is only the
+            // visual/background child. Do not replace C39 with a second hit-test
+            // because that uses the bar's coordinates rather than the handle's
+            // local transform and can make a real handle click miss.
 
             // Live skin + idle + inventory scroll. q.mWheel is the engine's actual
             // one-frame wheel value; the old code read q.mouseWheel, which never exists.
