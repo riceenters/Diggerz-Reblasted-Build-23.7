@@ -16282,6 +16282,31 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         e.a0 = 0
                     }
             }
+            /* DZ PATCH: force every mannequin wearable to the exact player rig scale.
+               Remove wearable scale animation tracks so the normal animation tick cannot
+               immediately restore the item-native scale. */
+            var __dzWearScale = Number(q.player.l0);
+            if (isFinite(__dzWearScale)) {
+                var __dzWearStack = [this.i33];
+                while (__dzWearStack.length) {
+                    var __dzWearNode = __dzWearStack.pop();
+                    if (null == __dzWearNode) continue;
+                    if (__dzWearNode._1 === "wear") {
+                        if (__dzWearNode._8) {
+                            for (var __dzAi = 0; __dzAi < __dzWearNode._8.length; __dzAi++) {
+                                var __dzAnim = __dzWearNode._8[__dzAi];
+                                if (__dzAnim && (__dzAnim.x4 === 3 || __dzAnim.x4 === 4))
+                                    __dzWearNode._8[__dzAi] = null;
+                            }
+                        }
+                        __dzWearNode.set_local_xScale(__dzWearScale);
+                        __dzWearNode.set_local_yScale(__dzWearScale);
+                    }
+                    if (__dzWearNode._9)
+                        for (var __dzCi = 0; __dzCi < __dzWearNode._9.length; __dzCi++)
+                            if (__dzWearNode._9[__dzCi]) __dzWearStack.push(__dzWearNode._9[__dzCi]);
+                }
+            }
             this.B2 = this.B3 = !0;
             this.i33.e0()
         },
