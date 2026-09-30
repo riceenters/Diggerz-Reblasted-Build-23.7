@@ -5343,17 +5343,33 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         },
         a36: function(a) {
             null == a && (a = 1);
+            // Base menu background (always default title art)
             var b = z.I9();
-            (function(){
-                var i = 0;
-                try { i = Math.max(0, Math.min(2, parseInt(localStorage.getItem("diggerz.menuBg.v1") || "0", 10) || 0)); } catch (e) {}
-                if (i === 1) b.Init(sa.GREY_BKND_PNG());
-                else if (i === 2) b.Init(sa.SPACE_BKND_PNG());
-                else b.Init(sa.TITLE_BKND_PNG());
-            })();
+            b.Init(sa.TITLE_BKND_PNG());
             b.D7(this);
             b.set_local_xScale(2 * q.SCREENWIDTH / b._5.width);
             b.set_local_yScale(2 * q.SCREENHEIGHT / b._5.height);
+            // Overlay above base — index 0 = transparent (show default), 1 = Grey, 2 = Space
+            try {
+                var __bgI = 0;
+                try { __bgI = Math.max(0, Math.min(2, parseInt(localStorage.getItem("diggerz.menuBg.v1") || "0", 10) || 0)); } catch (e0) {}
+                var __ov = z.I9();
+                if (__bgI === 1) __ov.Init(sa.GREY_BKND_PNG());
+                else if (__bgI === 2) __ov.Init(sa.SPACE_BKND_PNG());
+                else __ov.Init(sa.TITLE_BKND_PNG());
+                __ov.D7(this);
+                __ov.set_local_xScale(2 * q.SCREENWIDTH / __ov._5.width);
+                __ov.set_local_yScale(2 * q.SCREENHEIGHT / __ov._5.height);
+                if (__bgI === 0) {
+                    try { __ov.set_local_alp(0); } catch (eA) { try { __ov.set_alp(0); } catch (eA2) {} }
+                } else {
+                    try { __ov.set_local_alp(1); } catch (eA3) {}
+                }
+                __ov._1 = "diggerz_menu_bg_overlay";
+                this._9.push(__ov);
+                window.__diggerzMenuBgOverlay = __ov;
+                window.__diggerzMenuBgBase = b;
+            } catch (eBg) {}
             b.set_local_r(b.set_local_g(b.set_local_b(a)));
             this._9.push(b);
             b._1 = "gradient";
@@ -51278,7 +51294,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.Z47._9.push(a);
         a = 170;
         // Menu background cycle
-        var bgNames = ["Default", "Grey", "Space"];
+        var bgNames = ["Default (clear)", "Grey", "Space"];
         var bgKey = "diggerz.menuBg.v1";
         var bgIdx = 0;
         try { bgIdx = Math.max(0, Math.min(2, parseInt(localStorage.getItem(bgKey) || "0", 10) || 0)); } catch (eBg) {}
@@ -87218,6 +87234,17 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             c.D7(b, !0);
             c.set_local_xScale(c.set_local_yScale(1.25));
             this._9.push(c);
+            // Restore Firebase session so menu shows Log Out + email
+            try {
+                if (window.localStorage) {
+                    var __dzAuth = null;
+                    try { __dzAuth = JSON.parse(localStorage.getItem("diggerz.firebase.auth.v1") || "null"); } catch (eA) {}
+                    if (__dzAuth && __dzAuth.authenticated && (__dzAuth.email || __dzAuth.uid)) {
+                        q.thisMain.userPW = "SESSION_AUTHENTICATED";
+                        q.thisMain.userEmail = String(__dzAuth.email || __dzAuth.uid || "");
+                    }
+                }
+            } catch (__dzE) {}
             N.startsWith(q.thisMain.userPW, "NOPASSWORD") || 0 >= q.thisMain.userPW.length ? (q.thisMain.userEmail = "",
             b = new z,
             b.Init(u.YELLOWBUTTON_PNG()),
@@ -117946,21 +117973,53 @@ e50: function(a) {
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script id="diggerz-auth-v2">
 (function(){
-  var firebaseConfig = {
-    apiKey: "AIzaSyBMsaYJ4UMAQPkJcjG9-Ix4LXoGKppwZpk",
-    authDomain: "diggerz-86512.firebaseapp.com",
-    projectId: "diggerz-86512",
-    storageBucket: "diggerz-86512.firebasestorage.app",
-    messagingSenderId: "812494082190",
-    appId: "1:812494082190:web:d399176297e8171316f9df",
-    measurementId: "G-BPH0E6RM9L"
-  };
+  // Primary = existing players (86512). Secondary = backup (87b92) on quota/outage only.
+  var FIREBASE_CONFIGS = [
+    {
+      name: "primary",
+      apiKey: "AIzaSyBMsaYJ4UMAQPkJcjG9-Ix4LXoGKppwZpk",
+      authDomain: "diggerz-86512.firebaseapp.com",
+      projectId: "diggerz-86512",
+      storageBucket: "diggerz-86512.firebasestorage.app",
+      messagingSenderId: "812494082190",
+      appId: "1:812494082190:web:d399176297e8171316f9df",
+      measurementId: "G-BPH0E6RM9L"
+    },
+    {
+      name: "secondary",
+      apiKey: "AIzaSyBUMaKzU1TofsnOkgnesUjcnPS7lGmidnY",
+      authDomain: "diggerz-87b92.firebaseapp.com",
+      projectId: "diggerz-87b92",
+      storageBucket: "diggerz-87b92.firebasestorage.app",
+      messagingSenderId: "982868569912",
+      appId: "1:982868569912:web:ba84566059f6423a6ddbcd",
+      measurementId: "G-GN79GLWKJR"
+    }
+  ];
   try {
-    if (window.__DIGGERZ_FIREBASE_CONFIG) firebaseConfig = window.__DIGGERZ_FIREBASE_CONFIG;
+    if (window.__DIGGERZ_FIREBASE_CONFIGS && window.__DIGGERZ_FIREBASE_CONFIGS.length)
+      FIREBASE_CONFIGS = window.__DIGGERZ_FIREBASE_CONFIGS;
+    var savedSecondary = localStorage.getItem("diggerz.firebaseConfig.secondary");
+    if (savedSecondary) {
+      FIREBASE_CONFIGS[1] = Object.assign({ name: "secondary" }, JSON.parse(savedSecondary));
+    }
   } catch (e) {}
 
-  var state = { authenticated: false, uid: null, email: null, user: null };
-  var auth = null, db = null, ready = false;
+  var configIndex = 0;
+  try {
+    var savedIdx = parseInt(localStorage.getItem("diggerz.firebaseConfigIndex") || "0", 10);
+    // Prefer primary (0) for existing accounts unless user was already failed-over
+    if (!isNaN(savedIdx) && savedIdx >= 0 && savedIdx < FIREBASE_CONFIGS.length)
+      configIndex = savedIdx;
+  } catch (e0) {}
+
+  function activeConfig() { return FIREBASE_CONFIGS[configIndex] || FIREBASE_CONFIGS[0]; }
+  function configUsable(c) {
+    return c && c.apiKey && c.projectId && String(c.apiKey).length > 10 && String(c.projectId).length > 1;
+  }
+
+  var state = { authenticated: false, uid: null, email: null, user: null, backend: null };
+  var auth = null, db = null, ready = false, switching = false;
 
   function lsGet(k, d){ try { var v = localStorage.getItem(k); return v == null ? d : v; } catch(e){ return d; } }
   function lsSet(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
@@ -117985,34 +118044,111 @@ e50: function(a) {
     return g;
   }
 
+  function isQuotaOrConnectError(err) {
+    var msg = String((err && (err.code || err.message)) || err || "").toLowerCase();
+    return (
+      msg.indexOf("quota") >= 0 ||
+      msg.indexOf("resource-exhausted") >= 0 ||
+      msg.indexOf("too many") >= 0 ||
+      msg.indexOf("billing") >= 0 ||
+      msg.indexOf("network") >= 0 ||
+      msg.indexOf("unavailable") >= 0 ||
+      msg.indexOf("failed to fetch") >= 0 ||
+      msg.indexOf("auth/network-request-failed") >= 0 ||
+      msg.indexOf("deadline-exceeded") >= 0
+    );
+  }
+
+  function tryFailover(err, reason) {
+    if (switching) return Promise.resolve(false);
+    if (err && !isQuotaOrConnectError(err) && reason !== "force") return Promise.resolve(false);
+    var next = configIndex + 1;
+    while (next < FIREBASE_CONFIGS.length && !configUsable(FIREBASE_CONFIGS[next])) next++;
+    if (next >= FIREBASE_CONFIGS.length) {
+      console.warn("[Diggerz Auth] No secondary Firebase backend available", err || reason);
+      return Promise.resolve(false);
+    }
+    switching = true;
+    console.warn("[Diggerz Auth] Failing over", configIndex, "->", next, err || reason);
+    configIndex = next;
+    try { lsSet("diggerz.firebaseConfigIndex", String(configIndex)); } catch (e) {}
+    ready = false;
+    auth = null;
+    db = null;
+    try {
+      // Delete default app so we can re-init with new config
+      if (firebase.apps && firebase.apps.length) {
+        return firebase.app().delete().then(function() {
+          switching = false;
+          initFirebase();
+          return true;
+        }).catch(function() {
+          switching = false;
+          initFirebase();
+          return true;
+        });
+      }
+    } catch (e2) {}
+    switching = false;
+    initFirebase();
+    return Promise.resolve(true);
+  }
+
   function initFirebase() {
     try {
       if (typeof firebase === "undefined") {
         console.warn("[Diggerz Auth] Firebase SDK missing");
         return;
       }
-      if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+      var cfg = activeConfig();
+      if (!configUsable(cfg)) {
+        console.warn("[Diggerz Auth] Active config missing apiKey/projectId, trying next");
+        tryFailover(null, "force");
+        return;
+      }
+      if (!firebase.apps.length) {
+        firebase.initializeApp(cfg);
+      }
       auth = firebase.auth();
       db = firebase.firestore();
       ready = true;
+      state.backend = cfg.projectId || cfg.name || String(configIndex);
+      console.log("[Diggerz Auth] Using backend", state.backend, "(index", configIndex + ")");
       auth.onAuthStateChanged(function(user) {
         if (user) {
           state.authenticated = true;
           state.uid = user.uid;
           state.email = user.email || "";
           state.user = user;
-          lsSet("diggerz.firebase.auth.v1", JSON.stringify({ authenticated: true, uid: user.uid, email: state.email }));
+          lsSet("diggerz.firebase.auth.v1", JSON.stringify({
+            authenticated: true,
+            uid: user.uid,
+            email: state.email,
+            backend: state.backend,
+            configIndex: configIndex
+          }));
           try {
             if (window.q && q.thisMain) {
               q.thisMain.userPW = "SESSION_AUTHENTICATED";
               q.thisMain.userEmail = state.email;
             }
           } catch (e) {}
+          try {
+            if (!sessionStorage.getItem("diggerz.authMenuReload") && document.body) {
+              sessionStorage.setItem("diggerz.authMenuReload", "1");
+              setTimeout(function() {
+                if (window.q && q.thisMain && q.thisMain.userPW === "SESSION_AUTHENTICATED")
+                  location.reload();
+              }, 300);
+            }
+          } catch (eR) {}
         } else {
           state.authenticated = false;
           state.uid = null;
           state.email = null;
           state.user = null;
+          try { localStorage.removeItem("diggerz.firebase.auth.v1"); } catch (e2) {}
+          try { sessionStorage.removeItem("diggerz.authMenuReload"); } catch (e3) {}
         }
       });
       // Complete email link sign-in if landing with link
@@ -118084,6 +118220,12 @@ e50: function(a) {
       });
     }).catch(function(err) {
       console.warn("[Diggerz Cloud] push failed", err);
+      if (isQuotaOrConnectError(err)) {
+        return tryFailover(err).then(function(ok) {
+          if (ok) return pushCloudSave(force);
+          return { ok: false, error: (err && err.message) || String(err), reason: (err && err.code) || "error" };
+        });
+      }
       return { ok: false, error: (err && err.message) || String(err), reason: (err && err.code) || "error" };
     });
   }
@@ -118123,6 +118265,17 @@ e50: function(a) {
       return true;
     }).catch(function(err) {
       console.warn("[Diggerz Auth] sendEmailLink failed", err);
+      if (isQuotaOrConnectError(err)) {
+        return tryFailover(err).then(function(ok) {
+          if (ok && auth) {
+            return auth.sendSignInLinkToEmail(email, actionCodeSettings).then(function() {
+              console.log("[Diggerz Auth] link sent via backup to", email);
+              return true;
+            });
+          }
+          throw err;
+        });
+      }
       throw err;
     });
   }
@@ -118147,7 +118300,17 @@ e50: function(a) {
       });
     }).catch(function(err) {
       console.warn("[Diggerz Auth] google", err);
-      alert("Google sign-in failed: " + (err.message || err));
+      if (isQuotaOrConnectError(err)) {
+        tryFailover(err).then(function(ok) {
+          if (ok) {
+            alert("Switched to backup login server. Please try Google sign-in again.");
+          } else {
+            alert("Google sign-in failed: " + (err.message || err));
+          }
+        });
+      } else {
+        alert("Google sign-in failed: " + (err.message || err));
+      }
     });
   }
 
@@ -118225,7 +118388,17 @@ e50: function(a) {
     logoutFromMenu: logoutFromMenu,
     pushCloudSave: pushCloudSave,
     pullCloudSave: pullCloudSave,
-    dirtySave: dirtySave
+    dirtySave: dirtySave,
+    tryFailover: tryFailover,
+    getBackend: function() { return state.backend; },
+    getConfigIndex: function() { return configIndex; },
+    setSecondaryConfig: function(cfg) {
+      try {
+        FIREBASE_CONFIGS[1] = Object.assign({ name: "secondary" }, cfg);
+        lsSet("diggerz.firebaseConfig.secondary", JSON.stringify(FIREBASE_CONFIGS[1]));
+        return true;
+      } catch (e) { return false; }
+    }
   };
 
   // Real firebase config — user project diggerz-86512
@@ -118263,6 +118436,26 @@ e50: function(a) {
       }
     } catch (e) {}
   }, 3000);
+})();
+</script>
+
+<script id="diggerz-menu-bg-apply">
+(function(){
+  window.DiggerzApplyMenuBackground = function() {
+    try {
+      var i = Math.max(0, Math.min(2, parseInt(localStorage.getItem("diggerz.menuBg.v1") || "0", 10) || 0));
+      var ov = window.__diggerzMenuBgOverlay;
+      if (!ov) { location.reload(); return; }
+      if (i === 1) ov.Init(sa.GREY_BKND_PNG());
+      else if (i === 2) ov.Init(sa.SPACE_BKND_PNG());
+      else ov.Init(sa.TITLE_BKND_PNG());
+      try {
+        ov.set_local_xScale(2 * q.SCREENWIDTH / ov._5.width);
+        ov.set_local_yScale(2 * q.SCREENHEIGHT / ov._5.height);
+      } catch (e) {}
+      try { ov.set_local_alp(i === 0 ? 0 : 1); } catch (e2) { try { ov.set_alp(i === 0 ? 0 : 1); } catch (e3) {} }
+    } catch (e) { try { location.reload(); } catch (e4) {} }
+  };
 })();
 </script>
 </body>
