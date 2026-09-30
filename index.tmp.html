@@ -50509,10 +50509,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         b.set_local_xScale(b.set_local_yScale(.7));
         this.y42._9.push(b);
         this.__dzSkinLabel = b;
-        // Keep the skin slider in its saved layout position.
-        // IMPORTANT: do not override C33/E7 here. The engine's vl slider uses
-        // its own hit testing so only the draggable head/handle enters C39;
-        // overriding those callbacks makes the handle impossible to grab.
+        // Keep the skin slider in the saved layout position. Native vl hit-testing
+        // remains untouched so the little HEAD_PNG handle is draggable.
         this.y42.b6 = 95;
         this.y42.b7 = -240;
         a += 70;
@@ -50989,24 +50987,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
 
             function __skinColor(tone) {
-                // Match the ACTUAL skin-tone slider/head exactly. The slider's
-                // head is never pure black: its darkness floor is .45 and its
-                // brightest value is 1.55. The preview must use that same range.
+                // The real player renderer passes l9 directly to the body parts.
+                // Use that exact value so the preview has precisely the same
+                // darkness limits as the little head on the real slider.
                 tone = Number(tone);
-                if (!isFinite(tone)) tone = 90;
-                tone = Math.max(0, Math.min(100, tone));
-                return .45 + 1.1 * tone / 100;
+                if (!isFinite(tone)) tone = (q.player && q.player.l9 != null) ? Number(q.player.l9) : 45;
+                return tone;
             }
-
-            // Build 23.7 stores one permanent 0-11 shirt-color index per player.
-            // The recovered client had the persistence half implemented but never
-            // applied it to the customize rig. Keep the palette deterministic.
-            var __shirtPalette = [
-                [0.90,0.12,0.12], [0.95,0.42,0.08], [0.95,0.78,0.08],
-                [0.20,0.72,0.22], [0.08,0.72,0.68], [0.10,0.40,0.90],
-                [0.35,0.18,0.78], [0.78,0.16,0.70], [0.58,0.31,0.12],
-                [0.35,0.35,0.38], [0.08,0.08,0.10], [0.92,0.92,0.92]
-            ];
             function __getStoredShirtColor() {
                 try {
                     if (typeof window.DiggerzGetShirtColor === "function")
@@ -51019,15 +51006,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 return 0;
             }
             function __tintPreviewShirt(skel) {
-                if (!skel || typeof skel.f2 !== "function") return;
-                try {
-                    var torso = skel.f2("torso");
-                    if (!torso) return;
-                    var col = __shirtPalette[__getStoredShirtColor()] || __shirtPalette[0];
-                    torso.set_local_r(col[0]);
-                    torso.set_local_g(col[1]);
-                    torso.set_local_b(col[2]);
-                } catch (e) {}
+                // Intentionally empty. The authoritative m38 -> m37 path applies
+                // the player's real/default shirt texture and color.
             }
             function __tintPreviewSkin(skel, tone) {
                 if (!skel || typeof skel.f2 !== "function") return;
@@ -51080,40 +51060,89 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 } catch (e) {}
             }
 
+            // Preview rig: use the SAME character implementation as the live
+            // player.  We clone only its visual skeleton, then run the real
+            // player's m38/m37 equipment pipeline against a proxy whose i33 is
+            // the clone.  This avoids maintaining a second, incomplete outfit
+            // system in Customize.
             var __previewWearer = null;
+            var __previewSourcePlayer = null;
+            function __getAuthoritativePlayer() {
+                try { if (l && l.z39) return l.z39; } catch (eZ39) {}
+                return null;
+            }
+            function __getAuthoritativeAppearance() {
+                var live = __getAuthoritativePlayer();
+                try {
+                    if (live && Array.isArray(live.J33) && live.J33.length)
+                        return live.J33.slice(0, 11);
+                } catch (eLiveJ33) {}
+                try {
+                    if (q.player && Array.isArray(q.player.J33) && q.player.J33.length)
+                        return q.player.J33.slice(0, 11);
+                } catch (eQJ33) {}
+                return __appearanceFromSave(__loadDigSave());
+            }
+            function __makePreviewRig(parent) {
+                var source = __getAuthoritativePlayer();
+                var skel = null;
+                // Never take a skeleton out of the live player's hierarchy. Make
+                // a fresh copy of the exact same guy_anims/guyskin visual rig.
+                try {
+                    var maker = new z;
+                    var scaleArg = 1;
+                    if (source && source.i33 && source.i33.a8 != null) scaleArg = Math.abs(Number(source.i33.a8)) || 1;
+                    else if (q.player && q.player.l0 != null) scaleArg = q.player.l0;
+                    skel = maker.G2("guy_anims", "guyskin", f, Fc.M39, scaleArg, !0);
+                } catch (eMake) {
+                    try { skel = (new z).G2("guy_anims", "guyskin", f, Fc.M39, 1, !0); } catch (eMake2) {}
+                }
+                if (!skel) return null;
+                skel.D7(parent, !0);
+                skel.b6 = 0;
+                skel.b7 = 50;
+                try { skel.a0 = 1; } catch (eA0) {}
+                // Match the live player's visual scale/orientation.
+                try {
+                    if (source && source.i33) {
+                        skel.set_local_xScale(Math.abs(Number(source.i33.a8)) || 2);
+                        skel.set_local_yScale(Math.abs(Number(source.i33.a9)) || 2);
+                        skel.b3 = source.i33.b3 || 0;
+                    } else if (typeof skel.set_local_xScale === "function") {
+                        skel.set_local_xScale(skel.set_local_yScale(2));
+                    }
+                } catch (eScale) {}
+                return skel;
+            }
             function __equipOnPreview(skel, app) {
                 if (!skel) return;
+                var source = __getAuthoritativePlayer();
+                if (!source || typeof source.m38 !== "function") return;
                 var tone = 90;
-                try { if (q.player && q.player.l9 != null) tone = q.player.l9; } catch (eT) {}
+                try { if (source.l9 != null) tone = source.l9; } catch (eT) {}
                 try {
-                    if (q.player && typeof q.player.m38 === "function") {
-                        // Run the real appearance pipeline against a proxy object.
-                        // This gives the preview the exact same Yf item attachment
-                        // logic as the player without temporarily replacing the
-                        // real player's skeleton.
-                        if (!__previewWearer || __previewWearer.__dzSkeleton !== skel) {
-                            __previewWearer = Object.create(q.player);
-                            __previewWearer.__dzSkeleton = skel;
-                            __previewWearer.i33 = skel;
-                            __previewWearer.J33 = [];
-                            __previewWearer.m32 = function() {}; // never touch player's children
-                        }
-                        __previewWearer.i33 = skel;
-                        __previewWearer.l9 = tone;
-                        __previewWearer.J33 = [];
-                        var wanted = (app && app.slice) ? app.slice(0,11) : [0,0,0,0,0,0,0,0,0,0,0];
-                        while (wanted.length < 11) wanted.push(0);
-                        q.player.m38.call(__previewWearer, wanted, "");
-                        // m38 intentionally enters the wear animation while it
-                        // rebuilds cosmetics; immediately hand control back to idle.
-                        if (typeof skel._38 === "function") skel._38("idle", !0, 100, .5);
+                    if (!__previewWearer || __previewWearer.__dzSkeleton !== skel || __previewSourcePlayer !== source) {
+                        // The proxy inherits the REAL player-character class, not
+                        // q.player (which is only the settings object).
+                        __previewWearer = Object.create(source);
+                        __previewWearer.__dzSkeleton = skel;
+                        __previewSourcePlayer = source;
                     }
-                } catch (e) {}
-                // Always restore head texture + eyes + exact slider skin tone.
+                    __previewWearer.i33 = skel;
+                    __previewWearer.l9 = tone;
+                    __previewWearer.J33 = [];
+                    __previewWearer._9 = [];
+                    __previewWearer.a2 = 1;
+                    var wanted = (app && app.slice) ? app.slice(0,11) : __getAuthoritativeAppearance();
+                    while (wanted.length < 11) wanted.push(0);
+                    source.m38.call(__previewWearer, wanted, "");
+                    // m38 can choose a transition while rebuilding cosmetics.
+                    // Hand the cloned rig back to the same idle animation used by
+                    // the real character; do not reset it every frame.
+                    if (typeof skel._38 === "function") skel._38("idle", !0, 100, .5);
+                } catch (eEquipClone) {}
                 try { __ensureHeadAndEyes(skel, tone); } catch (eH) {}
                 try { __tintPreviewSkin(skel, tone); } catch (eS) {}
-                // And apply the player's permanent starting shirt color.
-                try { __tintPreviewShirt(skel); } catch (eShirt) {}
                 try { skel.a2 = 1; } catch (eActive) {}
             }
 
@@ -51136,8 +51165,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 
             function __applyLive(app, text) {
                 try {
-                    if (q.player && typeof q.player.m38 === "function" && q.player.i33 && q.player.i33.Z28 != null)
-                        q.player.m38(app.slice(), text || "");
+                    var __livePlayer = __getAuthoritativePlayer();
+                    if (__livePlayer && typeof __livePlayer.m38 === "function" && __livePlayer.i33 && __livePlayer.i33.Z28 != null)
+                        __livePlayer.m38(app.slice(), text || "");
                 } catch (e) {}
                 try {
                     if (__previewSkelRef) __equipOnPreview(__previewSkelRef, app);
@@ -51174,41 +51204,16 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 
             var __save = __loadDigSave();
             var __slots = (__save && __save.slots) ? __save.slots : [];
-            var __app = __appearanceFromSave(__save);
-            // Prefer live service appearance (most accurate when available)
+            // The live player is the authority. J33 is exactly what m38() uses
+            // for the outfit currently equipped on the player. Do not infer worn
+            // items from inventory variants or from a second cache.
+            var __app = [];
             try {
-                if (q.diggerzService && q.diggerzService.state && q.diggerzService.state.appearance)
-                    __app = q.diggerzService.state.appearance.slice(0, 11);
-            } catch (eSvc) {}
-            try {
-                if (q.player && q.player.J33 && q.player.J33.length) {
-                    var any = false;
-                    for (var zi = 0; zi < q.player.J33.length; zi++) if (q.player.J33[zi]|0) any = true;
-                    if (any) __app = q.player.J33.slice().concat([0,0,0,0,0,0,0,0,0,0,0]).slice(0, 11);
-                }
+                if (q.player && Array.isArray(q.player.J33) && q.player.J33.length)
+                    __app = q.player.J33.slice(0, 11);
             } catch (eLive) {}
-            // Pad appearance to 11
+            if (!__app.length) __app = __appearanceFromSave(__save);
             while (__app.length < 11) __app.push(0);
-
-            // The inventory cache marks the last worn copy with variant === 1.
-            // Reconstruct those slots too, because the cached appearance array
-            // can lag behind the inventory after closing/reopening Customize.
-            try {
-                var __cachedSlots = (__save && Array.isArray(__save.slots)) ? __save.slots.slice() : [];
-                try {
-                    if (q.diggerzService && q.diggerzService.state && Array.isArray(q.diggerzService.state.slots)) {
-                        __cachedSlots = q.diggerzService.state.slots.slice();
-                    }
-                } catch (eLiveCachedSlots) {}
-                for (var __ci = 0; __ci < __cachedSlots.length; __ci++) {
-                    var __cachedItem = __cachedSlots[__ci];
-                    if (!__cachedItem || !(__cachedItem.id|0) || !(__cachedItem.count|0) ||
-                        (__cachedItem.variant|0) !== 1) continue;
-                    var __cachedWear = __wearSlotForItem(__cachedItem, __ci);
-                    if (__cachedWear >= 0 && __cachedWear < 11 && __cachedWear !== 8)
-                        __app[__cachedWear] = __cachedItem.id|0;
-                }
-            } catch (eCachedWear) {}
 
             // ---- Center: player preview box (engine idle rig) ----
             var __prev = new ja(240, 360, !0);
@@ -51222,10 +51227,17 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             __pt.D7(__prev, !0);
 
             var __skel = null;
-            try {
-                if (typeof Fc !== "undefined" && Fc.n30 && Fc.n30.length > 0)
-                    __skel = Fc.n30.pop();
-            } catch (ePool) {}
+            try { __skel = __makePreviewRig(__prev); } catch (eCloneCreate) { __skel = null; }
+            if (__skel) {
+                try {
+                    __previewSkelRef = __skel;
+                    this.__diggerzPreviewSkel = __skel;
+                    var __initialApp = __getAuthoritativeAppearance();
+                    __equipOnPreview(__skel, __initialApp);
+                    if (typeof __skel._38 === "function") __skel._38("idle", !0, 100, .5);
+                } catch (eAttachClone) { __skel = null; }
+            }
+
             if (!__skel) {
                 try {
                     var __maker = new z;
@@ -51345,15 +51357,16 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             try { __invBox._9.push(__invT); } catch (eTitlePush) {}
             try { __invT.set_local_xScale(__invT.set_local_yScale(.75)); } catch (eTitleScale) {}
 
-            // The scroll rectangle is a real render mask. It is applied to the box
-            // after all children are created as well, because the engine can rebuild
-            // masks during layout/e0.
+            // The viewport mask belongs on the fixed inventory box, NOT on the
+            // scrolling content. The content moves; the mask must stay put.
             function __applyInvClip() {
                 try {
                     if (typeof __invBox.set_scrollRect === "function")
                         __invBox.set_scrollRect(new r(
-                            -__invW / 2, -__invH / 2,
-                            __invW, __invH
+                            -__invW / 2 + 6,
+                            -__invH / 2 + 42,
+                            __invW - 12,
+                            __invH - 82
                         ));
                 } catch (eClip) {}
             }
@@ -51365,17 +51378,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             __invContent.b6 = 0;
             __invContent.b7 = 0;
             this.__dzInvContent = __invContent;
-            // Clip the scrolling content itself. Clipping the outer JA alone can
-            // be bypassed by transformed child icons in the renderer.
-            try {
-                if (typeof __invContent.set_scrollRect === "function")
-                    __invContent.set_scrollRect(new r(
-                        -__invW / 2,
-                        -__invH / 2 + 48,
-                        __invW,
-                        __invH - 76
-                    ));
-            } catch (eContentClip) {}
 
             // Pull the authoritative inventory from the live service first, then
             // fall back to the local saved copy. Empty slots are retained so the
@@ -51444,6 +51446,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 var slot = new ra;
                 try { slot.X6(f.INVENTORYGRID_PNG()); } catch (eGrid) {}
                 slot.D7(parent, !0);
+                // ja is non-interactive by default. Give the cell a 60x60 hitbox;
+                // its child icon is visual-only so clicking an item cannot invoke
+                // the game's normal inventory C39 (which can rebuild/hide slots).
+                try { slot.d35 = !0; slot.c39 = new r(0,0,60,60); } catch (eCellHit) {}
                 try { parent._9.push(slot); } catch (eSlotPush) {}
                 slot.b6 = x;
                 slot.b7 = y;
@@ -51460,6 +51466,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     var icon = new X(slot, item.category|0, item.id|0,
                         item.variant|0, 0, item.count|0, item.b14|0, item.g39);
                     icon.N23();
+                    try { icon.E7 = function() { return !1; }; } catch (eIconHit) {}
                     try { slot._9.push(icon); } catch (eIconPush) {}
                     icon.b6 = 0;
                     icon.b7 = 0;
@@ -51584,11 +51591,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 }, 50);
             } catch (eForce) {}
 
-            // Skin-tone dragging is handled by the engine's vl slider itself.
-            // Its draggable head is the slider object; the bar is only the
-            // visual/background child. Do not replace C39 with a second hit-test
-            // because that uses the bar's coordinates rather than the handle's
-            // local transform and can make a real handle click miss.
+            // Leave the native vl slider hit testing/dragging intact. The slider
+            // itself carries HEAD_PNG, so its native E7 hitbox is the little head;
+            // the d49 child is the background track.
 
             // Live skin + idle + inventory scroll. q.mWheel is the engine's actual
             // one-frame wheel value; the old code read q.mouseWheel, which never exists.
@@ -51598,8 +51603,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     var __ret = __mpE0.call(this);
                     try {
                         if (__previewSkelRef) {
-                            var __t2 = Math.max(.01, (q.player && q.player.l9) ?
-                                q.player.l9 : (this.y42 ? this.y42.D43 : 90));
+                            var __t2 = (q.player && q.player.l9 != null) ? q.player.l9 :
+                                (this.y42 ? this.y42.D43 : 45);
                             __tintPreviewSkin(__previewSkelRef, __t2);
                             try { __tintPreviewShirt(__previewSkelRef); } catch (eShirtLive) {}
                             try {
@@ -51642,32 +51647,14 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                     (this.__dzInvScroll || 0) + __delta
                                 ));
                                 this.__dzInvContent.b7 = -this.__dzInvScroll;
-                                // The engine's scrollRect is not sufficient for these
-                                // transformed item sprites, so also hard-clip each
-                                // inventory cell to the visible inventory viewport.
-                                try {
-                                    var __clipTop = -(this.__dzInvH || 500) / 2 + 48;
-                                    var __clipBottom = (this.__dzInvH || 500) / 2 - 42;
-                                    var __cells = this.__dzInvCells || [];
-                                    for (var __ci2 = 0; __ci2 < __cells.length; __ci2++) {
-                                        var __cc = __cells[__ci2];
-                                        if (!__cc) continue;
-                                        var __vy = Number(__cc.b7) - Number(this.__dzInvScroll || 0);
-                                        __cc.a0 = (__vy + 35 < __clipTop || __vy - 35 > __clipBottom) ? 0 : 1;
-                                    }
-                                } catch (eCellClip) {}
+                                // The fixed __invBox scrollRect above does the clipping.
+                                // Never toggle a0 on cells: that made off-screen slots
+                                // disappear permanently instead of reappearing.
+                                try { __applyInvClip(); } catch (eReclip) {}
                                 // Consume the engine's one-frame wheel event only here.
                                 try { q.mWheel = 0; } catch (eConsume) {}
                             }
-                            try {
-                                if (this.__dzInvBox && typeof this.__dzInvBox.set_scrollRect === "function")
-                                    this.__dzInvBox.set_scrollRect(new r(
-                                        -(this.__dzInvW || 320) / 2,
-                                        -(this.__dzInvH || 500) / 2,
-                                        this.__dzInvW || 320,
-                                        this.__dzInvH || 500
-                                    ));
-                            } catch (eClip2) {}
+                            try { __applyInvClip(); } catch (eClip2) {}
                         }
                     } catch (eScroll) {}
 
@@ -51740,7 +51727,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         },
         e0: function() {
             this.y42.set_local_r(this.y42.set_local_g(this.y42.set_local_b(.45 + 1.1 * this.y42.D43 / 100)));
-            q.player.l9 = Math.max(0, Math.min(100, this.y42.D43));
+            q.player.l9 = Math.max(q.player.k7, Math.min(q.player.k8, this.y42.D43));
             return ja.prototype.e0.call(this)
         },
         C39: function() {
