@@ -118058,8 +118058,7 @@ function addSupportUI(){
       if (tryOpen() || tries > 20) {
         clearInterval(iv);
         if (!window.DiggerzSupport239) {
-          var pick = window.confirm('OK = Lime Ko-fi
-Cancel = Heu Cash App');
+          var pick = window.confirm('OK = Lime Ko-fi\nCancel = Heu Cash App');
           try { window.open(pick ? LIME_URL : HEU_URL, '_blank', 'noopener,noreferrer'); } catch (e) {}
         }
       }
