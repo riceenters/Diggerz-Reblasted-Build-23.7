@@ -115725,8 +115725,56 @@ return true
   };
 })();
 </script>
+
+<script id="diggerz-ad-stub-boot">
+(function(){
+  function ensureAd(){
+    var el = document.getElementById('diggerz-io_300x250');
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'diggerz-io_300x250';
+    el.setAttribute('aria-hidden','true');
+    el.style.cssText = 'display:none;visibility:hidden;position:absolute;left:-9999px;top:-9999px;width:0;height:0;pointer-events:none;overflow:hidden';
+    (document.body || document.documentElement).appendChild(el);
+    return el;
+  }
+  ensureAd();
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', ensureAd);
+  // Keep alive if something nulls references mid-frame
+  setInterval(ensureAd, 2000);
+})();
+</script>
+
+<script id="diggerz-nullsafe-dom">
+(function(){
+  var NEED = ['a_changes', 'a_desc', 'a_info', 'a_ver', 'admin-ban-time', 'changes', 'diggerz-io_300x250', 'info', 'preroll'];
+  function ensure(id){
+    var el = document.getElementById(id);
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = id;
+    el.setAttribute('aria-hidden','true');
+    el.style.cssText = 'display:none!important;visibility:hidden!important;position:absolute;left:-9999px;top:-9999px;width:0;height:0;pointer-events:none;overflow:hidden';
+    (document.body||document.documentElement).appendChild(el);
+    return el;
+  }
+  NEED.forEach(function(id){ try{ ensure(id); }catch(e){} });
+  var _ge = Document.prototype.getElementById;
+  Document.prototype.getElementById = function(id){
+    var el = _ge.call(this, id);
+    if (!el && NEED.indexOf(id) >= 0) {
+      try { el = ensure(id); } catch(e) {}
+    }
+    return el;
+  };
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', function(){ NEED.forEach(function(id){ try{ ensure(id); }catch(e){} }); });
+})();
+</script>
 </head>
 <body>
+<div id="changes" style="display:none;visibility:hidden;position:absolute;left:-9999px;top:-9999px;width:0;height:0;pointer-events:none" aria-hidden="true"></div>
 <script id="diggerz-build235-ban-redirect">(function(){if(location.pathname==='/banned')return;try{var b=JSON.parse(localStorage.getItem('diggerz.resurrection.activeBan.v1')||'null');if(b&&(b.permanent||Number(b.expiresAt)>Date.now()))location.replace('https://diggerz-multiplayer-test-production.up.railway.app/banned');else if(b)localStorage.removeItem('diggerz.resurrection.activeBan.v1')}catch(e){}})();</script>
 <aside id="game-load-error" role="alert" hidden style="position:fixed;top:100px;left:50%;transform:translateX(-50%);box-sizing:border-box;width:calc(100% - 32px);max-width:620px;z-index:2147483647;background:#182331;color:#fff;padding:20px;border:2px solid #e6b35a;border-radius:8px;font:16px/1.5 sans-serif;">
     <strong>The game could not start.</strong>
