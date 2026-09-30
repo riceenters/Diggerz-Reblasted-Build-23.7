@@ -4588,8 +4588,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         q.children = [];
         q.thisMain.removeChildren();
         q.AddLayers();
-        q.children.push(new Cf);
-        try { E.U7(Zl.n7(), !0); } catch (__dzTitleAmbienceError) {}
+        q.children.push(new Cf)
     }
     ;
     q.GetChildByName = function(a) {
@@ -6581,6 +6580,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
             var diggerzTypedNow = String(this.D31.q35 || "");
             if (diggerzTypedNow !== this.diggerzLastTypedText) {
+                if (diggerzTypedNow.length > String(this.diggerzLastTypedText || "").length) E.v2(Pj.n7());
                 this.diggerzLastTypedText = diggerzTypedNow
             }
             this.d37();
@@ -17955,7 +17955,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         },
         e0: function() {
             l.b41 = !1;
-            var __dzTypedBefore = String(this.q35 || "").length;
             this.Q31 && q.thisMain.stage.set_focus(this.Q30);
             if (null != this._2 && !this._2.a2)
                 return xa.prototype.e0.call(this);
@@ -17983,9 +17982,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 this.a1 = 0) : (q.mKeyDown[d] = !1,
                 this.q38(),
                 this.a0 = 1)
-            }
-            if (String(this.q35 || "").length > __dzTypedBefore) {
-                try { E.v2(Pj.n7()); } catch (__dzTypeSoundError) {}
             }
             if (a || 25 > this.a1 % 20 != 25 > (this.a1 - 1) % 50) {
                 if (this.q36) {
@@ -50991,10 +50987,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
 
             function __skinColor(tone) {
-                // Use the exact value assigned to the native slider head by vl: q.player.l9.
+                // The real player renderer passes l9 directly to the body parts.
+                // Use that exact value so the preview has precisely the same
+                // darkness limits as the little head on the real slider.
                 tone = Number(tone);
                 if (!isFinite(tone)) tone = (q.player && q.player.l9 != null) ? Number(q.player.l9) : 45;
-                tone = Math.max(0, Math.min(100, tone));
                 return tone;
             }
             function __getStoredShirtColor() {
@@ -51025,7 +51022,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     } catch (eSlot) {}
                 }
             }
-            // Match player m35: reset head texture + attach eyes; tone is the exact slider value
+            // Match player m35: reset head texture + attach eyes
             function __ensureHeadAndEyes(skel, tone) {
                 if (!skel || typeof skel.f2 !== "function") return;
                 try {
@@ -51063,7 +51060,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 } catch (e) {}
             }
 
-            var __previewIdleWatch = null;
             var __previewWearer = null;
             // Customize has its own clothing renderer.  It uses the game's
             // clothing assets/attachment metadata, but it never calls the
@@ -51091,129 +51087,194 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
 
             function __resetPreviewBody(skel, wearer, tone) {
-                if (!skel || typeof skel.f2 !== "function") return;
-                var c = __skinColor(tone);
-                // Rebuild the exported mannequin's base body directly. This is the
-                // same body setup as the player, but it is private to Customize and
-                // never calls the player's equipment renderer.
+                if (!skel || !wearer || typeof skel.f2 !== "function") return;
+                // Default shirt/body, reproduced directly instead of invoking m37().
                 try {
-                    var ll = skel.f2("front_lowerleg").f2("leg");
-                    ll.Init(f.LEG_PNG()); ll.C2 = !1; ll.set_local_r(ll.set_local_g(ll.set_local_b(1))); ll.c9 = !1;
-                    var llb = skel.f2("back_lowerleg").f2("leg_back");
-                    llb.Init(f.LEG_BACK_PNG()); llb.set_local_r(llb.set_local_g(llb.set_local_b(1))); llb.c9 = !1; llb.C2 = !1;
-                    var pants = skel.f2("pants");
-                    pants.Init(f.PANTS_PNG()); pants.set_local_r(pants.set_local_g(pants.set_local_b(1))); pants.c9 = !1;
-                } catch (e33) {}
-                try {
-                    var head = skel.f2("head");
-                    head.F5(); head.Init(f.HEAD_PNG()); head.F5(); head.C2 = !1;
-                    head.set_local_r(head.set_local_g(head.set_local_b(c)));
-                    if (head._9) for (var i = head._9.length - 1; i >= 0; i--)
-                        try { if (head._9[i] && head._9[i]._1 === "eyes") head._9.splice(i,1); } catch(eEyeRm) {}
-                    var eyes = z.I9(); eyes.D7(head, !0); eyes.Init(f.EYES_PNG()); eyes.b6=-7; eyes.b7=-3; eyes.b2=!0; eyes._1="eyes"; eyes.set_r(eyes.set_g(eyes.set_b(1))); head._9.push(eyes);
-                } catch (e35) {}
+                    var shirtIndex = 0;
+                    if (wearer.q7 && wearer.q7.P4 != null)
+                        shirtIndex = Wc.e14(wearer.q7.P4) % Wc.e14(10) | 0;
+                    var fs = skel.f2("front_shoulder").f2("arm");
+                    fs.Init(f.WHITE_ARM_PNG()); fs.h4(shirtIndex);
+                    var bs = skel.f2("back_shoulder").f2("arm_back");
+                    bs.Init(f.WHITE_ARM_PNG()); bs.h4(shirtIndex);
+                    var torso = skel.f2("torso");
+                    torso.Init(f.WHITE_TORSO_PNG()); torso.h4(shirtIndex);
+                } catch (eShirt) {}
+                __ensureHeadAndEyes(skel, tone);
+                __tintPreviewSkin(skel, tone);
+                try { skel.f2("front_arm").C2 = !1; skel.f2("back_arm").C2 = !1; } catch (eArm) {}
                 try {
                     var fa = skel.f2("front_arm");
-                    for (var ai=0; ai<fa._9.length; ai++) fa._9[ai].C2=!1;
-                    fa.C2=!1; fa.set_local_r(fa.set_local_g(fa.set_local_b(c)));
+                    fa.set_local_r(fa.set_local_g(fa.set_local_b(tone)));
                     var ba = skel.f2("back_arm");
-                    for (var aj=0; aj<ba._9.length; aj++) ba._9[aj].C2=!1;
-                    ba.C2=!1; ba.set_local_r(ba.set_local_g(ba.set_local_b(c)));
-                } catch (e36) {}
-                try {
-                    var q7 = null;
-                    if (typeof l !== "undefined" && l.z39 && l.z39.q7) q7 = l.z39.q7;
-                    else if (q.player && q.player.q7) q7 = q.player.q7;
-                    if (q7) {
-                        var a = skel.f2("front_shoulder").f2("arm");
-                        a.Init(f.WHITE_ARM_PNG()); a.h4(Wc.e14(q7.P4)%Wc.e14(10)|0);
-                        var b = skel.f2("back_shoulder").f2("arm_back");
-                        b.Init(f.WHITE_ARM_PNG()); b.h4(Wc.e14(q7.P4)%Wc.e14(10)|0);
-                        var torso = skel.f2("torso");
-                        torso.Init(f.WHITE_TORSO_PNG()); torso.h4(Wc.e14(q7.P4)%Wc.e14(10)|0);
-                    } else {
-                        skel.f2("front_shoulder").f2("arm").Init(f.WHITE_ARM_PNG());
-                        skel.f2("back_shoulder").f2("arm_back").Init(f.WHITE_ARM_PNG());
-                        skel.f2("torso").Init(f.WHITE_TORSO_PNG());
-                    }
-                } catch (e37) {}
+                    ba.set_local_r(ba.set_local_g(ba.set_local_b(tone)));
+                } catch (eTone) {}
             }
 
             function __renderPreviewClothing(skel, app, tone) {
                 if (!skel) return;
                 var wearer = __previewWearer;
-                if (!wearer) {
-                    try { wearer = Object.create(q.player || {}); } catch (eW) { wearer = {}; }
+                if (!wearer || wearer.__dzSkeleton !== skel) {
+                    var __wearBase2 = null;
+                    try { __wearBase2 = l && l.z39 ? l.z39 : null; } catch (eBase2) {}
+                    try { wearer = Object.create(__wearBase2 || q.player || {}); } catch (eW) { wearer = {}; }
+                    wearer.__dzSkeleton = skel;
                     __previewWearer = wearer;
                 }
                 wearer.i33 = skel;
-                wearer.l9 = Number(tone);
-                try { wearer.a4 = (l.z39 && l.z39.a4 != null) ? l.z39.a4 : (q.player && q.player.a4 != null ? q.player.a4 : 2); } catch(eA4) { wearer.a4=2; }
-                try { wearer.q7 = (l.z39 && l.z39.q7) ? l.z39.q7 : (q.player && q.player.q7 ? q.player.q7 : null); } catch(eQ7) {}
+                wearer.l9 = tone;
+                // Use the exact player rig size variable for wearable visuals.
+                // Keep each item's native visual scale, then apply the same base
+                // rig scale the real player rig uses.  Do NOT resize the mannequin
+                // rig itself to compensate for clothing.
+                var __dzWearScale = 1;
+                try {
+                    if (q.player && q.player.l0 != null && isFinite(Number(q.player.l0)))
+                        __dzWearScale = Number(q.player.l0);
+                } catch (eWearScale) {}
+                try { wearer.__dzWearScale = __dzWearScale; } catch (eWearScaleStore) {}
+                try { wearer.a4 = (l && l.z39 && l.z39.a4 != null) ? l.z39.a4 : q.player && q.player.a4; } catch (eA42) {}
+                try { wearer.q7 = (l && l.z39 && l.z39.q7) ? l.z39.q7 : q.player && q.player.q7; } catch (eQ72) {}
                 __clearPreviewWear(skel);
                 __resetPreviewBody(skel, wearer, tone);
-                var wanted = (app && app.slice) ? app.slice(0,11) : [];
+
+                var wanted = (app && app.slice) ? app.slice(0, 11) : [];
                 while (wanted.length < 11) wanted.push(0);
-                wearer.J33 = wanted.slice();
 
                 function item(id, slot) {
                     if (!(id|0) || slot < 0 || slot > 10) return null;
                     try {
-                        var yf = new Yf(wearer, wearer.a4 != null ? wearer.a4 : 2, id|0, 0, slot|0, 1, "", 0);
+                        var yf = new Yf(wearer, 2, id|0, 0, slot|0, 1, "", 0);
                         h.n7(2, yf, id|0, 0);
-                        return yf.h44 ? yf : null;
-                    } catch(eItem) { return null; }
+                        if (!yf.h44) return null;
+                        return yf;
+                    } catch (eItem) { return null; }
                 }
-                function visual(id, yf, boneName, insertAt) {
+                function addWear(yf, boneName, insertAt) {
                     if (!yf) return null;
                     try {
                         var bone = skel.f2(boneName);
-                        var v = Yf.W48(id|0, wearer); // IMPORTANT: W48 gets the ITEM ID, exactly like m38().
-                        v.D7(bone); yf.D6(v);
-                        v.b6=yf.t44; v.b7=yf.t45; v._1="wear";
-                        v.set_r(v.b8); v.set_g(v.b9); v.set_b(v.B0); v.b2=!0;
-                        if (insertAt == null) bone._9.push(v); else bone._9.splice(insertAt,0,v);
-                        return v;
-                    } catch(eV) { return null; }
+                        var visual = Yf.W48(yf.h44, wearer);
+                        visual.D7(bone);
+                        yf.D6(visual);
+                        visual.b6 = yf.t44;
+                        visual.b7 = yf.t45;
+                        visual._1 = "wear";
+                        visual.set_r(yf.b8); visual.set_g(yf.b9); visual.set_b(yf.B0);
+                        visual.b2 = !0;
+                        __dzApplyWearScale(visual);
+                        if (insertAt == null) bone._9.push(visual);
+                        else bone._9.splice(insertAt, 0, visual);
+                        return visual;
+                    } catch (eAdd) { return null; }
                 }
 
-                var d=false, yf, g, e;
-                // These cases mirror m38()'s placement rules, but operate only on
-                // the standalone mannequin skeleton.
-                yf=item(wanted[0],0);
-                visual(wanted[0],yf,"head",null);
-                yf=item(wanted[1],1);
-                if(yf){
-                    g=skel.f2("head"); e=Yf.W48(wanted[1]|0,wearer); e.D7(g); yf.D6(e); e.b6=yf.t44; e.b7=yf.t45; e._1="wear"; e.set_r(e.b8); e.set_g(e.b9); e.set_b(e.B0); e.b2=!0;
-                    if(yf.T41){ for(var hi=0;hi<g._9.length;hi++) try{g._9[hi].C2=!0}catch(ex){}; g.C2=!0; g.set_local_r(g.set_local_g(g.set_local_b(1))); d=true; }
-                    g._9.splice(2,0,e);
+                function __dzApplyWearScale(visual) {
+                    if (!visual) return;
+                    try {
+                        var s = (wearer && wearer.__dzWearScale != null) ?
+                            Number(wearer.__dzWearScale) : 1;
+                        if (!isFinite(s) || s <= 0) s = 1;
+                        // Preserve the clothing renderer's native b4/b5 sizing and
+                        // apply the player's exact rig-size variable on top.
+                        visual.set_local_xScale(visual.b4 * s);
+                        visual.set_local_yScale(visual.b5 * s);
+                    } catch (eScaleWear) {}
                 }
-                yf=item(wanted[2],2);
-                if(yf){
-                    try{
-                        g=skel.f2("front_shoulder").f2("arm"); if(yf._9[0]){g._3=yf._9[0]._3;g._5=yf._9[0]._5;g.c9=yf._9[0].c9;yf.T48?g.set_local_r(g.set_local_g(g.set_local_b(__skinColor(tone)))):(g.set_local_r(yf.b8),g.set_local_g(yf.b9),g.set_local_b(yf.B0));}
-                        g=skel.f2("back_shoulder").f2("arm_back"); if(yf._9[0]){g._3=yf._9[0]._3;g._5=yf._9[0]._5;g.c9=yf._9[0].c9;yf.T48?g.set_local_r(g.set_local_g(g.set_local_b(__skinColor(tone)))):(g.set_local_r(yf.b8),g.set_local_g(yf.b9),g.set_local_b(yf.B0));}
-                        g=skel.f2("torso"); g._3=yf._3;g._5=yf._5;g.c9=yf.c9;g.set_local_r(yf.b8);g.set_local_g(yf.b9);g.set_local_b(yf.B0);
-                    }catch(ex2){}
+
+                // 0 = headwear, 1 = hair/face, 2 = shirt/top, 3 = shoes,
+                // 5 = torso accessory, 6 = head accessory, 7 = pants, 9 = head accessory.
+                // Slot 4 is weapons/tools and slot 10 is non-clothing, so they are
+                // intentionally never rendered by the Customize mannequin.
+                var yf = item(wanted[0], 0);
+                addWear(yf, "head", null);
+
+                yf = item(wanted[1], 1);
+                if (yf) {
+                    var hbone = skel.f2("head");
+                    var hv = Yf.W48(yf.h44, wearer);
+                    hv.D7(hbone); yf.D6(hv);
+                    hv.b6 = yf.t44; hv.b7 = yf.t45; hv._1 = "wear";
+                    hv.set_r(yf.b8); hv.set_g(yf.b9); hv.set_b(yf.B0); hv.b2 = !0;
+                    __dzApplyWearScale(hv);
+                    hbone._9.splice(2, 0, hv);
+                    if (yf.T41) {
+                        for (var hi = 0; hi < hbone._9.length; hi++) try { hbone._9[hi].C2 = !0; } catch(ehc) {}
+                        hbone.C2 = !0;
+                        hbone.set_local_r(hbone.set_local_g(hbone.set_local_b(1)));
+                    }
                 }
-                yf=item(wanted[3],3);
-                if(yf){
-                    g=skel.f2("front_foot"); e=Yf.W48(wanted[3]|0,wearer); e.D7(g); yf.D6(e); e.b6=yf.t44;e.b7=yf.t45;e._1="wear";yf.T48?g.set_local_r(g.set_local_g(g.set_local_b(__skinColor(tone)))):(e.set_local_r(yf.b8),e.set_local_g(yf.b9),e.set_local_b(yf.B0));e.c9=yf.c9;g._9.push(e);
-                    g=skel.f2("back_foot"); e=Yf.W48(wanted[3]|0,wearer); e.D7(g); yf.D6(e); e.b6=yf.t44;e.b7=yf.t45;e._1="wear";yf.T48?g.set_local_r(g.set_local_g(g.set_local_b(__skinColor(tone)))):(e.set_local_r(.9*yf.b8),e.set_local_g(.9*yf.b9),e.set_local_b(.9*yf.B0));e.c9=yf.c9;g._9.push(e);
+
+                yf = item(wanted[2], 2);
+                if (yf) {
+                    try {
+                        var fa2 = skel.f2("front_shoulder").f2("arm");
+                        if (yf._9[0]) { fa2._3 = yf._9[0]._3; fa2._5 = yf._9[0]._5; fa2.c9 = yf._9[0].c9; }
+                        var ba2 = skel.f2("back_shoulder").f2("arm_back");
+                        if (yf._9[0]) { ba2._3 = yf._9[0]._3; ba2._5 = yf._9[0]._5; ba2.c9 = yf._9[0].c9; }
+                        var to2 = skel.f2("torso");
+                        to2._3 = yf._3; to2._5 = yf._5; to2.c9 = yf.c9;
+                        to2.set_local_r(yf.b8); to2.set_local_g(yf.b9); to2.set_local_b(yf.B0);
+                        if (yf.T48) {
+                            fa2.set_local_r(fa2.set_local_g(fa2.set_local_b(tone)));
+                            ba2.set_local_r(ba2.set_local_g(ba2.set_local_b(tone)));
+                        } else {
+                            fa2.set_local_r(yf.b8); fa2.set_local_g(yf.b9); fa2.set_local_b(yf.B0);
+                            ba2.set_local_r(yf.b8); ba2.set_local_g(yf.b9); ba2.set_local_b(yf.B0);
+                        }
+                    } catch (eTop) {}
                 }
-                // Slot 4 is weapons/tools and is deliberately not rendered.
-                yf=item(wanted[5],5);
-                if(yf){ g=skel.f2("torso"); e=Yf.W48(wanted[5]|0,wearer); e.D7(g); yf.D6(e); e.b6=yf.t44;e.b7=yf.t45;e.A4=yf.A4;e.A5=yf.A5;e._1="wear";g._9.push(e);e.b2=!0;e.set_r(e.b8);e.set_g(e.b9);e.set_b(e.B0);g.C3=yf.T47||g.C3; var cw=yf.f0("cw"); if(cw!=null){var cv=z.I9();cv.D7(e,!0);cw.D6(cv);e._9.push(cv);cv.A4=cw.A4;cv.A5=cw.A5;cv._1="cw";} }
-                yf=item(wanted[6],6);
-                if(yf&&!d){ g=skel.f2("head"); try{var eyes2=g.f0("eyes");if(yf.T43&&eyes2)eyes2.a0=1}catch(ex6){} e=Yf.W48(wanted[6]|0,wearer);e.D7(g);yf.D6(e);e.b6=yf.t44;e.b7=yf.t45;e._1="wear";e.set_r(e.b8);e.set_g(e.b9);e.set_b(e.B0);e.b2=!0;g._9.splice(1,0,e); }
-                yf=item(wanted[7],7);
-                if(yf){
-                    if(yf.T44){skel.f2("front_foot").a2=!1;skel.f2("back_foot").a2=!1;}
-                    if(yf.T41){ g=skel.f2("pants");e=Yf.W48(wanted[7]|0,wearer);e.D7(g);yf.D6(e);e.b6=yf.t44;e.b7=yf.t45;e.set_local_r(yf.b8);e.set_local_g(yf.b9);e.set_local_b(yf.B0);e.c9=yf.c9;e._1="wear";g._9.push(e);skel.f2("leg").C2=!0;skel.f2("leg_back").C2=!0; }
-                    else if(yf._9[0]){ g=skel.f2("front_lowerleg").f2("leg");g._3=yf._9[0]._3;g._5=yf._9[0]._5;yf.T48?g.set_local_r(g.set_local_g(g.set_local_b(__skinColor(tone)))):(g.set_local_r(yf.b8),g.set_local_g(yf.b9),g.set_local_b(yf.B0));g.c9=yf.c9;g=skel.f2("back_lowerleg").f2("leg_back");g._3=yf._9[0]._3;g._5=yf._9[0]._5;yf.T48?g.set_local_r(g.set_local_g(g.set_local_b(__skinColor(tone)))):(g.set_local_r(yf.b8),g.set_local_g(yf.b9),g.set_local_b(yf.B0));g.c9=yf.c9;g=skel.f2("pants");g._3=yf._3;g._5=yf._5;g.set_local_r(yf.b8);g.set_local_g(yf.b9);g.set_local_b(yf.B0);g.c9=yf.c9; }
+
+                yf = item(wanted[3], 3);
+                if (yf) {
+                    var ff = addWear(yf, "front_foot", null);
+                    if (yf.T48) { try { skel.f2("front_foot").set_local_r(skel.f2("front_foot").set_local_g(skel.f2("front_foot").set_local_b(tone))); } catch(eft) {} }
+                    if (ff) ff.c9 = yf.c9;
+                    var bf = addWear(yf, "back_foot", null);
+                    if (yf.T48) { try { skel.f2("back_foot").set_local_r(skel.f2("back_foot").set_local_g(skel.f2("back_foot").set_local_b(tone))); } catch(ebt) {} }
+                    if (bf) { bf.set_local_r(.9*yf.b8); bf.set_local_g(.9*yf.b9); bf.set_local_b(.9*yf.B0); bf.c9 = yf.c9; }
                 }
-                yf=item(wanted[9],9); if(yf&&!d) visual(wanted[9],yf,"head",2);
-                try{skel.a2=1;skel.e0();}catch(eDone){}
+
+                yf = item(wanted[5], 5);
+                addWear(yf, "torso", null);
+
+                yf = item(wanted[6], 6);
+                if (yf) {
+                    try {
+                        var hb6 = skel.f2("head");
+                        var hv6 = Yf.W48(yf.h44, wearer);
+                        hv6.D7(hb6); yf.D6(hv6); hv6.b6=yf.t44; hv6.b7=yf.t45; hv6._1="wear";
+                        hv6.set_r(yf.b8); hv6.set_g(yf.b9); hv6.set_b(yf.B0); hv6.b2=!0;
+                        __dzApplyWearScale(hv6);
+                        hb6._9.splice(1,0,hv6);
+                    } catch(e6) {}
+                }
+
+                yf = item(wanted[7], 7);
+                if (yf) {
+                    try {
+                        if (yf.T44) { skel.f2("front_foot").a2=!1; skel.f2("back_foot").a2=!1; }
+                        var pb = skel.f2("pants");
+                        var pv = Yf.W48(yf.h44, wearer);
+                        pv.D7(pb); yf.D6(pv); pv.b6=yf.t44; pv.b7=yf.t45; pv._1="wear";
+                        pv.set_local_r(yf.b8); pv.set_local_g(yf.b9); pv.set_local_b(yf.B0); pv.c9=yf.c9;
+                        __dzApplyWearScale(pv); pb._9.push(pv);
+                        if (yf.T41) {
+                            skel.f2("leg").C2=!0; skel.f2("leg_back").C2=!0;
+                        } else if (yf._9[0]) {
+                            var ll = skel.f2("front_lowerleg").f2("leg");
+                            ll._3=yf._9[0]._3; ll._5=yf._9[0]._5; ll.c9=yf.c9;
+                            ll.set_local_r(yf.b8); ll.set_local_g(yf.b9); ll.set_local_b(yf.B0);
+                            var llb = skel.f2("back_lowerleg").f2("leg_back");
+                            llb._3=yf._9[0]._3; llb._5=yf._9[0]._5; llb.c9=yf.c9;
+                            llb.set_local_r(yf.b8); llb.set_local_g(yf.b9); llb.set_local_b(yf.B0);
+                        }
+                    } catch(e7) {}
+                }
+
+                yf = item(wanted[9], 9);
+                addWear(yf, "head", 2);
+                try { skel.a2 = 1; skel.e0(); } catch(eDone) {}
             }
 
             function __equipOnPreview(skel, app) {
@@ -51222,13 +51283,23 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 try { if (q.player && q.player.l9 != null) tone = q.player.l9; } catch (eT) {}
                 try {
                     if (!__previewWearer || __previewWearer.__dzSkeleton !== skel) {
-                        __previewWearer = Object.create(q.player || {});
+                        // IMPORTANT: use the actual character class as the *prototype*
+                        // for the mannequin wearer, not q.player (which is only the
+                        // player settings object).  This keeps all of the clothing
+                        // visual constructors (hair, hats, shoes, pants, back
+                        // accessories, etc.) using the same defaults/fields as the
+                        // real character, while the mannequin still owns a completely
+                        // separate skeleton and never renders through m38().
+                        var __wearBase = null;
+                        try { __wearBase = l && l.z39 ? l.z39 : null; } catch (eBase) {}
+                        try { __previewWearer = Object.create(__wearBase || q.player || {}); }
+                        catch (eObj) { __previewWearer = Object.create(q.player || {}); }
                         __previewWearer.__dzSkeleton = skel;
                     }
                     __previewWearer.i33 = skel;
                     __previewWearer.l9 = tone;
-                    __previewWearer.a4 = q.player && q.player.a4;
-                    __previewWearer.q7 = q.player && q.player.q7;
+                    try { __previewWearer.a4 = (l && l.z39 && l.z39.a4 != null) ? l.z39.a4 : q.player && q.player.a4; } catch (eA4p) { __previewWearer.a4 = q.player && q.player.a4; }
+                    try { __previewWearer.q7 = (l && l.z39 && l.z39.q7) ? l.z39.q7 : q.player && q.player.q7; } catch (eQ7p) { __previewWearer.q7 = q.player && q.player.q7; }
                     __renderPreviewClothing(skel, app, tone);
                     if (typeof skel._38 === "function") skel._38("idle", !0, 100, .5);
                 } catch (e) {
@@ -51255,39 +51326,39 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
 
             function __applyLive(app, text) {
-                try {
-                    if (q.player && typeof q.player.m38 === "function" && q.player.i33 && q.player.i33.Z28 != null)
-                        q.player.m38(app.slice(), text || "");
-                } catch (e) {}
+                // The Customize mannequin is intentionally independent from the
+                // game's live clothing renderer.  Do not call m38() here: besides
+                // being unnecessary, it can cause the normal inventory/equipment
+                // UI to rebuild while a Customize slot is being clicked.
                 try {
                     if (__previewSkelRef) __equipOnPreview(__previewSkelRef, app);
                 } catch (e2) {}
-                // Keep the live Dig+Trade service in sync too. Otherwise the
-                // Customize preview changes visually but the authoritative cached
-                // appearance immediately snaps back when the panel is reopened.
+
+                // Keep the service state as data only.  Do not call service.save()
+                // from a slot click; that save path can rebuild other inventory
+                // views and was the source of the disappearing Customize cells.
                 try {
                     if (q.diggerzService && q.diggerzService.state) {
                         q.diggerzService.state.appearance = app.slice(0, 11);
                         while (q.diggerzService.state.appearance.length < 11)
                             q.diggerzService.state.appearance.push(0);
                         if (typeof q.diggerzService.markDirty === "function") q.diggerzService.markDirty();
-                        if (typeof q.diggerzService.save === "function") q.diggerzService.save(true);
                     }
                 } catch (eServiceAppearance) {}
                 try {
                     var save = __loadDigSave() || { version: 6, slots: [], appearance: app.slice() };
                     save.appearance = app.slice();
-                    try {
-                        var rawKey = localStorage.getItem("diggerz.digtrade.rebuild.v3");
-                        if (rawKey) {
+                    var rawKey = localStorage.getItem("diggerz.digtrade.rebuild.v3");
+                    if (rawKey) {
+                        try {
                             var full = JSON.parse(rawKey);
                             full.appearance = app.slice();
                             localStorage.setItem("diggerz.digtrade.rebuild.v3", JSON.stringify(full));
-                        } else {
+                        } catch (eParseKey) {
                             localStorage.setItem("diggerz.digtrade.rebuild.v3", JSON.stringify(save));
                         }
-                    } catch (eKey) {
-                        localStorage.setItem("diggerz.digtrade.v1", JSON.stringify(save));
+                    } else {
+                        localStorage.setItem("diggerz.digtrade.rebuild.v3", JSON.stringify(save));
                     }
                 } catch (e3) {}
             }
@@ -51339,11 +51410,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     __skel.b7 = 50;
                     try { __skel.a0 = 0; } catch (eA0) {}
                     try {
-                        var __rigScale = 1;
-                        try { if (q.player && q.player.l0 != null) __rigScale = Number(q.player.l0); } catch (eRigScale) {}
-                        if (!isFinite(__rigScale) || __rigScale <= 0) __rigScale = 1;
                         if (typeof __skel.set_local_xScale === "function")
-                            __skel.set_local_xScale(__skel.set_local_yScale(__rigScale));
+                            __skel.set_local_xScale(__skel.set_local_yScale(2.0));
                     } catch (eScale) {}
                     try { __prev._9.push(__skel); } catch (ePush) {}
                     // Force idle (loop)
@@ -51371,22 +51439,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     setTimeout(function() {
                         try { __equipOnPreview(__skel, __app); } catch (eLate2) {}
                     }, 800);
-                    // Exported mannequin rigs can occasionally start before their
-                    // animation channels are fully active. Check periodically, but
-                    // only restart idle when it has actually stopped.
-                    try {
-                        __previewIdleWatch = setInterval(function() {
-                            try {
-                                if (!__previewSkelRef || typeof __previewSkelRef._38 !== "function") return;
-                                var needs = __previewSkelRef.Z28 !== "idle";
-                                try {
-                                    if (!needs && typeof __previewSkelRef._34 === "function")
-                                        needs = !__previewSkelRef._34();
-                                } catch (eWatchCheck) {}
-                                if (needs) __previewSkelRef._38("idle", !0, 100, .5);
-                            } catch (eWatch) {}
-                        }, 500);
-                    } catch (eWatchSetup) {}
                 } catch (eAttach) { __skel = null; }
             }
 
@@ -51653,6 +51705,27 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.__dzInvW = __invW;
             this.__dzInvCells = __dzInvCells;
 
+            // Keep the Customize inventory layer self-contained.  Some game-side
+            // state changes can toggle display flags on descendants of a JA; never
+            // let that permanently remove a clothing cell.  Reassert the cells'
+            // parent/visibility/positions each frame without recreating them.
+            this.__dzRepairInventory = function() {
+                try {
+                    if (!__invContent || !__dzInvCells) return;
+                    for (var ri = 0; ri < __dzInvCells.length; ri++) {
+                        var cell = __dzInvCells[ri];
+                        if (!cell) continue;
+                        if (cell._2 !== __invContent) { try { cell.D7(__invContent, !0); } catch (eReparent) {} }
+                        cell.a0 = 1;
+                        var rr = Math.floor(ri / __cols), cc = ri % __cols;
+                        cell.b6 = __startX + cc * __slotSize;
+                        cell.b7 = __startY + rr * __rowH - (this.__dzInvScroll || 0);
+                    }
+                    __applyInvClip();
+                } catch (eRepair) {}
+            };
+            this.__dzRepairInventory();
+
             var __hint = new xa(0, __invH / 2 - 18, "^8mouse wheel / arrows", q.MAIN_FONT);
             __hint.D7(__invBox, !0);
             try { __invBox._9.push(__hint); } catch (eHintPush) {}
@@ -51723,21 +51796,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                             __tintPreviewSkin(__previewSkelRef, __t2);
                             try { __tintPreviewShirt(__previewSkelRef); } catch (eShirtLive) {}
                             try {
-                                // Keep the mannequin in a real looping idle state.
-                                // Some exported/title-screen skeletons can lose their
-                                // animation channels after their clothing children are
-                                // rebuilt, so only restart when the idle state is no
-                                // longer actually running. Never restart a healthy
-                                // animation every frame (that would freeze frame 0).
-                                if (typeof __previewSkelRef._38 === "function") {
-                                    var __idleNeedsKick = (__previewSkelRef.Z28 !== "idle");
-                                    try {
-                                        if (!__idleNeedsKick && typeof __previewSkelRef._34 === "function")
-                                            __idleNeedsKick = !__previewSkelRef._34();
-                                    } catch (eIdleCheck) {}
-                                    if (__idleNeedsKick)
-                                        __previewSkelRef._38("idle", !0, 100, .5);
-                                }
+                                // Do NOT call _38 every frame: _38 resets the
+                                // animation timeline to frame 0. Only restart idle
+                                // when another state has actually replaced it.
+                                if (typeof __previewSkelRef._38 === "function" &&
+                                    __previewSkelRef.Z28 !== "idle")
+                                    __previewSkelRef._38("idle", !0, 100, .5);
                             } catch (eId) {}
                         }
                     } catch (eLiveSkin) {}
@@ -51780,28 +51844,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                             }
                             try { __applyInvClip(); } catch (eClip2) {}
                         }
-                        // Keep the Customize inventory layer alive. Some of the
-                        // game's normal item/equipment paths can toggle a0/C2 on
-                        // descendants while rebuilding visuals; those flags must
-                        // never be allowed to hide our private inventory UI.
-                        try {
-                            this.__dzInvBox.a0 = 1;
-                            this.__dzInvContent.a0 = 1;
-                            this.__dzInvContent.C2 = !1;
-                            if (this.__dzInvCells) {
-                                for (var __ic = 0; __ic < this.__dzInvCells.length; __ic++) {
-                                    var __keepCell = this.__dzInvCells[__ic];
-                                    if (!__keepCell) continue;
-                                    __keepCell.a0 = 1;
-                                    __keepCell.C2 = !1;
-                                    if (__keepCell._9) for (var __ik = 0; __ik < __keepCell._9.length; __ik++) {
-                                        var __keepChild = __keepCell._9[__ik];
-                                        if (__keepChild && __keepChild._1 !== "bknd") __keepChild.a0 = 1;
-                                    }
-                                }
-                            }
-                        } catch (eInvKeepAlive) {}
                     } catch (eScroll) {}
+
+                    try { if (this.__dzRepairInventory) this.__dzRepairInventory(); } catch (eRepairFrame) {}
 
                     // Clicking outside the Customize JA closes it. A click on any
                     // child (including an inventory slot or the skin handle) sets
@@ -119502,23 +119547,27 @@ e50: function(a) {
   };
 })();
 </script>
-<script src="/build239-client.js"></script><script src="/build240-client.js"></script><script id="diggerz-customize-screen-v18">
+<script src="/build239-client.js"></script><script src="/build240-client.js"></script>
+<script id="diggerz-customize-screen-v19">
 (function(){
-  // Customize presentation: keep every existing parent/container alive.
-  // We only fade/hide the menu layers while Customize is active.
-  var active=false, state=null, beta=null, customizeMusic=null, previousMusic=null;
+  // V19: build on the known-good V16 Customize implementation.
+  // Keep all existing parents/containers alive.  The title/menu is hidden by
+  // the normal client parent visibility mechanism; nothing is destroyed.
+  var active=false, beta=null, customizeMusic=null, title=null;
 
-  function alphaOf(o){
-    try { return (o && o.B1 != null) ? Number(o.B1) : 1; } catch(e){ return 1; }
-  }
   function setAlpha(o,a){
     if(!o) return;
-    try { if(typeof o.set_local_alp==='function') o.set_local_alp(a); else if(typeof o.set_alp==='function') o.set_alp(a); } catch(e){}
+    try {
+      if(typeof o.set_local_alp==='function') o.set_local_alp(a);
+      else if(typeof o.set_alp==='function') o.set_alp(a);
+    } catch(e){}
   }
+
   function fade(o,to,ms){
     if(!o) return;
     try {
-      var from=alphaOf(o);
+      var from = (o.a7 != null) ? Number(o.a7) : 1;
+      if(!isFinite(from)) from=1;
       E.u4(o,0,ms||300,from,to,0,1,0);
     } catch(e){ setAlpha(o,to); }
   }
@@ -119526,149 +119575,126 @@ e50: function(a) {
   function getTitle(){
     try { return q.GetChildByType(Cf); } catch(e){ return null; }
   }
-  function getSettings(){
-    try { return q.GetChildByType(Op); } catch(e){ return null; }
-  }
+
   function getCustomize(){
     try {
       var t=getTitle();
-      if(t && t._9) for(var i=0;i<t._9.length;i++) if(t._9[i] instanceof Mp) return t._9[i];
+      if(t && t._9) for(var i=0;i<t._9.length;i++)
+        if(t._9[i] instanceof Mp) return t._9[i];
     } catch(e){}
     return null;
   }
 
-  function ensureBeta(host){
-    if(beta && beta._2===host) return beta;
-    if(beta && beta._2 && beta._2._9){
-      try { T.remove(beta._2._9,beta); } catch(e0){}
-    }
-    beta=null;
-    if(!host || !host._9) return null;
+  function ensureBeta(){
+    if(beta && beta._2===l.z38) return beta;
     try {
-      var b=z.I9();
-      b.Init(f.B273_0_PNG());
-      b._1='diggerz_customize_beta_bknd';
-      b.A7=q.CENTERX; b.A8=q.CENTERY;
-      try {
-        b.set_local_xScale((q.SCREENWIDTH+80)/b._5.width);
-        b.set_local_yScale((q.SCREENHEIGHT+80)/b._5.height);
-      } catch(e1){}
-      b.B8=-999;
-      b.c0=true;
-      b.D7(host,!0);
-      host._9.unshift(b);
-      setAlpha(b,0);
-      beta=b;
-      beta._2=host;
+      if(beta && beta._2 && beta._2._9) beta.a0=1;
+    } catch(eOld){}
+    beta=null;
+    try {
+      // This is the game's real Beta Bknd implementation (theme 9), rather
+      // than a PNG child of the hidden title-screen parent.
+      beta = new cg(9);
+      beta._1 = "diggerz_customize_beta_bknd";
+      beta.D7(l.z38);
+      l.z38._9.splice(0,0,beta);
+      beta.a0=0;
+      setAlpha(beta,0);
       return beta;
     } catch(e){ beta=null; return null; }
   }
 
-  function stopCustomizeMusic(){
-    if(customizeMusic){
-      try { customizeMusic.stop(); } catch(e){}
-      try { customizeMusic.unload(); } catch(e2){}
-      customizeMusic=null;
-    }
-    if(previousMusic){
-      try { E.U7(previousMusic,true); } catch(e3){}
-    } else {
-      try { E.diggerzRequestedMusic=null; } catch(e4){}
-    }
-    previousMusic=null;
-  }
-
-  function startCustomizeMusic(){
+  function startMusic(){
     if(customizeMusic) return;
-    try { previousMusic=E.diggerzRequestedMusic || null; } catch(e) { previousMusic=null; }
-    try { if(E.U6){E.U6.J10();E.U6=null;} } catch(e1){}
-    try { if(E.U4){E.U4.stop();E.U4=null;} } catch(e2){}
     try {
-      customizeMusic=new Howl({src:['music_theme2.ogg'],preload:true,loop:true,volume:.7});
+      customizeMusic = new Howl({
+        src:['music_theme2.ogg'],
+        preload:true,
+        loop:true,
+        volume:.7
+      });
       customizeMusic.play();
-    } catch(e3){ customizeMusic=null; }
+    } catch(e){ customizeMusic=null; }
   }
 
-  function hideMenuLayers(){
-    var title=getTitle(), settings=getSettings();
-    state={title:[],settings:settings,settingsAlpha:settings?alphaOf(settings):1};
-    if(title && title._9){
-      for(var i=0;i<title._9.length;i++){
-        var ch=title._9[i];
-        if(!ch || ch===beta || ch instanceof Mp) continue;
-        state.title.push({obj:ch,alpha:alphaOf(ch)});
-        // The normal client backdrop fades separately; all other title/menu UI hides.
-        if(ch!==title.d34) fade(ch,0,300);
-      }
-      if(title.d34) {
-        state.titleBg=alphaOf(title.d34);
-        fade(title.d34,0,300);
-      }
-    }
-    if(settings) fade(settings,0,300);
-  }
-
-  function restoreMenuLayers(){
-    if(!state) return;
-    for(var i=0;i<state.title.length;i++){
-      var rec=state.title[i];
-      if(rec.obj) fade(rec.obj,rec.alpha,300);
-    }
-    var title=getTitle();
-    if(title && title.d34) fade(title.d34,state.titleBg==null?1:state.titleBg,300);
-    if(state.settings) fade(state.settings,state.settingsAlpha==null?1:state.settingsAlpha,300);
-    state=null;
+  function stopMusic(){
+    if(!customizeMusic) return;
+    try { customizeMusic.stop(); } catch(e){}
+    try { customizeMusic.unload(); } catch(e2){}
+    customizeMusic=null;
   }
 
   function openCustomize(){
     if(active) return;
+    title=getTitle();
     var panel=getCustomize();
-    var title=getTitle();
-    if(!panel || !title) return;
+    if(!title || !panel) return;
     active=true;
-    panel.__dzCustomizeScreenActive=true;
-    ensureBeta(title);
-    hideMenuLayers();
-    if(beta) fade(beta,1,450);
-    startCustomizeMusic();
+
+    // The existing game call l.b45(panel) already hides the old menu parents
+    // instead of removing them. Keep that behavior; do not rebuild anything.
+    try { l.b45(panel); } catch(eHide){}
+
+    beta=ensureBeta();
+    if(beta){
+      beta.a0=0;
+      fade(beta,1,450);
+    }
+    startMusic();
   }
 
   function closeCustomize(){
     if(!active) return;
     active=false;
-    var panel=getCustomize();
-    if(panel) panel.__dzCustomizeScreenActive=false;
-    if(beta) fade(beta,0,450);
-    restoreMenuLayers();
-    stopCustomizeMusic();
+    stopMusic();
+
+    // Hide the beta backdrop, but keep its object alive for the next open.
+    if(beta){
+      try { fade(beta,0,350); } catch(e){}
+      try { beta.a0=1; } catch(e2){}
+    }
+
+    // Restore the original title-screen parent/UI instead of recreating it.
+    var t=getTitle();
+    if(t){
+      try {
+        t.a0=0;
+        setAlpha(t,1);
+        // The original main-menu backdrop is the Cf.d34 cg(0).
+        if(t.d34){
+          t.d34.a0=0;
+          setAlpha(t.d34,1);
+        }
+      } catch(eRestore){}
+    }
   }
 
-  window.DiggerzCustomizeScreenV18={open:openCustomize,close:closeCustomize,isOpen:function(){return active;}};
+  window.DiggerzCustomizeScreenV19={
+    open:openCustomize,
+    close:closeCustomize,
+    isOpen:function(){return active;}
+  };
 
   function hook(){
     if(typeof Op==='undefined' || typeof Mp==='undefined') return false;
-    if(!Op.prototype.__dzV18Hooked){
+
+    if(!Op.prototype.__dzV19Hooked){
       var oldOpen=Op.prototype._56;
       Op.prototype._56=function(){
         var r=oldOpen.apply(this,arguments);
-        try {
-          var panel=getCustomize();
-          if(panel){
-            panel.__dzCustomizeScreenActive=true;
-            window.setTimeout(openCustomize,0);
-          }
-        } catch(e){}
+        try { window.setTimeout(openCustomize,0); } catch(e){}
         return r;
       };
-      Op.prototype.__dzV18Hooked=true;
+      Op.prototype.__dzV19Hooked=true;
     }
-    if(!Mp.prototype.__dzV18Hooked){
+
+    if(!Mp.prototype.__dzV19Hooked){
       var oldClose=Mp.prototype.C39;
       Mp.prototype.C39=function(){
         try { closeCustomize(); } catch(e){}
         return oldClose.apply(this,arguments);
       };
-      Mp.prototype.__dzV18Hooked=true;
+      Mp.prototype.__dzV19Hooked=true;
     }
     return true;
   }
@@ -119679,6 +119705,7 @@ e50: function(a) {
   },100);
 })();
 </script>
+
 </body>
 </html>
 <!-- Other original content may be protected by copyright. -->
