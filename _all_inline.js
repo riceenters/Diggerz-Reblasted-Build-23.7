@@ -51062,18 +51062,33 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 } catch (e) {}
             }
 
+            var __previewWearer = null;
             function __equipOnPreview(skel, app) {
                 if (!skel) return;
                 var tone = 90;
-                try { if (q.player && q.player.l9) tone = q.player.l9; } catch (eT) {}
+                try { if (q.player && q.player.l9 != null) tone = q.player.l9; } catch (eT) {}
                 try {
                     if (q.player && typeof q.player.m38 === "function") {
-                        var oldSk = q.player.i33;
-                        q.player.i33 = skel;
-                        q.player.J33 = [];
-                        try { q.player.m38((app && app.slice) ? app.slice() : [0,0,0,0,0,0,0,0,0,0,0], ""); } catch (eM) {}
-                        q.player.i33 = oldSk;
-                        try { q.player.J33 = (app && app.slice) ? app.slice() : q.player.J33; } catch (eJ) {}
+                        // Run the real appearance pipeline against a proxy object.
+                        // This gives the preview the exact same Yf item attachment
+                        // logic as the player without temporarily replacing the
+                        // real player's skeleton.
+                        if (!__previewWearer || __previewWearer.__dzSkeleton !== skel) {
+                            __previewWearer = Object.create(q.player);
+                            __previewWearer.__dzSkeleton = skel;
+                            __previewWearer.i33 = skel;
+                            __previewWearer.J33 = [];
+                            __previewWearer.m32 = function() {}; // never touch player's children
+                        }
+                        __previewWearer.i33 = skel;
+                        __previewWearer.l9 = tone;
+                        __previewWearer.J33 = [];
+                        var wanted = (app && app.slice) ? app.slice(0,11) : [0,0,0,0,0,0,0,0,0,0,0];
+                        while (wanted.length < 11) wanted.push(0);
+                        q.player.m38.call(__previewWearer, wanted, "");
+                        // m38 intentionally enters the wear animation while it
+                        // rebuilds cosmetics; immediately hand control back to idle.
+                        if (typeof skel._38 === "function") skel._38("idle", !0, 100, .5);
                     }
                 } catch (e) {}
                 // Always restore head texture + eyes + exact slider skin tone.
@@ -51081,6 +51096,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 try { __tintPreviewSkin(skel, tone); } catch (eS) {}
                 // And apply the player's permanent starting shirt color.
                 try { __tintPreviewShirt(skel); } catch (eShirt) {}
+                try { skel.a2 = 1; } catch (eActive) {}
             }
 
             function __makeItemIcon(parent, itemId, category, count) {
@@ -51438,6 +51454,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 }
             }
 
+            var __dzInvCells = [];
             var __equippedNow = (__app && __app.slice) ? __app.slice() : [];
             while (__equippedNow.length < 11) __equippedNow.push(0);
 
@@ -51447,6 +51464,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 var __sx = __startX + __col * __slotSize;
                 var __sy = __startY + __row * __rowH;
                 var __cell = __makeRealSlot(__invContent, __sx, __sy);
+                __dzInvCells.push(__cell);
                 var __item = __rawSlots[__slotIndex] || null;
                 if (!__item) __item = {category:0,id:0,variant:0,count:0,text:""};
 
@@ -51493,6 +51511,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 (__rows * __rowH) - (__invH - 82));
             this.__dzInvH = __invH;
             this.__dzInvW = __invW;
+            this.__dzInvCells = __dzInvCells;
 
             var __hint = new xa(0, __invH / 2 - 18, "^8mouse wheel / arrows", q.MAIN_FONT);
             __hint.D7(__invBox, !0);
@@ -51583,10 +51602,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                             __tintPreviewSkin(__previewSkelRef, __t2);
                             try { __tintPreviewShirt(__previewSkelRef); } catch (eShirtLive) {}
                             try {
-                                if (typeof __previewSkelRef._38 === "function")
-                                    __previewSkelRef._38("idle", !0, 50, .25);
-                                else if (typeof __previewSkelRef.G7 === "function")
-                                    __previewSkelRef.G7("idle");
+                                // Do NOT call _38 every frame: _38 resets the
+                                // animation timeline to frame 0. Only restart idle
+                                // when another state has actually replaced it.
+                                if (typeof __previewSkelRef._38 === "function" &&
+                                    __previewSkelRef.Z28 !== "idle")
+                                    __previewSkelRef._38("idle", !0, 100, .5);
                             } catch (eId) {}
                         }
                     } catch (eLiveSkin) {}
@@ -51620,6 +51641,20 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                     (this.__dzInvScroll || 0) + __delta
                                 ));
                                 this.__dzInvContent.b7 = -this.__dzInvScroll;
+                                // The engine's scrollRect is not sufficient for these
+                                // transformed item sprites, so also hard-clip each
+                                // inventory cell to the visible inventory viewport.
+                                try {
+                                    var __clipTop = -(this.__dzInvH || 500) / 2 + 48;
+                                    var __clipBottom = (this.__dzInvH || 500) / 2 - 42;
+                                    var __cells = this.__dzInvCells || [];
+                                    for (var __ci2 = 0; __ci2 < __cells.length; __ci2++) {
+                                        var __cc = __cells[__ci2];
+                                        if (!__cc) continue;
+                                        var __vy = Number(__cc.b7) - Number(this.__dzInvScroll || 0);
+                                        __cc.a0 = (__vy + 35 < __clipTop || __vy - 35 > __clipBottom) ? 0 : 1;
+                                    }
+                                } catch (eCellClip) {}
                                 // Consume the engine's one-frame wheel event only here.
                                 try { q.mWheel = 0; } catch (eConsume) {}
                             }
