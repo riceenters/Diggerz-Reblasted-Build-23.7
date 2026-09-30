@@ -87450,7 +87450,7 @@ return true
             this.d51.C34 = "shop",
             this.d51._1 = "welcome message",
             this._9.push(this.d51),
-            c = new xa(0,-70,"Sign in with Google"),
+            c = new xa(0,-70,"Email or Google"),
             c.D7(b, !0),
             c.set_local_xScale(c.set_local_yScale(1.25)),
             this._9.push(c)) : 0 < q.thisMain.userPW.length && (b = new z,
@@ -87550,107 +87550,81 @@ return true
         },
         D54: null,
         D55: function() {
-            // Native LOGIN panel (settings-style). Google sign-in = yellow diggerz button.
+            // Native login only ($b popup) — no custom ja panel, no E7 click-stealing.
+            // Email textbox + Okay/Enter → magic link; Google button under the field row.
             try {
                 for (var li = this._9.length - 1; li >= 0; li--) {
                     var ch = this._9[li];
-                    if (ch && ch._1 === "diggerz_login_panel") {
-                        try { ch.a0 = 1; E.u4(ch, 0, 300, 1, .5, 0, 1, 0); } catch (e0) {}
+                    if (ch && (ch._1 === "diggerz_login_panel" || ch._1 === "diggerz_email_popup" || ch._1 === "diggerz_login_popup")) {
+                        try { ch.a0 = 1; } catch (e0) {}
+                        try { this._9.splice(li, 1); } catch (e1) {}
                     }
                 }
-            } catch (e1) {}
-            try {
-                if (window.DiggerzAuth237 && window.DiggerzAuth237.hideGoogleButton)
-                    window.DiggerzAuth237.hideGoogleButton();
-            } catch (eHide) {}
-            var panel = new ja(440, 340, !0);
-            panel._1 = "diggerz_login_panel";
-            panel.c0 = !0;
-            // Same click-off as Game Settings
-            panel.E7 = function() { return !0; };
-            panel.C39 = function() {
-                try {
-                    if (null == this._8 || null == this._8[3]) {
-                        this.a0 = 1;
-                        try { E.u4(this, 0, 300, 1, .5, 0, 1, 0); } catch (eC) {}
-                        window.__diggerzLoginPanel = null;
-                    }
-                } catch (eC2) {}
-            };
-            panel.A7 = q.CENTERX;
-            panel.A8 = q.CENTERY;
-            panel.B8 = 8;
-            try { E.u4(panel, 0, 300, 0, .5, 1, 0, 1); } catch (e2) {}
-            var title = new xa(0, -120, "^9LOGIN", q.MAIN_FONT_BIG);
-            title.D7(panel, !0);
-            try { title.set_local_xScale(title.set_local_yScale(1.05)); } catch (eT) {}
-            panel._9.push(title);
-            // Yellow button + label parented ON the sprite (not the panel) so text stays small
-            var gBg = new z;
-            gBg.Init(u.YELLOWBUTTON_PNG());
-            gBg.D7(panel, !0);
-            gBg.b6 = 0;
-            gBg.b7 = -10;
-            gBg.set_local_xScale(.7);
-            gBg.set_local_yScale(.55);
-            gBg._1 = "diggerz_google_btn_bg";
-            panel._9.push(gBg);
-            var gLbl = new ob(0, 0, "Sign in with Google", q.MAIN_FONT);
-            gLbl.D7(gBg, !0);
-            gLbl.b6 = 0;
-            gLbl.b7 = 2;
-            try { gLbl.set_local_xScale(gLbl.set_local_yScale(.55)); } catch (eS) {}
-            gLbl._1 = "diggerz_google_btn";
-            gLbl.C33 = A(this, function() {
-                if (window.DiggerzAuth237 && window.DiggerzAuth237.loginWithGoogle)
-                    window.DiggerzAuth237.loginWithGoogle();
-                else
-                    this._9.push(new vb(this, "", "^1Login is not ready yet. Refresh the page.", new Cd, vb.F39));
-            });
-            gBg._9 = gBg._9 || [];
-            gBg._9.push(gLbl);
-            // Email: native $b popup (has Okay + Cancel already)
-            var eBg = new z;
-            eBg.Init(u.YELLOWBUTTON_PNG());
-            eBg.D7(panel, !0);
-            eBg.b6 = 0;
-            eBg.b7 = 70;
-            eBg.set_local_xScale(.7);
-            eBg.set_local_yScale(.55);
-            eBg._1 = "diggerz_email_btn_bg";
-            panel._9.push(eBg);
-            var eLbl = new ob(0, 0, "Login with Email", q.MAIN_FONT);
-            eLbl.D7(eBg, !0);
-            eLbl.b6 = 0;
-            eLbl.b7 = 2;
-            try { eLbl.set_local_xScale(eLbl.set_local_yScale(.55)); } catch (eE) {}
-            eLbl._1 = "diggerz_email_btn";
-            eLbl.C33 = A(this, function() {
-                // Close login panel first so the $b popup is clear
-                try {
-                    if (window.__diggerzLoginPanel) {
-                        window.__diggerzLoginPanel.a0 = 1;
-                        window.__diggerzLoginPanel = null;
-                    }
-                } catch (eClose) {}
-                var popup = new $b(this, "Enter your email", "", 80, A(this, this.D59), 480, 220);
-                popup._1 = "diggerz_email_popup";
-                window.__diggerzEmailPopup = popup;
-                this._9.push(popup);
-                // Focus the text field so typing goes into q35
-                try {
-                    if (popup.F30) {
-                        popup.F30.Q31 = !0;
-                        if (popup.F30.Q30) q.thisMain.stage.set_focus(popup.F30.Q30);
-                    }
-                } catch (eF) {}
-            });
-            eBg._9 = eBg._9 || [];
-            eBg._9.push(eLbl);
-            this._9.push(panel);
-            panel._2 = this;
+            } catch (e2) {}
+            window.__diggerzLoginPanel = null;
+
+            // Taller native text popup: title, email field, Okay/Cancel (built-in)
+            var popup = new $b(this, "LOGIN", "", 80, A(this, this.D59), 520, 340);
+            popup._1 = "diggerz_login_popup";
+            window.__diggerzEmailPopup = popup;
             window.__diggerzLoginMenu = this;
-            window.__diggerzLoginPanel = panel;
+
+            // Hint under title
+            try {
+                if (popup.F31) {
+                    try { popup.F31.E37("^9LOGIN"); } catch (eT) {}
+                }
+            } catch (eT2) {}
+            try {
+                var hint = new xa(0, 0, "^7Enter email, then Okay — or use Google", q.MAIN_FONT);
+                hint.D7(popup, !0);
+                hint.b6 = 0;
+                hint.b7 = -105;
+                try { hint.set_local_xScale(hint.set_local_yScale(.85)); } catch (eH) {}
+                popup._9.push(hint);
+            } catch (eHint) {}
+
+            // Sign in with Google — under Okay/Cancel, same popup box
+            try {
+                var gBg = new z;
+                gBg.Init(u.YELLOWBUTTON_PNG());
+                gBg.D7(popup, !0);
+                gBg.b6 = 0;
+                gBg.b7 = 125;
+                gBg.set_local_xScale(.75);
+                gBg.set_local_yScale(.5);
+                gBg._1 = "diggerz_google_btn_bg";
+                popup._9.push(gBg);
+                var gLbl = new ob(0, 0, "Sign in with Google", q.MAIN_FONT);
+                gLbl.D7(gBg, !0);
+                gLbl.b6 = 0;
+                gLbl.b7 = 2;
+                try { gLbl.set_local_xScale(gLbl.set_local_yScale(.5)); } catch (eS) {}
+                gLbl._1 = "diggerz_google_btn";
+                gLbl.C33 = A(this, function() {
+                    try { if (popup) popup.a0 = 1; } catch (eC) {}
+                    window.__diggerzEmailPopup = null;
+                    if (window.DiggerzAuth237 && window.DiggerzAuth237.loginWithGoogle)
+                        window.DiggerzAuth237.loginWithGoogle();
+                    else
+                        this._9.push(new vb(this, "", "^1Login is not ready yet. Refresh the page.", new Cd, vb.F39));
+                });
+                gBg._9 = gBg._9 || [];
+                gBg._9.push(gLbl);
+            } catch (eG) {
+                console.warn("[Diggerz Login] google btn", eG);
+            }
+
+            this._9.push(popup);
+
+            // Focus email field
+            try {
+                if (popup.F30) {
+                    popup.F30.Q31 = !0;
+                    if (popup.F30.Q30 && q.thisMain && q.thisMain.stage)
+                        q.thisMain.stage.set_focus(popup.F30.Q30);
+                }
+            } catch (eF) {}
         },
         D56: function(a) {
             // Build 23.7: account lookup/password prompts are retired. Email magic-link only.
