@@ -1124,15 +1124,15 @@ function applyNativeTileToRoom(client, payload) {
     const key = `${tileX},${tileY}`;
     const variant = 0;
     if (id === 0) {
-      // Mine / clear — record empty so late joiners get the hole.
-      room.tiles.set(key, {x:tileX,y:tileY,id:0,variant:0,layer:0,ownerConnectionId:client.connectionId,cleared:true});
+      // Mine / clear — remove from both stores if present.
+      room.tiles.delete(key);
       room.backgroundTiles.delete(key);
       room.cottonMachines.delete(key);
       room.turretCooldowns.delete(key);
       if (room.speaker && room.speaker.x === tileX && room.speaker.y === tileY) room.speaker = null;
       broadcastRoom(room, {
         t: 'tile', x: tileX, y: tileY, id: 0, variant: 0, layer,
-        _serverFrom: client.connectionId, _serverName: client.name, replace: true
+        _serverFrom: client.connectionId, _serverName: client.name
       });
       return;
     }
@@ -2464,67 +2464,27 @@ function relayGameMessage(client, message, rawLength) {
     if(requestedLayer===1)return;
     requestedLayer=requestedLayer===2?2:0;
     const x=Number(message.x)|0,y=Number(message.y)|0,id=Number(message.id)|0,variant=Number(message.variant)|0;
-    if(x<0||x>=128||y<0||y>=80)return; if(!client.position)client.position={x:x,y:y}; // still allow tile sync if flags lag
-    // Prefer live packet position, else last known server position.
+    if(x<0||x>=128||y<0||y>=80||!client.position||!client.alive||client.eliminated)return;
     const packetPX=Number(message.px), packetPY=Number(message.py);
-    if(Number.isFinite(packetPX)&&Number.isFinite(packetPY)){
-      client.position={x:packetPX,y:packetPY};
-    }
-    const placementPos=client.position||{x:x,y:y};
-    // Same radii as the client block zone:
-    //   place max 5 tiles, mine max 3.6 tiles, place min ~1.1 (body).
-    // Anything outside that player's own radius is rejected server-side so
-    // broken clients cannot place far outside the zone.
-    const dist=Math.hypot(placementPos.x-x,placementPos.y-y);
-    const isMine=(id===0);
-    const maxReach=isMine?3.6:5;
-    if(dist>maxReach){
-      try{console.log('tile REJECT out-of-reach',isMine?'MINE':'PLACE','id='+id,'@'+x+','+y,'dist='+dist.toFixed(2),'from',client.name||client.connectionId)}catch(_){}
-      return;
-    }
-    if(!isMine && dist<1.05){
-      try{console.log('tile REJECT too-close PLACE @'+x+','+y,'dist='+dist.toFixed(2),client.name||client.connectionId)}catch(_){}
-      return;
-    }
-    // Soft local-overlap only: use slightly tighter check for the placer so
-    // laggy position samples don't reject every nearby place. Peers still use
-    // the full shield.
-    if(id!==0 && placementOverlapsPlayer({position:placementPos},x,y)){
-      // Allow if the packet is a replace of an existing empty / same-owner cell
-      // already stored — still block true body overlap for peers below.
-    }
-    if(id!==0 && placementBlockedByAnyPlayer(room,x,y)){
-      // If only the placer overlaps (no other player), still allow — local
-      // client already gated placement. This recovers desynced position.
-      let otherHit=false;
-      for(const other of room.clients){
-        if(other===client||!other.alive||other.eliminated||!other.position)continue;
-        if(placementOverlapsPlayer(other,x,y)){otherHit=true;break;}
-      }
-      if(otherHit)return;
-    }
+    const placementPos=(Number.isFinite(packetPX)&&Number.isFinite(packetPY))?{x:packetPX,y:packetPY}:client.position;
+    if(Math.hypot(placementPos.x-x,placementPos.y-y)>5)return;
+    if(id!==0 && placementOverlapsPlayer({position:placementPos},x,y))return;
+    if(id!==0 && placementBlockedByAnyPlayer(room,x,y))return;
     normalizeRoomTileAt(room,x,y);
     const key=`${x},${y}`;
     if(id===0){
-      // Always accept clears. Base-map blocks are not always in room.tiles
-      // (only deltas are). Previously we returned early when prior was null,
-      // so peers never saw natural terrain being mined.
+      // Mining should work even if an older packet/map put the block on the
+      // opposite layer. Prefer the requested layer, then fall back to the
+      // other layer, and tell every client which layer was actually removed.
       let actualLayer=requestedLayer;
       let prior=(requestedLayer===2?room.backgroundTiles:room.tiles).get(key)||null;
       if(!prior){ actualLayer=requestedLayer===2?0:2; prior=(actualLayer===2?room.backgroundTiles:room.tiles).get(key)||null; }
-      if(!prior) actualLayer=requestedLayer;
-      // Record the hole so late joiners also get an empty cell.
-      room.tiles.set(key,{x,y,id:0,variant:0,layer:0,ownerConnectionId:client.connectionId,cleared:true});
-      room.backgroundTiles.delete(key);
-      if(prior&&prior.id===122&&room.speaker&&room.speaker.x===x&&room.speaker.y===y) room.speaker=null;
+      if(!prior)return;
+      (actualLayer===2?room.backgroundTiles:room.tiles).delete(key);
+      if(prior.id===122&&room.speaker&&room.speaker.x===x&&room.speaker.y===y) room.speaker=null;
       room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
-      // Broadcast to everyone INCLUDING the miner so visuals stay authoritative.
-      broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:actualLayer,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
-      try{console.log('tile CLEAR @'+x+','+y+' layer='+actualLayer+' by '+(client.name||client.connectionId))}catch(_){}
-      // Also clear the other layer so no ghost block remains.
-      if(actualLayer!==2) broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:2,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
-      else broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:0,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
-      if(prior&&prior.id===122)syncSpeaker(room);
+      broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:actualLayer,_serverCorrection:actualLayer!==requestedLayer,_serverFrom:client.connectionId,_serverName:client.name});
+      if(prior.id===122)syncSpeaker(room);
       return;
     }
     const catalogLayer=expectedBlockLayer(id);
@@ -2546,7 +2506,6 @@ function relayGameMessage(client, message, rawLength) {
     room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
     if(wrong) broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:desiredLayer===2?0:2,_serverCorrection:true,_serverFrom:client.connectionId,_serverName:client.name});
     broadcastRoom(room,Object.assign({t:'tile'},tile,{_serverCorrection:desiredLayer!==requestedLayer,_serverFrom:client.connectionId,_serverName:client.name,replace:true}));
-    try{console.log('tile PLACE id='+id+' @'+x+','+y+' layer='+desiredLayer+' by '+(client.name||client.connectionId))}catch(_){}
     if(id===122)syncSpeaker(room);
     return;
   }
