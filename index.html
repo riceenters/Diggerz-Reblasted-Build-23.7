@@ -50990,11 +50990,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
 
             function __skinColor(tone) {
-                // Use the exact same 0-100 value/range as the real head skin-tone
-                // slider. Do not apply a second brightness curve to the preview rig.
+                // Match the ACTUAL skin-tone slider/head exactly. The slider's
+                // head is never pure black: its darkness floor is .45 and its
+                // brightest value is 1.55. The preview must use that same range.
                 tone = Number(tone);
                 if (!isFinite(tone)) tone = 90;
-                return Math.max(0, Math.min(100, tone));
+                tone = Math.max(0, Math.min(100, tone));
+                return .45 + 1.1 * tone / 100;
             }
 
             // Build 23.7 stores one permanent 0-11 shirt-color index per player.
@@ -51125,6 +51127,18 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 try {
                     if (__previewSkelRef) __equipOnPreview(__previewSkelRef, app);
                 } catch (e2) {}
+                // Keep the live Dig+Trade service in sync too. Otherwise the
+                // Customize preview changes visually but the authoritative cached
+                // appearance immediately snaps back when the panel is reopened.
+                try {
+                    if (q.diggerzService && q.diggerzService.state) {
+                        q.diggerzService.state.appearance = app.slice(0, 11);
+                        while (q.diggerzService.state.appearance.length < 11)
+                            q.diggerzService.state.appearance.push(0);
+                        if (typeof q.diggerzService.markDirty === "function") q.diggerzService.markDirty();
+                        if (typeof q.diggerzService.save === "function") q.diggerzService.save(true);
+                    }
+                } catch (eServiceAppearance) {}
                 try {
                     var save = __loadDigSave() || { version: 6, slots: [], appearance: app.slice() };
                     save.appearance = app.slice();
@@ -51160,6 +51174,26 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             } catch (eLive) {}
             // Pad appearance to 11
             while (__app.length < 11) __app.push(0);
+
+            // The inventory cache marks the last worn copy with variant === 1.
+            // Reconstruct those slots too, because the cached appearance array
+            // can lag behind the inventory after closing/reopening Customize.
+            try {
+                var __cachedSlots = (__save && Array.isArray(__save.slots)) ? __save.slots.slice() : [];
+                try {
+                    if (q.diggerzService && q.diggerzService.state && Array.isArray(q.diggerzService.state.slots)) {
+                        __cachedSlots = q.diggerzService.state.slots.slice();
+                    }
+                } catch (eLiveCachedSlots) {}
+                for (var __ci = 0; __ci < __cachedSlots.length; __ci++) {
+                    var __cachedItem = __cachedSlots[__ci];
+                    if (!__cachedItem || !(__cachedItem.id|0) || !(__cachedItem.count|0) ||
+                        (__cachedItem.variant|0) !== 1) continue;
+                    var __cachedWear = __wearSlotForItem(__cachedItem, __ci);
+                    if (__cachedWear >= 0 && __cachedWear < 11 && __cachedWear !== 8)
+                        __app[__cachedWear] = __cachedItem.id|0;
+                }
+            } catch (eCachedWear) {}
 
             // ---- Center: player preview box (engine idle rig) ----
             var __prev = new ja(240, 360, !0);
@@ -51237,7 +51271,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     __body.set_local_xScale(__body.set_local_yScale(1.2));
                     try {
                         var __tone = (q.player && q.player.l9) ? q.player.l9 : 90;
-                        var __c = .45 + 1.1 * (Math.min(100, __tone) / 100);
+                        var __c = __skinColor(__tone);
                         __body.set_local_r(__body.set_local_g(__body.set_local_b(__c)));
                     } catch (eT) {}
                     var __eyes = z.I9();
@@ -51316,6 +51350,17 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             __invContent.b6 = 0;
             __invContent.b7 = 0;
             this.__dzInvContent = __invContent;
+            // Clip the scrolling content itself. Clipping the outer JA alone can
+            // be bypassed by transformed child icons in the renderer.
+            try {
+                if (typeof __invContent.set_scrollRect === "function")
+                    __invContent.set_scrollRect(new r(
+                        -__invW / 2,
+                        -__invH / 2 + 48,
+                        __invW,
+                        __invH - 76
+                    ));
+            } catch (eContentClip) {}
 
             // Pull the authoritative inventory from the live service first, then
             // fall back to the local saved copy. Empty slots are retained so the
@@ -51344,8 +51389,18 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var __slotCount = Math.max(50, __rawSlots.length);
             var __rows = Math.ceil(__slotCount / __cols);
 
-            function __wearSlotForItem(item) {
+            function __wearSlotForItem(item, slotIndex) {
                 if (!item || !(item.id|0)) return -1;
+                // Prefer the live inventory entry at the exact slot. This keeps
+                // duplicate copies of the same item from equipping the wrong
+                // cosmetic slot.
+                try {
+                    var invExact = l.z39 && l.z39.n38 && l.z39.n38.B30;
+                    var exact = invExact && invExact[slotIndex|0];
+                    if (exact && exact.a4 === 2 && exact.h44 === (item.id|0) &&
+                        exact.t46 >= 0 && exact.t46 <= 10)
+                        return exact.t46|0;
+                } catch (eExactWear) {}
                 // The real item renderer gets the authoritative appearance slot
                 // from h.n7/O27. Use a temporary icon so we don't guess slot 1.
                 try {
@@ -51415,7 +51470,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 if (!__item) __item = {category:0,id:0,variant:0,count:0,text:""};
 
                 var __icon = __putInventoryIcon(__cell, __item);
-                var __wear = __wearSlotForItem(__item);
+                var __wear = __wearSlotForItem(__item, __slotIndex);
                 var __isWorn = (__wear >= 0 && (__equippedNow[__wear]|0) === (__item.id|0));
 
                 if (__isWorn) {
@@ -51511,6 +51566,29 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 }, 50);
             } catch (eForce) {}
 
+            // Only the little head/handle may start a skin-tone drag. Clicking the
+            // track itself must not jump the value or start dragging.
+            try {
+                var __origSkinC39 = this.y42.C39;
+                this.y42.C39 = function() {
+                    var handle = this.d49;
+                    var hit = false;
+                    try {
+                        var hw = (handle && handle._5) ? handle._5.width * Math.abs(handle.a8 || 1) : 24;
+                        var hh = (handle && handle._5) ? handle._5.height * Math.abs(handle.a9 || 1) : 24;
+                        var hx = handle ? Number(handle.A7) : Number(this.A7);
+                        var hy = handle ? Number(handle.A8) : Number(this.A8);
+                        hit = Math.abs(q.mX - hx) <= hw / 2 &&
+                              Math.abs(q.mY - hy) <= hh / 2;
+                    } catch (eHandleHit) {}
+                    if (!hit) {
+                        this.i32 = 1;
+                        return;
+                    }
+                    return __origSkinC39.call(this);
+                };
+            } catch (eSkinGuard) {}
+
             // Live skin + idle + inventory scroll. q.mWheel is the engine's actual
             // one-frame wheel value; the old code read q.mouseWheel, which never exists.
             try {
@@ -51575,6 +51653,25 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                             } catch (eClip2) {}
                         }
                     } catch (eScroll) {}
+
+                    // Clicking outside the Customize JA closes it. A click on any
+                    // child (including an inventory slot or the skin handle) sets
+                    // q.clickedFunction, so those clicks are left alone.
+                    try {
+                        if (q.mClicked && q.clickedFunction == null) {
+                            var __outside = false;
+                            var __px = Number(this.A7), __py = Number(this.A8);
+                            var __pw = Number(this.d32), __ph = Number(this.d33);
+                            if (isFinite(__px) && isFinite(__py) && isFinite(__pw) && isFinite(__ph)) {
+                                __outside = q.mX < __px - __pw / 2 || q.mX > __px + __pw / 2 ||
+                                            q.mY < __py - __ph / 2 || q.mY > __py + __ph / 2;
+                            }
+                            if (__outside) {
+                                this.C39();
+                                q.mClicked = !1;
+                            }
+                        }
+                    } catch (eOutside) {}
                     return __ret;
                 };
             } catch (eE0) {}
@@ -51626,7 +51723,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         },
         e0: function() {
             this.y42.set_local_r(this.y42.set_local_g(this.y42.set_local_b(.45 + 1.1 * this.y42.D43 / 100)));
-            q.player.l9 = Math.max(.01, this.y42.D43);
+            q.player.l9 = Math.max(0, Math.min(100, this.y42.D43));
             return ja.prototype.e0.call(this)
         },
         C39: function() {
