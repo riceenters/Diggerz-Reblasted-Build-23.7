@@ -51114,14 +51114,17 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             function __renderPreviewClothing(skel, app, tone) {
                 if (!skel) return;
                 var wearer = __previewWearer;
-                if (!wearer) {
-                    try { wearer = Object.create(q.player || {}); } catch (eW) { wearer = {}; }
+                if (!wearer || wearer.__dzSkeleton !== skel) {
+                    var __wearBase2 = null;
+                    try { __wearBase2 = l && l.z39 ? l.z39 : null; } catch (eBase2) {}
+                    try { wearer = Object.create(__wearBase2 || q.player || {}); } catch (eW) { wearer = {}; }
+                    wearer.__dzSkeleton = skel;
                     __previewWearer = wearer;
                 }
                 wearer.i33 = skel;
                 wearer.l9 = tone;
-                try { wearer.a4 = q.player && q.player.a4; } catch (eA4) {}
-                try { wearer.q7 = q.player && q.player.q7; } catch (eQ7) {}
+                try { wearer.a4 = (l && l.z39 && l.z39.a4 != null) ? l.z39.a4 : q.player && q.player.a4; } catch (eA42) {}
+                try { wearer.q7 = (l && l.z39 && l.z39.q7) ? l.z39.q7 : q.player && q.player.q7; } catch (eQ72) {}
                 __clearPreviewWear(skel);
                 __resetPreviewBody(skel, wearer, tone);
 
@@ -51253,13 +51256,23 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 try { if (q.player && q.player.l9 != null) tone = q.player.l9; } catch (eT) {}
                 try {
                     if (!__previewWearer || __previewWearer.__dzSkeleton !== skel) {
-                        __previewWearer = Object.create(q.player || {});
+                        // IMPORTANT: use the actual character class as the *prototype*
+                        // for the mannequin wearer, not q.player (which is only the
+                        // player settings object).  This keeps all of the clothing
+                        // visual constructors (hair, hats, shoes, pants, back
+                        // accessories, etc.) using the same defaults/fields as the
+                        // real character, while the mannequin still owns a completely
+                        // separate skeleton and never renders through m38().
+                        var __wearBase = null;
+                        try { __wearBase = l && l.z39 ? l.z39 : null; } catch (eBase) {}
+                        try { __previewWearer = Object.create(__wearBase || q.player || {}); }
+                        catch (eObj) { __previewWearer = Object.create(q.player || {}); }
                         __previewWearer.__dzSkeleton = skel;
                     }
                     __previewWearer.i33 = skel;
                     __previewWearer.l9 = tone;
-                    __previewWearer.a4 = q.player && q.player.a4;
-                    __previewWearer.q7 = q.player && q.player.q7;
+                    try { __previewWearer.a4 = (l && l.z39 && l.z39.a4 != null) ? l.z39.a4 : q.player && q.player.a4; } catch (eA4p) { __previewWearer.a4 = q.player && q.player.a4; }
+                    try { __previewWearer.q7 = (l && l.z39 && l.z39.q7) ? l.z39.q7 : q.player && q.player.q7; } catch (eQ7p) { __previewWearer.q7 = q.player && q.player.q7; }
                     __renderPreviewClothing(skel, app, tone);
                     if (typeof skel._38 === "function") skel._38("idle", !0, 100, .5);
                 } catch (e) {
@@ -51286,39 +51299,39 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
 
             function __applyLive(app, text) {
-                try {
-                    if (q.player && typeof q.player.m38 === "function" && q.player.i33 && q.player.i33.Z28 != null)
-                        q.player.m38(app.slice(), text || "");
-                } catch (e) {}
+                // The Customize mannequin is intentionally independent from the
+                // game's live clothing renderer.  Do not call m38() here: besides
+                // being unnecessary, it can cause the normal inventory/equipment
+                // UI to rebuild while a Customize slot is being clicked.
                 try {
                     if (__previewSkelRef) __equipOnPreview(__previewSkelRef, app);
                 } catch (e2) {}
-                // Keep the live Dig+Trade service in sync too. Otherwise the
-                // Customize preview changes visually but the authoritative cached
-                // appearance immediately snaps back when the panel is reopened.
+
+                // Keep the service state as data only.  Do not call service.save()
+                // from a slot click; that save path can rebuild other inventory
+                // views and was the source of the disappearing Customize cells.
                 try {
                     if (q.diggerzService && q.diggerzService.state) {
                         q.diggerzService.state.appearance = app.slice(0, 11);
                         while (q.diggerzService.state.appearance.length < 11)
                             q.diggerzService.state.appearance.push(0);
                         if (typeof q.diggerzService.markDirty === "function") q.diggerzService.markDirty();
-                        if (typeof q.diggerzService.save === "function") q.diggerzService.save(true);
                     }
                 } catch (eServiceAppearance) {}
                 try {
                     var save = __loadDigSave() || { version: 6, slots: [], appearance: app.slice() };
                     save.appearance = app.slice();
-                    try {
-                        var rawKey = localStorage.getItem("diggerz.digtrade.rebuild.v3");
-                        if (rawKey) {
+                    var rawKey = localStorage.getItem("diggerz.digtrade.rebuild.v3");
+                    if (rawKey) {
+                        try {
                             var full = JSON.parse(rawKey);
                             full.appearance = app.slice();
                             localStorage.setItem("diggerz.digtrade.rebuild.v3", JSON.stringify(full));
-                        } else {
+                        } catch (eParseKey) {
                             localStorage.setItem("diggerz.digtrade.rebuild.v3", JSON.stringify(save));
                         }
-                    } catch (eKey) {
-                        localStorage.setItem("diggerz.digtrade.v1", JSON.stringify(save));
+                    } else {
+                        localStorage.setItem("diggerz.digtrade.rebuild.v3", JSON.stringify(save));
                     }
                 } catch (e3) {}
             }
@@ -51665,6 +51678,27 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.__dzInvW = __invW;
             this.__dzInvCells = __dzInvCells;
 
+            // Keep the Customize inventory layer self-contained.  Some game-side
+            // state changes can toggle display flags on descendants of a JA; never
+            // let that permanently remove a clothing cell.  Reassert the cells'
+            // parent/visibility/positions each frame without recreating them.
+            this.__dzRepairInventory = function() {
+                try {
+                    if (!__invContent || !__dzInvCells) return;
+                    for (var ri = 0; ri < __dzInvCells.length; ri++) {
+                        var cell = __dzInvCells[ri];
+                        if (!cell) continue;
+                        if (cell._2 !== __invContent) { try { cell.D7(__invContent, !0); } catch (eReparent) {} }
+                        cell.a0 = 1;
+                        var rr = Math.floor(ri / __cols), cc = ri % __cols;
+                        cell.b6 = __startX + cc * __slotSize;
+                        cell.b7 = __startY + rr * __rowH - (this.__dzInvScroll || 0);
+                    }
+                    __applyInvClip();
+                } catch (eRepair) {}
+            };
+            this.__dzRepairInventory();
+
             var __hint = new xa(0, __invH / 2 - 18, "^8mouse wheel / arrows", q.MAIN_FONT);
             __hint.D7(__invBox, !0);
             try { __invBox._9.push(__hint); } catch (eHintPush) {}
@@ -51784,6 +51818,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                             try { __applyInvClip(); } catch (eClip2) {}
                         }
                     } catch (eScroll) {}
+
+                    try { if (this.__dzRepairInventory) this.__dzRepairInventory(); } catch (eRepairFrame) {}
 
                     // Clicking outside the Customize JA closes it. A click on any
                     // child (including an inventory slot or the skin handle) sets
