@@ -50964,15 +50964,29 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     try { __prev._9.push(__skel); } catch (ePush) {}
                     // Force idle (loop)
                     try {
-                        if (typeof __skel._38 === "function")
+                        if (typeof __skel._38 === "function") {
                             __skel._38("idle", !0, 100, .5);
-                        else if (typeof __skel.G7 === "function")
+                            // second kick in case first is ignored on title
+                            setTimeout(function() {
+                                try { __skel._38("idle", !0, 100, .5); } catch (e2) {}
+                            }, 200);
+                        } else if (typeof __skel.G7 === "function") {
                             __skel.G7("idle");
+                        }
                     } catch (eIdle) {}
-                    // Wear current items (after idle so body exists)
-                    __equipOnPreview(__skel, __app);
                     __previewSkelRef = __skel;
                     this.__diggerzPreviewSkel = __skel;
+                    // Wear items after a tick so bones exist (title-screen pool skels need this)
+                    __equipOnPreview(__skel, __app);
+                    setTimeout(function() {
+                        try {
+                            __equipOnPreview(__skel, __app);
+                            if (typeof __skel._38 === "function") __skel._38("idle", !0, 100, .5);
+                        } catch (eLate) {}
+                    }, 300);
+                    setTimeout(function() {
+                        try { __equipOnPreview(__skel, __app); } catch (eLate2) {}
+                    }, 800);
                 } catch (eAttach) { __skel = null; }
             }
 
@@ -50981,16 +50995,49 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 __fb.D7(__prev, !0);
             }
 
-            // ---- Right: scrollable inventory grid with real item icons (shop-style) ----
-            var __invBox = new ja(340, 520, !0);
-            __invBox.b6 = 360;
-            __invBox.b7 = 20;
+            // ---- Right: vertical inventory with clip (shop-style up/down scroll) ----
+            // Layout overrides from JA editor: localStorage diggerz.customize.layout.v1
+            var __layout = null;
+            try {
+                var __lj = localStorage.getItem("diggerz.customize.layout.v1");
+                if (__lj) __layout = JSON.parse(__lj);
+            } catch (eL) {}
+            function __L(key, field, fallback) {
+                try {
+                    if (__layout && __layout[key] && __layout[key][field] != null)
+                        return __layout[key][field];
+                } catch (e) {}
+                return fallback;
+            }
+            // Apply layout to preview box if present
+            try {
+                __prev.b6 = __L("preview", "x", __prev.b6);
+                __prev.b7 = __L("preview", "y", __prev.b7);
+            } catch (ePrev) {}
+
+            var __invW = __L("inventory", "w", 320);
+            var __invH = __L("inventory", "h", 480);
+            var __invBox = new ja(__invW, __invH, !0);
+            __invBox.b6 = __L("inventory", "x", 360);
+            __invBox.b7 = __L("inventory", "y", 10);
             __invBox.D7(this, !0);
             this._9.push(__invBox);
-            var __invT = new xa(0, -245, "^9Your Items", q.MAIN_FONT);
+            var __invT = new xa(0, -__invH / 2 + 18, "^9Your Items", q.MAIN_FONT);
             __invT.D7(__invBox, !0);
 
-            // Collect clothing items from save + live inventory if available
+            // Clip everything inside the inventory JA so rows past the box are hidden
+            try {
+                if (typeof __invBox.set_scrollRect === "function")
+                    __invBox.set_scrollRect(new r(0, 0, __invW, __invH));
+            } catch (eClip) {}
+
+            // Content root — we move its b7 for vertical scroll
+            var __invContent = z.I9();
+            __invContent.D7(__invBox, !0);
+            __invContent.b6 = 0;
+            __invContent.b7 = 0;
+            try { __invBox._9.push(__invContent); } catch (eIC) {}
+
             var __items = [];
             try {
                 for (var si = 0; si < __slots.length; si++) {
@@ -51000,7 +51047,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     __items.push({ id: s.id|0, category: (s.category|0) || 2, count: s.count|0, text: s.text || s.name || "" });
                 }
             } catch (eSlots) {}
-            // Merge live dig inventory if present
             try {
                 var inv = l.z39 && l.z39.n38 && l.z39.n38.B30;
                 if (inv) {
@@ -51016,40 +51062,36 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 }
             } catch (eInv) {}
 
-            var __cols = 4;
-            var __cell = 68;
-            var __startY = -200;
-            var __maxShow = 28;
+            // Vertical list (1 column of rows) — not side-to-side
+            var __rowH = 56;
+            var __startY = -__invH / 2 + 50;
+            var __maxShow = 60;
             var __shown = 0;
+            var __contentH = 0;
             for (var __ii = 0; __ii < __items.length && __shown < __maxShow; __ii++) {
                 var __it = __items[__ii];
-                var __col = __shown % __cols;
-                var __row = (__shown / __cols) | 0;
-                var __cx = -110 + __col * __cell;
-                var __cy = __startY + __row * __cell;
+                var __cy = __startY + __shown * __rowH;
 
-                var __cellJa = new ja(60, 60, !0);
-                __cellJa.b6 = __cx;
+                var __cellJa = new ja(__invW - 24, 52, !0);
+                __cellJa.b6 = 0;
                 __cellJa.b7 = __cy;
-                __cellJa.D7(__invBox, !0);
-                try { __invBox._9.push(__cellJa); } catch (eCJ) {}
+                __cellJa.D7(__invContent, !0);
+                try { __invContent._9.push(__cellJa); } catch (eCJ) {}
 
                 var __icon = __makeItemIcon(__cellJa, __it.id, __it.category, __it.count);
                 if (__icon) {
-                    try { __icon.b6 = 0; __icon.b7 = 0; } catch (ePos) {}
-                } else {
-                    var __num = new xa(0, 0, "^7#" + __it.id, q.MAIN_FONT);
-                    __num.D7(__cellJa, !0);
-                    try { __num.set_local_xScale(__num.set_local_yScale(.55)); } catch (eN) {}
+                    try { __icon.b6 = -(__invW / 2) + 40; __icon.b7 = 0; } catch (ePos) {}
                 }
+                var __lab = new xa(10, 0, "^7#" + __it.id + (__it.text ? " " + String(__it.text).slice(0, 12) : ""), q.MAIN_FONT);
+                __lab.D7(__cellJa, !0);
+                try { __lab.set_local_xScale(__lab.set_local_yScale(.55)); } catch (eN) {}
 
-                // Worn highlight
                 var __worn = false;
                 for (var __w = 0; __w < 11; __w++)
                     if ((__app[__w]|0) === __it.id) __worn = true;
                 if (__worn) {
                     try {
-                        var __mark = new xa(0, 24, "^2EQ", q.MAIN_FONT);
+                        var __mark = new xa((__invW / 2) - 30, 0, "^2EQ", q.MAIN_FONT);
                         __mark.D7(__cellJa, !0);
                         __mark.set_local_xScale(__mark.set_local_yScale(.5));
                     } catch (eMk) {}
@@ -51059,7 +51101,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     cell.C33 = function() {
                         try {
                             var app = __app.slice();
-                            // Find wear slot from live inv metadata
                             var wearSlot = -1;
                             try {
                                 var inv2 = l.z39 && l.z39.n38 && l.z39.n38.B30;
@@ -51083,13 +51124,27 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 })(__it, __cellJa);
 
                 __shown++;
+                __contentH = __cy + __rowH;
             }
             if (__shown === 0) {
-                var __empty = new xa(0, -100, "^8No clothing items yet\n^8Play Dig+Trade to get some", q.MAIN_FONT);
-                __empty.D7(__invBox, !0);
+                var __empty = new xa(0, 0, "^8No clothing items yet", q.MAIN_FONT);
+                __empty.D7(__invContent, !0);
             }
 
-            // Live skin + keep idle playing every frame
+            // Vertical scroll state
+            this.__dzInvScroll = 0;
+            this.__dzInvContent = __invContent;
+            this.__dzInvBox = __invBox;
+            this.__dzInvMaxScroll = Math.max(0, (__shown * __rowH) - (__invH - 70));
+            this.__dzInvH = __invH;
+            this.__dzInvW = __invW;
+
+            // Hint
+            var __hint = new xa(0, __invH / 2 - 16, "^8scroll wheel", q.MAIN_FONT);
+            __hint.D7(__invBox, !0);
+            try { __hint.set_local_xScale(__hint.set_local_yScale(.5)); } catch (eH) {}
+
+            // Live skin + idle + vertical inventory scroll + re-clip
             try {
                 var __mpE0 = Mp.prototype.e0;
                 this.e0 = function() {
@@ -51098,15 +51153,37 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         if (__previewSkelRef) {
                             var __t2 = Math.max(.01, (q.player && q.player.l9) ? q.player.l9 : (this.y42 ? this.y42.D43 : 90));
                             __tintPreviewSkin(__previewSkelRef, __t2);
-                            // Keep idle looping
                             try {
-                                if (__previewSkelRef.Z28 != null && __previewSkelRef.Z28 !== "idle") {
-                                    if (typeof __previewSkelRef._38 === "function")
-                                        __previewSkelRef._38("idle", !0, 100, .3);
-                                }
+                                if (typeof __previewSkelRef._38 === "function")
+                                    __previewSkelRef._38("idle", !0, 50, .25);
+                                else if (typeof __previewSkelRef.G7 === "function")
+                                    __previewSkelRef.G7("idle");
                             } catch (eId) {}
                         }
                     } catch (eLiveSkin) {}
+                    // Inventory vertical scroll via mouse wheel / arrow keys
+                    try {
+                        if (this.__dzInvContent) {
+                            var dy = 0;
+                            try {
+                                if (q.mouseWheel) dy = q.mouseWheel;
+                                else if (typeof q.GetMouseWheel === "function") dy = q.GetMouseWheel();
+                            } catch (eW) {}
+                            try {
+                                if (q.KeyDown && q.KeyDown(38)) dy = -1; // up
+                                if (q.KeyDown && q.KeyDown(40)) dy = 1;  // down
+                            } catch (eK) {}
+                            if (dy) {
+                                this.__dzInvScroll = Math.max(0, Math.min(this.__dzInvMaxScroll || 0, (this.__dzInvScroll || 0) + dy * 28));
+                                this.__dzInvContent.b7 = -this.__dzInvScroll;
+                            }
+                            // Keep clip tight every frame so rows past the box stay hidden
+                            try {
+                                if (this.__dzInvBox && typeof this.__dzInvBox.set_scrollRect === "function")
+                                    this.__dzInvBox.set_scrollRect(new r(0, 0, this.__dzInvW || 320, this.__dzInvH || 480));
+                            } catch (eClip2) {}
+                        }
+                    } catch (eScroll) {}
                     return __ret;
                 };
             } catch (eE0) {}

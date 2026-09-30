@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Diggerz JA Layout Editor — Customize</title>
+<style>
+  :root { --bg:#0d1118; --panel:#151b26; --line:#2a3344; --text:#e7ecf5; --muted:#8b95a8; --accent:#6bcbff; --gold:#ffd86b; --ok:#7dffa0; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.4 system-ui,Segoe UI,Arial,sans-serif; }
+  #app { display:grid; grid-template-columns:280px 1fr 300px; height:100vh; }
+  aside, #props { padding:14px; background:var(--panel); border-right:1px solid var(--line); overflow:auto; }
+  #props { border-right:none; border-left:1px solid var(--line); }
+  h1 { font-size:16px; color:var(--gold); margin:0 0 6px; }
+  h2 { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin:16px 0 8px; }
+  .sub { color:var(--muted); font-size:12px; margin-bottom:12px; }
+  label { display:block; margin:6px 0 3px; color:var(--muted); font-size:11px; }
+  input, button, textarea, select {
+    width:100%; padding:7px 9px; border-radius:7px; border:1px solid var(--line);
+    background:#0f141d; color:var(--text); font:inherit;
+  }
+  button { cursor:pointer; margin-top:6px; background:#1a2230; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:#1a3550; border-color:#2a6ea8; }
+  button.good { background:#143323; border-color:#2f8a4e; }
+  #stageWrap {
+    position:relative; background:#0a0e14;
+    background-image: linear-gradient(#1a2030 1px, transparent 1px), linear-gradient(90deg, #1a2030 1px, transparent 1px);
+    background-size:40px 40px;
+    overflow:hidden; display:flex; align-items:center; justify-content:center;
+  }
+  #stage {
+    position:relative; width:1100px; height:720px; max-width:95%; max-height:90%;
+    background:rgba(15,22,36,.92); border:2px solid #3a4a66; border-radius:10px;
+    transform-origin:center center;
+  }
+  .box {
+    position:absolute; border:2px solid var(--accent); background:rgba(80,140,220,.12);
+    color:#cde; font-size:11px; padding:4px 6px; cursor:move; user-select:none;
+    min-width:40px; min-height:24px;
+  }
+  .box.active { border-color:var(--gold); background:rgba(255,200,80,.15); z-index:5; }
+  .box .name { font-weight:600; color:var(--gold); pointer-events:none; }
+  .box .size { color:var(--muted); pointer-events:none; font-size:10px; }
+  .handle {
+    position:absolute; right:-5px; bottom:-5px; width:12px; height:12px;
+    background:var(--gold); border-radius:2px; cursor:nwse-resize;
+  }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  #jsonOut { min-height:180px; font-family:ui-monospace,monospace; font-size:11px; }
+  .hint { font-size:11px; color:var(--muted); margin-top:8px; line-height:1.45; }
+  code { background:#0f141d; padding:1px 4px; border-radius:3px; }
+  #status { font-size:11px; color:var(--ok); margin-top:8px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside>
+    <h1>JA Layout Editor</h1>
+    <div class="sub">Drag boxes to place Customize UI. Export JSON for the game to import.</div>
+    <h2>Elements</h2>
+    <div id="list"></div>
+    <button id="btnReset">Reset defaults</button>
+    <h2>Stage</h2>
+    <label>Panel width</label><input type="number" id="pw" value="1100"/>
+    <label>Panel height</label><input type="number" id="ph" value="720"/>
+    <button id="btnApplyStage">Apply stage size</button>
+  </aside>
+
+  <div id="stageWrap">
+    <div id="stage"></div>
+  </div>
+
+  <div id="props">
+    <h2>Selected</h2>
+    <div id="selName" class="sub">Click a box</div>
+    <div class="row">
+      <div><label>X (b6)</label><input type="number" id="px"/></div>
+      <div><label>Y (b7)</label><input type="number" id="py"/></div>
+    </div>
+    <div class="row">
+      <div><label>W</label><input type="number" id="sw"/></div>
+      <div><label>H</label><input type="number" id="sh"/></div>
+    </div>
+    <button id="btnApplyProps">Apply numbers</button>
+    <h2>Export</h2>
+    <button class="primary" id="btnExport">Copy layout JSON</button>
+    <button class="good" id="btnDownload">Download diggerz.customize.layout.v1.json</button>
+    <textarea id="jsonOut" readonly></textarea>
+    <div class="hint">
+      Game reads localStorage key <code>diggerz.customize.layout.v1</code>.<br/>
+      On diggerz site: F12 → console:<br/>
+      <code>localStorage.setItem('diggerz.customize.layout.v1', `...paste...`)</code>
+    </div>
+    <div id="status"></div>
+  </div>
+</div>
+<script>
+const DEFAULTS = {
+  panel: { w: 1100, h: 720 },
+  preview: { x: -20, y: 40, w: 260, h: 380, label: "Player preview" },
+  inventory: { x: 360, y: 10, w: 320, h: 500, label: "Inventory (scroll Y)" },
+  invTitle: { x: 360, y: -250, w: 160, h: 24, label: "Your Items title" },
+  skin: { x: 0, y: -165, w: 400, h: 50, label: "Skin tone slider" },
+  countries: { x: -420, y: -80, w: 280, h: 420, label: "Countries grid" },
+  title: { x: 0, y: -300, w: 200, h: 36, label: "Customize title" }
+};
+
+let layout = JSON.parse(JSON.stringify(DEFAULTS));
+let active = null;
+let drag = null;
+
+const stage = document.getElementById("stage");
+
+function centerToScreen(x, y, w, h) {
+  // Game JA uses center origin; stage top-left origin for editor
+  const cx = layout.panel.w / 2;
+  const cy = layout.panel.h / 2;
+  return {
+    left: cx + x - w / 2,
+    top: cy + y - h / 2
+  };
+}
+
+function screenToCenter(left, top, w, h) {
+  const cx = layout.panel.w / 2;
+  const cy = layout.panel.h / 2;
+  return {
+    x: Math.round(left + w / 2 - cx),
+    y: Math.round(top + h / 2 - cy)
+  };
+}
+
+function render() {
+  stage.style.width = layout.panel.w + "px";
+  stage.style.height = layout.panel.h + "px";
+  stage.innerHTML = "";
+  document.getElementById("pw").value = layout.panel.w;
+  document.getElementById("ph").value = layout.panel.h;
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+
+  Object.keys(layout).forEach(key => {
+    if (key === "panel") return;
+    const el = layout[key];
+    const pos = centerToScreen(el.x, el.y, el.w, el.h);
+    const box = document.createElement("div");
+    box.className = "box" + (active === key ? " active" : "");
+    box.dataset.key = key;
+    box.style.left = pos.left + "px";
+    box.style.top = pos.top + "px";
+    box.style.width = el.w + "px";
+    box.style.height = el.h + "px";
+    box.innerHTML = `<div class="name">${el.label || key}</div><div class="size">${el.w}×${el.h} @ ${el.x},${el.y}</div><div class="handle" data-resize="1"></div>`;
+    stage.appendChild(box);
+
+    const btn = document.createElement("button");
+    btn.textContent = el.label || key;
+    btn.onclick = () => select(key);
+    list.appendChild(btn);
+  });
+  document.getElementById("jsonOut").value = JSON.stringify(layout, null, 2);
+}
+
+function select(key) {
+  active = key;
+  const el = layout[key];
+  document.getElementById("selName").textContent = el.label || key;
+  document.getElementById("px").value = el.x;
+  document.getElementById("py").value = el.y;
+  document.getElementById("sw").value = el.w;
+  document.getElementById("sh").value = el.h;
+  render();
+}
+
+stage.addEventListener("pointerdown", e => {
+  const box = e.target.closest(".box");
+  if (!box) return;
+  const key = box.dataset.key;
+  select(key);
+  const el = layout[key];
+  const isResize = e.target.dataset.resize;
+  drag = {
+    key,
+    resize: !!isResize,
+    startX: e.clientX,
+    startY: e.clientY,
+    origX: el.x,
+    origY: el.y,
+    origW: el.w,
+    origH: el.h
+  };
+  box.setPointerCapture(e.pointerId);
+});
+
+stage.addEventListener("pointermove", e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.startX;
+  const dy = e.clientY - drag.startY;
+  const el = layout[drag.key];
+  if (drag.resize) {
+    el.w = Math.max(40, Math.round(drag.origW + dx));
+    el.h = Math.max(24, Math.round(drag.origH + dy));
+  } else {
+    el.x = Math.round(drag.origX + dx);
+    el.y = Math.round(drag.origY + dy);
+  }
+  select(drag.key);
+});
+
+stage.addEventListener("pointerup", () => { drag = null; });
+
+document.getElementById("btnApplyProps").onclick = () => {
+  if (!active) return;
+  const el = layout[active];
+  el.x = Number(document.getElementById("px").value) || 0;
+  el.y = Number(document.getElementById("py").value) || 0;
+  el.w = Number(document.getElementById("sw").value) || 40;
+  el.h = Number(document.getElementById("sh").value) || 24;
+  render();
+};
+
+document.getElementById("btnApplyStage").onclick = () => {
+  layout.panel.w = Number(document.getElementById("pw").value) || 1100;
+  layout.panel.h = Number(document.getElementById("ph").value) || 720;
+  render();
+};
+
+document.getElementById("btnReset").onclick = () => {
+  layout = JSON.parse(JSON.stringify(DEFAULTS));
+  active = null;
+  render();
+};
+
+document.getElementById("btnExport").onclick = () => {
+  const t = JSON.stringify(layout);
+  navigator.clipboard?.writeText(t);
+  document.getElementById("status").textContent = "Copied layout JSON to clipboard";
+};
+
+document.getElementById("btnDownload").onclick = () => {
+  const blob = new Blob([JSON.stringify(layout, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "diggerz.customize.layout.v1.json";
+  a.click();
+};
+
+render();
+</script>
+</body>
+</html>
