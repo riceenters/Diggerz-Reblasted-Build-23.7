@@ -51086,8 +51086,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             function __makePreviewRig(parent) {
                 var source = __getAuthoritativePlayer();
                 var skel = null;
-                // Never take a skeleton out of the live player's hierarchy. Make
-                // a fresh copy of the exact same guy_anims/guyskin visual rig.
+                // Always build a brand-new exported guyskin rig here. Do NOT pull
+                // one from Fc.n30: those are live-player pooled objects and can be
+                // inactive/hidden when borrowed by Customize.
                 try {
                     var maker = new z;
                     var scaleArg = 1;
@@ -51095,14 +51096,16 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     else if (q.player && q.player.l0 != null) scaleArg = q.player.l0;
                     skel = maker.G2("guy_anims", "guyskin", f, Fc.M39, scaleArg, !0);
                 } catch (eMake) {
-                    try { skel = (new z).G2("guy_anims", "guyskin", f, Fc.M39, 1, !0); } catch (eMake2) {}
+                    try { skel = (new z).G2("guy_anims", "guyskin", f, null, 1, !0); } catch (eMake2) {}
                 }
                 if (!skel) return null;
-                skel.D7(parent, !0);
+                try { skel.D7(parent, !0); } catch (eD7) { return null; }
                 skel.b6 = 0;
                 skel.b7 = 50;
+                // a0=0 means inactive/hidden in this engine. The previous build
+                // accidentally hid the entire preview rig here.
                 try { skel.a0 = 1; } catch (eA0) {}
-                // Match the live player's visual scale/orientation.
+                // Match the live player's visual scale/orientation when available.
                 try {
                     if (source && source.i33) {
                         skel.set_local_xScale(Math.abs(Number(source.i33.a8)) || 2);
@@ -51121,6 +51124,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 var tone = 90;
                 try { if (source.l9 != null) tone = source.l9; } catch (eT) {}
                 try {
+                    // The direct m38 path is intentionally used as the ID->bone
+                    // mapper. It is the game's own switch for slots 0..10, so every
+                    // equipped ID lands on the same head/arm/torso/foot/pants bones
+                    // as the real player.
                     if (!__previewWearer || __previewWearer.__dzSkeleton !== skel || __previewSourcePlayer !== source) {
                         // The proxy inherits the REAL player-character class, not
                         // q.player (which is only the settings object).
@@ -51161,6 +51168,20 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     } catch (eS) {}
                     return icon;
                 } catch (e) { return null; }
+            }
+
+            // Last-resort ID loader: if the live player object is unavailable at
+            // the instant Customize opens, keep the exported rig visible and load
+            // the saved IDs as soon as a real player object exists. The normal
+            // path above still uses the exact m38() bone mapping.
+            function __retryPreviewEquipment(skel, app, tries) {
+                if (!skel) return;
+                try { skel.a0 = 1; } catch (eA) {}
+                var source = __getAuthoritativePlayer();
+                if (source && typeof source.m38 === "function") {
+                    try { __equipOnPreview(skel, app); return; } catch (e) {}
+                }
+                if ((tries|0) < 20) setTimeout(function(){ __retryPreviewEquipment(skel, app, (tries|0)+1); }, 150);
             }
 
             function __applyLive(app, text) {
@@ -51209,8 +51230,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             // items from inventory variants or from a second cache.
             var __app = [];
             try {
-                if (q.player && Array.isArray(q.player.J33) && q.player.J33.length)
-                    __app = q.player.J33.slice(0, 11);
+                var __authoritativeForApp = __getAuthoritativePlayer();
+                if (__authoritativeForApp && Array.isArray(__authoritativeForApp.J33) && __authoritativeForApp.J33.length)
+                    __app = __authoritativeForApp.J33.slice(0, 11);
             } catch (eLive) {}
             if (!__app.length) __app = __appearanceFromSave(__save);
             while (__app.length < 11) __app.push(0);
@@ -51233,7 +51255,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     __previewSkelRef = __skel;
                     this.__diggerzPreviewSkel = __skel;
                     var __initialApp = __getAuthoritativeAppearance();
-                    __equipOnPreview(__skel, __initialApp);
+                    __retryPreviewEquipment(__skel, __initialApp, 0);
+                    try { __skel.a0 = 1; } catch (eActive0) {}
                     if (typeof __skel._38 === "function") __skel._38("idle", !0, 100, .5);
                 } catch (eAttachClone) { __skel = null; }
             }
@@ -51254,12 +51277,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     __skel.D7(__prev, !0);
                     __skel.b6 = 0;
                     __skel.b7 = 50;
-                    try { __skel.a0 = 0; } catch (eA0) {}
+                    try { __skel.a0 = 1; } catch (eA0) {}
                     try {
                         if (typeof __skel.set_local_xScale === "function")
                             __skel.set_local_xScale(__skel.set_local_yScale(2.0));
                     } catch (eScale) {}
-                    try { __prev._9.push(__skel); } catch (ePush) {}
                     // Force idle (loop)
                     try {
                         if (typeof __skel._38 === "function") {
