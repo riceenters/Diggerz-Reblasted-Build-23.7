@@ -50466,13 +50466,14 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.c0 = !0;
         this.A7 = q.CENTERX;
         this.A8 = q.CENTERY;
-        var a = -250
+        var a = -320
           , b = new xa(0,a,"^9Customize",q.MAIN_FONT_BIG);
         b.D7(this, !0);
         this._9.push(b);
         a += 85;
-        this.y42 = new vl(this,0,a,400,50,2,f.HEAD_PNG(),Th.n7(),null,q.player.l9);
+        this.y42 = new vl(this,0,a,280,50,2,f.HEAD_PNG(),Th.n7(),null,q.player.l9);
         this.y42.b7 = a;
+        this.y42.b6 = -360; // LEFT side — do not sit on player/inventory
         this.y42.d49.set_alp(0);
         this._9.push(this.y42);
         this.y43 = z.I9();
@@ -50487,8 +50488,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         b.D7(this, !0);
         b.set_local_xScale(b.set_local_yScale(.7));
         this.y42._9.push(b);
-        a += 75;
-        b = -250;
+        a += 70;
+        b = -520; // flags start on LEFT, not center
         for (var c = 0; 255 > c; ) {
             var d = c++
               , e = new ra;
@@ -50734,9 +50735,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             e.b6 = b,
             e.b7 = a,
             e.set_local_xScale(e.set_local_yScale(2)),
-            b += 36,
-            250 <= e.b6 && (b = -250,
-            a += 24),
+            b += 34,
+            -280 <= e.b6 && (b = -520,
+            a += 22), // stay in left column only
             e.C33 = A(this, this.y46),
             e.C34 = d,
             e._1 = "" + d)
@@ -50927,9 +50928,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             while (__app.length < 11) __app.push(0);
 
             // ---- Center: player preview box (engine idle rig) ----
-            var __prev = new ja(260, 380, !0);
-            __prev.b6 = -20;
-            __prev.b7 = 40;
+            var __prev = new ja(240, 360, !0);
+            __prev.b6 = 0;   // CENTER
+            __prev.b7 = 50;
             __prev.D7(this, !0);
             this._9.push(__prev);
             var __pt = new xa(0, -175, "^7Your Character", q.MAIN_FONT);
@@ -51001,6 +51002,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             try {
                 var __lj = localStorage.getItem("diggerz.customize.layout.v1");
                 if (__lj) __layout = JSON.parse(__lj);
+                // Reject layouts that stack everything in the center (broken editor exports)
+                if (__layout && __layout.inventory && Math.abs(__layout.inventory.x || 0) < 200) {
+                    __layout = null;
+                    try { localStorage.removeItem("diggerz.customize.layout.v1"); } catch (eClr) {}
+                }
             } catch (eL) {}
             function __L(key, field, fallback) {
                 try {
@@ -51011,15 +51017,18 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
             // Apply layout to preview box if present
             try {
-                __prev.b6 = __L("preview", "x", __prev.b6);
-                __prev.b7 = __L("preview", "y", __prev.b7);
+                // Only use saved layout if it actually moves things off a stacked center
+                var __px = __L("preview", "x", 0);
+                var __py = __L("preview", "y", 50);
+                __prev.b6 = __px;
+                __prev.b7 = __py;
             } catch (ePrev) {}
 
-            var __invW = __L("inventory", "w", 320);
-            var __invH = __L("inventory", "h", 480);
+            var __invW = __L("inventory", "w", 300);
+            var __invH = __L("inventory", "h", 500);
             var __invBox = new ja(__invW, __invH, !0);
-            __invBox.b6 = __L("inventory", "x", 360);
-            __invBox.b7 = __L("inventory", "y", 10);
+            __invBox.b6 = __L("inventory", "x", 400); // RIGHT
+            __invBox.b7 = __L("inventory", "y", 20);
             __invBox.D7(this, !0);
             this._9.push(__invBox);
             var __invT = new xa(0, -__invH / 2 + 18, "^9Your Items", q.MAIN_FONT);
