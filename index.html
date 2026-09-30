@@ -19794,7 +19794,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var b = a.Q6();
             b = this.V35(b);
             null != b && (b.q44(a),
-            b.q46(null, !1),
             b == l.z39.n38 && (a = q.GetChildByType(Bd),
             null != a && (a.s42(),
             a.e0(),
@@ -42078,7 +42077,6 @@ return true
                 null != this.B30[e] && (this.B30[e].g39 = g,
                 h.n7(this.B30[e].a4, this.B30[e], this.B30[e].h44, this.B30[e].b14, 0, 0, null, null, this.B30[e].g39));
             this.d34.set_local_xScale(this.d34.set_local_yScale(Math.max(1, (2 * c + 100) / this.d34._5.width)))
-            this.q46(null, !1);
         },
         q45: null,
         q46: function(a, b) {
@@ -118697,7 +118695,10 @@ function loadScript(src) {
         state.ready = true;
         return;
       }
-      applySession(user);
+      // UI ISOLATION TEST: Firebase auth state is kept, but automatic
+      // post-auth cloud inventory/profile loading is disabled.
+      // Manual Settings -> Load from Account remains available.
+      applySession(user, true);
       state.ready = true;
     });
     return auth;
@@ -119214,7 +119215,50 @@ async function logout() {
   install();
 })();
 </script>
+
+<!-- Other original content may be protected by copyright. -->
+<script id="diggerz-native-ui-visibility-fix">
+(function(){
+  function install(){
+    try{
+      if(typeof l==='undefined'||!l.z38){setTimeout(install,100);return}
+      if(window.__diggerzNativeUiVisibilityFix)return;
+      window.__diggerzNativeUiVisibilityFix=true;
+      function walk(node,seen){
+        if(!node||seen.indexOf(node)>=0)return;
+        seen.push(node);
+        var kids=node._9;
+        if(kids&&kids.length){
+          for(var i=0;i<kids.length;i++){
+            var c=kids[i];
+            if(!c)continue;
+            try{
+              // Native radial/shop/trade item nodes are X objects: category 2,
+              // with a real image and a live UI container parent.
+              if(c.a4===2 && c._5 && !c.T40 && !c.t47){
+                var p=c._2;
+                var activeParent=!!(p&&p.d34&&p.B30);
+                if(activeParent && p.a0===0 && p.a2!==false)c.a2=true;
+              }
+            }catch(e0){}
+            walk(c,seen);
+          }
+        }
+      }
+      function tick(){
+        try{
+          var seen=[];
+          if(l.z38&&l.z38._9){
+            for(var i=0;i<l.z38._9.length;i++)walk(l.z38._9[i],seen);
+          }
+        }catch(e){}
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }catch(e){setTimeout(install,250)}
+  }
+  install();
+})();
+</script>
 </body>
 </html>
-<!-- Other original content may be protected by copyright. -->
-
