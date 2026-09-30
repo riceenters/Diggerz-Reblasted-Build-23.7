@@ -50461,7 +50461,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     };
     var Mp = function() {
         this.u40 = q.GetChildByType(Cf);
-        ja.call(this, 800, 640, !0);
+        ja.call(this, 1100, 720, !0);
         E.u4(this, 0, 300, 0, .5, 1, 0, 1);
         this.c0 = !0;
         this.A7 = q.CENTERX;
@@ -50743,174 +50743,202 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         }
 
         this.y45();
-        // --- Extended Customize: live player + clothes from last save ---
-        var __previewSkelRef = null;
 
+        // --- Extended Customize: engine idle rig + shop-style inventory ---
+        var __previewSkelRef = null;
         try {
             var __self = this;
+
             function __loadDigSave() {
                 try {
-                    var keys = ["diggerz.digtrade.v1", "diggerz.inventory.v1"];
+                    // Real Dig+Trade key is diggerz.digtrade.rebuild.v3 (see DiggerzService.STORAGE_KEY)
+                    var keys = [
+                        "diggerz.digtrade.rebuild.v3",
+                        "diggerz.digtrade.v1",
+                        "diggerz.inventory.v1",
+                        "digtrade_save"
+                    ];
                     for (var ki = 0; ki < keys.length; ki++) {
                         var raw = localStorage.getItem(keys[ki]);
                         if (!raw) continue;
                         var data = JSON.parse(raw);
-                        if (data && (Array.isArray(data.slots) || Array.isArray(data.appearance)))
-                            return data;
+                        if (data && (data.slots || data.appearance)) return data;
                     }
+                    // Live service state
+                    try {
+                        if (q.diggerzService && q.diggerzService.state)
+                            return q.diggerzService.state;
+                    } catch (eS) {}
                 } catch (e) {}
                 return null;
             }
-            function __getLiveService() {
-                try {
-                    if (window.DiggerzPvp22 && window.DiggerzPvp22.__instance) return window.DiggerzPvp22.__instance;
-                } catch (e) {}
-                try {
-                    if (l && l.z38 && l.z38.R35 && l.z38.R35.state) return l.z38.R35;
-                } catch (e2) {}
-                return null;
-            }
+
             function __appearanceFromSave(data) {
                 var app = [0,0,0,0,0,0,0,0,0,0,0];
-                if (data && Array.isArray(data.appearance)) {
-                    for (var i = 0; i < 11; i++) app[i] = (data.appearance[i] | 0);
-                }
                 try {
-                    if (q.player && q.player.J33 && q.player.J33.length) {
-                        for (var j = 0; j < 11; j++) {
-                            if ((app[j]|0) === 0 && q.player.J33[j]) app[j] = q.player.J33[j] | 0;
-                        }
-                    }
+                    if (data && data.appearance && data.appearance.length)
+                        for (var i = 0; i < 11 && i < data.appearance.length; i++)
+                            app[i] = data.appearance[i]|0;
+                    else if (q.player && q.player.J33 && q.player.J33.length)
+                        for (var j = 0; j < 11 && j < q.player.J33.length; j++)
+                            app[j] = q.player.J33[j]|0;
                 } catch (e) {}
-                try {
-                    var svc = __getLiveService();
-                    if (svc && svc.state && Array.isArray(svc.state.appearance)) {
-                        for (var k = 0; k < 11; k++) {
-                            if ((app[k]|0) === 0 && svc.state.appearance[k]) app[k] = svc.state.appearance[k] | 0;
-                        }
-                    }
-                } catch (e2) {}
                 return app;
             }
 
+            function __skinColor(tone) {
+                // Player l9 is typically 1-100 (slider). Engine head uses that value in m35,
+                // but some paths expect 0-1-ish. Map 1-100 -> same curve as the Skin Tone UI.
+                tone = Number(tone);
+                if (!(tone > 0)) tone = 90;
+                if (tone > 1.5)
+                    return .45 + 1.1 * (Math.min(100, tone) / 100);
+                return tone;
+            }
             function __tintPreviewSkin(skel, tone) {
                 if (!skel || typeof skel.f2 !== "function") return;
-                tone = Math.max(.01, tone || 90);
-                // Same slots as player m35 (head) + m36 (hands / front_arm + back_arm)
+                var c = __skinColor(tone);
                 var slots = ["head", "front_arm", "back_arm"];
                 for (var i = 0; i < slots.length; i++) {
                     try {
                         var part = skel.f2(slots[i]);
                         if (!part) continue;
                         if (typeof part.set_local_r === "function")
-                            part.set_local_r(part.set_local_g(part.set_local_b(tone)));
-                        // clear child overlays that block skin (mirrors m36)
-                        try {
-                            part.C2 = !1;
-                            if (part._9) {
-                                for (var j = 0; j < part._9.length; j++) {
-                                    try { part._9[j].C2 = !1; } catch (eC) {}
-                                }
-                            }
-                        } catch (eC2) {}
+                            part.set_local_r(part.set_local_g(part.set_local_b(c)));
                     } catch (eSlot) {}
                 }
+            }
+            // Match player m35: reset head texture + attach eyes
+            function __ensureHeadAndEyes(skel, tone) {
+                if (!skel || typeof skel.f2 !== "function") return;
+                try {
+                    var head = skel.f2("head");
+                    if (!head) return;
+                    try { head.F5(); } catch (eF) {}
+                    try { head.Init(f.HEAD_PNG()); } catch (eI) {}
+                    try { head.F5(); } catch (eF2) {}
+                    try { head.C2 = !1; } catch (eC) {}
+                    var c = __skinColor(tone);
+                    try { head.set_local_r(head.set_local_g(head.set_local_b(c))); } catch (eT) {}
+                    // Remove old eyes if any, then add fresh eyes (same offsets as m35)
+                    try {
+                        if (head._9) {
+                            for (var i = head._9.length - 1; i >= 0; i--) {
+                                try {
+                                    if (head._9[i] && head._9[i]._1 === "eyes")
+                                        head._9.splice(i, 1);
+                                } catch (eR) {}
+                            }
+                        }
+                    } catch (eOld) {}
+                    try {
+                        var eyes = z.I9();
+                        eyes.D7(head, !0);
+                        eyes.Init(f.EYES_PNG());
+                        eyes.b6 = -7;
+                        eyes.b7 = -3;
+                        eyes.b2 = !0;
+                        eyes._1 = "eyes";
+                        eyes.set_r(eyes.set_g(eyes.set_b(1)));
+                        if (!head._9) head._9 = [];
+                        head._9.push(eyes);
+                    } catch (eEyes) {}
+                } catch (e) {}
+            }
+
+            function __equipOnPreview(skel, app) {
+                if (!skel) return;
+                var tone = 90;
+                try { if (q.player && q.player.l9) tone = q.player.l9; } catch (eT) {}
+                try {
+                    if (q.player && typeof q.player.m38 === "function") {
+                        var oldSk = q.player.i33;
+                        q.player.i33 = skel;
+                        q.player.J33 = [];
+                        try { q.player.m38((app && app.slice) ? app.slice() : [0,0,0,0,0,0,0,0,0,0,0], ""); } catch (eM) {}
+                        q.player.i33 = oldSk;
+                        try { q.player.J33 = (app && app.slice) ? app.slice() : q.player.J33; } catch (eJ) {}
+                    }
+                } catch (e) {}
+                // Always restore head texture + eyes + correct skin (m38 can leave head pure white on title)
+                try { __ensureHeadAndEyes(skel, tone); } catch (eH) {}
+                try { __tintPreviewSkin(skel, tone); } catch (eS) {}
+            }
+
+            function __makeItemIcon(parent, itemId, category, count) {
+                // Same pattern the dig/trade inventory uses: X + h.n7
+                try {
+                    var cat = (category|0) || 2;
+                    var id = itemId|0;
+                    if (!id) return null;
+                    var icon = new X(parent, cat, id, 0, 0, count|1, 0, 0);
+                    try { h.n7(cat, icon, id, 0); } catch (eN) {}
+                    try { if (typeof icon.N23 === "function") icon.N23(); } catch (eN23) {}
+                    try {
+                        if (typeof icon.set_local_xScale === "function")
+                            icon.set_local_xScale(icon.set_local_yScale(0.55));
+                    } catch (eS) {}
+                    return icon;
+                } catch (e) { return null; }
             }
 
             function __applyLive(app, text) {
                 try {
-                    if (q.player && typeof q.player.m38 === "function" && q.player.i33 && q.player.i33.Z28 != null) {
+                    if (q.player && typeof q.player.m38 === "function" && q.player.i33 && q.player.i33.Z28 != null)
                         q.player.m38(app.slice(), text || "");
-                    }
                 } catch (e) {}
-                // Preview rig wears the same items (real engine m38 on preview skeleton)
                 try {
-                    if (__previewSkelRef && q.player && typeof q.player.m38 === "function") {
-                        var __os = q.player.i33;
-                        q.player.i33 = __previewSkelRef;
-                        try { q.player.J33 = []; } catch (eZ) {}
-                        try { q.player.m38(app.slice(), text || ""); } catch (e2) {}
-                        try { __tintPreviewSkin(__previewSkelRef, q.player.l9 || 90); } catch (eSk) {}
-                        q.player.i33 = __os;
-                    }
-                } catch (e3) {}
-                try {
-                    var svc = __getLiveService();
-                    if (svc && svc.state) {
-                        svc.state.appearance = app.slice(0, 11);
-                        while (svc.state.appearance.length < 11) svc.state.appearance.push(0);
-                        if (text != null) svc.state.appearanceText = text || "";
-                        if (typeof svc.sendPlayer === "function") svc.sendPlayer();
-                        if (typeof svc.markDirty === "function") svc.markDirty();
-                        if (typeof svc.save === "function") svc.save(true);
-                    }
+                    if (__previewSkelRef) __equipOnPreview(__previewSkelRef, app);
                 } catch (e2) {}
                 try {
-                    var data = __loadDigSave() || { version: 6, slots: [], appearance: app.slice() };
-                    data.appearance = app.slice(0, 11);
-                    if (text != null) data.appearanceText = text || "";
-                    localStorage.setItem("diggerz.digtrade.v1", JSON.stringify(data));
-                } catch (e3) {}
-            }
-            function __itemLabel(slots, id) {
-                if (!id) return "";
-                if (Array.isArray(slots)) {
-                    for (var i = 0; i < slots.length; i++) {
-                        var s = slots[i];
-                        if (s && (s.id|0) === (id|0))
-                            return String(s.text || s.name || ("#" + id));
+                    var save = __loadDigSave() || { version: 6, slots: [], appearance: app.slice() };
+                    save.appearance = app.slice();
+                    try {
+                        var rawKey = localStorage.getItem("diggerz.digtrade.rebuild.v3");
+                        if (rawKey) {
+                            var full = JSON.parse(rawKey);
+                            full.appearance = app.slice();
+                            localStorage.setItem("diggerz.digtrade.rebuild.v3", JSON.stringify(full));
+                        } else {
+                            localStorage.setItem("diggerz.digtrade.rebuild.v3", JSON.stringify(save));
+                        }
+                    } catch (eKey) {
+                        localStorage.setItem("diggerz.digtrade.v1", JSON.stringify(save));
                     }
-                }
-                try {
-                    var svc = __getLiveService();
-                    if (svc && typeof svc.itemName === "function")
-                        return String(svc.itemName(2, id) || ("#" + id));
-                } catch (e) {}
-                return "#" + id;
+                } catch (e3) {}
             }
 
             var __save = __loadDigSave();
-            var __slots = (__save && Array.isArray(__save.slots)) ? __save.slots : [];
-            try {
-                var svc0 = __getLiveService();
-                if (svc0 && svc0.state && Array.isArray(svc0.state.slots) && svc0.state.slots.length)
-                    __slots = svc0.state.slots;
-            } catch (eS) {}
+            var __slots = (__save && __save.slots) ? __save.slots : [];
             var __app = __appearanceFromSave(__save);
-            var __appText = (__save && __save.appearanceText) || "";
-            // Apply last-save clothes to the real player immediately
-            __applyLive(__app, __appText);
+            // Prefer live service appearance (most accurate when available)
+            try {
+                if (q.diggerzService && q.diggerzService.state && q.diggerzService.state.appearance)
+                    __app = q.diggerzService.state.appearance.slice(0, 11);
+            } catch (eSvc) {}
+            try {
+                if (q.player && q.player.J33 && q.player.J33.length) {
+                    var any = false;
+                    for (var zi = 0; zi < q.player.J33.length; zi++) if (q.player.J33[zi]|0) any = true;
+                    if (any) __app = q.player.J33.slice().concat([0,0,0,0,0,0,0,0,0,0,0]).slice(0, 11);
+                }
+            } catch (eLive) {}
+            // Pad appearance to 11
+            while (__app.length < 11) __app.push(0);
 
-            // Preview box (left) - sprites at rig-editor idle positions (inside JA, no DOM)
-            var __prev = new ja(220, 320, !0);
-            __prev.b6 = -290;
-            __prev.b7 = -10;
+            // ---- Center: player preview box (engine idle rig) ----
+            var __prev = new ja(260, 380, !0);
+            __prev.b6 = -20;
+            __prev.b7 = 40;
             __prev.D7(this, !0);
             this._9.push(__prev);
-            var __pt = new xa(0, -145, "^7Your Rig", q.MAIN_FONT);
+            var __pt = new xa(0, -175, "^7Your Character", q.MAIN_FONT);
             __pt.D7(__prev, !0);
 
-            // Exact idle t=0 attachment positions from diggerz_player_rig_editor (guyskin)
-            // Editor uses Y-up + horizontal mirror; converted to diggerz local (Y-down, mirrored)
-            var __EDITOR_PARTS = [
-                {slot:"back_shoulder",img:"WHITE_ARM_PNG",x:-6.79,y:-56.80,rot:166.09},
-                {slot:"back_arm_bone",img:"WHITE_ARM_PNG",x:-1.69,y:-46.70,rot:167.50},
-                {slot:"back_lowerleg",img:"LEG_BACK_PNG",x:-17.31,y:-3.42,rot:-174.40},
-                {slot:"chest",img:"WHITE_TORSO_PNG",x:-2.62,y:-48.09,rot:-177.81},
-                {slot:"pants",img:"PANTS_PNG",x:-3.15,y:-17.73,rot:-177.81},
-                {slot:"front_lowerleg",img:"LEG_PNG",x:3.35,y:-1.12,rot:-176.95},
-                {slot:"head_bone",img:"HEAD_PNG",x:1.85,y:-109.73,rot:179.94},
-                {slot:"front_arm_bone",img:"WHITE_ARM_PNG",x:3.63,y:-25.28,rot:-175.63},
-                {slot:"front_shoulder",img:"WHITE_ARM_PNG",x:7.91,y:-44.66,rot:-175.13}
-            ];
-
             var __skel = null;
-            var __borrowed = !1;
             try {
-                if (typeof Fc !== "undefined" && Fc.n30 && Fc.n30.length > 0) {
+                if (typeof Fc !== "undefined" && Fc.n30 && Fc.n30.length > 0)
                     __skel = Fc.n30.pop();
-                    __borrowed = !0;
-                }
             } catch (ePool) {}
             if (!__skel) {
                 try {
@@ -50923,91 +50951,145 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 }
             }
 
-            // Prefer REAL engine skeleton - bone positions ARE the rig editor data.
             if (__skel) {
                 try {
                     __skel.D7(__prev, !0);
                     __skel.b6 = 0;
-                    __skel.b7 = 30;
+                    __skel.b7 = 50;
                     try { __skel.a0 = 0; } catch (eA0) {}
                     try {
                         if (typeof __skel.set_local_xScale === "function")
-                            __skel.set_local_xScale(__skel.set_local_yScale(1.5));
+                            __skel.set_local_xScale(__skel.set_local_yScale(2.0));
                     } catch (eScale) {}
                     try { __prev._9.push(__skel); } catch (ePush) {}
+                    // Force idle (loop)
                     try {
-                        if (typeof __skel._38 === "function") __skel._38("idle", !0, 100, .5);
-                        else if (typeof __skel.G7 === "function") __skel.G7("idle");
+                        if (typeof __skel._38 === "function")
+                            __skel._38("idle", !0, 100, .5);
+                        else if (typeof __skel.G7 === "function")
+                            __skel.G7("idle");
                     } catch (eIdle) {}
-                    try {
-                        if (q.player && typeof q.player.m38 === "function") {
-                            var __oldSk = q.player.i33;
-                            var __wearApp = (__app && __app.slice) ? __app.slice() : [0,0,0,0,0,0,0,0,0,0,0];
-                            // Prefer live equipped items if player already has them
-                            try {
-                                if (q.player.J33 && q.player.J33.length)
-                                    __wearApp = q.player.J33.slice();
-                            } catch (eJ) {}
-                            q.player.i33 = __skel;
-                            // Force full wear rebuild (empty J33 makes m38 treat as full change)
-                            try { q.player.J33 = []; } catch (eZ) {}
-                            try { q.player.m38(__wearApp, ""); } catch (eM) {}
-                            // Live skin tone on head slot
-                            try { __tintPreviewSkin(__skel, q.player.l9 || 90); } catch (eSk) {}
-                            q.player.i33 = __oldSk;
-                        }
-                    } catch (eWear) {}
+                    // Wear current items (after idle so body exists)
+                    __equipOnPreview(__skel, __app);
                     __previewSkelRef = __skel;
                     this.__diggerzPreviewSkel = __skel;
-                    this.__diggerzPreviewBorrowed = __borrowed;
                 } catch (eAttach) { __skel = null; }
             }
 
-            // Fallback: place body sprites at the SAME editor attachment coords
             if (!__skel) {
-                var __rigRoot = z.I9();
-                __rigRoot.D7(__prev, !0);
-                __rigRoot.b6 = 0;
-                __rigRoot.b7 = 20;
-                try { __prev._9.push(__rigRoot); } catch (eRR) {}
-                var __sk = 1;
-                try { if (q.player && q.player.l9) __sk = .45 + 1.1 * q.player.l9 / 100; } catch (eSk) {}
-                for (var __pi = 0; __pi < __EDITOR_PARTS.length; __pi++) {
-                    var __p = __EDITOR_PARTS[__pi];
-                    try {
-                        var __fn = f[__p.img];
-                        if (typeof __fn !== "function") continue;
-                        var __spr = z.I9();
-                        __spr.Init(__fn());
-                        __spr.D7(__rigRoot, !0);
-                        __spr.b6 = __p.x;
-                        __spr.b7 = __p.y;
-                        try {
-                            if (typeof __spr.set_rotation === "function") __spr.set_rotation(__p.rot);
-                            else if (typeof __spr.set_rot === "function") __spr.set_rot(__p.rot * Math.PI / 180);
-                        } catch (eRot) {}
-                        if (__p.img === "HEAD_PNG") {
-                            try { __spr.set_local_r(__spr.set_local_g(__spr.set_local_b(__sk))); } catch (eH) {}
-                            try {
-                                var __eyes = z.I9();
-                                __eyes.Init(f.EYES_PNG());
-                                __eyes.D7(__spr, !0);
-                                __eyes.b6 = -7;
-                                __eyes.b7 = -2;
-                                __spr._9.push(__eyes);
-                            } catch (eE) {}
-                        }
-                        try { __rigRoot._9.push(__spr); } catch (eP) {}
-                    } catch (ePart) {}
-                }
+                var __fb = new xa(0, 0, "^8Rig loading...", q.MAIN_FONT);
+                __fb.D7(__prev, !0);
             }
 
-            var __st = new xa(0, 145, __skel ? "^2Idle (editor rig)" : "^8Editor sprite layout", q.MAIN_FONT);
-            __st.D7(__prev, !0);
-            try { __st.set_local_xScale(__st.set_local_yScale(.75)); } catch (eSt) {}
+            // ---- Right: scrollable inventory grid with real item icons (shop-style) ----
+            var __invBox = new ja(340, 520, !0);
+            __invBox.b6 = 360;
+            __invBox.b7 = 20;
+            __invBox.D7(this, !0);
+            this._9.push(__invBox);
+            var __invT = new xa(0, -245, "^9Your Items", q.MAIN_FONT);
+            __invT.D7(__invBox, !0);
 
+            // Collect clothing items from save + live inventory if available
+            var __items = [];
+            try {
+                for (var si = 0; si < __slots.length; si++) {
+                    var s = __slots[si];
+                    if (!s || !(s.id|0) || !(s.count|0)) continue;
+                    if ((s.category|0) !== 2 && (s.category|0) !== 0) continue;
+                    __items.push({ id: s.id|0, category: (s.category|0) || 2, count: s.count|0, text: s.text || s.name || "" });
+                }
+            } catch (eSlots) {}
+            // Merge live dig inventory if present
+            try {
+                var inv = l.z39 && l.z39.n38 && l.z39.n38.B30;
+                if (inv) {
+                    for (var ii = 0; ii < inv.length; ii++) {
+                        var it = inv[ii];
+                        if (!it || !(it.h44|0) || (it.a4|0) !== 2) continue;
+                        var found = false;
+                        for (var jj = 0; jj < __items.length; jj++)
+                            if (__items[jj].id === (it.h44|0)) { found = true; break; }
+                        if (!found)
+                            __items.push({ id: it.h44|0, category: 2, count: it.g36|1, text: "" });
+                    }
+                }
+            } catch (eInv) {}
 
-            // Live skin tone: patch e0 so slider updates preview head every frame
+            var __cols = 4;
+            var __cell = 68;
+            var __startY = -200;
+            var __maxShow = 28;
+            var __shown = 0;
+            for (var __ii = 0; __ii < __items.length && __shown < __maxShow; __ii++) {
+                var __it = __items[__ii];
+                var __col = __shown % __cols;
+                var __row = (__shown / __cols) | 0;
+                var __cx = -110 + __col * __cell;
+                var __cy = __startY + __row * __cell;
+
+                var __cellJa = new ja(60, 60, !0);
+                __cellJa.b6 = __cx;
+                __cellJa.b7 = __cy;
+                __cellJa.D7(__invBox, !0);
+                try { __invBox._9.push(__cellJa); } catch (eCJ) {}
+
+                var __icon = __makeItemIcon(__cellJa, __it.id, __it.category, __it.count);
+                if (__icon) {
+                    try { __icon.b6 = 0; __icon.b7 = 0; } catch (ePos) {}
+                } else {
+                    var __num = new xa(0, 0, "^7#" + __it.id, q.MAIN_FONT);
+                    __num.D7(__cellJa, !0);
+                    try { __num.set_local_xScale(__num.set_local_yScale(.55)); } catch (eN) {}
+                }
+
+                // Worn highlight
+                var __worn = false;
+                for (var __w = 0; __w < 11; __w++)
+                    if ((__app[__w]|0) === __it.id) __worn = true;
+                if (__worn) {
+                    try {
+                        var __mark = new xa(0, 24, "^2EQ", q.MAIN_FONT);
+                        __mark.D7(__cellJa, !0);
+                        __mark.set_local_xScale(__mark.set_local_yScale(.5));
+                    } catch (eMk) {}
+                }
+
+                (function(item, cell) {
+                    cell.C33 = function() {
+                        try {
+                            var app = __app.slice();
+                            // Find wear slot from live inv metadata
+                            var wearSlot = -1;
+                            try {
+                                var inv2 = l.z39 && l.z39.n38 && l.z39.n38.B30;
+                                if (inv2) {
+                                    for (var k = 0; k < inv2.length; k++) {
+                                        if (inv2[k] && inv2[k].h44 === item.id && inv2[k].a4 === 2) {
+                                            wearSlot = inv2[k].t46|0;
+                                            break;
+                                        }
+                                    }
+                                }
+                            } catch (e) {}
+                            if (wearSlot < 0 || wearSlot > 10) wearSlot = 1;
+                            if (wearSlot === 8) return;
+                            if ((app[wearSlot]|0) === item.id) app[wearSlot] = 0;
+                            else app[wearSlot] = item.id;
+                            __app = app;
+                            __applyLive(app, "");
+                        } catch (eClick) {}
+                    };
+                })(__it, __cellJa);
+
+                __shown++;
+            }
+            if (__shown === 0) {
+                var __empty = new xa(0, -100, "^8No clothing items yet\n^8Play Dig+Trade to get some", q.MAIN_FONT);
+                __empty.D7(__invBox, !0);
+            }
+
+            // Live skin + keep idle playing every frame
             try {
                 var __mpE0 = Mp.prototype.e0;
                 this.e0 = function() {
@@ -51016,73 +51098,21 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         if (__previewSkelRef) {
                             var __t2 = Math.max(.01, (q.player && q.player.l9) ? q.player.l9 : (this.y42 ? this.y42.D43 : 90));
                             __tintPreviewSkin(__previewSkelRef, __t2);
+                            // Keep idle looping
+                            try {
+                                if (__previewSkelRef.Z28 != null && __previewSkelRef.Z28 !== "idle") {
+                                    if (typeof __previewSkelRef._38 === "function")
+                                        __previewSkelRef._38("idle", !0, 100, .3);
+                                }
+                            } catch (eId) {}
                         }
                     } catch (eLiveSkin) {}
                     return __ret;
                 };
             } catch (eE0) {}
 
-            // Inventory column — click to equip (updates appearance + live player + save)
-            var __invT = new xa(300, -230, "^9Your Items", q.MAIN_FONT);
-            __invT.D7(this, !0);
-            this._9.push(__invT);
-            var __shown = 0;
-            for (var __si = 0; __si < __slots.length && __shown < 14; __si++) {
-                var __s = __slots[__si];
-                if (!__s || !(__s.id|0) || !(__s.count|0)) continue;
-                // Prefer clothing (category 2) but show others too
-                var __label = __itemLabel(__slots, __s.id) || ("#" + (__s.id|0));
-                var __isWorn = false;
-                for (var __aj = 0; __aj < 11; __aj++) if ((__app[__aj]|0) === (__s.id|0)) __isWorn = true;
-                var __row = new ob(300, -200 + __shown * 26, (__isWorn ? "^2" : "^7") + String(__label).slice(0, 18), q.MAIN_FONT);
-                __row.D7(this, !0);
-                (function(slot, row, slotIndex){
-                    row.C33 = function(){
-                        try {
-                            if (!slot || (slot.category|0) !== 2) return;
-                            var save = __loadDigSave() || { version: 6, slots: __slots, appearance: __app.slice() };
-                            var app = __appearanceFromSave(save);
-                            // Determine wear slot via inventory UI metadata if possible
-                            var wearSlot = -1;
-                            try {
-                                var inv = l.z39 && l.z39.n38 && l.z39.n38.B30;
-                                if (inv) {
-                                    for (var ii = 0; ii < inv.length; ii++) {
-                                        if (inv[ii] && inv[ii].h44 === (slot.id|0) && inv[ii].a4 === 2) {
-                                            wearSlot = inv[ii].t46|0;
-                                            break;
-                                        }
-                                    }
-                                }
-                            } catch (e) {}
-                            if (wearSlot < 0 || wearSlot > 10) {
-                                // Fallback common mapping: use first empty cosmetic slot 0-9 except hand-like
-                                wearSlot = 1; // hat/default
-                            }
-                            if (wearSlot === 8) return; // pet skip
-                            var cur = app[wearSlot]|0;
-                            if (cur === (slot.id|0)) app[wearSlot] = 0;
-                            else app[wearSlot] = slot.id|0;
-                            __applyLive(app, save.appearanceText || "");
-                            try { row.E37("^2" + String(slot.text || slot.name || slot.id)); } catch (e2) {}
-                            // Refresh worn list text if possible
-                            try {
-                                if (window.DiggerzAuth237 && window.DiggerzAuth237.markDirty)
-                                    window.DiggerzAuth237.markDirty();
-                            } catch (e3) {}
-                        } catch (e4) {}
-                    };
-                })(__s, __row, __si);
-                this._9.push(__row);
-                __shown++;
-            }
-            if (__shown === 0) {
-                var __empty = new xa(300, -200, "^8No items yet", q.MAIN_FONT);
-                __empty.D7(this, !0);
-                this._9.push(__empty);
-            }
         } catch (__eCust) {
-            try { console.warn("[Customize live]", __eCust); } catch (e) {}
+            try { console.warn("[Customize]", __eCust); } catch (e) {}
         }
         this.e0()
 
