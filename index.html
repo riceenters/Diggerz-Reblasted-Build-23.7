@@ -50744,6 +50744,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 
         this.y45();
         // --- Extended Customize: live player + clothes from last save ---
+        var __previewSkelRef = null;
+
         try {
             var __self = this;
             function __loadDigSave() {
@@ -50790,12 +50792,48 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 } catch (e2) {}
                 return app;
             }
+
+            function __tintPreviewSkin(skel, tone) {
+                if (!skel || typeof skel.f2 !== "function") return;
+                tone = Math.max(.01, tone || 90);
+                // Same slots as player m35 (head) + m36 (hands / front_arm + back_arm)
+                var slots = ["head", "front_arm", "back_arm"];
+                for (var i = 0; i < slots.length; i++) {
+                    try {
+                        var part = skel.f2(slots[i]);
+                        if (!part) continue;
+                        if (typeof part.set_local_r === "function")
+                            part.set_local_r(part.set_local_g(part.set_local_b(tone)));
+                        // clear child overlays that block skin (mirrors m36)
+                        try {
+                            part.C2 = !1;
+                            if (part._9) {
+                                for (var j = 0; j < part._9.length; j++) {
+                                    try { part._9[j].C2 = !1; } catch (eC) {}
+                                }
+                            }
+                        } catch (eC2) {}
+                    } catch (eSlot) {}
+                }
+            }
+
             function __applyLive(app, text) {
                 try {
-                    if (q.player && typeof q.player.m38 === "function") {
+                    if (q.player && typeof q.player.m38 === "function" && q.player.i33 && q.player.i33.Z28 != null) {
                         q.player.m38(app.slice(), text || "");
                     }
                 } catch (e) {}
+                // Preview rig wears the same items (real engine m38 on preview skeleton)
+                try {
+                    if (__previewSkelRef && q.player && typeof q.player.m38 === "function") {
+                        var __os = q.player.i33;
+                        q.player.i33 = __previewSkelRef;
+                        try { q.player.J33 = []; } catch (eZ) {}
+                        try { q.player.m38(app.slice(), text || ""); } catch (e2) {}
+                        try { __tintPreviewSkin(__previewSkelRef, q.player.l9 || 90); } catch (eSk) {}
+                        q.player.i33 = __os;
+                    }
+                } catch (e3) {}
                 try {
                     var svc = __getLiveService();
                     if (svc && svc.state) {
@@ -50843,7 +50881,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             // Apply last-save clothes to the real player immediately
             __applyLive(__app, __appText);
 
-            // Preview box (left) — full playerig wearing saved items
+            // Preview box (left) - sprites at rig-editor idle positions (inside JA, no DOM)
             var __prev = new ja(220, 320, !0);
             __prev.b6 = -290;
             __prev.b7 = -10;
@@ -50852,147 +50890,137 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var __pt = new xa(0, -145, "^7Your Rig", q.MAIN_FONT);
             __pt.D7(__prev, !0);
 
-            function __mk(imgFn, parent, x, y, sc, skinMul) {
-                var spr = z.I9();
-                try { spr.Init(imgFn()); } catch (e) { return null; }
-                spr.D7(parent, !0);
-                spr.b6 = x || 0;
-                spr.b7 = y || 0;
-                if (sc) try { spr.set_local_xScale(spr.set_local_yScale(sc)); } catch (e2) {}
-                if (skinMul != null) {
-                    try { spr.set_local_r(spr.set_local_g(spr.set_local_b(skinMul))); } catch (e3) {}
+            // Exact idle t=0 attachment positions from diggerz_player_rig_editor (guyskin)
+            // Editor uses Y-up + horizontal mirror; converted to diggerz local (Y-down, mirrored)
+            var __EDITOR_PARTS = [
+                {slot:"back_shoulder",img:"WHITE_ARM_PNG",x:-6.79,y:-56.80,rot:166.09},
+                {slot:"back_arm_bone",img:"WHITE_ARM_PNG",x:-1.69,y:-46.70,rot:167.50},
+                {slot:"back_lowerleg",img:"LEG_BACK_PNG",x:-17.31,y:-3.42,rot:-174.40},
+                {slot:"chest",img:"WHITE_TORSO_PNG",x:-2.62,y:-48.09,rot:-177.81},
+                {slot:"pants",img:"PANTS_PNG",x:-3.15,y:-17.73,rot:-177.81},
+                {slot:"front_lowerleg",img:"LEG_PNG",x:3.35,y:-1.12,rot:-176.95},
+                {slot:"head_bone",img:"HEAD_PNG",x:1.85,y:-109.73,rot:179.94},
+                {slot:"front_arm_bone",img:"WHITE_ARM_PNG",x:3.63,y:-25.28,rot:-175.63},
+                {slot:"front_shoulder",img:"WHITE_ARM_PNG",x:7.91,y:-44.66,rot:-175.13}
+            ];
+
+            var __skel = null;
+            var __borrowed = !1;
+            try {
+                if (typeof Fc !== "undefined" && Fc.n30 && Fc.n30.length > 0) {
+                    __skel = Fc.n30.pop();
+                    __borrowed = !0;
                 }
-                try { parent._9.push(spr); } catch (e4) {}
-                return spr;
-            }
-
-            var __sk = 1;
-            try {
-                if (q.player && q.player.l9)
-                    __sk = .45 + 1.1 * q.player.l9 / 100;
-            } catch (eSk) {}
-            var __shirtIdx = 0;
-            try {
-                var __guid = (q.player && q.player.q7 && q.player.q7.P4) || localStorage.getItem("diggerz.playerGuid.v1") || "0";
-                __shirtIdx = Math.abs(String(__guid).split("").reduce(function(a,c){return a + c.charCodeAt(0);},0)) % 10;
-            } catch (eG) {}
-
-            // Layered idle body (back → front)
-            var __rig = z.I9();
-            __rig.D7(__prev, !0);
-            __rig.b7 = 10;
-            try { __rig.set_local_xScale(__rig.set_local_yScale(1.15)); } catch (eR) {}
-            __prev._9.push(__rig);
-
-            var __backArm = __mk(f.WHITE_ARM_PNG, __rig, -14, -8, 1, null);
-            var __backLeg = __mk(f.LEG_BACK_PNG, __rig, -6, 28, 1, 1);
-            var __torso = __mk(f.WHITE_TORSO_PNG, __rig, 0, 0, 1, null);
-            var __pants = __mk(f.PANTS_PNG, __rig, 0, 22, 1, 1);
-            var __frontLeg = __mk(f.LEG_PNG, __rig, 6, 28, 1, 1);
-            var __frontArm = __mk(f.WHITE_ARM_PNG, __rig, 14, -8, 1, null);
-            var __head = __mk(f.HEAD_PNG, __rig, 0, -36, 1, __sk);
-            if (__head) {
-                var __eyes = __mk(f.EYES_PNG, __head, -7, -2, 1, 1);
-            }
-            // Permanent shirt color on torso/arms
-            try {
-                if (__torso && __torso.h4) __torso.h4(__shirtIdx);
-                if (__frontArm && __frontArm.h4) __frontArm.h4(__shirtIdx);
-                if (__backArm && __backArm.h4) __backArm.h4(__shirtIdx);
-            } catch (eSh) {}
-
-            // Fake player stub so Yf.W48 / wear helpers can resolve skin
-            var __fake = {
-                l9: (q.player && q.player.l9) || 90,
-                J33: __app.slice(),
-                a4: 0,
-                q7: (q.player && q.player.q7) || { P4: String(__shirtIdx) },
-                i33: null,
-                I32: "idle"
-            };
-
-            function __attachWear(itemId, parent, ox, oy) {
-                if (!itemId || !parent) return null;
+            } catch (ePool) {}
+            if (!__skel) {
                 try {
-                    var wear = Yf.W48(itemId|0, q.player || __fake);
-                    if (!wear) {
-                        // Fallback: inventory icon via Yf metadata
-                        var meta = new Yf(q.player || __fake, 2, itemId|0, 0, 0, 1, "", 0);
-                        try { h.n7(2, meta, itemId|0, 0); } catch (eN) {}
-                        if (meta && meta._9 && meta._9[0]) {
-                            wear = z.I9();
-                            try {
-                                wear._3 = meta._9[0]._3;
-                                wear._5 = meta._9[0]._5;
-                            } catch (eC) { return null; }
-                        } else return null;
-                    }
-                    wear.D7(parent, !0);
-                    wear.b6 = ox || 0;
-                    wear.b7 = oy || 0;
-                    wear._1 = "wear";
-                    try { wear.b2 = !0; } catch (eB) {}
-                    try { parent._9.push(wear); } catch (eP) {}
-                    return wear;
-                } catch (eW) { return null; }
+                    var __maker = new z;
+                    var __scaleArg = 1;
+                    try { if (q.player && q.player.l0 != null) __scaleArg = q.player.l0; } catch (eSc) {}
+                    __skel = __maker.G2("guy_anims", "guyskin", f, Fc.M39, __scaleArg, !0);
+                } catch (eG2) {
+                    try { __skel = (new z).G2("guy_anims", "guyskin", f, null, 1, !0); } catch (eG2b) {}
+                }
             }
 
-            // Map appearance slots → body parts on the rig
-            // 0 hair, 1 hat, 2 shirt, 3 shoes, 4 hand, 5 back, 6 face, 7 pants, 9 beard
-            try {
-                if (__app[0]) __attachWear(__app[0], __head, 0, 0);
-                if (__app[1]) __attachWear(__app[1], __head, 0, -4);
-                if (__app[6]) __attachWear(__app[6], __head, 0, 2);
-                if (__app[9]) __attachWear(__app[9], __head, 0, 6);
-                // Shirt often replaces torso texture via metadata
-                if (__app[2]) {
+            // Prefer REAL engine skeleton - bone positions ARE the rig editor data.
+            if (__skel) {
+                try {
+                    __skel.D7(__prev, !0);
+                    __skel.b6 = 0;
+                    __skel.b7 = 30;
+                    try { __skel.a0 = 0; } catch (eA0) {}
                     try {
-                        var shirtMeta = new Yf(q.player || __fake, 2, __app[2]|0, 0, 2, 1, "", 0);
-                        h.n7(2, shirtMeta, __app[2]|0, 0);
-                        if (shirtMeta && shirtMeta._3 && __torso) {
-                            __torso._3 = shirtMeta._3;
-                            __torso._5 = shirtMeta._5;
+                        if (typeof __skel.set_local_xScale === "function")
+                            __skel.set_local_xScale(__skel.set_local_yScale(1.5));
+                    } catch (eScale) {}
+                    try { __prev._9.push(__skel); } catch (ePush) {}
+                    try {
+                        if (typeof __skel._38 === "function") __skel._38("idle", !0, 100, .5);
+                        else if (typeof __skel.G7 === "function") __skel.G7("idle");
+                    } catch (eIdle) {}
+                    try {
+                        if (q.player && typeof q.player.m38 === "function") {
+                            var __oldSk = q.player.i33;
+                            var __wearApp = (__app && __app.slice) ? __app.slice() : [0,0,0,0,0,0,0,0,0,0,0];
+                            // Prefer live equipped items if player already has them
                             try {
-                                __torso.set_local_r(shirtMeta.b8);
-                                __torso.set_local_g(shirtMeta.b9);
-                                __torso.set_local_b(shirtMeta.B0);
-                            } catch (eCol) {}
-                        } else {
-                            __attachWear(__app[2], __torso, 0, 0);
+                                if (q.player.J33 && q.player.J33.length)
+                                    __wearApp = q.player.J33.slice();
+                            } catch (eJ) {}
+                            q.player.i33 = __skel;
+                            // Force full wear rebuild (empty J33 makes m38 treat as full change)
+                            try { q.player.J33 = []; } catch (eZ) {}
+                            try { q.player.m38(__wearApp, ""); } catch (eM) {}
+                            // Live skin tone on head slot
+                            try { __tintPreviewSkin(__skel, q.player.l9 || 90); } catch (eSk) {}
+                            q.player.i33 = __oldSk;
                         }
-                    } catch (eShirt) { __attachWear(__app[2], __torso, 0, 0); }
-                }
-                if (__app[7]) {
-                    try {
-                        var pantsMeta = new Yf(q.player || __fake, 2, __app[7]|0, 0, 7, 1, "", 0);
-                        h.n7(2, pantsMeta, __app[7]|0, 0);
-                        if (pantsMeta && pantsMeta._3 && __pants) {
-                            __pants._3 = pantsMeta._3;
-                            __pants._5 = pantsMeta._5;
-                        } else __attachWear(__app[7], __pants, 0, 0);
-                    } catch (ePn) { __attachWear(__app[7], __pants, 0, 0); }
-                }
-                if (__app[3]) {
-                    __attachWear(__app[3], __frontLeg, 0, 10);
-                    __attachWear(__app[3], __backLeg, 0, 10);
-                }
-                if (__app[4]) __attachWear(__app[4], __frontArm, 4, 8);
-                if (__app[5]) __attachWear(__app[5], __torso, 0, -6);
-            } catch (eAtt) {
-                try { console.warn("[rig wear]", eAtt); } catch (e) {}
+                    } catch (eWear) {}
+                    __previewSkelRef = __skel;
+                    this.__diggerzPreviewSkel = __skel;
+                    this.__diggerzPreviewBorrowed = __borrowed;
+                } catch (eAttach) { __skel = null; }
             }
 
-            // Also force real in-world player to match (already called __applyLive)
-            try {
-                if (q.player && q.player.i33) {
-                    // Keep a live link: if idle name exists, set idle
-                    if (q.player.I32 != null) q.player.I32 = "idle";
+            // Fallback: place body sprites at the SAME editor attachment coords
+            if (!__skel) {
+                var __rigRoot = z.I9();
+                __rigRoot.D7(__prev, !0);
+                __rigRoot.b6 = 0;
+                __rigRoot.b7 = 20;
+                try { __prev._9.push(__rigRoot); } catch (eRR) {}
+                var __sk = 1;
+                try { if (q.player && q.player.l9) __sk = .45 + 1.1 * q.player.l9 / 100; } catch (eSk) {}
+                for (var __pi = 0; __pi < __EDITOR_PARTS.length; __pi++) {
+                    var __p = __EDITOR_PARTS[__pi];
+                    try {
+                        var __fn = f[__p.img];
+                        if (typeof __fn !== "function") continue;
+                        var __spr = z.I9();
+                        __spr.Init(__fn());
+                        __spr.D7(__rigRoot, !0);
+                        __spr.b6 = __p.x;
+                        __spr.b7 = __p.y;
+                        try {
+                            if (typeof __spr.set_rotation === "function") __spr.set_rotation(__p.rot);
+                            else if (typeof __spr.set_rot === "function") __spr.set_rot(__p.rot * Math.PI / 180);
+                        } catch (eRot) {}
+                        if (__p.img === "HEAD_PNG") {
+                            try { __spr.set_local_r(__spr.set_local_g(__spr.set_local_b(__sk))); } catch (eH) {}
+                            try {
+                                var __eyes = z.I9();
+                                __eyes.Init(f.EYES_PNG());
+                                __eyes.D7(__spr, !0);
+                                __eyes.b6 = -7;
+                                __eyes.b7 = -2;
+                                __spr._9.push(__eyes);
+                            } catch (eE) {}
+                        }
+                        try { __rigRoot._9.push(__spr); } catch (eP) {}
+                    } catch (ePart) {}
                 }
-            } catch (eIdle) {}
+            }
 
-            var __foot = new xa(0, 145, "^8idle · from save", q.MAIN_FONT);
-            __foot.D7(__prev, !0);
-            try { __foot.set_local_xScale(__foot.set_local_yScale(.9)); } catch (eF) {}
+            var __st = new xa(0, 145, __skel ? "^2Idle (editor rig)" : "^8Editor sprite layout", q.MAIN_FONT);
+            __st.D7(__prev, !0);
+            try { __st.set_local_xScale(__st.set_local_yScale(.75)); } catch (eSt) {}
+
+
+            // Live skin tone: patch e0 so slider updates preview head every frame
+            try {
+                var __mpE0 = Mp.prototype.e0;
+                this.e0 = function() {
+                    var __ret = __mpE0.call(this);
+                    try {
+                        if (__previewSkelRef) {
+                            var __t2 = Math.max(.01, (q.player && q.player.l9) ? q.player.l9 : (this.y42 ? this.y42.D43 : 90));
+                            __tintPreviewSkin(__previewSkelRef, __t2);
+                        }
+                    } catch (eLiveSkin) {}
+                    return __ret;
+                };
+            } catch (eE0) {}
 
             // Inventory column — click to equip (updates appearance + live player + save)
             var __invT = new xa(300, -230, "^9Your Items", q.MAIN_FONT);
