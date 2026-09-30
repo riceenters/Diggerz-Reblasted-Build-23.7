@@ -50990,13 +50990,43 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
 
             function __skinColor(tone) {
-                // Player l9 is typically 1-100 (slider). Engine head uses that value in m35,
-                // but some paths expect 0-1-ish. Map 1-100 -> same curve as the Skin Tone UI.
+                // Use the exact same 0-100 value/range as the real head skin-tone
+                // slider. Do not apply a second brightness curve to the preview rig.
                 tone = Number(tone);
-                if (!(tone > 0)) tone = 90;
-                if (tone > 1.5)
-                    return .45 + 1.1 * (Math.min(100, tone) / 100);
-                return tone;
+                if (!isFinite(tone)) tone = 90;
+                return Math.max(0, Math.min(100, tone));
+            }
+
+            // Build 23.7 stores one permanent 0-11 shirt-color index per player.
+            // The recovered client had the persistence half implemented but never
+            // applied it to the customize rig. Keep the palette deterministic.
+            var __shirtPalette = [
+                [0.90,0.12,0.12], [0.95,0.42,0.08], [0.95,0.78,0.08],
+                [0.20,0.72,0.22], [0.08,0.72,0.68], [0.10,0.40,0.90],
+                [0.35,0.18,0.78], [0.78,0.16,0.70], [0.58,0.31,0.12],
+                [0.35,0.35,0.38], [0.08,0.08,0.10], [0.92,0.92,0.92]
+            ];
+            function __getStoredShirtColor() {
+                try {
+                    if (typeof window.DiggerzGetShirtColor === "function")
+                        return (Number(window.DiggerzGetShirtColor())|0) % __shirtPalette.length;
+                } catch (e) {}
+                try {
+                    var sc = parseInt(localStorage.getItem("diggerz.shirtColor.v1") || "0", 10);
+                    if (isFinite(sc)) return ((sc % __shirtPalette.length) + __shirtPalette.length) % __shirtPalette.length;
+                } catch (e2) {}
+                return 0;
+            }
+            function __tintPreviewShirt(skel) {
+                if (!skel || typeof skel.f2 !== "function") return;
+                try {
+                    var torso = skel.f2("torso");
+                    if (!torso) return;
+                    var col = __shirtPalette[__getStoredShirtColor()] || __shirtPalette[0];
+                    torso.set_local_r(col[0]);
+                    torso.set_local_g(col[1]);
+                    torso.set_local_b(col[2]);
+                } catch (e) {}
             }
             function __tintPreviewSkin(skel, tone) {
                 if (!skel || typeof skel.f2 !== "function") return;
@@ -51063,9 +51093,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         try { q.player.J33 = (app && app.slice) ? app.slice() : q.player.J33; } catch (eJ) {}
                     }
                 } catch (e) {}
-                // Always restore head texture + eyes + correct skin (m38 can leave head pure white on title)
+                // Always restore head texture + eyes + exact slider skin tone.
                 try { __ensureHeadAndEyes(skel, tone); } catch (eH) {}
                 try { __tintPreviewSkin(skel, tone); } catch (eS) {}
+                // And apply the player's permanent starting shirt color.
+                try { __tintPreviewShirt(skel); } catch (eShirt) {}
             }
 
             function __makeItemIcon(parent, itemId, category, count) {
@@ -51228,17 +51260,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 }
             }
 
-            // ---- Right: vertical inventory with clip (shop-style up/down scroll) ----
-            // Layout overrides from JA editor: localStorage diggerz.customize.layout.v1
+            // ---- Right: vertical inventory with real slots + clipped up/down scroll ----
+            // This inventory intentionally uses the game's real inventory-grid art
+            // instead of empty JA containers, and renders the full 50-slot save.
             var __layout = null;
             try {
                 var __lj = localStorage.getItem("diggerz.customize.layout.v1");
                 if (__lj) __layout = JSON.parse(__lj);
-                // Reject layouts that stack everything in the center (broken editor exports)
-                if (__layout && __layout.inventory && Math.abs(__layout.inventory.x || 0) < 200) {
-                    __layout = null;
-                    try { localStorage.removeItem("diggerz.customize.layout.v1"); } catch (eClr) {}
-                }
             } catch (eL) {}
             function __L(key, field, fallback) {
                 try {
@@ -51247,241 +51275,254 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 } catch (e) {}
                 return fallback;
             }
-            // Apply layout to preview box if present
+
+            // Keep the preview where the layout editor put it.
             try {
-                // Only use saved layout if it actually moves things off a stacked center
-                var __px = __L("preview", "x", 0);
-                var __py = __L("preview", "y", 50);
-                __prev.b6 = __px;
-                __prev.b7 = __py;
+                __prev.b6 = __L("preview", "x", 0);
+                __prev.b7 = __L("preview", "y", 50);
             } catch (ePrev) {}
 
-            var __invW = __L("inventory", "w", 300);
+            var __invW = __L("inventory", "w", 320);
             var __invH = __L("inventory", "h", 500);
             var __invBox = new ja(__invW, __invH, !0);
-            __invBox.b6 = 350;
-            __invBox.b7 = 10;
+            __invBox.b6 = __L("inventory", "x", 350);
+            __invBox.b7 = __L("inventory", "y", 10);
             __invBox.D7(this, !0);
             this._9.push(__invBox);
+            this.__dzInvBox = __invBox;
+
             var __invT = new xa(0, -__invH / 2 + 18, "^9Your Items", q.MAIN_FONT);
             __invT.D7(__invBox, !0);
+            try { __invBox._9.push(__invT); } catch (eTitlePush) {}
+            try { __invT.set_local_xScale(__invT.set_local_yScale(.75)); } catch (eTitleScale) {}
 
-            // Clip everything inside the inventory JA so rows past the box are hidden
-            try {
-                if (typeof __invBox.set_scrollRect === "function")
-                    __invBox.set_scrollRect(new r(-__invW / 2, -__invH / 2, __invW, __invH));
-            } catch (eClip) {}
+            // The scroll rectangle is a real render mask. It is applied to the box
+            // after all children are created as well, because the engine can rebuild
+            // masks during layout/e0.
+            function __applyInvClip() {
+                try {
+                    if (typeof __invBox.set_scrollRect === "function")
+                        __invBox.set_scrollRect(new r(
+                            -__invW / 2, -__invH / 2,
+                            __invW, __invH
+                        ));
+                } catch (eClip) {}
+            }
+            __applyInvClip();
 
-            // Content root — we move its b7 for vertical scroll
             var __invContent = z.I9();
             __invContent.D7(__invBox, !0);
+            try { __invBox._9.push(__invContent); } catch (eContentPush) {}
             __invContent.b6 = 0;
             __invContent.b7 = 0;
-            try { __invBox._9.push(__invContent); } catch (eIC) {}
+            this.__dzInvContent = __invContent;
 
-            // Fetch ALL owned items from every known source (digtrade save + live service + HUD inv)
-            var __items = [];
-            var __seen = {};
-            function __addItem(id, category, count, text, variant) {
-                id = id|0; if (!id) return;
-                count = count|0; if (count <= 0) count = 1;
-                category = category|0;
-                var key = category + ":" + id;
-                if (__seen[key]) {
-                    // bump count if duplicate source
-                    for (var ui = 0; ui < __items.length; ui++) {
-                        if (__items[ui].id === id && __items[ui].category === category) {
-                            if (count > __items[ui].count) __items[ui].count = count;
-                            return;
+            // Pull the authoritative inventory from the live service first, then
+            // fall back to the local saved copy. Empty slots are retained so the
+            // customize UI actually looks/behaves like an inventory.
+            var __rawSlots = null;
+            try {
+                var __stNow = q.diggerzService && q.diggerzService.state;
+                if (__stNow && Array.isArray(__stNow.slots)) __rawSlots = __stNow.slots;
+            } catch (eSvcSlots) {}
+            if (!__rawSlots) {
+                try {
+                    var __saveNow = __loadDigSave();
+                    if (__saveNow && Array.isArray(__saveNow.slots)) __rawSlots = __saveNow.slots;
+                } catch (eSaveSlots) {}
+            }
+            if (!Array.isArray(__rawSlots)) __rawSlots = [];
+            while (__rawSlots.length < 50)
+                __rawSlots.push({category:0,id:0,variant:0,count:0,extra:0,text:""});
+
+            var __cols = 4;
+            var __slotSize = 70;
+            var __rowH = 72;
+            var __gridW = __cols * __slotSize;
+            var __startX = -__gridW / 2 + __slotSize / 2;
+            var __startY = -__invH / 2 + 62;
+            var __slotCount = Math.max(50, __rawSlots.length);
+            var __rows = Math.ceil(__slotCount / __cols);
+
+            function __wearSlotForItem(item) {
+                if (!item || !(item.id|0)) return -1;
+                // The real item renderer gets the authoritative appearance slot
+                // from h.n7/O27. Use a temporary icon so we don't guess slot 1.
+                try {
+                    var probe = new X(__invContent, item.category|0, item.id|0,
+                        item.variant|0, 0, Math.max(1, item.count|0), item.b14|0, item.g39);
+                    var ws = probe.t46;
+                    if (ws != null && ws >= 0 && ws <= 10) return ws|0;
+                } catch (eProbe) {}
+                // If the item is currently equipped, the live inventory object
+                // remains the most reliable source.
+                try {
+                    var invLive = l.z39 && l.z39.n38 && l.z39.n38.B30;
+                    if (invLive) {
+                        for (var wi = 0; wi < invLive.length; wi++) {
+                            var live = invLive[wi];
+                            if (live && live.h44 === (item.id|0) && live.a4 === 2 &&
+                                live.t46 >= 0 && live.t46 <= 10)
+                                return live.t46|0;
                         }
                     }
-                    return;
-                }
-                __seen[key] = 1;
-                __items.push({
-                    id: id,
-                    category: category,
-                    count: count,
-                    text: text || "",
-                    variant: variant|0
-                });
+                } catch (eLiveWear) {}
+                return -1;
             }
-            // 1) Slots from parsed digtrade save
-            try {
-                for (var si = 0; si < __slots.length; si++) {
-                    var s = __slots[si];
-                    if (!s) continue;
-                    if (!(s.id|0) || !(s.count|0)) continue;
-                    __addItem(s.id, s.category, s.count, s.text || s.name || "", s.variant);
-                }
-            } catch (eSlots) {}
-            // 2) Live DiggerzService state (most accurate in Dig+Trade session)
-            try {
-                var st = q.diggerzService && q.diggerzService.state;
-                if (st && st.slots) {
-                    for (var ssi = 0; ssi < st.slots.length; ssi++) {
-                        var ss = st.slots[ssi];
-                        if (!ss || !(ss.id|0) || !(ss.count|0)) continue;
-                        __addItem(ss.id, ss.category, ss.count, ss.text || "", ss.variant);
-                    }
-                }
-            } catch (eSvc) {}
-            // 3) Live HUD inventory objects (B30) — same as shop/trade
-            try {
-                var inv = l.z39 && l.z39.n38 && l.z39.n38.B30;
-                if (inv) {
-                    for (var ii = 0; ii < inv.length; ii++) {
-                        var it = inv[ii];
-                        if (!it || !(it.h44|0)) continue;
-                        __addItem(it.h44, it.a4, it.g36 || 1, "", it.b14);
-                    }
-                }
-            } catch (eInv) {}
-            // 4) Currently equipped appearance ids (so worn gear always shows)
-            try {
-                for (var ai = 0; ai < __app.length; ai++) {
-                    var aid = __app[ai]|0;
-                    if (aid) __addItem(aid, 2, 1, "", 0);
-                }
-            } catch (eApp) {}
-            // Prefer clothing (cat 2) first, then everything else
-            try {
-                __items.sort(function(a, b) {
-                    if ((a.category === 2) !== (b.category === 2)) return a.category === 2 ? -1 : 1;
-                    return (a.id|0) - (b.id|0);
-                });
-            } catch (eSort) {}
-            try {
-                var __cntLab = new xa(0, -__invH / 2 + 36, "^7" + __items.length + " items", q.MAIN_FONT);
-                __cntLab.D7(__invBox, !0);
-                try { __cntLab.set_local_xScale(__cntLab.set_local_yScale(.55)); } catch (eCl) {}
-            } catch (eCnt) {}
 
+            function __makeRealSlot(parent, x, y) {
+                var slot = new ra;
+                try { slot.X6(f.INVENTORYGRID_PNG()); } catch (eGrid) {}
+                slot.D7(parent, !0);
+                try { parent._9.push(slot); } catch (eSlotPush) {}
+                slot.b6 = x;
+                slot.b7 = y;
+                try {
+                    var sx = Math.min(.92, (__slotSize - 4) / Math.max(1, slot._5.width));
+                    slot.set_local_xScale(slot.set_local_yScale(sx));
+                } catch (eScaleSlot) {}
+                return slot;
+            }
 
-            // Vertical list (1 column of rows) — not side-to-side
-            var __rowH = 56;
-            var __startY = -__invH / 2 + 50;
-            var __maxShow = 60;
-            var __shown = 0;
-            var __contentH = 0;
-            for (var __ii = 0; __ii < __items.length && __shown < __maxShow; __ii++) {
-                var __it = __items[__ii];
-                var __cy = __startY + __shown * __rowH;
-
-                var __cellJa = new ja(__invW - 36, 48, !0); // visible row box
-                __cellJa.b6 = 0;
-                __cellJa.b7 = __cy;
-                __cellJa.D7(__invContent, !0);
-                try { __invContent._9.push(__cellJa); } catch (eCJ) {}
-
-                var __icon = __makeItemIcon(__cellJa, __it.id, __it.category, __it.count);
-                if (__icon) {
-                    try { __icon.b6 = -(__invW / 2) + 40; __icon.b7 = 0; } catch (ePos) {}
-                }
-                var __lab = new xa(10, 0, "^7#" + __it.id + (__it.text ? " " + String(__it.text).slice(0, 12) : ""), q.MAIN_FONT);
-                __lab.D7(__cellJa, !0);
-                try { __lab.set_local_xScale(__lab.set_local_yScale(.55)); } catch (eN) {}
-
-                var __worn = false;
-                for (var __w = 0; __w < 11; __w++)
-                    if ((__app[__w]|0) === __it.id) __worn = true;
-                if (__worn) {
+            function __putInventoryIcon(slot, item) {
+                if (!item || !(item.id|0) || !(item.count|0)) return null;
+                try {
+                    var icon = new X(slot, item.category|0, item.id|0,
+                        item.variant|0, 0, item.count|0, item.b14|0, item.g39);
+                    icon.N23();
+                    try { slot._9.push(icon); } catch (eIconPush) {}
+                    icon.b6 = 0;
+                    icon.b7 = 0;
                     try {
-                        var __mark = new xa((__invW / 2) - 30, 0, "^2EQ", q.MAIN_FONT);
-                        __mark.D7(__cellJa, !0);
-                        __mark.set_local_xScale(__mark.set_local_yScale(.5));
-                    } catch (eMk) {}
+                        icon.set_local_xScale(icon.set_local_yScale(.72));
+                    } catch (eIconScale) {}
+                    return icon;
+                } catch (eIcon) {
+                    return null;
+                }
+            }
+
+            var __equippedNow = (__app && __app.slice) ? __app.slice() : [];
+            while (__equippedNow.length < 11) __equippedNow.push(0);
+
+            for (var __slotIndex = 0; __slotIndex < __slotCount; __slotIndex++) {
+                var __row = Math.floor(__slotIndex / __cols);
+                var __col = __slotIndex % __cols;
+                var __sx = __startX + __col * __slotSize;
+                var __sy = __startY + __row * __rowH;
+                var __cell = __makeRealSlot(__invContent, __sx, __sy);
+                var __item = __rawSlots[__slotIndex] || null;
+                if (!__item) __item = {category:0,id:0,variant:0,count:0,text:""};
+
+                var __icon = __putInventoryIcon(__cell, __item);
+                var __wear = __wearSlotForItem(__item);
+                var __isWorn = (__wear >= 0 && (__equippedNow[__wear]|0) === (__item.id|0));
+
+                if (__isWorn) {
+                    try {
+                        var __eq = new xa(0, 23, "^2EQ", q.MAIN_FONT_SMALL);
+                        __eq.D7(__cell, !0);
+                        try { __cell._9.push(__eq); } catch (eEqPush) {}
+                        __eq.set_local_xScale(__eq.set_local_yScale(.62));
+                    } catch (eEq) {}
                 }
 
-                (function(item, cell) {
-                    cell.C33 = function() {
-                        try {
-                            var app = __app.slice();
-                            var wearSlot = -1;
+                // Empty slots are still visible, but have no click action.
+                if (__item.id && __item.count) {
+                    (function(item, wearSlot, cell) {
+                        cell.C33 = function() {
                             try {
-                                var inv2 = l.z39 && l.z39.n38 && l.z39.n38.B30;
-                                if (inv2) {
-                                    for (var k = 0; k < inv2.length; k++) {
-                                        if (inv2[k] && inv2[k].h44 === item.id && inv2[k].a4 === 2) {
-                                            wearSlot = inv2[k].t46|0;
-                                            break;
-                                        }
-                                    }
-                                }
-                            } catch (e) {}
-                            if (wearSlot < 0 || wearSlot > 10) wearSlot = 1;
-                            if (wearSlot === 8) return;
-                            if ((app[wearSlot]|0) === item.id) app[wearSlot] = 0;
-                            else app[wearSlot] = item.id;
-                            __app = app;
-                            __applyLive(app, "");
-                        } catch (eClick) {}
-                    };
-                })(__it, __cellJa);
-
-                __shown++;
-                __contentH = __cy + __rowH;
-            }
-            if (__shown === 0) {
-                var __empty = new xa(0, 0, "^8No clothing items yet", q.MAIN_FONT);
-                __empty.D7(__invContent, !0);
+                                if (wearSlot < 0 || wearSlot > 10 || wearSlot === 8) return;
+                                var next = __equippedNow.slice();
+                                while (next.length < 11) next.push(0);
+                                next[wearSlot] = ((next[wearSlot]|0) === (item.id|0)) ? 0 : (item.id|0);
+                                __equippedNow = next;
+                                __app = next.slice();
+                                __applyLive(next, "");
+                                // Rebuild on the next frame so EQ markers and the
+                                // preview always reflect the newly selected item.
+                                setTimeout(function() {
+                                    try {
+                                        if (__previewSkelRef) __equipOnPreview(__previewSkelRef, __equippedNow);
+                                    } catch (eRefresh) {}
+                                }, 0);
+                            } catch (eClick) {}
+                        };
+                    })(__item, __wear, __cell);
+                }
             }
 
-            // Vertical scroll state
             this.__dzInvScroll = 0;
-            this.__dzInvContent = __invContent;
-            this.__dzInvBox = __invBox;
-            window.__dzCustomizePanel = this;
-            try {
-                __invBox.E7 = function() { return !0; };
-                __invBox.C33 = function() {};
-                __prev.E7 = function() { return !0; };
-            } catch (eAbs) {}
-            try { if (window.DiggerzCustomizeLayout) console.log("%c[Customize] DiggerzCustomizeLayout ready — try DiggerzCustomizeLayout.move('inventory', 40, 0)", "color:#7dffa0"); } catch (eR) {}
+            this.__dzInvMaxScroll = Math.max(0,
+                (__rows * __rowH) - (__invH - 82));
+            this.__dzInvH = __invH;
+            this.__dzInvW = __invW;
 
-            // Force user layout on open (same path as live console move)
+            var __hint = new xa(0, __invH / 2 - 18, "^8mouse wheel / arrows", q.MAIN_FONT);
+            __hint.D7(__invBox, !0);
+            try { __invBox._9.push(__hint); } catch (eHintPush) {}
+            try { __hint.set_local_xScale(__hint.set_local_yScale(.52)); } catch (eHint) {}
+
+            // Apply the saved layout after the panel's children exist.
             try {
                 var __forceL = {
-                    preview: { x: 0, y: 50 },
-                    inventory: { x: 350, y: 10 },
-                    skin: { x: 95, y: -240 },
-                    title: { x: 0, y: -320 },
-                    countries: { x: 0, y: 0 }
+                    preview: { x: __L("preview", "x", 0), y: __L("preview", "y", 50) },
+                    inventory: {
+                        x: __L("inventory", "x", 350),
+                        y: __L("inventory", "y", 10),
+                        w: __invW,
+                        h: __invH
+                    },
+                    skin: { x: __L("skin", "x", 95), y: __L("skin", "y", -240) },
+                    title: { x: __L("title", "x", 0), y: __L("title", "y", -320) },
+                    countries: { x: __L("countries", "x", 0), y: __L("countries", "y", 0) }
                 };
-                // countries already baked into base positions
                 try { localStorage.setItem("diggerz.customize.layout.v1", JSON.stringify(__forceL)); } catch (eFL) {}
-                if (this.__dzPrevBox) { this.__dzPrevBox.b6 = 0; this.__dzPrevBox.b7 = 50; }
-                if (this.__dzInvBox) { this.__dzInvBox.b6 = 350; this.__dzInvBox.b7 = 10; }
-                if (this.y42) { this.y42.b6 = 95; this.y42.b7 = -240; }
+                if (this.__dzPrevBox) {
+                    this.__dzPrevBox.b6 = __forceL.preview.x;
+                    this.__dzPrevBox.b7 = __forceL.preview.y;
+                }
+                if (this.__dzInvBox) {
+                    this.__dzInvBox.b6 = __forceL.inventory.x;
+                    this.__dzInvBox.b7 = __forceL.inventory.y;
+                }
+                if (this.y42) {
+                    this.y42.b6 = __forceL.skin.x;
+                    this.y42.b7 = __forceL.skin.y;
+                }
                 var __selfForce = this;
                 setTimeout(function() {
                     try {
-                        if (__selfForce.__dzPrevBox) { __selfForce.__dzPrevBox.b6 = 0; __selfForce.__dzPrevBox.b7 = 50; }
-                        if (__selfForce.__dzInvBox) { __selfForce.__dzInvBox.b6 = 350; __selfForce.__dzInvBox.b7 = 10; }
-                        if (__selfForce.y42) { __selfForce.y42.b6 = 95; __selfForce.y42.b7 = -240; }
+                        if (__selfForce.__dzPrevBox) {
+                            __selfForce.__dzPrevBox.b6 = __forceL.preview.x;
+                            __selfForce.__dzPrevBox.b7 = __forceL.preview.y;
+                        }
+                        if (__selfForce.__dzInvBox) {
+                            __selfForce.__dzInvBox.b6 = __forceL.inventory.x;
+                            __selfForce.__dzInvBox.b7 = __forceL.inventory.y;
+                        }
+                        if (__selfForce.y42) {
+                            __selfForce.y42.b6 = __forceL.skin.x;
+                            __selfForce.y42.b7 = __forceL.skin.y;
+                        }
                         if (window.DiggerzCustomizeLayout && window.DiggerzCustomizeLayout.apply)
                             window.DiggerzCustomizeLayout.apply(__forceL);
                     } catch (eT) {}
                 }, 50);
             } catch (eForce) {}
-            this.__dzInvMaxScroll = Math.max(0, (__shown * __rowH) - (__invH - 70));
-            this.__dzInvH = __invH;
-            this.__dzInvW = __invW;
 
-            // Hint
-            var __hint = new xa(0, __invH / 2 - 16, "^8scroll wheel", q.MAIN_FONT);
-            __hint.D7(__invBox, !0);
-            try { __hint.set_local_xScale(__hint.set_local_yScale(.5)); } catch (eH) {}
-
-            // Live skin + idle + vertical inventory scroll + re-clip
+            // Live skin + idle + inventory scroll. q.mWheel is the engine's actual
+            // one-frame wheel value; the old code read q.mouseWheel, which never exists.
             try {
                 var __mpE0 = Mp.prototype.e0;
                 this.e0 = function() {
                     var __ret = __mpE0.call(this);
                     try {
                         if (__previewSkelRef) {
-                            var __t2 = Math.max(.01, (q.player && q.player.l9) ? q.player.l9 : (this.y42 ? this.y42.D43 : 90));
+                            var __t2 = Math.max(.01, (q.player && q.player.l9) ?
+                                q.player.l9 : (this.y42 ? this.y42.D43 : 90));
                             __tintPreviewSkin(__previewSkelRef, __t2);
+                            try { __tintPreviewShirt(__previewSkelRef); } catch (eShirtLive) {}
                             try {
                                 if (typeof __previewSkelRef._38 === "function")
                                     __previewSkelRef._38("idle", !0, 50, .25);
@@ -51490,33 +51531,53 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                             } catch (eId) {}
                         }
                     } catch (eLiveSkin) {}
-                    // Inventory vertical scroll via mouse wheel / arrow keys
+
                     try {
                         if (this.__dzInvContent) {
-                            var dy = 0;
+                            var __wheel = 0;
                             try {
-                                if (q.mouseWheel) dy = q.mouseWheel;
-                                else if (typeof q.GetMouseWheel === "function") dy = q.GetMouseWheel();
-                            } catch (eW) {}
+                                __wheel = q.mWheel|0;
+                                // Only steal wheel input when the pointer is over the
+                                // inventory. Arrow keys still work anywhere in Customize.
+                                if (__wheel && this.__dzInvBox) {
+                                    var __mx = Number(q.mX), __my = Number(q.mY);
+                                    var __cx = Number(this.__dzInvBox.A7), __cy = Number(this.__dzInvBox.A8);
+                                    if (!isFinite(__mx) || !isFinite(__my) ||
+                                        Math.abs(__mx - __cx) > (this.__dzInvW || 320) / 2 ||
+                                        Math.abs(__my - __cy) > (this.__dzInvH || 500) / 2)
+                                        __wheel = 0;
+                                }
+                            } catch (eW) {} 
+                            var __keyDir = 0;
                             try {
-                                if (q.KeyDown && q.KeyDown(38)) dy = -1; // up
-                                if (q.KeyDown && q.KeyDown(40)) dy = 1;  // down
+                                if (q.KeyDown && q.KeyDown(38)) __keyDir = -1;
+                                if (q.KeyDown && q.KeyDown(40)) __keyDir = 1;
                             } catch (eK) {}
-                            if (dy) {
-                                this.__dzInvScroll = Math.max(0, Math.min(this.__dzInvMaxScroll || 0, (this.__dzInvScroll || 0) + dy * 28));
+                            if (__wheel || __keyDir) {
+                                // Wheel up = move content up; wheel down = move content down.
+                                var __delta = __wheel ? -__wheel * 64 : __keyDir * 64;
+                                this.__dzInvScroll = Math.max(0, Math.min(
+                                    this.__dzInvMaxScroll || 0,
+                                    (this.__dzInvScroll || 0) + __delta
+                                ));
                                 this.__dzInvContent.b7 = -this.__dzInvScroll;
+                                // Consume the engine's one-frame wheel event only here.
+                                try { q.mWheel = 0; } catch (eConsume) {}
                             }
-                            // Keep clip tight every frame so rows past the box stay hidden
                             try {
                                 if (this.__dzInvBox && typeof this.__dzInvBox.set_scrollRect === "function")
-                                    this.__dzInvBox.set_scrollRect(new r(-(this.__dzInvW || 320) / 2, -(this.__dzInvH || 480) / 2, this.__dzInvW || 320, this.__dzInvH || 480));
+                                    this.__dzInvBox.set_scrollRect(new r(
+                                        -(this.__dzInvW || 320) / 2,
+                                        -(this.__dzInvH || 500) / 2,
+                                        this.__dzInvW || 320,
+                                        this.__dzInvH || 500
+                                    ));
                             } catch (eClip2) {}
                         }
                     } catch (eScroll) {}
                     return __ret;
                 };
             } catch (eE0) {}
-
 
         } catch (__eCust) {
             try { console.warn("[Customize]", __eCust); } catch (e) {}
