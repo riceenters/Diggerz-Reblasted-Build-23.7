@@ -51060,89 +51060,211 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 } catch (e) {}
             }
 
-            // Preview rig: use the SAME character implementation as the live
-            // player.  We clone only its visual skeleton, then run the real
-            // player's m38/m37 equipment pipeline against a proxy whose i33 is
-            // the clone.  This avoids maintaining a second, incomplete outfit
-            // system in Customize.
             var __previewWearer = null;
-            var __previewSourcePlayer = null;
-            function __getAuthoritativePlayer() {
-                try { if (l && l.z39) return l.z39; } catch (eZ39) {}
-                return null;
-            }
-            function __getAuthoritativeAppearance() {
-                var live = __getAuthoritativePlayer();
-                try {
-                    if (live && Array.isArray(live.J33) && live.J33.length)
-                        return live.J33.slice(0, 11);
-                } catch (eLiveJ33) {}
-                try {
-                    if (q.player && Array.isArray(q.player.J33) && q.player.J33.length)
-                        return q.player.J33.slice(0, 11);
-                } catch (eQJ33) {}
-                return __appearanceFromSave(__loadDigSave());
-            }
-            function __makePreviewRig(parent) {
-                var source = __getAuthoritativePlayer();
-                var skel = null;
-                // Never take a skeleton out of the live player's hierarchy. Make
-                // a fresh copy of the exact same guy_anims/guyskin visual rig.
-                try {
-                    var maker = new z;
-                    var scaleArg = 1;
-                    if (source && source.i33 && source.i33.a8 != null) scaleArg = Math.abs(Number(source.i33.a8)) || 1;
-                    else if (q.player && q.player.l0 != null) scaleArg = q.player.l0;
-                    skel = maker.G2("guy_anims", "guyskin", f, Fc.M39, scaleArg, !0);
-                } catch (eMake) {
-                    try { skel = (new z).G2("guy_anims", "guyskin", f, Fc.M39, 1, !0); } catch (eMake2) {}
+            // Customize has its own clothing renderer.  It uses the game's
+            // clothing assets/attachment metadata, but it never calls the
+            // player's m38() pipeline and never asks the live player rig to
+            // render the mannequin.
+            function __clearPreviewWear(skel) {
+                if (!skel || typeof skel.f2 !== "function") return;
+                var bones = ["head","front_arm","back_arm","front_foot","back_foot","torso","pants"];
+                for (var bi = 0; bi < bones.length; bi++) {
+                    try {
+                        var bone = skel.f2(bones[bi]);
+                        if (!bone || !bone._9) continue;
+                        for (var wi = bone._9.length - 1; wi >= 0; wi--) {
+                            var ch = bone._9[wi];
+                            if (ch && ch._1 === "wear") bone._9.splice(wi, 1);
+                        }
+                    } catch (eBone) {}
                 }
-                if (!skel) return null;
-                skel.D7(parent, !0);
-                skel.b6 = 0;
-                skel.b7 = 50;
-                try { skel.a0 = 1; } catch (eA0) {}
-                // Match the live player's visual scale/orientation.
-                try {
-                    if (source && source.i33) {
-                        skel.set_local_xScale(Math.abs(Number(source.i33.a8)) || 2);
-                        skel.set_local_yScale(Math.abs(Number(source.i33.a9)) || 2);
-                        skel.b3 = source.i33.b3 || 0;
-                    } else if (typeof skel.set_local_xScale === "function") {
-                        skel.set_local_xScale(skel.set_local_yScale(2));
-                    }
-                } catch (eScale) {}
-                return skel;
+                try { skel.f2("front_foot").a2 = !0; } catch (eF1) {}
+                try { skel.f2("back_foot").a2 = !0; } catch (eF2) {}
+                try { skel.f2("leg").C2 = !1; } catch (eL1) {}
+                try { skel.f2("leg_back").C2 = !1; } catch (eL2) {}
+                try { skel.f2("front_lowerleg").f2("leg").C2 = !1; } catch (eLL1) {}
+                try { skel.f2("back_lowerleg").f2("leg_back").C2 = !1; } catch (eLL2) {}
             }
+
+            function __resetPreviewBody(skel, wearer, tone) {
+                if (!skel || !wearer || typeof skel.f2 !== "function") return;
+                // Default shirt/body, reproduced directly instead of invoking m37().
+                try {
+                    var shirtIndex = 0;
+                    if (wearer.q7 && wearer.q7.P4 != null)
+                        shirtIndex = Wc.e14(wearer.q7.P4) % Wc.e14(10) | 0;
+                    var fs = skel.f2("front_shoulder").f2("arm");
+                    fs.Init(f.WHITE_ARM_PNG()); fs.h4(shirtIndex);
+                    var bs = skel.f2("back_shoulder").f2("arm_back");
+                    bs.Init(f.WHITE_ARM_PNG()); bs.h4(shirtIndex);
+                    var torso = skel.f2("torso");
+                    torso.Init(f.WHITE_TORSO_PNG()); torso.h4(shirtIndex);
+                } catch (eShirt) {}
+                __ensureHeadAndEyes(skel, tone);
+                __tintPreviewSkin(skel, tone);
+                try { skel.f2("front_arm").C2 = !1; skel.f2("back_arm").C2 = !1; } catch (eArm) {}
+                try {
+                    var fa = skel.f2("front_arm");
+                    fa.set_local_r(fa.set_local_g(fa.set_local_b(tone)));
+                    var ba = skel.f2("back_arm");
+                    ba.set_local_r(ba.set_local_g(ba.set_local_b(tone)));
+                } catch (eTone) {}
+            }
+
+            function __renderPreviewClothing(skel, app, tone) {
+                if (!skel) return;
+                var wearer = __previewWearer;
+                if (!wearer) {
+                    try { wearer = Object.create(q.player || {}); } catch (eW) { wearer = {}; }
+                    __previewWearer = wearer;
+                }
+                wearer.i33 = skel;
+                wearer.l9 = tone;
+                try { wearer.a4 = q.player && q.player.a4; } catch (eA4) {}
+                try { wearer.q7 = q.player && q.player.q7; } catch (eQ7) {}
+                __clearPreviewWear(skel);
+                __resetPreviewBody(skel, wearer, tone);
+
+                var wanted = (app && app.slice) ? app.slice(0, 11) : [];
+                while (wanted.length < 11) wanted.push(0);
+
+                function item(id, slot) {
+                    if (!(id|0) || slot < 0 || slot > 10) return null;
+                    try {
+                        var yf = new Yf(wearer, 2, id|0, 0, slot|0, 1, "", 0);
+                        h.n7(2, yf, id|0, 0);
+                        if (!yf.h44) return null;
+                        return yf;
+                    } catch (eItem) { return null; }
+                }
+                function addWear(yf, boneName, insertAt) {
+                    if (!yf) return null;
+                    try {
+                        var bone = skel.f2(boneName);
+                        var visual = Yf.W48(yf.h44, wearer);
+                        visual.D7(bone);
+                        yf.D6(visual);
+                        visual.b6 = yf.t44;
+                        visual.b7 = yf.t45;
+                        visual._1 = "wear";
+                        visual.set_r(yf.b8); visual.set_g(yf.b9); visual.set_b(yf.B0);
+                        visual.b2 = !0;
+                        if (insertAt == null) bone._9.push(visual);
+                        else bone._9.splice(insertAt, 0, visual);
+                        return visual;
+                    } catch (eAdd) { return null; }
+                }
+
+                // 0 = headwear, 1 = hair/face, 2 = shirt/top, 3 = shoes,
+                // 5 = torso accessory, 6 = head accessory, 7 = pants, 9 = head accessory.
+                // Slot 4 is weapons/tools and slot 10 is non-clothing, so they are
+                // intentionally never rendered by the Customize mannequin.
+                var yf = item(wanted[0], 0);
+                addWear(yf, "head", null);
+
+                yf = item(wanted[1], 1);
+                if (yf) {
+                    var hbone = skel.f2("head");
+                    var hv = Yf.W48(yf.h44, wearer);
+                    hv.D7(hbone); yf.D6(hv);
+                    hv.b6 = yf.t44; hv.b7 = yf.t45; hv._1 = "wear";
+                    hv.set_r(yf.b8); hv.set_g(yf.b9); hv.set_b(yf.B0); hv.b2 = !0;
+                    hbone._9.splice(2, 0, hv);
+                    if (yf.T41) {
+                        for (var hi = 0; hi < hbone._9.length; hi++) try { hbone._9[hi].C2 = !0; } catch(ehc) {}
+                        hbone.C2 = !0;
+                        hbone.set_local_r(hbone.set_local_g(hbone.set_local_b(1)));
+                    }
+                }
+
+                yf = item(wanted[2], 2);
+                if (yf) {
+                    try {
+                        var fa2 = skel.f2("front_shoulder").f2("arm");
+                        if (yf._9[0]) { fa2._3 = yf._9[0]._3; fa2._5 = yf._9[0]._5; fa2.c9 = yf._9[0].c9; }
+                        var ba2 = skel.f2("back_shoulder").f2("arm_back");
+                        if (yf._9[0]) { ba2._3 = yf._9[0]._3; ba2._5 = yf._9[0]._5; ba2.c9 = yf._9[0].c9; }
+                        var to2 = skel.f2("torso");
+                        to2._3 = yf._3; to2._5 = yf._5; to2.c9 = yf.c9;
+                        to2.set_local_r(yf.b8); to2.set_local_g(yf.b9); to2.set_local_b(yf.B0);
+                        if (yf.T48) {
+                            fa2.set_local_r(fa2.set_local_g(fa2.set_local_b(tone)));
+                            ba2.set_local_r(ba2.set_local_g(ba2.set_local_b(tone)));
+                        } else {
+                            fa2.set_local_r(yf.b8); fa2.set_local_g(yf.b9); fa2.set_local_b(yf.B0);
+                            ba2.set_local_r(yf.b8); ba2.set_local_g(yf.b9); ba2.set_local_b(yf.B0);
+                        }
+                    } catch (eTop) {}
+                }
+
+                yf = item(wanted[3], 3);
+                if (yf) {
+                    var ff = addWear(yf, "front_foot", null);
+                    if (yf.T48) { try { skel.f2("front_foot").set_local_r(skel.f2("front_foot").set_local_g(skel.f2("front_foot").set_local_b(tone))); } catch(eft) {} }
+                    if (ff) ff.c9 = yf.c9;
+                    var bf = addWear(yf, "back_foot", null);
+                    if (yf.T48) { try { skel.f2("back_foot").set_local_r(skel.f2("back_foot").set_local_g(skel.f2("back_foot").set_local_b(tone))); } catch(ebt) {} }
+                    if (bf) { bf.set_local_r(.9*yf.b8); bf.set_local_g(.9*yf.b9); bf.set_local_b(.9*yf.B0); bf.c9 = yf.c9; }
+                }
+
+                yf = item(wanted[5], 5);
+                addWear(yf, "torso", null);
+
+                yf = item(wanted[6], 6);
+                if (yf) {
+                    try {
+                        var hb6 = skel.f2("head");
+                        var hv6 = Yf.W48(yf.h44, wearer);
+                        hv6.D7(hb6); yf.D6(hv6); hv6.b6=yf.t44; hv6.b7=yf.t45; hv6._1="wear";
+                        hv6.set_r(yf.b8); hv6.set_g(yf.b9); hv6.set_b(yf.B0); hv6.b2=!0;
+                        hb6._9.splice(1,0,hv6);
+                    } catch(e6) {}
+                }
+
+                yf = item(wanted[7], 7);
+                if (yf) {
+                    try {
+                        if (yf.T44) { skel.f2("front_foot").a2=!1; skel.f2("back_foot").a2=!1; }
+                        var pb = skel.f2("pants");
+                        var pv = Yf.W48(yf.h44, wearer);
+                        pv.D7(pb); yf.D6(pv); pv.b6=yf.t44; pv.b7=yf.t45; pv._1="wear";
+                        pv.set_local_r(yf.b8); pv.set_local_g(yf.b9); pv.set_local_b(yf.B0); pv.c9=yf.c9; pb._9.push(pv);
+                        if (yf.T41) {
+                            skel.f2("leg").C2=!0; skel.f2("leg_back").C2=!0;
+                        } else if (yf._9[0]) {
+                            var ll = skel.f2("front_lowerleg").f2("leg");
+                            ll._3=yf._9[0]._3; ll._5=yf._9[0]._5; ll.c9=yf.c9;
+                            ll.set_local_r(yf.b8); ll.set_local_g(yf.b9); ll.set_local_b(yf.B0);
+                            var llb = skel.f2("back_lowerleg").f2("leg_back");
+                            llb._3=yf._9[0]._3; llb._5=yf._9[0]._5; llb.c9=yf.c9;
+                            llb.set_local_r(yf.b8); llb.set_local_g(yf.b9); llb.set_local_b(yf.B0);
+                        }
+                    } catch(e7) {}
+                }
+
+                yf = item(wanted[9], 9);
+                addWear(yf, "head", 2);
+                try { skel.a2 = 1; skel.e0(); } catch(eDone) {}
+            }
+
             function __equipOnPreview(skel, app) {
                 if (!skel) return;
-                var source = __getAuthoritativePlayer();
-                if (!source || typeof source.m38 !== "function") return;
                 var tone = 90;
-                try { if (source.l9 != null) tone = source.l9; } catch (eT) {}
+                try { if (q.player && q.player.l9 != null) tone = q.player.l9; } catch (eT) {}
                 try {
-                    if (!__previewWearer || __previewWearer.__dzSkeleton !== skel || __previewSourcePlayer !== source) {
-                        // The proxy inherits the REAL player-character class, not
-                        // q.player (which is only the settings object).
-                        __previewWearer = Object.create(source);
+                    if (!__previewWearer || __previewWearer.__dzSkeleton !== skel) {
+                        __previewWearer = Object.create(q.player || {});
                         __previewWearer.__dzSkeleton = skel;
-                        __previewSourcePlayer = source;
                     }
                     __previewWearer.i33 = skel;
                     __previewWearer.l9 = tone;
-                    __previewWearer.J33 = [];
-                    __previewWearer._9 = [];
-                    __previewWearer.a2 = 1;
-                    var wanted = (app && app.slice) ? app.slice(0,11) : __getAuthoritativeAppearance();
-                    while (wanted.length < 11) wanted.push(0);
-                    source.m38.call(__previewWearer, wanted, "");
-                    // m38 can choose a transition while rebuilding cosmetics.
-                    // Hand the cloned rig back to the same idle animation used by
-                    // the real character; do not reset it every frame.
+                    __previewWearer.a4 = q.player && q.player.a4;
+                    __previewWearer.q7 = q.player && q.player.q7;
+                    __renderPreviewClothing(skel, app, tone);
                     if (typeof skel._38 === "function") skel._38("idle", !0, 100, .5);
-                } catch (eEquipClone) {}
-                try { __ensureHeadAndEyes(skel, tone); } catch (eH) {}
-                try { __tintPreviewSkin(skel, tone); } catch (eS) {}
+                } catch (e) {
+                    try { __ensureHeadAndEyes(skel, tone); __tintPreviewSkin(skel, tone); } catch (eFallback) {}
+                }
                 try { skel.a2 = 1; } catch (eActive) {}
             }
 
@@ -51165,9 +51287,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 
             function __applyLive(app, text) {
                 try {
-                    var __livePlayer = __getAuthoritativePlayer();
-                    if (__livePlayer && typeof __livePlayer.m38 === "function" && __livePlayer.i33 && __livePlayer.i33.Z28 != null)
-                        __livePlayer.m38(app.slice(), text || "");
+                    if (q.player && typeof q.player.m38 === "function" && q.player.i33 && q.player.i33.Z28 != null)
+                        q.player.m38(app.slice(), text || "");
                 } catch (e) {}
                 try {
                     if (__previewSkelRef) __equipOnPreview(__previewSkelRef, app);
@@ -51227,17 +51348,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             __pt.D7(__prev, !0);
 
             var __skel = null;
-            try { __skel = __makePreviewRig(__prev); } catch (eCloneCreate) { __skel = null; }
-            if (__skel) {
-                try {
-                    __previewSkelRef = __skel;
-                    this.__diggerzPreviewSkel = __skel;
-                    var __initialApp = __getAuthoritativeAppearance();
-                    __equipOnPreview(__skel, __initialApp);
-                    if (typeof __skel._38 === "function") __skel._38("idle", !0, 100, .5);
-                } catch (eAttachClone) { __skel = null; }
-            }
-
+            try {
+                if (typeof Fc !== "undefined" && Fc.n30 && Fc.n30.length > 0)
+                    __skel = Fc.n30.pop();
+            } catch (ePool) {}
             if (!__skel) {
                 try {
                     var __maker = new z;
@@ -51394,8 +51508,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 } catch (eSaveSlots) {}
             }
             if (!Array.isArray(__rawSlots)) __rawSlots = [];
-            while (__rawSlots.length < 50)
-                __rawSlots.push({category:0,id:0,variant:0,count:0,extra:0,text:""});
+
+            // Customize is a CLOTHING inventory, not the normal item inventory.
+            // These are the mannequin's wearable appearance slots.  Weapon/tool
+            // slot 4, non-clothing slot 10, blocks and other gameplay items are
+            // deliberately excluded.
+            var __clothingWearSlots = {0:1,1:1,2:1,3:1,5:1,6:1,7:1,9:1};
 
             var __cols = 4;
             var __slotSize = 70;
@@ -51403,8 +51521,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var __gridW = __cols * __slotSize;
             var __startX = -__gridW / 2 + __slotSize / 2;
             var __startY = -__invH / 2 + 62;
-            var __slotCount = Math.max(50, __rawSlots.length);
-            var __rows = Math.ceil(__slotCount / __cols);
+            var __clothingItems = [];
 
             function __wearSlotForItem(item, slotIndex) {
                 if (!item || !(item.id|0)) return -1;
@@ -51441,6 +51558,17 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 } catch (eLiveWear) {}
                 return -1;
             }
+
+            for (var __ri = 0; __ri < __rawSlots.length; __ri++) {
+                var __riItem = __rawSlots[__ri];
+                if (!__riItem || !(__riItem.id|0) || !(__riItem.count|0)) continue;
+                var __riWear = __wearSlotForItem(__riItem, __ri);
+                if (__clothingWearSlots[__riWear]) {
+                    __clothingItems.push({ item: __riItem, wear: __riWear, sourceIndex: __ri });
+                }
+            }
+            var __slotCount = __clothingItems.length;
+            var __rows = Math.max(1, Math.ceil(Math.max(1, __slotCount) / __cols));
 
             function __makeRealSlot(parent, x, y) {
                 var slot = new ra;
@@ -51490,11 +51618,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 var __sy = __startY + __row * __rowH;
                 var __cell = __makeRealSlot(__invContent, __sx, __sy);
                 __dzInvCells.push(__cell);
-                var __item = __rawSlots[__slotIndex] || null;
-                if (!__item) __item = {category:0,id:0,variant:0,count:0,text:""};
-
+                var __clothEntry = __clothingItems[__slotIndex];
+                var __item = __clothEntry.item;
                 var __icon = __putInventoryIcon(__cell, __item);
-                var __wear = __wearSlotForItem(__item, __slotIndex);
+                var __wear = __clothEntry.wear;
                 var __isWorn = (__wear >= 0 && (__equippedNow[__wear]|0) === (__item.id|0));
 
                 if (__isWorn) {
