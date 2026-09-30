@@ -517,7 +517,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             z.I1 || (z.I4 = a.createVertexBuffer(32E3, 9),
             z.I5 = a.createIndexBuffer(32E3),
             z.I2 = a.createProgram(1),
-            z.I2.uploadSources("\n\t\t\t\tattribute vec4 openfl_Position;\n\t\t\t\tattribute vec4 openfl_ColorMultiplier;\n\t\t\t\tattribute vec2 openfl_TextureCoord;\t\t\n\t\t\t\tattribute float openfl_OnlyDoGrey;\n\t\t\t\tattribute float openfl_additive;\n\n\t\t\t\tvarying lowp float vAlpha;\n\t\t\t\tvarying lowp vec2 vTexCoord;\n\t\t\t\tvarying lowp float vRMul;\n\t\t\t\tvarying lowp float vGMul;\n\t\t\t\tvarying lowp float vBMul;\n\t\t\t\tvarying lowp float vOnlyDoGrey;\n\t\t\t\tvarying lowp float vAdditive;\n\n\t\t\t\tuniform mat4 openfl_Matrix;\n\n\n\t\t\t\tvoid main(void) {\n\t\t\t\t\tvRMul = openfl_ColorMultiplier.r;\n\t\t\t\t\tvGMul = openfl_ColorMultiplier.g;\n\t\t\t\t\tvBMul = openfl_ColorMultiplier.b;\n\t\t\t\t\tvAlpha = openfl_ColorMultiplier.a;\n\t\t\t\t\tvOnlyDoGrey = openfl_OnlyDoGrey;\n\t\t\t\t\tvAdditive = openfl_additive;\n\t\t\t\t\tvTexCoord = openfl_TextureCoord;\n\t\t\t\t\tgl_Position = openfl_Matrix * openfl_Position;\n//\t\t\t\t\tgl_Position = openfl_Position;\n\t\t\t\t}", "\n\t\t\t\tvarying lowp float vAlpha;\n\t\t\t\tvarying lowp vec2 vTexCoord;\n\t\t\t\tvarying lowp float vRMul;\n\t\t\t\tvarying lowp float vGMul;\n\t\t\t\tvarying lowp float vBMul;\n\t\t\t\tvarying lowp float vOnlyDoGrey;\n\t\t\t\tvarying lowp float vAdditive;\n\t\t\t\tuniform sampler2D openfl_Texture;\n\n\t\t\t\tvoid main(void) {\n\t\t\t\t\thighp vec4 color = texture2D (openfl_Texture, vTexCoord);\n\t\t\t\t\t\n\t\t\t\t\tlowp float aLerpNum = vOnlyDoGrey * (sign(abs(color.r - color.g)+abs(color.r - color.b)));\n\t\t\t\t\t\n\t\t\t\t\tcolor.r *= mix(vRMul, 1.0, aLerpNum);\n\t\t\t\t\tcolor.g *= mix(vGMul, 1.0, aLerpNum);\n\t\t\t\t\tcolor.b *= mix(vBMul, 1.0, aLerpNum);\n\n\t\t\t\t\tcolor *= vAlpha;\n\t\t\t\t\tgl_FragColor = color;\n\t\t\t\t}"),
+            z.I2.uploadSources("\n\t\t\t\tattribute vec4 openfl_Position;\n\t\t\t\tattribute vec4 openfl_ColorMultiplier;\n\t\t\t\tattribute vec2 openfl_TextureCoord;\t\t\n\t\t\t\tattribute float openfl_OnlyDoGrey;\n\t\t\t\tattribute float openfl_additive;\n\n\t\t\t\tvarying lowp float vAlpha;\n\t\t\t\tvarying lowp vec2 vTexCoord;\n\t\t\t\tvarying lowp float vRMul;\n\t\t\t\tvarying lowp float vGMul;\n\t\t\t\tvarying lowp float vBMul;\n\t\t\t\tvarying lowp float vOnlyDoGrey;\n\t\t\t\tvarying lowp float vAdditive;\n\n\t\t\t\tuniform mat4 openfl_Matrix;\n\n\n\t\t\t\tvoid main(void) {\n\t\t\t\t\tvRMul = openfl_ColorMultiplier.r;\n\t\t\t\t\tvGMul = openfl_ColorMultiplier.g;\n\t\t\t\t\tvBMul = openfl_ColorMultiplier.b;\n\t\t\t\t\tvAlpha = openfl_ColorMultiplier.a;\n\t\t\t\t\tvOnlyDoGrey = openfl_OnlyDoGrey;\n\t\t\t\t\tvAdditive = openfl_additive;\n\t\t\t\t\tvTexCoord = openfl_TextureCoord;\n\t\t\t\t\tgl_Position = openfl_Matrix * openfl_Position;\n//\t\t\t\t\tgl_Position = openfl_Position;\n\t\t\t\t}", "\n\t\t\t\tvarying lowp float vAlpha;\n\t\t\t\tvarying lowp vec2 vTexCoord;\n\t\t\t\tvarying lowp float vRMul;\n\t\t\t\tvarying lowp float vGMul;\n\t\t\t\tvarying lowp float vBMul;\n\t\t\t\tvarying lowp float vOnlyDoGrey;\n\t\t\t\tvarying lowp float vAdditive;\n\t\t\t\tuniform sampler2D openfl_Texture;\n\n\t\t\t\tvoid main(void) {\n\t\t\t\t\thighp vec4 color = texture2D (openfl_Texture, vTexCoord);\n\t\t\t\t\t\n\t\t\t\t\tlowp float chroma240 = sign(abs(color.r - color.g)+abs(color.r - color.b));\n\t\t\t\t\tif (vOnlyDoGrey < -0.5) {\n\t\t\t\t\t\tcolor.r *= mix(1.0, vRMul, chroma240);\n\t\t\t\t\t\tcolor.g *= mix(0.85, vGMul, chroma240);\n\t\t\t\t\t\tcolor.b *= mix(0.15, vBMul, chroma240);\n\t\t\t\t\t} else {\n\t\t\t\t\t\tlowp float aLerpNum = vOnlyDoGrey * chroma240;\n\t\t\t\t\t\n\t\t\t\t\tcolor.r *= mix(vRMul, 1.0, aLerpNum);\n\t\t\t\t\tcolor.g *= mix(vGMul, 1.0, aLerpNum);\n\t\t\t\t\tcolor.b *= mix(vBMul, 1.0, aLerpNum);\n\t\t\t\t\t}\n\n\t\t\t\t\tcolor *= vAlpha;\n\t\t\t\t\tgl_FragColor = color;\n\t\t\t\t}"),
             z.I3 = a.createProgram(1),
             z.I3.uploadSources(z.h8.get_glVertexSource(), z.h8.get_glFragmentSource()),
             z.diggerzValidateProgram(a, z.I2, "sprite"),
@@ -1379,7 +1379,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 for (; 3.14159265 < c; )
                     c -= 6.28318531;
                 c = 0 > c ? 1.27323954 * c + .405284735 * c * c : 1.27323954 * c - .405284735 * c * c;
-                g = this.c9 ? 1 : 0;
+                g = this._build240RgbStetson ? -1 : (this.c9 ? 1 : 0);
                 z.H7[z.i1++] = a + r * p - q * c;
                 z.H7[z.i1++] = b + r * c + q * p;
                 z.H7[z.i1++] = this.A1;
@@ -6465,7 +6465,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.D31.D7(this);
         a = -this.D31.E39() / 2;
         this.D31.b7 = a + 15;
-        l.z38.R35.a2 = !1
+        l.z38.R35.a2 = !1;
+        try { window.__diggerzChatOpen = this; } catch (__c) {}
     };
     v.D30 = Qh;
     Qh.__name__ = "D30";
@@ -6474,6 +6475,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         D31: null,
         y1: function() {
             this.a0 = 1;
+            try { if (window.__diggerzChatOpen === this) window.__diggerzChatOpen = null; } catch (__c2) {}
             l.z38.R35.a2 = !0;
             if (!(0 >= this.D31.q35.length))
                 if ("/people" == this.D31.q35)
@@ -6571,6 +6573,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         D32: function() {
             this.D31 instanceof dg && K.y2(!1);
             this.a0 = 1;
+            try { if (window.__diggerzChatOpen === this) window.__diggerzChatOpen = null; } catch (__c3) {}
             l.z38.R35.a2 = !0
         },
         __class__: Qh
@@ -15964,17 +15967,38 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             a.set_local_r(a.set_local_g(a.set_local_b(this.l9)))
         },
         m37: function() {
+            var colorIdx = Wc.e14(this.q7.P4) % Wc.e14(10) | 0;
+            try {
+                // Local player: keep a stable shirt color in localStorage forever
+                var isLocal = false;
+                try {
+                    if (window.l && l.z38 && l.z38.R0 && this === l.z38.R0) isLocal = true;
+                } catch (eL) {}
+                try {
+                    if (!isLocal && window.q && q.player && this.q7 && q.player.q7 && this.q7.P4 === q.player.q7.P4) isLocal = true;
+                } catch (eL2) {}
+                if (isLocal) {
+                    var key = "diggerz.shirtColor.v1";
+                    var saved = null;
+                    try { saved = localStorage.getItem(key); } catch (eS) {}
+                    if (saved != null && saved !== "" && isFinite(+saved)) {
+                        colorIdx = (+saved) % 10 | 0;
+                    } else {
+                        try { localStorage.setItem(key, String(colorIdx)); } catch (eW) {}
+                    }
+                }
+            } catch (eC) {}
             var a = this.i33.f2("front_shoulder");
             a = a.f2("arm");
             a.Init(f.WHITE_ARM_PNG());
-            a.h4(Wc.e14(this.q7.P4) % Wc.e14(10) | 0);
+            a.h4(colorIdx);
             a = this.i33.f2("back_shoulder");
             a = a.f2("arm_back");
             a.Init(f.WHITE_ARM_PNG());
-            a.h4(Wc.e14(this.q7.P4) % Wc.e14(10) | 0);
+            a.h4(colorIdx);
             a = this.i33.f2("torso");
             a.Init(f.WHITE_TORSO_PNG());
-            a.h4(Wc.e14(this.q7.P4) % Wc.e14(10) | 0)
+            a.h4(colorIdx)
         },
         m38: function(a, b) {
             // Reset idle/walk to defaults BEFORE re-applying wear.
@@ -16655,9 +16679,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var a = 0;
             if (l.b41 || null != q.GetChildByType(Qh))
                 return 0;
-            if (null != this.n37)
-                a = 3.4 * this.n37.h32.b6 / this.n37.h36;
-            else {
+            if (null != this.n37) {
+                // Clamp stick to [-1,1] so mobile matches keyboard speed (3.4)
+                var stick = this.n37.h36 ? (this.n37.h32.b6 / this.n37.h36) : 0;
+                if (stick > 1) stick = 1;
+                if (stick < -1) stick = -1;
+                a = 3.4 * stick;
+            } else {
                 if (q.KeyDown(65) || q.KeyDown(37))
                     a = -3.4;
                 if (q.KeyDown(68) || q.KeyDown(39))
@@ -18383,7 +18411,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         q.diggerzPvpRequested = !1;
         q.diggerzDigTradeRequested = !1;
         q.diggerzShopRequested = !1;
-        q.diggerzConnectionRoute = usePvpTest ? "Build 23.7 native-packet PvP" : (useLocalDigTrade ? "Build 23.7 native-packet Dig+Trade" : "original multiplayer server");
+        q.diggerzConnectionRoute = usePvpTest ? "Build 24.0 native-packet PvP" : (useLocalDigTrade ? "Build 24.0 native-packet Dig+Trade" : "original multiplayer server");
         this.R36 = usePvpTest ? new DiggerzService(this, "pvp") : (useLocalDigTrade ? new DiggerzService(this, "digtrade") : new Cr(q.SERVER_ADDRESS,l.a48,l.a49));
         try { if (window.DiggerzMpDebugLog) window.DiggerzMpDebugLog("MP-071", "R36=" + (this.R36 && this.R36.constructor ? this.R36.constructor.name : "?") + " mode=" + (this.R36 && this.R36.mode || "?") + " A46=" + l.A46 + " route=" + q.diggerzConnectionRoute) } catch (_debugError) {}
         this.R35 = new zo;
@@ -22249,7 +22277,30 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.hazardCooldown = 0;
         this.lastDigTick = -9999;
         this.adminPvpEnabled = false;
-        this.playerId = (this.mode === "pvp" || this.mode === "digtrade") ? this.guid((Math.random()*4294967296)|0,(Math.random()*4294967296)|0,(Math.random()*4294967296)|0,(Math.random()*4294967296)|0) : this.guid(1145655898, 1229212756, 1380275020, 1162690898);
+        // Shirt/torso color is derived from playerId.P4 (m37). Persist the guid so
+        // every session (and account-less users) keep the same random shirt color forever.
+        this.playerId = (function(self) {
+            if (self.mode !== "pvp" && self.mode !== "digtrade")
+                return self.guid(1145655898, 1229212756, 1380275020, 1162690898);
+            try {
+                var key = "diggerz.playerGuid.v1";
+                var raw = null;
+                try { raw = localStorage.getItem(key); } catch (e0) {}
+                if (raw) {
+                    var parts = JSON.parse(raw);
+                    if (parts && parts.length === 4)
+                        return self.guid(parts[0] | 0, parts[1] | 0, parts[2] | 0, parts[3] | 0);
+                }
+                var a = (Math.random() * 4294967296) | 0;
+                var b = (Math.random() * 4294967296) | 0;
+                var c = (Math.random() * 4294967296) | 0;
+                var d = (Math.random() * 4294967296) | 0;
+                try { localStorage.setItem(key, JSON.stringify([a, b, c, d])); } catch (e1) {}
+                return self.guid(a, b, c, d);
+            } catch (e2) {
+                return self.guid((Math.random() * 4294967296) | 0, (Math.random() * 4294967296) | 0, (Math.random() * 4294967296) | 0, (Math.random() * 4294967296) | 0);
+            }
+        })(this);
         this.pocketId = this.guid(1347374923, 1162627412, 1230193988, 1096040772);
         this.zeroId = this.guid(0, 0, 0, 0);
         // Build 21.17 combat test target. Damage/HP live in the local service, while
@@ -22314,7 +22365,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         getIo:function(){ return Io }, getZ:function(){ return z }, getF:function(){ return f },
         getE:function(){ return E }, getXa:function(){ return xa }, getOb:function(){ return ob },
         getFc:function(){ return Fc }, getK:function(){ return K }, getU:function(){ return u },
-        getAi:function(){ return ai }, getH:function(){ return h }, getCg:function(){ return cg }
+        getAi:function(){ return ai }, getH:function(){ return h }, getCg:function(){ return cg }, getYf:function(){ return Yf }, getF:function(){ return f }, getYf:function(){ return Yf }, getF:function(){ return f }
     };
     // Version 3 starts clean so unrestricted catalog rewards from the earlier
     // reconstruction cannot carry into the corrected rarity economy.
@@ -23102,10 +23153,23 @@ return true
         fixLocalAnimations: function() {
             var p = l.z39;
             if (!p || !p.i33) return;
-            // The recovered client can leave WALKING or the mining "hit"
-            // animation latched. Build 21.7 explicitly returns to idle once the
-            // corresponding input has ended instead of relying on a jump reset.
-            var horizontal = q.KeyDown(65) || q.KeyDown(68) || q.KeyDown(37) || q.KeyDown(39);
+            // Keyboard OR on-screen stick (mobile) counts as horizontal input
+            var stickX = 0;
+            try {
+                if (p.n37 && p.n37.h36)
+                    stickX = p.n37.h32.b6 / p.n37.h36;
+            } catch (eStick) {}
+            if (stickX > 1) stickX = 1;
+            if (stickX < -1) stickX = -1;
+            var horizontal = q.KeyDown(65) || q.KeyDown(68) || q.KeyDown(37) || q.KeyDown(39) || Math.abs(stickX) > 0.12;
+            // Ensure walk mode + anim while stick is held (mobile often skipped this)
+            if (horizontal && p.i32 === oa.MODE_IDLE) {
+                p.i32 = oa.MODE_WALKING;
+                try {
+                    if (p.I36 && p.i33 && p.i33.Z28 !== String(p.I36))
+                        p.i33._38(p.I36, !0, 0, 1);
+                } catch (eAnim) {}
+            }
             if (!horizontal && p.i32 === oa.MODE_WALKING) p.i32 = oa.MODE_IDLE;
             var anim = String(p.i33.Z28 || "");
             if (!horizontal && anim === String(p.I36 || "")) {
@@ -23317,7 +23381,7 @@ return true
                     packet.R0(item.price);
                     packet.R9(item.name);
                     packet.R9(item.description);
-                    packet.R9(item.display || ("{2," + item.itemId + ",1}"))
+                    packet.R9(item.display || ("{2," + item.itemId + "," + Math.max(1,Number(item.quantity)||1) + "}"))
                 }
             })
         },
@@ -23339,6 +23403,8 @@ return true
             // Dragon Pack resolves only after the player has enough coins. Every
             // dragon has equal odds and the resolved dragon is what gets saved.
             var purchaseItemId = item.itemId | 0;
+            var purchaseQuantity = Math.max(1, Math.min(65535, Number(item.quantity || 1) | 0));
+            var purchaseQuantity = Math.max(1, Math.min(65535, Number(item.quantity || 1) | 0));
             if (item.randomIds && item.randomIds.length)
                 purchaseItemId = item.randomIds[Math.floor(Math.random() * item.randomIds.length)] | 0;
 
@@ -23347,7 +23413,7 @@ return true
                 var current = slots[i];
                 if (current && current.category === 2 && current.id === purchaseItemId &&
                     current.variant === 0 && (current.text || "") === "" &&
-                    current.count > 0 && current.count < 65535) {
+                    current.count > 0 && current.count <= 65535 - purchaseQuantity) {
                     targetSlot = i; stackExisting = true; break
                 }
             }
@@ -23364,8 +23430,8 @@ return true
                 extra:slots[targetSlot].extra|0, text:slots[targetSlot].text||""
             } : null;
             try {
-                if (stackExisting) slots[targetSlot].count += 1;
-                else slots[targetSlot] = this.item(2, purchaseItemId, 0, 1, 0, "");
+                if (stackExisting) slots[targetSlot].count += purchaseQuantity;
+                else slots[targetSlot] = this.item(2, purchaseItemId, 0, purchaseQuantity, 0, "");
                 this.state.coins = beforeCoins - item.price;
                 this.dirty = true;
                 if (!window.localStorage) throw new Error("Local storage unavailable");
@@ -23384,7 +23450,7 @@ return true
             q.diggerzLastShopPurchase = {shopId:item.shopId, itemId:purchaseItemId, name:rewardName,
                 price:item.price, slot:targetSlot, beforeCoins:beforeCoins, afterCoins:this.state.coins, time:Date.now()};
             return {ok:true, message:(item.randomIds ? "Dragon Pack opened: " + rewardName + "!" :
-                "Purchased " + item.name + " for " + item.price + " coins.") +
+                "Purchased " + item.name + (purchaseQuantity > 1 ? " x" + purchaseQuantity : "") + " for " + item.price + " coins.") +
                 " Balance: " + this.state.coins + ".", item:item, itemId:purchaseItemId, slot:targetSlot,
                 beforeCoins:beforeCoins, coins:this.state.coins}
         },
@@ -23471,7 +23537,7 @@ return true
         adminCatalog: function(category) {
             category = category | 0;
             if (category !== 1 && category !== 2) return [];
-            var out = [], max = category === 1 ? 700 : 450, id, display, name;
+            var out = [], max = category === 1 ? 700 : 700, id, display, name;
             for (id = 1; id <= max; id++) {
                 try {
                     display = new X(null, category, id, 0, 0, 1, 0, "", 0);
@@ -23733,7 +23799,7 @@ return true
             } catch (heldError) {}
             var isMining = !!(heldRendered && heldRendered.T40) || attackType === 25 || attackType === 21 || attackType === 36 || attackType === 40;
             var heldId = heldItem && heldItem.category === 2 ? (heldItem.id | 0) : 0;
-            var isToolWeapon = heldId === 239 || (heldId >= 379 && heldId <= 394);
+            var isToolWeapon = heldId === 239 || (heldId >= 379 && heldId <= 394) || (window.DiggerzBuild240 && window.DiggerzBuild240.isRgbWeaponId && window.DiggerzBuild240.isRgbWeaponId(heldId));
             // Excalibur and Lightswords keep their recovered tool/mining behavior, but
             // during active Battle Royale they also count as melee PvP attacks. They
             // never send PvP damage in Dig+Trade.
@@ -23828,7 +23894,8 @@ return true
             }
             this.setTile(targetX, targetY, 0);
             this.state.mined++;
-            this.addItem(1, id, 0, 1, 0, "");
+            // Build 24.0: mined terrain is consumed instead of being copied into inventory.
+            // Randomized mining rewards are handled separately below.
             // Bonus items are tied to the mined coordinate and cannot be
             // rerolled. Protected catalog items only enter through today's
             // super-rare rotation; normal finds are blocks or normal weapons,
@@ -51363,10 +51430,35 @@ return true
         a.D7(this, !0);
         a.set_local_xScale(a.set_local_yScale(.7));
         this.Z47._9.push(a);
+        a = 130;
+        b = new ob(0,a,"Save to Account",q.MAIN_FONT_BIG);
+        b.D7(this, !0);
+        b.C33 = A(this, this.diggerzCloudSave);
+        this._9.push(b);
+        a += 55;
+        b = new ob(0,a,"Load from Account",q.MAIN_FONT_BIG);
+        b.D7(this, !0);
+        b.C33 = A(this, this.diggerzCloudLoad);
+        this._9.push(b);
         this.e0()
     };
     v.Z45 = Op;
     Op.__name__ = "Z45";
+    try {
+        window.DiggerzNativeUI = {
+            ja: ja,
+            xa: xa,
+            ob: ob,
+            z: z,
+            u: u,
+            E: E,
+            A: A,
+            q: q,
+            vb: typeof vb !== "undefined" ? vb : null,
+            Cd: typeof Cd !== "undefined" ? Cd : null
+        };
+    } catch (__dui) {}
+
     Op.__super__ = ja;
     Op.prototype = D(ja.prototype, {
         Z47: null,
@@ -51383,6 +51475,55 @@ return true
             var a = new Mp;
             a._1 = "chem";
             this.u40._9.push(a)
+        },
+        diggerzCloudSave: function() {
+            var self = this;
+            if (!window.DiggerzAuth237 || !window.DiggerzAuth237.state || !window.DiggerzAuth237.state.authenticated) {
+                this._9.push(new vb(this, "", "^1Log in first to save to your account.", new Cd, vb.F39));
+                return;
+            }
+            this._9.push(new vb(this, "", "^9Saving this browser's data to your account…", new Cd, vb.F39));
+            Promise.resolve(window.DiggerzAuth237.pushCloudSave(true)).then(function(res) {
+                if (res && res.ok === false && res.reason === 'refuse-empty-wipe') {
+                    self._9.push(new vb(self, "", "^1Blocked: this browser has no items, but your account does. Play here or Load first.", new Cd, vb.F39));
+                    return;
+                }
+                if (res && res.ok === false) {
+                    var detail = res.error || res.reason || 'error';
+                    if (String(detail).indexOf('permission') >= 0 || res.reason === 'permission-denied')
+                        detail = 'Firestore permission denied — open Firebase Console → Firestore → Rules and allow read/write for logged-in users.';
+                    if (String(detail).indexOf('not-logged') >= 0)
+                        detail = 'Not logged in or Firebase not ready. Refresh and try again.';
+                    self._9.push(new vb(self, "", "^1Save failed: ^7" + String(detail).slice(0, 140), new Cd, vb.F39));
+                    return;
+                }
+                self._9.push(new vb(self, "", "^2Saved! Account now has your items, coins, name & skin.", new Cd, vb.F39));
+            }).catch(function(e) {
+                var msg = (e && e.message) ? e.message : String(e);
+                self._9.push(new vb(self, "", "^1Save failed: ^7" + msg.slice(0, 140), new Cd, vb.F39));
+            });
+        },
+        diggerzCloudLoad: function() {
+            var self = this;
+            if (!window.DiggerzAuth237 || !window.DiggerzAuth237.state || !window.DiggerzAuth237.state.authenticated) {
+                this._9.push(new vb(this, "", "^1Log in first to load from your account.", new Cd, vb.F39));
+                return;
+            }
+            this._9.push(new vb(this, "", "^9Loading account data into this browser…", new Cd, vb.F39));
+            Promise.resolve(window.DiggerzAuth237.pullCloudSave(true)).then(function(data) {
+                if (!data) {
+                    self._9.push(new vb(self, "", "^1No cloud save found on this account yet. Use Save to Account first.", new Cd, vb.F39));
+                    return;
+                }
+                if (data.skipped) {
+                    self._9.push(new vb(self, "", "^1Load skipped: this browser already has more items than the account.", new Cd, vb.F39));
+                    return;
+                }
+                self._9.push(new vb(self, "", "^2Loaded! Reloading to apply…", new Cd, vb.F39));
+                setTimeout(function(){ location.reload(); }, 700);
+            }).catch(function(e) {
+                self._9.push(new vb(self, "", "^1Load failed. Check console / Firestore.", new Cd, vb.F39));
+            });
         },
         __class__: Op
     });
@@ -51552,17 +51693,26 @@ return true
         this.A8 = q.CENTERY - 50;
         this.c0 = !0;
         E.u4(this, 0, 300, 0, .5, 1, 0, 1);
-        var c = -177
-          , d = l.A47 || l.A48 ? "^9Private Game" : "^9Battle Royale";
-        "Free Dig" == l.a42 && (d = "^9Dig & Trade");
+        var c = -177;
+        var isPrivateGame = !!(l.A47 || l.A48);
+        var isPvpMode = !!(window.DiggerzPvp22 && window.DiggerzPvp22.mode === "pvp") || !!(window.P && P.mode === "pvp");
+        var isDigTradeMode = !isPvpMode && !isPrivateGame && (
+            (window.DiggerzPvp22 && window.DiggerzPvp22.mode === "digtrade") ||
+            (window.P && P.mode === "digtrade") ||
+            (window.P && P.service && P.service.mode === "digtrade") ||
+            (window.P && P.joined && window.P.mode !== "pvp") ||
+            "Free Dig" == l.a42
+        );
+        var d = isPrivateGame ? "^9Private Game" : (isDigTradeMode ? "^9Dig & Trade" : "^9Battle Royale");
         d = new xa(0,c,d,q.MAIN_FONT_BIG);
         d.D7(this, !0);
         this._9.push(d);
         c += 65;
         d = "^7The last player remaining is the winner! Use your pickaxe to dig for more weapons or, if you're lucky, a ^3RARE ITEM!";
-        if (l.A47 || l.A48)
+        if (isPrivateGame)
             d = "^7This is a private game. Only you and friends can join. Copy the url for them to use to join!";
-        "Free Dig" == l.a42 && (d = "^7Click on other players to trade with them. ^9ALL TRADES ARE FINAL! ^7Be smart, don't get scammed! You can also dig for ^3RARE ITEMS!");
+        if (isDigTradeMode)
+            d = "^7Click on other players to trade with them. ^9ALL TRADES ARE FINAL! ^7Be smart, don't get scammed! You can also dig for ^3RARE ITEMS!";
         d = new xa(0,c,d,q.MAIN_FONT);
         d.f30(500);
         d.D7(this, !0);
@@ -51614,11 +51764,19 @@ return true
             ;
             this._9.push(e)
         } else {
-            d = new xa(0,c,"^2TODAY'S SUPER RARES",q.MAIN_FONT_BIG);
+            var rgbWeekend240=!!(window.DiggerzBuild240&&window.DiggerzBuild240.isRgbWeekend&&window.DiggerzBuild240.isRgbWeekend());
+            d = new xa(0,c,rgbWeekend240?"^6RGB WEEKEND!":"^2TODAY'S SUPER RARES",q.MAIN_FONT_BIG);
             d.D7(this, !0);
             d.set_local_xScale(d.set_local_yScale(.65));
             this._9.push(d);
             c += 65;
+            if(rgbWeekend240){
+                var rgbInfo240=new xa(0,c,"^6RGB Weekend! ^0These 3 limited-time RGB variants are more common than normal featured Super Rares.\n^0Get them before Monday! Off-week RGB finds become EXTREMELY RARE True RGB items -- the highest-value variants!",q.MAIN_FONT_SMALL);
+                rgbInfo240.D7(this,!0);
+                rgbInfo240.set_local_xScale(rgbInfo240.set_local_yScale(.42));
+                this._9.push(rgbInfo240);
+                c += 52
+            }
             d = -150;
             for (var g = 0; 3 > g; ) {
                 g++;
@@ -51632,7 +51790,7 @@ return true
                 d += 150
             }
             c += 100;
-            "Free Dig" == l.a42 && (a = new xa(0,c,"^0(Click on another player to trade.)",q.MAIN_FONT),
+            (window.DiggerzPvp22 && window.DiggerzPvp22.mode === "digtrade" || window.P && P.mode === "digtrade" || window.P && P.service && P.service.mode === "digtrade" || "Free Dig" == l.a42) && (a = new xa(0,c,"^0(Click on another player to trade.)",q.MAIN_FONT),
             a.D7(this, !0),
             this._9.push(a),
             c += 65)
@@ -51646,6 +51804,7 @@ return true
         a58: null,
         F36: function(a, b, c, d, e, g) {
             var f = new ja(70,70,!0);
+            if(window.DiggerzBuild240&&window.DiggerzBuild240.isRgbWeekend&&window.DiggerzBuild240.isRgbWeekend()&&window.DiggerzBuild240.decorateRgbWeekendBox)window.DiggerzBuild240.decorateRgbWeekendBox(f);
             f._1 = "added";
             f.D7(this);
             f.b6 = a;
@@ -51665,6 +51824,7 @@ return true
             return !0
         },
         C39: function() {
+            // Click anywhere (outside locked child UI) to hide — same as before.
             null != this._8[3] || this.d34.E7() || (this.a0 = 1,
             E.u4(this, 0, 300, 1, .5, 0, 1, 0))
         },
@@ -86385,6 +86545,7 @@ return true
         Jb.call(this, a, b, c, d, e, g, p);
         this.Init(f.MISSILE_PNG());
         this.O23(b, c, d, e);
+        if(window.DiggerzBuild240&&window.DiggerzBuild240.isRobloxLauncherEntity&&window.DiggerzBuild240.isRobloxLauncherEntity(p)){this._build240RobloxRocket=true;try{window.DiggerzBuild240.registerRobloxRocketProjectile(this,p,b,c,d,e)}catch(_e){}}
         a = this.b33;
         a.tBJ.immutable_midstep("Body::gravMass");
         a.tBJ.gravMassMode = 1;
@@ -86683,7 +86844,8 @@ return true
         a.Init(f.AURA_PNG()),
         c = h.N24(a, "{2,125,1}"),
         a._9.push(c)) :
-        0 <= c.indexOf("{") ? (a = new z,
+        0 === c.indexOf("data:image/") ? (a = new z,
+        a.D8(c)) : 0 <= c.indexOf("{") ? (a = new z,
         a.Init(f.AURA_PNG()),
         c = h.N24(a, c),
         a._9.push(c)) : (a = new z,
@@ -87038,36 +87200,6 @@ return true
         this.C58.a0 = 1;
         this._9.push(this.C58);
 
-        // Build 23.7 logo branding as a real OpenFL/Lime child of the original
-        // Diggerz logo.  This is intentionally NOT a DOM overlay: the extension
-        // is loaded as an in-game display object and follows the logo animation.
-                this.C60 = z.I9();
-        this.C60.D8("reblasted.png");
-        this.C60.D7(this.C58);
-        this.C60.set_local_xScale(this.C60.set_local_yScale(.27));
-        this.C60.B8 = 6;
-        this.C60._1 = "reblasted_logo_extension";
-        this.C58._9.push(this.C60);
-
-        var reblastedLogoExtension = this.C60;
-        var reblastedLogoParent = this.C58;
-        var reblastedLogoTries = 0;
-        var positionReblastedLogo = function() {
-            if (!reblastedLogoExtension._5 || !reblastedLogoExtension._5.width) {
-                if (++reblastedLogoTries < 120)
-                    window.setTimeout(positionReblastedLogo, 50);
-                return;
-            }
-            var extensionScale = .27;
-            var gap = 1;
-            reblastedLogoExtension.b6 = 0;
-            reblastedLogoExtension.b7 =
-                reblastedLogoParent._5.height / 4.90
-                + (reblastedLogoExtension._5.height * extensionScale) / 2
-                + gap;
-        };
-        positionReblastedLogo();
-
         this.C57 = new ra;
         this.C57.X6(sa.SETTINGS_WHEEL_PNG());
         this.C57.A7 = q.SCREENWIDTH - this.C57._5.width / 2 - 12;
@@ -87235,7 +87367,32 @@ return true
             this.d51.b7 = 2;
             this.d51.C33 = A(this, this.e54);
             this._9.push(this.d51);
-            var d = q.SCREENHEIGHT / 2 - 250;
+            var d = q.SCREENHEIGHT / 2 - 380;
+        // Extra native JA Login button. This intentionally uses the game's JA/z/ob/xa
+        // classes and the existing D55 login panel; no DOM is created.
+        var __jaLoginBg = new z;
+        __jaLoginBg.Init(u.YELLOWBUTTON_PNG());
+        __jaLoginBg.D7(this);
+        __jaLoginBg.b7 = d - 80;
+        __jaLoginBg.b6 = q.SCREENWIDTH / 2 - 150;
+        __jaLoginBg.set_local_xScale(__jaLoginBg.set_local_yScale(.5));
+        __jaLoginBg._1 = "ja login duplicate";
+        __jaLoginBg.F6(5, 0, 1, 500);
+        this._9.push(__jaLoginBg);
+        this.d51 = new ob(0,0,"",q.MAIN_FONT_BIG);
+        this.d51._1 = "ja login duplicate";
+        this.d51.D7(__jaLoginBg);
+        this.d51.E37("Login");
+        this.d51.b7 = 2;
+        this.d51.B8 = 5;
+        this.d51.C33 = A(this, this.D55);
+        this.d51.C34 = "login";
+        this._9.push(this.d51);
+        var __jaLoginHint = new xa(0,-70,"Sign in with Google");
+        __jaLoginHint.D7(__jaLoginBg, !0);
+        __jaLoginHint.set_local_xScale(__jaLoginHint.set_local_yScale(1.25));
+        this._9.push(__jaLoginHint);
+
             b = new z;
             b.Init(u.REDBUTTON_PNG());
             b.D7(this);
@@ -87261,6 +87418,16 @@ return true
             c.D7(b, !0);
             c.set_local_xScale(c.set_local_yScale(1.25));
             this._9.push(c);
+            // Restore Google session so menu shows Log Out + email after reload
+            try {
+                if ((!q.thisMain.userPW || !q.thisMain.userPW.length || N.startsWith(q.thisMain.userPW, "NOPASSWORD")) && window.localStorage) {
+                    var __dzAuth = JSON.parse(localStorage.getItem("diggerz.firebase.auth.v1") || "null");
+                    if (__dzAuth && __dzAuth.authenticated && (__dzAuth.email || __dzAuth.uid)) {
+                        q.thisMain.userPW = "SESSION_AUTHENTICATED";
+                        q.thisMain.userEmail = String(__dzAuth.email || "");
+                    }
+                }
+            } catch (__dzE) {}
             N.startsWith(q.thisMain.userPW, "NOPASSWORD") || 0 >= q.thisMain.userPW.length ? (q.thisMain.userEmail = "",
             b = new z,
             b.Init(u.YELLOWBUTTON_PNG()),
@@ -87281,7 +87448,7 @@ return true
             this.d51.C34 = "shop",
             this.d51._1 = "welcome message",
             this._9.push(this.d51),
-            c = new xa(0,-70,"Passwordless email sign-in"),
+            c = new xa(0,-70,"Sign in with Google"),
             c.D7(b, !0),
             c.set_local_xScale(c.set_local_yScale(1.25)),
             this._9.push(c)) : 0 < q.thisMain.userPW.length && (b = new z,
@@ -87307,6 +87474,28 @@ return true
             c.D7(b, !0),
             c.set_local_xScale(c.set_local_yScale(1.25)),
             this._9.push(c));
+            b = new z;
+            b.Init(u.YELLOWBUTTON_PNG());
+            b.D7(this);
+            b.b7 = d;
+            d += 80;
+            b.b6 = q.SCREENWIDTH / 2 - 150;
+            b.set_local_xScale(b.set_local_yScale(.5));
+            b._1 = "support message";
+            b.F6(5, 0, 1, 500);
+            this._9.push(b);
+            this.d51 = new ob(0,0,"",q.MAIN_FONT_BIG);
+            this.d51.D7(b);
+            this.d51.E37("Donate");
+            this.d51.b7 = 2;
+            this.d51.B8 = 5;
+            this.d51.C33 = A(this, function(){ if(window.DiggerzOpenDonateNative) window.DiggerzOpenDonateNative(this); else if(window.DiggerzSupport239) window.DiggerzSupport239.open(); });
+            this.d51._1 = "welcome message";
+            this._9.push(this.d51);
+            c = new xa(0,-70,"Support Diggerz multiplayer");
+            c.D7(b, !0);
+            c.set_local_xScale(c.set_local_yScale(1.25));
+            this._9.push(c);
             b = new z;
             b.Init(u.YELLOWBUTTON_PNG());
             b.D7(this);
@@ -87359,19 +87548,107 @@ return true
         },
         D54: null,
         D55: function() {
-            for (var a = 0, b = this._9; a < b.length; ) {
-                var c = b[a];
-                ++a;
-                null != c._1 && N.startsWith(c._1, "welcome message") && (c.e3(),
-                c.a0 = 1)
-            }
-            a = new $b(this,"Email Address:",q.thisMain.userEmail,64,A(this, this.D59),400,200,!0,!1);
-            a._1 = "getemail";
-            a.B8 = 4;
-            this.D54 = !0;
-            a.c0 = !0;
-            q.children.push(a);
-            q.thisMain.stage.set_focus(a.F30.Q30)
+            // Native LOGIN panel (settings-style). Google sign-in = yellow diggerz button.
+            try {
+                for (var li = this._9.length - 1; li >= 0; li--) {
+                    var ch = this._9[li];
+                    if (ch && ch._1 === "diggerz_login_panel") {
+                        try { ch.a0 = 1; E.u4(ch, 0, 300, 1, .5, 0, 1, 0); } catch (e0) {}
+                    }
+                }
+            } catch (e1) {}
+            try {
+                if (window.DiggerzAuth237 && window.DiggerzAuth237.hideGoogleButton)
+                    window.DiggerzAuth237.hideGoogleButton();
+            } catch (eHide) {}
+            var panel = new ja(440, 340, !0);
+            panel._1 = "diggerz_login_panel";
+            panel.c0 = !0;
+            // Same click-off as Game Settings
+            panel.E7 = function() { return !0; };
+            panel.C39 = function() {
+                try {
+                    if (null == this._8 || null == this._8[3]) {
+                        this.a0 = 1;
+                        try { E.u4(this, 0, 300, 1, .5, 0, 1, 0); } catch (eC) {}
+                        window.__diggerzLoginPanel = null;
+                    }
+                } catch (eC2) {}
+            };
+            panel.A7 = q.CENTERX;
+            panel.A8 = q.CENTERY;
+            panel.B8 = 8;
+            try { E.u4(panel, 0, 300, 0, .5, 1, 0, 1); } catch (e2) {}
+            var title = new xa(0, -120, "^9LOGIN", q.MAIN_FONT_BIG);
+            title.D7(panel, !0);
+            try { title.set_local_xScale(title.set_local_yScale(1.05)); } catch (eT) {}
+            panel._9.push(title);
+            // Yellow button + label parented ON the sprite (not the panel) so text stays small
+            var gBg = new z;
+            gBg.Init(u.YELLOWBUTTON_PNG());
+            gBg.D7(panel, !0);
+            gBg.b6 = 0;
+            gBg.b7 = -10;
+            gBg.set_local_xScale(.7);
+            gBg.set_local_yScale(.55);
+            gBg._1 = "diggerz_google_btn_bg";
+            panel._9.push(gBg);
+            var gLbl = new ob(0, 0, "Sign in with Google", q.MAIN_FONT);
+            gLbl.D7(gBg, !0);
+            gLbl.b6 = 0;
+            gLbl.b7 = 2;
+            try { gLbl.set_local_xScale(gLbl.set_local_yScale(.55)); } catch (eS) {}
+            gLbl._1 = "diggerz_google_btn";
+            gLbl.C33 = A(this, function() {
+                if (window.DiggerzAuth237 && window.DiggerzAuth237.loginWithGoogle)
+                    window.DiggerzAuth237.loginWithGoogle();
+                else
+                    this._9.push(new vb(this, "", "^1Login is not ready yet. Refresh the page.", new Cd, vb.F39));
+            });
+            gBg._9 = gBg._9 || [];
+            gBg._9.push(gLbl);
+            // Email: native $b popup (has Okay + Cancel already)
+            var eBg = new z;
+            eBg.Init(u.YELLOWBUTTON_PNG());
+            eBg.D7(panel, !0);
+            eBg.b6 = 0;
+            eBg.b7 = 70;
+            eBg.set_local_xScale(.7);
+            eBg.set_local_yScale(.55);
+            eBg._1 = "diggerz_email_btn_bg";
+            panel._9.push(eBg);
+            var eLbl = new ob(0, 0, "Login with Email", q.MAIN_FONT);
+            eLbl.D7(eBg, !0);
+            eLbl.b6 = 0;
+            eLbl.b7 = 2;
+            try { eLbl.set_local_xScale(eLbl.set_local_yScale(.55)); } catch (eE) {}
+            eLbl._1 = "diggerz_email_btn";
+            eLbl.C33 = A(this, function() {
+                // Close login panel first so the $b popup is clear
+                try {
+                    if (window.__diggerzLoginPanel) {
+                        window.__diggerzLoginPanel.a0 = 1;
+                        window.__diggerzLoginPanel = null;
+                    }
+                } catch (eClose) {}
+                var popup = new $b(this, "Enter your email", "", 80, A(this, this.D59), 480, 220);
+                popup._1 = "diggerz_email_popup";
+                window.__diggerzEmailPopup = popup;
+                this._9.push(popup);
+                // Focus the text field so typing goes into q35
+                try {
+                    if (popup.F30) {
+                        popup.F30.Q31 = !0;
+                        if (popup.F30.Q30) q.thisMain.stage.set_focus(popup.F30.Q30);
+                    }
+                } catch (eF) {}
+            });
+            eBg._9 = eBg._9 || [];
+            eBg._9.push(eLbl);
+            this._9.push(panel);
+            panel._2 = this;
+            window.__diggerzLoginMenu = this;
+            window.__diggerzLoginPanel = panel;
         },
         D56: function(a) {
             // Build 23.7: account lookup/password prompts are retired. Email magic-link only.
@@ -87382,15 +87659,61 @@ return true
         },
         D58: function(a) {},
         D59: function() {
-            var a = q.GetChildByType($b);
-            null == a && (a = this.f4($b));
-            if (null == a || null == a.F30) return;
-            var email = String(a.F30.q35 || "").trim().toLowerCase();
+            // Okay / Enter on the native email $b popup
+            var a = window.__diggerzEmailPopup || null;
+            try {
+                if (!a || a.a0) a = this.f4($b);
+            } catch (e0) { a = null; }
+            try {
+                if (!a || a.a0) a = q.GetChildByType($b);
+            } catch (e1) {}
+            if (null == a || null == a.F30) {
+                this._9.push(new vb(this, "", "^1Could not read the email field. Try again.", new Cd, vb.F39));
+                return;
+            }
+            // Force any pending soft-keyboard text into q35 (same path the engine uses)
+            var email = "";
+            try {
+                var field = a.F30;
+                try {
+                    if (field.Q30 && typeof field.Q30.get_text === "function") {
+                        var pending = String(field.Q30.get_text() || "");
+                        if (pending) {
+                            field.q35 = String(field.q35 || "") + pending;
+                            try { field.Q30.set_text(""); } catch (e2) {}
+                            try { field.E37(field.q35); } catch (e3) {}
+                        }
+                    }
+                } catch (e4) {}
+                email = String(field.q35 || "");
+                if (!email) {
+                    try { email = String(field.E32 || ""); } catch (e5) {}
+                }
+                if (!email && field.Q30 && typeof field.Q30.get_text === "function") {
+                    try { email = String(field.Q30.get_text() || ""); } catch (e6) {}
+                }
+            } catch (eR) {
+                email = "";
+            }
+            // Strip diggerz color codes if any leaked in
+            email = String(email || "").replace(/\^\d/g, "").trim().toLowerCase();
+            // Accept any normal email (gmail, yahoo, etc.) — only need non-empty + @
+            var at = email.indexOf("@");
+            var ok = email.length >= 3 && at > 0 && at < email.length - 1;
+            if (!ok) {
+                this._9.push(new vb(this, "", "^1Type your email in the box, then press Okay.", new Cd, vb.F39));
+                return;
+            }
             q.thisMain.userEmail = email;
-            if (window.DiggerzAuth237 && window.DiggerzAuth237.requestLink)
-                window.DiggerzAuth237.requestLink(email, q.thisMain.userName, this, a);
+            try {
+                a.a0 = 1;
+                try { E.u4(a, 0, 300, 1, 1, 0); } catch (eU) {}
+            } catch (eC) {}
+            window.__diggerzEmailPopup = null;
+            if (window.DiggerzAuth237 && window.DiggerzAuth237.sendEmailLink)
+                window.DiggerzAuth237.sendEmailLink(email, this);
             else
-                this._9.push(new vb(this,"","Passwordless sign-in is not ready yet. You can continue as a guest.",new Cd,vb.F39))
+                this._9.push(new vb(this, "", "^1Email login is not ready yet. Refresh the page.", new Cd, vb.F39));
         },
         e50: function(a) {
             // Retained for unrelated legacy byte conversions; no credential encoding uses this in Build 23.7.
@@ -88111,7 +88434,7 @@ return true
         this.G56._9.push(this.G59),
         this.G56.F6(3, 0, -1, 800));
         this.G57 = this.g53._5.width;
-        null != l.z39 && 50 < l.z39.a1 && E.v2(Um.n7())
+        null != l.z39 && 50 < l.z39.a1 && (!window.__diggerzLightswordSfxAt || Date.now() - window.__diggerzLightswordSfxAt >= 120) && (window.__diggerzLightswordSfxAt = Date.now(), E.v2(Um.n7(), new fh(I.__cast(q.player.k8, md) / 100 * .3)))
     };
     v.G54 = Pk;
     Pk.__name__ = "G54";
@@ -115354,12 +115677,13 @@ return true
             var name = String(path || "").toLowerCase(), now = Date.now();
             // The original client and the reconstructed service can report the
             // same action in one frame. Avoid turning one hit into two sounds.
-            if (lastPlayed[name] && now - lastPlayed[name] < 24) return true;
+            var cooldown = /lightsword/.test(name) ? 120 : 24;
+            if (lastPlayed[name] && now - lastPlayed[name] < cooldown) return true;
             lastPlayed[name] = now;
             var ctx = audioContext();
             if (!ctx) return false;
             if (ctx.state === "suspended" && ctx.resume) ctx.resume().catch(function () {});
-            var destination = output(ctx, volume);
+            var destination = output(ctx, /lightsword/.test(name) ? volume * .3 : volume);
             if (/coin|purchase|levelup|checkpoint/.test(name)) {
                 tone(ctx, destination, 620, 880, .11, "sine");
                 tone(ctx, destination, 880, 1240, .14, "sine", .08)
@@ -115387,7 +115711,7 @@ return true
 
 </head>
 <body>
-<script id="diggerz-build235-ban-redirect">(function(){if(location.pathname==='/banned')return;try{var b=JSON.parse(localStorage.getItem('diggerz.resurrection.activeBan.v1')||'null');if(b&&(b.permanent||Number(b.expiresAt)>Date.now()))location.replace('/banned');else if(b)localStorage.removeItem('diggerz.resurrection.activeBan.v1')}catch(e){}})();</script>
+<script id="diggerz-build235-ban-redirect">(function(){if(location.pathname==='/banned')return;try{var b=JSON.parse(localStorage.getItem('diggerz.resurrection.activeBan.v1')||'null');if(b&&(b.permanent||Number(b.expiresAt)>Date.now()))location.replace('https://diggerz-multiplayer-test-production.up.railway.app/banned');else if(b)localStorage.removeItem('diggerz.resurrection.activeBan.v1')}catch(e){}})();</script>
 <aside id="game-load-error" role="alert" hidden style="position:fixed;top:100px;left:50%;transform:translateX(-50%);box-sizing:border-box;width:calc(100% - 32px);max-width:620px;z-index:2147483647;background:#182331;color:#fff;padding:20px;border:2px solid #e6b35a;border-radius:8px;font:16px/1.5 sans-serif;">
     <strong>The game could not start.</strong>
     <p id="game-load-error-detail"></p>
@@ -115401,7 +115725,7 @@ return true
 	</div>
 
 	<div id="a_desc" style="text-shadow: 2px 2px 2px black; font-weight: bold; text-align: center; color: white; position: absolute; top: 25px; left: 50%; z-index: 100; transform: translate(-50%, -50%);">2D battle royale game with building!<br/>Instructions: WASD to move. Use mouse to aim, dig, and pick weapons.</div>
-	<div id="a_ver" style="opacity: 0.5; text-shadow: 2px 2px 2px black; font-weight: bold; text-align: center; color: white; position: absolute; top: 5px; left: 14px; z-index: 100;">Build 23.7</div>
+	<div id="a_ver" style="opacity: 0.5; text-shadow: 2px 2px 2px black; font-weight: bold; text-align: center; color: white; position: absolute; top: 5px; left: 14px; z-index: 100;">Build 24.0</div>
 	<div id="a_changes" style="opacity: 0.5; text-shadow: 2px 2px 2px black; font-weight: bold; text-align: center; color: white; position: absolute; top: 25px; left: 14px; z-index: 100;"><a style="color: white; text-decoration: none;" href="#changes">Change Log</a></div>
 	<div id="a_info" style="opacity: 0.5; text-shadow: 2px 2px 2px black; font-weight: bold; text-align: center; color: white; position: absolute; top: 45px; left: 14px; z-index: 100;"><a style="color: white; text-decoration: none;" href="#info">Information</a></div>
 
@@ -115420,7 +115744,7 @@ return true
 <button id="diggerz-admin-toggle" type="button">ADMIN</button>
 <div id="diggerz-admin-panel" aria-label="Admin panel">
   <h2>Admin</h2>
-  <div style="opacity:.75">Build 23.7 multiplayer admin tools. Konami sequence + server-authorized admin session required.</div>
+  <div style="opacity:.75">Build 24.0 multiplayer admin tools. Konami sequence + server-authorized admin session required.</div>
   <h3>Spawn Item</h3>
   <label>Type</label><select id="admin-item-category"><option value="2">Weapon / Clothing / Item</option><option value="1">Block</option></select>
   <label>Item Name</label>
@@ -115528,7 +115852,7 @@ return true
       var code=window.prompt('Admin code:');
       if(code===null)return;
       code=String(code).trim();
-      var response=await fetch('/api/admin/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:code}),cache:'no-store'});
+      var response=await fetch('https://diggerz-multiplayer-test-production.up.railway.app/api/admin/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:code}),cache:'no-store'});
       var data={};try{data=await response.json()}catch(e){}
       if(!response.ok||!data.ok||!data.token){punishWrongCode();say(data.error==='too-many-attempts'?'Too many failed admin attempts. Try again later.':'Access denied.');return}
       adminToken=String(data.token);adminRole=String(data.role||'');adminExpiresAt=+data.expiresAt||0;window.DiggerzAdminSessionToken=adminToken;window.DiggerzAdminRole=adminRole;window.DiggerzAdminExpiresAt=adminExpiresAt;try{localStorage.setItem('diggerzAdminSessionToken',adminToken);localStorage.setItem('diggerzAdminSessionExpiresAt',String(adminExpiresAt));localStorage.setItem('diggerzAdminRole',adminRole)}catch(e){}
@@ -115675,10 +115999,10 @@ return true
   document.getElementById('admin-ban').onclick=function(){if(!ownerService())return say('Admin authentication required.');openModeration('ban')};
   document.getElementById('admin-mod-cancel').onclick=closeModeration;
   document.getElementById('admin-ban-permanent').onclick=function(){mod.permanent=!mod.permanent;this.classList.toggle('active',mod.permanent);this.textContent=mod.permanent?'Permanent: ON':'Permanent'};
-  async function moderate(action,target,extra){if(!adminToken)return {ok:false,error:'admin-auth'};var response=await fetch('/api/admin/moderate',{method:'POST',headers:authHeaders(),body:JSON.stringify(Object.assign({action:action,targetConnectionId:target&&target.connectionId||'',targetName:target&&target.name||''},extra||{})),cache:'no-store'});var data={};try{data=await response.json()}catch(e){};if(!response.ok)throw new Error(data.error||'moderation failed');return data}
+  async function moderate(action,target,extra){if(!adminToken)return {ok:false,error:'admin-auth'};var response=await fetch('https://diggerz-multiplayer-test-production.up.railway.app/api/admin/moderate',{method:'POST',headers:authHeaders(),body:JSON.stringify(Object.assign({action:action,targetConnectionId:target&&target.connectionId||'',targetName:target&&target.name||''},extra||{})),cache:'no-store'});var data={};try{data=await response.json()}catch(e){};if(!response.ok)throw new Error(data.error||'moderation failed');return data}
   document.getElementById('admin-mod-confirm').onclick=async function(){if(!mod.target)return;var reason=document.getElementById('admin-mod-reason').value.trim();try{if(mod.action==='kick'){await moderate('kick',mod.target,{reason:reason});say('Kicked '+mod.target.name+'.')}else{var s=+document.getElementById('admin-ban-seconds').value||0,h=+document.getElementById('admin-ban-hours').value||0,d=+document.getElementById('admin-ban-days').value||0,w=+document.getElementById('admin-ban-weeks').value||0,mo=+document.getElementById('admin-ban-months').value||0,y=+document.getElementById('admin-ban-years').value||0;var durationMs=(s+h*3600+d*86400+w*604800+mo*2592000+y*31536000)*1000;if(!mod.permanent&&durationMs<=0){say('Choose a ban length or Permanent.');return}var result=await moderate('ban',mod.target,{reason:reason,permanent:mod.permanent,durationMs:durationMs});say('Banned '+mod.target.name+(mod.permanent?' permanently.':'.')+(result&&result.ejectedConnections?' Ejected '+result.ejectedConnections+' live connection(s).':' Ban will enforce on next connection.'));await refreshBans()}closeModeration()}catch(e){say('Moderation failed: '+e.message)}};
   async function fetchBanList(){
-    var response=await fetch('/api/admin/bans',{headers:{'Authorization':'Bearer '+adminToken},cache:'no-store'}),data={};
+    var response=await fetch('https://diggerz-multiplayer-test-production.up.railway.app/api/admin/bans',{headers:{'Authorization':'Bearer '+adminToken},cache:'no-store'}),data={};
     try{data=await response.json()}catch(e){}
     if(!response.ok)throw new Error(data.error||'failed to load bans');
     return Array.isArray(data.bans)?data.bans:[]
@@ -115696,7 +116020,7 @@ return true
           btn.disabled=true;
           try{
             var payload={action:'unban',banId:b.id||'',targetName:String(b.name||''),normalizedName:String(b.name||'').trim().toLowerCase()};
-            var r=await fetch('/api/admin/moderate',{method:'POST',headers:authHeaders(),body:JSON.stringify(payload),cache:'no-store'}),d={};
+            var r=await fetch('https://diggerz-multiplayer-test-production.up.railway.app/api/admin/moderate',{method:'POST',headers:authHeaders(),body:JSON.stringify(payload),cache:'no-store'}),d={};
             try{d=await r.json()}catch(e){}
             if(!r.ok||d.ok===false)throw new Error(d.error||'server rejected unban');
             await new Promise(function(resolve){setTimeout(resolve,120)});
@@ -115751,7 +116075,7 @@ return true
 </style>
 <div id="diggerz-pvp22">
  <div class="box">
-  <h2>Build 23.7 — Diggerz Multiplayer</h2>
+  <h2>Build 24.0 — Diggerz Multiplayer</h2>
   <p>Diagnostic multiplayer test. The debug box shows WebSocket room assignment, local-service flags, and native packet 5/6 traffic.</p>
   <input id="pvp22-server-url" type="hidden" value="">
   <div id="diggerz-pvp22-status">Multiplayer idle.</div>
@@ -115761,7 +116085,7 @@ return true
 </div>
 
 <div id="diggerz-mp-debug">
- <div class="head"><span>MP DEBUG 23.7</span><button id="diggerz-mp-copy">COPY</button><button id="diggerz-mp-clear">CLEAR</button><button id="diggerz-mp-hide">HIDE</button></div>
+ <div class="head"><span>MP DEBUG 24.0</span><button id="diggerz-mp-copy">COPY</button><button id="diggerz-mp-clear">CLEAR</button><button id="diggerz-mp-hide">HIDE</button></div>
  <div id="diggerz-mp-debug-log">[MP-000] Debug console ready.</div>
  <div id="diggerz-mp-debug-summary">mode=idle | socket=none | room=none</div>
 </div>
@@ -115785,7 +116109,7 @@ return true
   document.getElementById('diggerz-mp-clear').onclick=function(){P.debugLines=[];dbg('MP-000','debug log cleared')};
   document.getElementById('diggerz-mp-hide').onclick=function(){debugBox.style.display='none'};
   function automaticServerUrl(){
-    if(location.protocol==='https:')return 'wss://'+location.host;
+    if(location.protocol==='https:')return 'wss://diggerz-multiplayer-test-production.up.railway.app';
     if(location.protocol==='http:')return 'ws://'+location.host;
     try{return localStorage.getItem('diggerzServerUrl')||'ws://127.0.0.1:8080'}catch(e){return 'ws://127.0.0.1:8080'}
   }
@@ -115840,13 +116164,13 @@ return true
     var url=serverAddress();dbg('MP-010','WebSocket URL '+url);setStatus((location.protocol==='file:'?'Connecting to the local Diggerz test server…':'Connecting to Diggerz multiplayer…')+'\nLooking for a '+(P.mode==='pvp'?'Battle':'Dig+Trade')+' player.');
     var ws;try{ws=P.socket=new WebSocket(url);ws.binaryType='arraybuffer'}catch(e){P.socket=null;setStatus('Could not reach the Diggerz multiplayer server. '+(e&&e.message||e));return}
     var openedAt=Date.now();
-    ws.onopen=function(){if(P.socket!==ws||!P.requested)return;P.everOpened=true;dbg('MP-011','socket OPEN after '+(Date.now()-openedAt)+'ms');setStatus('Connected. Looking for another '+(P.mode==='pvp'?'Battle':'Dig+Trade')+' player…');sendRaw({t:'matchmake',mode:P.mode,name:username(),clientId:clientId(),build:'23.7'})};
+    ws.onopen=function(){if(P.socket!==ws||!P.requested)return;P.everOpened=true;dbg('MP-011','socket OPEN after '+(Date.now()-openedAt)+'ms');setStatus('Connected. Looking for another '+(P.mode==='pvp'?'Battle':'Dig+Trade')+' player…');sendRaw({t:'matchmake',mode:P.mode,name:username(),clientId:clientId(),build:'24.0'})};
     ws.onmessage=function(event){
       if(P.socket!==ws)return;
       if(event.data instanceof ArrayBuffer){try{var op0=new DataView(event.data).getUint16(0,true);if(op0===5)dbg('MP-031','native spawn packet '+op0+' received ('+event.data.byteLength+' bytes)')}catch(_e){}routeNativePacket(event.data);return}
       if(typeof Blob!=='undefined'&&event.data instanceof Blob){event.data.arrayBuffer().then(routeNativePacket).catch(function(e){console.error('Diggerz Blob packet',e)});return}
       var m;try{m=JSON.parse(event.data)}catch(e){setStatus('Server sent invalid data.');return}if(!m||!m.t)return;
-      if(m.t==='banned'){try{localStorage.setItem('diggerz.resurrection.activeBan.v1',JSON.stringify({id:m.id||'',name:m.name||username(),createdAt:+m.createdAt||Date.now(),expiresAt:+m.expiresAt||0,permanent:!!m.permanent,reason:String(m.reason||'no reason provided.')}))}catch(e){};location.replace('/banned');return;}
+      if(m.t==='banned'){try{localStorage.setItem('diggerz.resurrection.activeBan.v1',JSON.stringify({id:m.id||'',name:m.name||username(),createdAt:+m.createdAt||Date.now(),expiresAt:+m.expiresAt||0,permanent:!!m.permanent,reason:String(m.reason||'no reason provided.')}))}catch(e){};location.replace('https://diggerz-multiplayer-test-production.up.railway.app/banned');return;}
       if(m.t==='kicked'){try{alert('you have been kicked.\nreason: '+String(m.reason||'no reason provided.'))}catch(e){};P.intentionalClose=true;try{ws.close()}catch(e){};setTimeout(function(){location.replace('/')},50);return;}
       if(m.t==='server-hello'){dbg('MP-012','server hello: '+String(m.server||'unknown'));return;}
       if(m.t==='welcome'){P.joined=true;P.suppressPeerJoinChat=true;try{if(P.service)P.service._pvpAnnounceJoins=false}catch(_e){}
@@ -116780,8 +117104,8 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
     var proto=DS.prototype;if(proto.__release230)return;proto.__release230=true;
     var review=document.getElementById('diggerz-trade-review'),reviewList=document.getElementById('diggerz-trade-receive'),confirmBtn=document.getElementById('diggerz-trade-confirm'),backBtn=document.getElementById('diggerz-trade-back');
     function chat(s){try{if(P.service&&P.service.message)P.service.message(s)}catch(e){}}
-    function nativePrompt(service,text){if(!service||!text)return;try{service.centerMessage(String(text))}catch(e){}}
-    function smallPrompt(service,text){if(!service||!text)return;try{var game=service.game||l.z38;if(!game||!game._9){nativePrompt(service,text);return}for(var i=0;i<game._9.length;i++){var old=game._9[i];if(old&&old._1==='BattleSmallText'){old.a0=1;try{old.e3()}catch(_e){}}}var a=new xa(q.CENTERX,q.CENTERY-55,String(text),q.MAIN_FONT_SMALL);a._1='BattleSmallText';a.set_local_xScale(a.set_local_yScale(1.25));a.F6(5,1,0,1550);game._9.push(a)}catch(e){nativePrompt(service,text)}}
+    function nativePrompt(service,text){if(!service||!text)return;var raw=String(text);var isBattle=/FIGHT!|ELIMINATION HAS BEGUN!|SHRINK!| wins!$/i.test(raw)||/^\^[0-9][123]$/.test(raw);if(!isBattle){try{service.centerMessage(raw)}catch(e){}return}try{var game=service.game||l.z38;if(!game||!game._9){service.centerMessage(raw);return}for(var i=0;i<game._9.length;i++){var old=game._9[i];if(old&&old._1==='BattleBigText'){old.a0=1;try{old.e3()}catch(_e){}}}var winner=/ wins!$/i.test(raw),y=winner?Math.round(q.SCREENHEIGHT*.31):Math.round(q.SCREENHEIGHT*.40),a=new xa(q.CENTERX,y,raw,q.MAIN_FONT_BIG);a._1='BattleBigText';var start=winner?1.8:2.15,end=winner?1.45:1.15;a.set_alp(0);a.set_local_xScale(a.set_local_yScale(start));a.F6(5,0,1,120);a.F6(3,start,end,260);a.F6(4,start,end,260);a.F6(5,1,0,320,!1,winner?2250:620);game._9.push(a);setTimeout(function(){try{a.a0=1}catch(_e){}},winner?2700:1100)}catch(e){try{service.centerMessage(raw)}catch(_e){}}}
+    function smallPrompt(service,text){if(!service||!text)return;var raw=String(text);if(/^\^[0-9][123]$/.test(raw)){nativePrompt(service,raw);return}try{var game=service.game||l.z38;if(!game||!game._9){nativePrompt(service,raw);return}for(var i=0;i<game._9.length;i++){var old=game._9[i];if(old&&old._1==='BattleSmallText'){old.a0=1;try{old.e3()}catch(_e){}}}var a=new xa(q.CENTERX,Math.round(q.SCREENHEIGHT*.14),raw,q.MAIN_FONT_SMALL);a._1='BattleSmallText';a.set_local_xScale(a.set_local_yScale(1.05));a.F6(5,1,0,1450);game._9.push(a)}catch(e){nativePrompt(service,raw)}}
     // Build 23 map files are sparse on disk. Rebuild a complete 128x80 world locally,
     // then send only changed cells through the recovered native tile packet in manageable batches.
     proto.pvpApplyMapTransforms=function(map){
@@ -116860,6 +117184,7 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
         if(m.kind==='build-start'){resetScores(this);smallPrompt(this,'^1Match begins in 40 seconds. Build your defence now!')}
         else if(m.kind==='fight'){nativePrompt(this,'^1FIGHT!')}
         else if(m.kind==='shrink-warning'){smallPrompt(this,'^1World Shrink Coming!')}
+        else if(m.kind==='shrink'){nativePrompt(this,'^3SHRINK!')}
         else if(m.kind==='elimination'){nativePrompt(this,'^6ELIMINATION HAS BEGUN!')}
       }
       if(m.t==='kill-confirm'){setScore(this,P.connectionId,m.kills|0)}
@@ -117207,24 +117532,39 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
       if(roll<1242){list=DS.COMMON_REWARDS;item=list[Math.floor(hash/642)%list.length];return {category:item.category,id:item.id,count:item.count,tier:item.category===1?'block':'weapon'}}
       return null
     };
-    // --- Music: Dig+Trade player + synchronized PvP pre-match track ---
+    // --- Music: Dig+Trade native panel (not PvP) + synchronized PvP pre-match track ---
     var TRACKS=['music_theme.ogg','music_theme2.ogg','music_theme3.ogg','music_theme4.ogg'];
+    var TRACK_NAMES=['Track 1','Track 2','Track 3','Track 4'];
     var digHowl=null,digTrack=-1,pvpHowl=null,pvpKey='',pvpFightAt=0,pvpOffset=0,pvpBaseVolume=.7;
-    var player=document.createElement('div');player.id='diggerz-music-player';player.innerHTML='<div class="mp-title">MUSIC PLAYER</div><select id="diggerz-music-track"><option value="0">Track 1</option><option value="1">Track 2</option><option value="2">Track 3</option><option value="3">Track 4</option></select><div class="mp-row"><button id="diggerz-music-play">Play</button><button id="diggerz-music-pause">Pause</button></div><div class="mp-row"><button id="diggerz-music-restart">Restart</button><button id="diggerz-music-rewind">-2 sec</button></div>';
-    document.body.appendChild(player);
-    var style=document.createElement('style');style.id='diggerz-build233-style';style.textContent='#diggerz-music-player{display:none;position:fixed;left:10px;top:72px;z-index:2147482305;width:176px;padding:7px;background:rgba(10,17,25,.88);border:2px solid rgba(255,255,255,.72);border-radius:6px;color:#fff;font:700 11px/1.2 Arial,sans-serif;text-shadow:1px 1px #000;box-shadow:0 3px 12px rgba(0,0,0,.45)}#diggerz-music-player .mp-title{text-align:center;margin-bottom:5px;color:#ffe052}#diggerz-music-player select{width:100%;padding:4px;background:#111d2a;color:#fff;border:1px solid #64788e;border-radius:3px;font:inherit}#diggerz-music-player .mp-row{display:flex;gap:4px;margin-top:4px}#diggerz-music-player button{flex:1;padding:4px 2px;background:#263a50;color:#fff;border:1px solid #7b8fa4;border-radius:3px;font:inherit;cursor:pointer}#diggerz-music-player button:hover{background:#36506c}';document.head.appendChild(style);
-    var sel=document.getElementById('diggerz-music-track');
     function newTrackHowl(i,loop,onload){return new Howl({src:[TRACKS[i]],preload:true,loop:!!loop,volume:pvpBaseVolume,onload:onload||null})}
     function digSetTrack(i,play){
       i=Math.max(0,Math.min(3,i|0));
       if(!digHowl||digTrack!==i){if(digHowl)try{digHowl.unload()}catch(e){}digTrack=i;digHowl=newTrackHowl(i,false)}
       if(play)try{digHowl.play()}catch(e){}
     }
-    sel.onchange=function(){digSetTrack(+sel.value,true)};
-    document.getElementById('diggerz-music-play').onclick=function(){digSetTrack(+sel.value,true)};
-    document.getElementById('diggerz-music-pause').onclick=function(){if(digHowl)try{digHowl.pause()}catch(e){}};
-    document.getElementById('diggerz-music-restart').onclick=function(){digSetTrack(+sel.value,false);if(digHowl)try{digHowl.stop();digHowl.play()}catch(e){}};
-    document.getElementById('diggerz-music-rewind').onclick=function(){if(!digHowl)return;try{var pos=Number(digHowl.seek())||0;digHowl.seek(Math.max(0,pos-2))}catch(e){}};
+    window.DiggerzMusic = {
+      setTrack: digSetTrack,
+      pause: function(){ if(digHowl) try{digHowl.pause()}catch(e){} },
+      tracks: TRACKS,
+      names: TRACK_NAMES
+    };
+    // Native Music button + track list (Dig+Trade only, under the X)
+    var digMusicBtn=null, digMusicPanel=null, digMusicOpenedAt=0;
+    function digMusicClosePanel(){
+      try{
+        if(digMusicPanel){
+          try{ digMusicPanel.a0=1; }catch(e0){}
+          // No E.u4 fade — fade was making track buttons flicker/vanish
+          digMusicPanel=null;
+        }
+      }catch(e){}
+    }
+    function digMusicOpenPanel(){ /* Music UI removed */ }
+    function digMusicEnsureBtn(show){
+      // Music UI removed — nobody used it
+      try{ if(digMusicBtn){ digMusicBtn.a0=1; digMusicBtn=null; } }catch(e){}
+      try{ digMusicClosePanel(); }catch(e2){}
+    }
     function startPvpMusic(track,startedAt,fightAt,serverNow){
       track=Number(track);if(!isFinite(track)||track<0||track>3)return;startedAt=+startedAt||Date.now();fightAt=+fightAt||0;pvpOffset=(+serverNow||Date.now())-Date.now();pvpFightAt=fightAt;
       var key=track+':'+startedAt;
@@ -117234,19 +117574,29 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
       pvpHowl=newTrackHowl(track,true,syncStart);if(pvpHowl.state&&pvpHowl.state()==='loaded')syncStart()
     }
     function stopPvpMusic(){if(pvpHowl)try{pvpHowl.stop();pvpHowl.unload()}catch(e){}pvpHowl=null;pvpKey='';pvpFightAt=0}
+    function setPvpMusicVolume(target,ms){if(!pvpHowl)return;target=Math.max(0,Math.min(1,+target||0));try{var current=Number(pvpHowl.volume());if(ms&&pvpHowl.fade)pvpHowl.fade(isFinite(current)?current:pvpBaseVolume,target,ms);else pvpHowl.volume(target);if(!pvpHowl.playing())pvpHowl.play()}catch(e){}}
+    function duckPvpMusic(ms){pvpFightAt=0;setPvpMusicVolume(pvpBaseVolume*.25,ms||900)}
+    function raisePvpMusic(ms){setPvpMusicVolume(pvpBaseVolume,ms||1200)}
     var prevReceive233=proto.pvpReceive;
     proto.pvpReceive=function(m){
       if(m&&m.t==='battle-state'){
-        if(m.phase==='build')startPvpMusic(m.preMatchTrack,m.musicStartedAt,m.fightAt,m.serverNow);else stopPvpMusic()
+        if(m.mapMusic)stopPvpMusic();
+        else if(m.phase==='build')startPvpMusic(m.preMatchTrack,m.musicStartedAt,m.fightAt,m.serverNow);
+        else if(m.phase==='fight'||m.phase==='elimination')duckPvpMusic(700);
+        else if(m.phase==='finished')raisePvpMusic(1200)
       }else if(m&&m.t==='battle-event'){
-        if(m.kind==='build-start')startPvpMusic(m.preMatchTrack,m.musicStartedAt,m.fightAt,m.serverNow);else if(m.kind==='fight')stopPvpMusic()
-      }
+        if(m.mapMusic)stopPvpMusic();
+        else if(m.kind==='build-start')startPvpMusic(m.preMatchTrack,m.musicStartedAt,m.fightAt,m.serverNow);
+        else if(m.kind==='fight'||m.kind==='elimination')duckPvpMusic(900)
+      }else if(m&&m.t==='winner')raisePvpMusic(1200);
       return prevReceive233.call(this,m)
     };
     setInterval(function(){
-      var service=P.service,show=!!(P.joined&&P.mode==='digtrade'&&service&&service.mode==='digtrade');player.style.display=show?'block':'none';if(!show&&digHowl)try{digHowl.pause()}catch(e){};
-      if(P.mode==='pvp'&&pvpFightAt&&pvpKey&&pvpHowl){var rem=pvpFightAt-(Date.now()+pvpOffset);if(rem<=0){stopPvpMusic()}else if(rem<=3000){try{pvpHowl.volume(Math.max(0,pvpBaseVolume*(rem/3000)))}catch(e){}}else try{pvpHowl.volume(pvpBaseVolume)}catch(e){}}
-      else if(P.mode!=='pvp'&&pvpHowl)stopPvpMusic();
+      var service=P.service,show=!!(P.joined&&P.mode==='digtrade'&&service&&service.mode==='digtrade');
+      digMusicEnsureBtn(show);
+      if(!show&&digHowl)try{digHowl.pause()}catch(e){};
+      if((P.mode!=='pvp'||!P.joined)&&pvpHowl){stopPvpMusic();return}
+      if(P.mode==='pvp'&&P.joined&&pvpFightAt&&pvpKey&&pvpHowl){var rem=pvpFightAt-(Date.now()+pvpOffset),duck=pvpBaseVolume*.25;if(rem<=0){pvpFightAt=0;setPvpMusicVolume(duck,0)}else if(rem<=3000){try{pvpHowl.volume(duck+(pvpBaseVolume-duck)*(rem/3000))}catch(e){}}else try{pvpHowl.volume(pvpBaseVolume)}catch(e){}}
     },100);
   }
   install233();
@@ -117590,95 +117940,874 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
 		</ul>
 	</div>
 
-<script id="diggerz-build23-7-security-patch">
+<script id="diggerz-donate-native">
 (function(){
-  'use strict';
-  var AUTH_MARKER='SESSION_AUTHENTICATED';
-  var OLD_ACCOUNT_KEY='diggerz.resurrection.accounts.v1',OLD_BOUND_KEY='diggerz.resurrection.boundEmail.v1';
-  var state={authenticated:false,email:'',username:'',busy:false};
+  var panelRef = null;
+  var LIME_URL = 'https://ko-fi.com/limeguy314';
+  var HEU_URL = 'https://cash.app/$Houstonswallet';
 
-  function cleanEmail(v){return String(v||'').trim().toLowerCase().slice(0,254)}
-  function validEmail(v){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)}
-  function cleanName(v){v=String(v||'').trim();return (!v||v==='Enter Name')?'Player':v.slice(0,24)}
-  function popup(menu,text){
-    try{menu._9.push(new vb(menu,'',String(text),new Cd,vb.F39))}
-    catch(e){try{alert(String(text).replace(/\^[0-9]/g,''))}catch(_e){}}
-  }
-  function closeField(field){try{field.a2=false;field.a0=1}catch(e){}}
-  function applySession(data){
-    state.authenticated=!!(data&&data.authenticated!==false&&data.ok!==false&&(data.email||data.user));
-    state.email=cleanEmail(data&&data.email||'');state.username=cleanName(data&&data.username||data&&data.name||'');
-    try{
-      if(window.q&&q.thisMain){
-        if(state.authenticated){q.thisMain.userPW=AUTH_MARKER;q.thisMain.userEmail=state.email;if(state.username&&state.username!=='Player'&&(!q.thisMain.userName||q.thisMain.userName==='Enter Name'))q.thisMain.userName=state.username}
-        else{q.thisMain.userEmail='';if(!String(q.thisMain.userPW||'').startsWith('NOPASSWORD'))q.thisMain.userPW='NOPASSWORD_'+String(q.thisMain.userUniqueID||'')}
-        q.SaveGlobals()
+  function closePanel() {
+    try {
+      if (panelRef) {
+        try { panelRef.a0 = 1; } catch (e0) {}
+        panelRef = null;
       }
-    }catch(e){}
-    try{sessionStorage.setItem('diggerz.auth.active.v1',state.authenticated?'1':'0')}catch(e){}
-    return state
+    } catch (e2) {}
   }
-  async function jsonFetch(url,options){
-    options=options||{};options.credentials='same-origin';options.cache='no-store';
-    var response=await fetch(url,options),data={};try{data=await response.json()}catch(e){}
-    if(!response.ok)throw new Error(data.error||data.message||('HTTP '+response.status));
-    return data
-  }
-  async function refresh(){
-    try{return applySession(await jsonFetch('/api/auth/me'))}
-    catch(e){return applySession({authenticated:false})}
-  }
-  async function requestLink(email,username,menu,field){
-    if(state.busy)return;email=cleanEmail(email);username=cleanName(username);
-    if(!validEmail(email)){popup(menu,'^1Enter a valid email address.');return}
-    state.busy=true;
-    try{
-      await jsonFetch('/api/auth/request-link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,username:username})});
-      closeField(field);
-      popup(menu,'^2Check your email. ^7Use the one-time Diggerz sign-in link. No password is stored or sent.')
-    }catch(e){
-      popup(menu,'^1Passwordless sign-in is unavailable on the server right now. ^7You can keep playing as a guest.');
-    }finally{state.busy=false}
-  }
-  async function exchangeMagicToken(){
-    var u;try{u=new URL(location.href)}catch(e){return false}
-    var token=u.searchParams.get('login_token');if(!token)return false;
-    try{
-      await jsonFetch('/api/auth/exchange',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:token})});
-      u.searchParams.delete('login_token');history.replaceState(null,'',u.pathname+(u.search?'?'+u.searchParams.toString():'')+u.hash);
-      await refresh();return true
-    }catch(e){
-      u.searchParams.delete('login_token');history.replaceState(null,'',u.pathname+(u.search?'?'+u.searchParams.toString():'')+u.hash);return false
+
+  function openDonateNative(menu) {
+    var UI = window.DiggerzNativeUI;
+    if (!UI || !UI.ja || !UI.xa || !UI.ob || !UI.q) {
+      if (window.DiggerzSupport239) window.DiggerzSupport239.open();
+      return;
+    }
+    closePanel();
+    try {
+      // Parent must be the TITLE MENU (same as LOGIN D55), not the button.
+      var root = null;
+      try {
+        if (menu && menu._9 && typeof menu.D55 === 'function') root = menu;
+      } catch (e0) {}
+      try {
+        if (!root && UI.q && UI.q.thisMain && UI.q.thisMain._9) root = UI.q.thisMain;
+      } catch (e1) {}
+      try {
+        if (!root && menu && menu._9) root = menu;
+      } catch (e2) {}
+
+      var panel = new UI.ja(440, 360, !0);
+      panel._1 = 'diggerz_donate_panel';
+      panel.c0 = !0;
+      panel.a0 = 0;
+      panel.E7 = function() { return !0; };
+      panel.C39 = function() {
+        try {
+          if (null == this._8 || null == this._8[3]) closePanel();
+        } catch (eC) { closePanel(); }
+      };
+      // Exact same centering as LOGIN / Game Settings
+      panel.A7 = UI.q.CENTERX;
+      panel.A8 = UI.q.CENTERY;
+      panel.B8 = 8;
+
+      var title = new UI.xa(0, -120, '^9Donate', UI.q.MAIN_FONT_BIG);
+      title.D7(panel, !0);
+      try { title.set_local_xScale(title.set_local_yScale(1.05)); } catch (eT) {}
+      panel._9.push(title);
+
+      var lime = new UI.ob(0, -40, '^2Lime', UI.q.MAIN_FONT_BIG);
+      lime.D7(panel, !0);
+      try { lime.set_local_xScale(lime.set_local_yScale(0.95)); } catch (eL) {}
+      lime.C33 = function() {
+        try { window.open(LIME_URL, '_blank', 'noopener,noreferrer'); } catch (e) { location.href = LIME_URL; }
+      };
+      panel._9.push(lime);
+
+      var heu = new UI.ob(0, 30, '^3Heu', UI.q.MAIN_FONT_BIG);
+      heu.D7(panel, !0);
+      try { heu.set_local_xScale(heu.set_local_yScale(0.95)); } catch (eH) {}
+      heu.C33 = function() {
+        try { window.open(HEU_URL, '_blank', 'noopener,noreferrer'); } catch (e) { location.href = HEU_URL; }
+      };
+      panel._9.push(heu);
+
+      var closeLbl = new UI.ob(0, 100, '^1Close', UI.q.MAIN_FONT_BIG);
+      closeLbl.D7(panel, !0);
+      try { closeLbl.set_local_xScale(closeLbl.set_local_yScale(0.9)); } catch (eC) {}
+      closeLbl.C33 = function() { closePanel(); };
+      panel._9.push(closeLbl);
+
+      if (root && root._9) {
+        root._9.push(panel);
+        panel._2 = root;
+      }
+      panelRef = panel;
+    } catch (err) {
+      console.warn('[Diggerz Donate] native panel failed', err);
+      if (window.DiggerzSupport239) window.DiggerzSupport239.open();
     }
   }
-  async function logoutFromMenu(menu){
-    try{await jsonFetch('/api/auth/logout',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})}catch(e){}
-    applySession({authenticated:false});
-    popup(menu,'^2Signed out. ^7Your local game progress remains on this browser.')
+
+  window.DiggerzOpenDonateNative = openDonateNative;
+})();
+</script>
+
+<script id="diggerz-mobile-chat-enter">
+(function(){
+  // Removed: document keydown/keypress Enter handlers were double-sending chat.
+  // Native chat already binds Enter to y1 via D31.q39 — one send only.
+  try {
+    var old = document.getElementById('diggerz-chat-enter-btn');
+    if (old) old.style.display = 'none';
+  } catch (e) {}
+})();
+</script>
+
+<script id="diggerz-firebase-google-auth">
+(function(){
+  'use strict';
+  var AUTH_MARKER = 'SESSION_AUTHENTICATED';
+  var STORAGE_KEY = 'diggerz.firebase.auth.v1';
+  var firebaseConfig = {
+    apiKey: "AIzaSyBMsaYJ4UMAQPkJcjG9-Ix4LXoGKppwZpk",
+    authDomain: "diggerz-86512.firebaseapp.com",
+    projectId: "diggerz-86512",
+    storageBucket: "diggerz-86512.firebasestorage.app",
+    messagingSenderId: "812494082190",
+    appId: "1:812494082190:web:d399176297e8171316f9df",
+    measurementId: "G-BPH0E6RM9L"
+  };
+  var state = { authenticated: false, email: '', username: '', uid: '', busy: false, ready: false };
+  var auth = null;
+  var db = null;
+  var saveTimer = null;
+  var lastCloudPush = 0;
+
+  function cleanName(v) {
+    v = String(v || '').trim();
+    return (!v || v === 'Enter Name') ? 'Player' : v.slice(0, 24);
+  }
+  function popup(menu, text) {
+    try { menu._9.push(new vb(menu, '', String(text), new Cd, vb.F39)); }
+    catch (e) { try { alert(String(text).replace(/\^[0-9]/g, '')); } catch (_e) {} }
+  }
+  function saveLocal() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        uid: state.uid, email: state.email, username: state.username, authenticated: state.authenticated
+      }));
+    } catch (e) {}
   }
 
-  window.DiggerzAuth237={state:state,requestLink:requestLink,refresh:refresh,logoutFromMenu:logoutFromMenu};
+  function collectProfile() {
+    var profile = {
+      userName: '',
+      country_flag: 0,
+      skin_tone: 1,
+      music_volume: 50,
+      sound_volume: 50,
+      email: state.email || '',
+      updatedAt: Date.now()
+    };
+    try {
+      if (window.q && q.thisMain) profile.userName = String(q.thisMain.userName || '');
+      if (window.q && q.player) {
+        profile.country_flag = q.player.L0 | 0;
+        profile.skin_tone = Number(q.player.l9) || 1;
+        profile.music_volume = q.player.k7 | 0;
+        profile.sound_volume = q.player.k8 | 0;
+      }
+    } catch (e) {}
+    return profile;
+  }
 
-  // Remove credential remnants from the old browser-local account system.
-  try{localStorage.removeItem(OLD_ACCOUNT_KEY);localStorage.removeItem(OLD_BOUND_KEY)}catch(e){}
-  try{if(sessionStorage.getItem('diggerz.auth.active.v1')==='1'&&window.q&&q.thisMain)q.thisMain.userPW=AUTH_MARKER}catch(e){}
+  function digtradeStorageKey() {
+    try {
+      if (window.DiggerzService && DiggerzService.STORAGE_KEY) return DiggerzService.STORAGE_KEY;
+    } catch (e) {}
+    return 'diggerz.digtrade.rebuild.v3';
+  }
 
-  // Exchange an emailed one-time token if the backend redirects to ?login_token=...
-  exchangeMagicToken().then(function(done){if(!done)refresh()});
+  function defaultAppearance() {
+    return [0, 247, 0, 0, 326, 0, 0, 0, 0, 0, 0];
+  }
 
-  // q may finish initializing after this patch; rewrite Globals once to scrub any old upw/uem attributes.
-  var scrubTries=0,scrub=setInterval(function(){
-    scrubTries++;
-    try{if(window.q&&q.thisMain&&typeof q.SaveGlobals==='function'){q.SaveGlobals();clearInterval(scrub)}}catch(e){}
-    if(scrubTries>100)clearInterval(scrub)
-  },100);
-}());
+  function normalizeSlot(item) {
+    if (item == null) return { category: 0, id: 0, variant: 0, count: 0 };
+    if (typeof item === 'number') {
+      return { category: 0, id: item | 0, variant: 0, count: item ? 1 : 0 };
+    }
+    return {
+      category: Math.max(0, Math.min(6, Number(item.category) || 0)),
+      id: Math.max(0, Math.min(2047, Number(item.id) || 0)),
+      variant: Math.max(0, Math.min(31, Number(item.variant) || 0)),
+      count: Math.max(0, Math.min(65535, Number(item.count) || 0))
+    };
+  }
+
+  function normalizeInventory(inv) {
+    if (!inv) return null;
+    var slotsIn = Array.isArray(inv.slots) ? inv.slots : [];
+    if (slotsIn.length < 3) {
+      // pad to valid length
+      while (slotsIn.length < 3) slotsIn.push({ category: 0, id: 0, variant: 0, count: 0 });
+    }
+    var slots = [];
+    for (var i = 0; i < slotsIn.length; i++) slots.push(normalizeSlot(slotsIn[i]));
+    var appearance = Array.isArray(inv.appearance) && inv.appearance.length
+      ? inv.appearance.map(function(n){ return Number(n) || 0; })
+      : defaultAppearance();
+    while (appearance.length < 11) appearance.push(0);
+    return {
+      version: 6,
+      slots: slots,
+      appearance: appearance,
+      appearanceText: String(inv.appearanceText || ''),
+      wins: inv.wins | 0,
+      coins: inv.coins | 0,
+      mined: inv.mined | 0,
+      placed: inv.placed | 0,
+      starterLoadoutVersion: inv.starterLoadoutVersion | 0,
+      x: inv.x,
+      y: inv.y
+    };
+  }
+
+  function collectInventory() {
+    try {
+      var rawObj = null;
+      var svc = window.P && P.service;
+      if (svc && svc.state && Array.isArray(svc.state.slots)) {
+        rawObj = {
+          version: svc.state.version || 6,
+          slots: svc.state.slots,
+          appearance: svc.state.appearance,
+          appearanceText: svc.state.appearanceText || '',
+          wins: svc.state.wins | 0,
+          coins: svc.state.coins | 0,
+          mined: svc.state.mined | 0,
+          placed: svc.state.placed | 0,
+          starterLoadoutVersion: svc.state.starterLoadoutVersion | 0,
+          x: svc.state.x,
+          y: svc.state.y
+        };
+      } else {
+        var raw = localStorage.getItem(digtradeStorageKey());
+        if (raw) {
+          try { rawObj = JSON.parse(raw); } catch (e0) { rawObj = null; }
+        }
+      }
+      var norm = normalizeInventory(rawObj);
+      if (norm) console.log('[Diggerz Cloud] collectInventory slots=', norm.slots.length, 'filled=', inventoryScore(norm));
+      return norm;
+    } catch (e) {
+      console.warn('[Diggerz Cloud] collectInventory failed', e);
+      return null;
+    }
+  }
+
+  function applyProfile(data) {
+    if (!data) return;
+    try {
+      if (window.q && q.thisMain && data.userName) {
+        q.thisMain.userName = String(data.userName).slice(0, 24);
+      }
+      if (window.q && q.player) {
+        if (data.country_flag != null) q.player.L0 = data.country_flag | 0;
+        if (data.skin_tone != null) q.player.l9 = Number(data.skin_tone) || 1;
+        if (data.music_volume != null) q.player.k7 = data.music_volume | 0;
+        if (data.sound_volume != null) q.player.k8 = data.sound_volume | 0;
+      }
+      if (typeof q !== 'undefined' && typeof q.SaveGlobals === 'function') q.SaveGlobals();
+      try {
+        localStorage.setItem('diggerz.profile.v1', JSON.stringify({
+          userName: String((q.thisMain && q.thisMain.userName) || ''),
+          country_flag: (q.player && q.player.L0) | 0,
+          skin_tone: Number(q.player && q.player.l9) || 1,
+          music_volume: (q.player && q.player.k7) | 0,
+          sound_volume: (q.player && q.player.k8) | 0
+        }));
+      } catch (e2) {}
+    } catch (e) {}
+  }
+
+  function applyInventory(inv) {
+    var norm = normalizeInventory(inv);
+    if (!norm || !Array.isArray(norm.slots)) {
+      console.warn('[Diggerz Cloud] applyInventory: invalid inventory', inv);
+      return false;
+    }
+    try {
+      var key = digtradeStorageKey();
+      // Preserve map fields from existing save if present
+      var existing = null;
+      try { existing = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) {}
+      var merged = existing && typeof existing === 'object' ? existing : {};
+      merged.version = 6;
+      merged.slots = norm.slots;
+      merged.appearance = norm.appearance;
+      merged.appearanceText = norm.appearanceText || '';
+      merged.wins = norm.wins | 0;
+      merged.coins = norm.coins | 0;
+      merged.mined = norm.mined | 0;
+      merged.placed = norm.placed | 0;
+      merged.starterLoadoutVersion = norm.starterLoadoutVersion | 0;
+      if (norm.x != null) merged.x = norm.x;
+      if (norm.y != null) merged.y = norm.y;
+      // Ensure digtrade validState will accept this
+      localStorage.setItem(key, JSON.stringify(merged));
+      console.log('[Diggerz Cloud] wrote localStorage', key, 'filled~', inventoryScore(norm));
+
+      var svc = window.P && P.service;
+      if (svc && svc.state) {
+        svc.state.slots = norm.slots;
+        svc.state.appearance = norm.appearance;
+        svc.state.appearanceText = norm.appearanceText || '';
+        svc.state.wins = norm.wins | 0;
+        svc.state.coins = norm.coins | 0;
+        svc.state.mined = norm.mined | 0;
+        svc.state.placed = norm.placed | 0;
+        try { if (typeof svc.save === 'function') svc.save(true); } catch (e3) {}
+        try { if (typeof svc.applyAppearance === 'function') svc.applyAppearance(); } catch (e4) {}
+      }
+      return true;
+    } catch (e) {
+      console.warn('[Diggerz Cloud] applyInventory failed', e);
+      return false;
+    }
+  }
+
+  async function pullCloudSave(force) {
+    if (!state.uid || !db) {
+      console.warn('[Diggerz Cloud] pull: not ready', !!state.uid, !!db);
+      return null;
+    }
+    try {
+      var snap = await db.collection('users').doc(state.uid).get();
+      if (!snap.exists) {
+        console.log('[Diggerz Cloud] pull: no document for', state.uid);
+        return null;
+      }
+      var data = snap.data() || {};
+      // Prefer inventoryJson (Firestore-safe) then inventory object
+      var inv = null;
+      if (data.inventoryJson) {
+        try { inv = JSON.parse(data.inventoryJson); } catch (e0) { inv = null; }
+      }
+      if (!inv && data.inventory) inv = data.inventory;
+      if (!inv && data.digtradeRaw) {
+        try { inv = JSON.parse(data.digtradeRaw); } catch (eR) { inv = null; }
+      }
+      if (data.profileJson && !data.profile) {
+        try { data.profile = JSON.parse(data.profileJson); } catch (eP) {}
+      }
+
+      var localInv = collectInventory();
+      var localScore = inventoryScore(localInv);
+      var cloudScore = inventoryScore(inv);
+      console.log('[Diggerz Cloud] pull scores local=', localScore, 'cloud=', cloudScore, 'force=', !!force);
+
+      if (data.profile) applyProfile(data.profile);
+      else applyProfile(data);
+
+      if (inv) {
+        var ok = applyInventory(inv);
+        if (!ok) console.warn('[Diggerz Cloud] applyInventory returned false');
+      } else {
+        console.log('[Diggerz Cloud] no inventory on account');
+      }
+      return { profile: data.profile || data, inventory: inv, updatedAt: data.updatedAt, itemCount: cloudScore };
+    } catch (e) {
+      console.warn('[Diggerz Cloud] pull failed', e);
+      return null;
+    }
+  }
+
+  function inventoryScore(inv) {
+    if (!inv || !Array.isArray(inv.slots)) return 0;
+    var n = 0;
+    for (var i = 0; i < inv.slots.length; i++) {
+      var s = inv.slots[i];
+      if (s == null) continue;
+      if (typeof s === 'number' && s > 0) { n++; continue; }
+      if (typeof s === 'object') {
+        var id = s.id != null ? s.id : 0;
+        var count = s.count != null ? s.count : 1;
+        if (id && id !== 0 && count !== 0) n++;
+      }
+    }
+    return n;
+  }
+
+  function localEditTime() {
+    try { return parseInt(localStorage.getItem('diggerz.cloud.localUpdatedAt') || '0', 10) || 0; } catch (e) { return 0; }
+  }
+  function touchLocalEdit() {
+    try { localStorage.setItem('diggerz.cloud.localUpdatedAt', String(Date.now())); } catch (e) {}
+  }
+
+  async function pushCloudSave(force) {
+    if (!state.authenticated || !state.uid || !db) {
+      console.warn('[Diggerz Cloud] push: not logged in or db missing');
+      return { ok: false, reason: 'not-logged-in' };
+    }
+    var now = Date.now();
+    if (!force && now - lastCloudPush < 5000) return { ok: false, reason: 'rate' };
+    lastCloudPush = now;
+    try {
+      await initFirebase();
+      var profile = collectProfile();
+      var inventory = collectInventory();
+      var localScore = inventoryScore(inventory);
+
+      var snap = await db.collection('users').doc(state.uid).get();
+      var cloud = snap.exists ? (snap.data() || {}) : null;
+      var cloudInv = null;
+      if (cloud && cloud.inventoryJson) {
+        try { cloudInv = JSON.parse(cloud.inventoryJson); } catch (e1) {}
+      }
+      if (!cloudInv && cloud && cloud.inventory) cloudInv = cloud.inventory;
+      var cloudScore = inventoryScore(cloudInv);
+
+      if (localScore === 0 && cloudScore > 0) {
+        console.log('[Diggerz Cloud] blocked empty wipe; cloud has', cloudScore);
+        return { ok: false, reason: 'refuse-empty-wipe', cloudScore: cloudScore };
+      }
+      if (!force && cloudScore > localScore + 1) {
+        console.log('[Diggerz Cloud] skip auto-save; cloud richer', cloudScore, localScore);
+        return { ok: false, reason: 'cloud-richer', cloudScore: cloudScore, localScore: localScore };
+      }
+      if (localScore === 0 && !force) {
+        console.log('[Diggerz Cloud] skip auto-save; nothing to upload');
+        return { ok: false, reason: 'nothing' };
+      }
+
+      // Separate JSON fields only (Firestore-friendly, no nested array surprises)
+      var payload = {
+        email: state.email || '',
+        updatedAt: now,
+        itemCount: localScore,
+        profileJson: JSON.stringify(profile || {}),
+        inventoryJson: inventory ? JSON.stringify(inventory) : ''
+      };
+      try {
+        var pr = localStorage.getItem('diggerz.profile.v1');
+        if (pr) payload.profileJson = pr;
+      } catch (eP) {}
+      // Cap raw backup size (Firestore doc limit ~1MB)
+      try {
+        var raw = localStorage.getItem(digtradeStorageKey());
+        if (raw && raw.length < 700000) payload.digtradeRaw = raw;
+      } catch (e2) {}
+
+      console.log('[Diggerz Cloud] writing users/' + state.uid, 'itemCount=', localScore, 'jsonLen=', (payload.inventoryJson || '').length);
+      await db.collection('users').doc(state.uid).set(payload, { merge: true });
+      console.log('[Diggerz Cloud] SAVED ok slots~', localScore, force ? 'manual' : 'auto');
+      return { ok: true, slots: localScore };
+    } catch (e) {
+      console.warn('[Diggerz Cloud] push failed', e);
+      var code = (e && e.code) ? e.code : '';
+      var msg = (e && e.message) ? e.message : String(e);
+      if (code === 'permission-denied' || msg.indexOf('Missing or insufficient permissions') >= 0)
+        return { ok: false, reason: 'permission-denied', error: 'permission-denied' };
+      return { ok: false, reason: 'error', error: (code ? code + ': ' : '') + msg };
+    }
+  }
+
+  function isInGameForCloud() {
+    try {
+      if (window.P && P.service && P.service.state && Array.isArray(P.service.state.slots)) return true;
+    } catch (e) {}
+    try {
+      if (window.l && l.z39 && l.a42 && String(l.a42).indexOf('Title') < 0) return true;
+    } catch (e2) {}
+    return false;
+  }
+
+  function scheduleCloudSave() {
+    if (!state.authenticated) return;
+    if (!isInGameForCloud()) return;
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){ pushCloudSave(false); }, 3000);
+  }
+
+  function applySession(user, skipPull) {
+    if (user) {
+      state.authenticated = true;
+      state.uid = user.uid || '';
+      state.email = (user.email || '').toLowerCase();
+      state.username = cleanName(user.displayName || '');
+      saveLocal();
+      try {
+        if (window.q && q.thisMain) {
+          q.thisMain.userPW = AUTH_MARKER;
+          q.thisMain.userEmail = state.email;
+          if (state.username && state.username !== 'Player') {
+            if (!q.thisMain.userName || q.thisMain.userName === 'Enter Name')
+              q.thisMain.userName = state.username;
+          }
+          if (typeof q.SaveGlobals === 'function') q.SaveGlobals();
+        }
+      } catch (e) {}
+      // After login / page load while signed in: load account into this browser.
+      // Reload at most ONCE per uid per tab session — never clear the flag (that caused an infinite reload loop).
+      if (!skipPull) {
+        pullCloudSave(true).then(function(data){
+          var hadInv = data && data.inventory && inventoryScore(data.inventory) > 0;
+          console.log('[Diggerz Cloud] post-auth pull', hadInv ? 'got items' : 'no items');
+          try {
+            var flag = 'diggerz.cloud.appliedReload.' + (state.uid || 'anon');
+            if (hadInv && sessionStorage.getItem(flag) !== '1') {
+              sessionStorage.setItem(flag, '1');
+              setTimeout(function(){ location.reload(); }, 400);
+            }
+          } catch (e2) {}
+        });
+      }
+    } else {
+      state.authenticated = false;
+      state.uid = '';
+      state.email = '';
+      state.username = '';
+      saveLocal();
+      try {
+        if (window.q && q.thisMain) {
+          q.thisMain.userPW = '';
+          q.thisMain.userEmail = '';
+        }
+      } catch (e) {}
+    }
+    try { updatePanel(); } catch (e3) {}
+  }
+  
+
+  function ensureGoogleButton() {
+    var el = document.getElementById('diggerz-google-only');
+    if (el) return el;
+    var style = document.createElement('style');
+    style.id = 'diggerz-google-only-style';
+    style.textContent = [
+      '#diggerz-google-only{display:none;position:fixed;z-index:2147483646;transform:translate(-50%,-50%);pointer-events:auto;',
+      'font-family:Roboto,Arial,Helvetica,sans-serif;}',
+      '#diggerz-google-only.show{display:block !important;visibility:visible !important;opacity:1 !important;}',
+      '#diggerz-google-only .dz-google-official{display:inline-flex;align-items:center;justify-content:center;gap:12px;',
+      'height:44px;padding:0 14px 0 12px;min-width:240px;box-sizing:border-box;',
+      'background:#fff;border:1px solid #4285F4;border-radius:4px;cursor:pointer;',
+      'color:#4285F4;font-size:15px;font-weight:600;',
+      'box-shadow:0 1px 3px rgba(0,0,0,.18);}',
+      '#diggerz-google-only .dz-google-official:hover{background:#f8f9fa;}',
+      '#diggerz-google-only .dz-google-official:disabled{opacity:.65;cursor:wait;}'
+    ].join('');
+    document.head.appendChild(style);
+    el = document.createElement('div');
+    el.id = 'diggerz-google-only';
+    el.innerHTML = [
+      '<button type="button" class="dz-google-official" id="diggerz-login-google">',
+      '  <span aria-hidden="true" style="display:inline-flex;width:20px;height:20px">',
+      '    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20">',
+      '      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>',
+      '      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>',
+      '      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>',
+      '      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>',
+      '    </svg>',
+      '  </span>',
+      '  <span>Sign in with Google</span>',
+      '</button>'
+    ].join('');
+    document.body.appendChild(el);
+    el.querySelector('#diggerz-login-google').onclick = function(){ loginWithGoogle(); };
+    return el;
+  }
+  function positionGoogleButton() {
+    var el = ensureGoogleButton();
+    if (!el) return;
+    var canvas = document.querySelector('canvas');
+    var rect = canvas ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+    // Center of game canvas — middle of native LOGIN panel body
+    el.style.left = Math.round(rect.left + rect.width * 0.5) + 'px';
+    el.style.top = Math.round(rect.top + rect.height * 0.50) + 'px';
+    el.style.zIndex = '2147483646';
+  }
+  function showGoogleButton() {
+    if (state.authenticated) {
+      hideGoogleButton();
+      return;
+    }
+    try {
+      var el = ensureGoogleButton();
+      positionGoogleButton();
+      el.classList.add('show');
+      el.style.display = 'block';
+      // Re-position a few times as the panel animates in
+      setTimeout(positionGoogleButton, 50);
+      setTimeout(positionGoogleButton, 200);
+      setTimeout(positionGoogleButton, 500);
+      if (!window.__diggerzGooglePosTimer) {
+        window.__diggerzGooglePosTimer = setInterval(function(){
+          var g = document.getElementById('diggerz-google-only');
+          if (!g || !g.classList.contains('show')) return;
+          positionGoogleButton();
+        }, 250);
+      }
+      console.log('[Diggerz Auth] Google button shown');
+    } catch (e) {
+      console.warn('[Diggerz Auth] showGoogleButton failed', e);
+    }
+  }
+  function hideGoogleButton() {
+    var el = document.getElementById('diggerz-google-only');
+    if (el) el.classList.remove('show');
+  }
+  function ensurePanel() {
+    // Back-compat: only the Google overlay (panel is native ja)
+    return ensureGoogleButton();
+  }
+  function updatePanel() {
+    var btn = document.getElementById('diggerz-login-google');
+    if (state.authenticated) hideGoogleButton();
+    if (btn) btn.disabled = !!state.busy;
+  }
+  function openLoginPanel(menu) {
+    // Legacy path — prefer native D55 panel; still show Google overlay
+    window.__diggerzLoginMenu = menu || null;
+    showGoogleButton();
+  }
+  function closeLoginPanel() {
+    hideGoogleButton();
+    try {
+      var panel = window.__diggerzLoginPanel;
+      if (panel) {
+        panel.a0 = 1;
+      }
+    } catch (e) {}
+  }
+
+function loadScript(src) {
+    return new Promise(function(resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.onload = resolve;
+      s.onerror = function(){ reject(new Error('Failed to load ' + src)); };
+      document.head.appendChild(s);
+    });
+  }
+
+  async function initFirebase() {
+    if (auth && db) return auth;
+    if (!window.firebase) {
+      await loadScript('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
+      await loadScript('https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js');
+      await loadScript('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js');
+    } else if (!firebase.firestore) {
+      await loadScript('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js');
+    }
+    if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.firestore();
+    auth.onAuthStateChanged(function(user) {
+      // During explicit Google login we push local data then reload — skip pull race
+      if (state.busy && user) {
+        state.authenticated = true;
+        state.uid = user.uid || '';
+        state.email = (user.email || '').toLowerCase();
+        state.username = cleanName(user.displayName || '');
+        state.ready = true;
+        return;
+      }
+      applySession(user);
+      state.ready = true;
+    });
+    return auth;
+  }
+
+  async function loginWithGoogle() {
+    if (state.busy) return;
+    state.busy = true;
+    var menu = window.__diggerzLoginMenu;
+    try {
+      if (menu) popup(menu, '^9Opening Google sign-in…');
+      await initFirebase();
+      var provider = new firebase.auth.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      var result = await auth.signInWithPopup(provider);
+      // Auth only — does NOT push or pull inventory (use Settings → Save/Load)
+      applySession(result.user, true);
+      saveLocal();
+      try {
+        var panel = window.__diggerzLoginPanel;
+        if (panel) {
+          panel.a0 = 1;
+          try { if (window.E && E.u4) E.u4(panel, 0, 300, 1, .5, 0, 1, 0); } catch (eA) {}
+        }
+      } catch (eClose) {}
+      try { hideGoogleButton(); } catch (eH) {}
+      var email = (result.user && result.user.email) ? result.user.email : (state.email || 'your account');
+      if (menu) popup(menu, '^2Signed in as ^7' + email + '^2 — loading account after reload…');
+      try { sessionStorage.setItem('diggerz.cloud.reload', '1'); } catch (e) {}
+      setTimeout(function(){ location.reload(); }, 900);
+      return;
+    } catch (e) {
+      console.warn('[Diggerz Auth]', e);
+      var msg = (e && e.message) ? e.message : 'Sign-in failed';
+      if (e && e.code === 'auth/popup-blocked') msg = 'Popup blocked — allow popups for this site.';
+      if (e && e.code === 'auth/unauthorized-domain') msg = 'Domain not authorized in Firebase.';
+      if (menu) popup(menu, '^1' + msg);
+    } finally {
+      state.busy = false;
+      try { updatePanel(); } catch (eU) {}
+    }
+  }
+
+async function logout() {
+    try {
+      await initFirebase();
+      await auth.signOut();
+    } catch (e) {}
+    applySession(null);
+    closeLoginPanel();
+  }
+
+  function logoutFromMenu(menu) {
+    logout().then(function() {
+      try {
+        localStorage.removeItem('diggerz.firebase.auth.v1');
+        if (window.q && q.thisMain) {
+          q.thisMain.userPW = '';
+          q.thisMain.userEmail = '';
+        }
+      } catch (e) {}
+      if (menu) popup(menu, '^9Signed out — reloading…');
+      setTimeout(function(){ location.reload(); }, 600);
+    });
+  }
+
+  function requestLink() { openLoginPanel(null); }
+
+  // Hook SaveGlobals + digtrade save → cloud
+  function installSaveHooks() {
+    try {
+      if (window.q && typeof q.SaveGlobals === 'function' && !q.SaveGlobals.__diggerzCloud) {
+        var oldG = q.SaveGlobals;
+        q.SaveGlobals = function() {
+          var r = oldG.apply(this, arguments);
+          try { scheduleCloudSave(); } catch (e) {}
+          return r;
+        };
+        q.SaveGlobals.__diggerzCloud = true;
+      }
+    } catch (e) {}
+    try {
+      if (window.DiggerzService && DiggerzService.prototype && DiggerzService.prototype.save && !DiggerzService.prototype.save.__diggerzCloud) {
+        var oldS = DiggerzService.prototype.save;
+        DiggerzService.prototype.save = function(force) {
+          var r = oldS.call(this, force);
+          try { touchLocalEdit(); } catch (e0) {}
+          try { scheduleCloudSave(); } catch (e) {}
+          return r;
+        };
+        DiggerzService.prototype.save.__diggerzCloud = true;
+      }
+    } catch (e2) {}
+  }
+
+  // Boot
+  initFirebase().then(function(){ installSaveHooks(); }).catch(function(e){ console.warn('[Diggerz Auth] init failed', e); });
+  setInterval(installSaveHooks, 2000);
+  // Periodic cloud push only while in-game
+  setInterval(function(){
+    if (state.authenticated && isInGameForCloud()) pushCloudSave(false);
+  }, 45000);
+
+
+  var EMAIL_LINK_KEY = 'diggerz.emailLink.email';
+
+  async function sendEmailLink(email, menu) {
+    email = String(email || '').trim().toLowerCase();
+    if (!email || email.indexOf('@') < 0) {
+      if (menu) popup(menu, '^1Enter a valid email address.');
+      return { ok: false, reason: 'bad-email' };
+    }
+    if (state.busy) return { ok: false, reason: 'busy' };
+    state.busy = true;
+    try {
+      if (menu) popup(menu, '^9Sending login link to ^7' + email + '^9…');
+      await initFirebase();
+      var actionCodeSettings = {
+        // User returns to this same page; we complete sign-in on load.
+        url: window.location.origin + window.location.pathname + (window.location.search || ''),
+        handleCodeInApp: true
+      };
+      await auth.sendSignInLinkToEmail(email, actionCodeSettings);
+      try { window.localStorage.setItem(EMAIL_LINK_KEY, email); } catch (e0) {}
+      if (menu) popup(menu, '^2Link sent! Check ^7' + email + '^2 and open it on this device.');
+      try {
+        var panel = window.__diggerzLoginPanel;
+        if (panel) { panel.a0 = 1; window.__diggerzLoginPanel = null; }
+      } catch (eClose) {}
+      return { ok: true };
+    } catch (err) {
+      console.warn('[Diggerz Auth] sendEmailLink failed', err);
+      var msg = (err && err.message) ? err.message : String(err);
+      if (String(msg).indexOf('unauthorized-continue-uri') >= 0 || String(msg).indexOf('invalid-continue-uri') >= 0)
+        msg = 'Add this site domain in Firebase → Authentication → Settings → Authorized domains.';
+      if (menu) popup(menu, '^1Could not send link: ^7' + msg);
+      return { ok: false, error: msg };
+    } finally {
+      state.busy = false;
+    }
+  }
+
+  async function completeEmailLinkIfPresent() {
+    try {
+      await initFirebase();
+      if (!auth.isSignInWithEmailLink(window.location.href)) return false;
+      var email = '';
+      try { email = window.localStorage.getItem(EMAIL_LINK_KEY) || ''; } catch (e0) {}
+      if (!email) {
+        email = window.prompt('Confirm your email to finish sign-in:') || '';
+      }
+      email = String(email || '').trim().toLowerCase();
+      if (!email) return false;
+      state.busy = true;
+      var result = await auth.signInWithEmailLink(email, window.location.href);
+      try { window.localStorage.removeItem(EMAIL_LINK_KEY); } catch (e1) {}
+      // Strip firebase link params from the URL so refresh is clean
+      try {
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      } catch (e2) {}
+      applySession(result.user, true);
+      saveLocal();
+      state.busy = false;
+      try {
+        var data = await pullCloudSave(true);
+        var hadInv = data && data.inventory && inventoryScore(data.inventory) > 0;
+        var flag = 'diggerz.cloud.appliedReload.' + (state.uid || 'anon');
+        if (hadInv && sessionStorage.getItem(flag) !== '1') {
+          sessionStorage.setItem(flag, '1');
+          setTimeout(function(){ location.reload(); }, 400);
+        }
+      } catch (e3) {}
+      console.log('[Diggerz Auth] email link sign-in ok', state.email);
+      return true;
+    } catch (err) {
+      state.busy = false;
+      console.warn('[Diggerz Auth] completeEmailLink failed', err);
+      return false;
+    }
+  }
+
+
+  window.DiggerzAuth237 = {
+    state: state,
+    openLoginPanel: openLoginPanel,
+    showGoogleButton: showGoogleButton,
+    hideGoogleButton: hideGoogleButton,
+    positionGoogleButton: positionGoogleButton,
+    loginWithGoogle: loginWithGoogle,
+    sendEmailLink: sendEmailLink,
+    completeEmailLinkIfPresent: completeEmailLinkIfPresent,
+    logout: logout,
+    logoutFromMenu: logoutFromMenu,
+    requestLink: requestLink,
+    refresh: function(){ return Promise.resolve(state); },
+    pushCloudSave: function(force){ return pushCloudSave(!!force); },
+    pullCloudSave: function(force){ return pullCloudSave(!!force); }
+  };
+
+  // Auto-complete email magic link when the user opens the link from their inbox
+  completeEmailLinkIfPresent().catch(function(e){
+    console.warn('[Diggerz Auth] email link boot failed', e);
+  });
+})();
 </script>
 
 	<div name="changes" id="changes">
 		<h1>Diggerz.io Reblasted - Change Log</h1><hr><a name="Build 24.0.41"></a><h2>Build 24.0.41 - Coaster Town Native Packet Layout</h2><ul><li>Uses the actual Coaster Town K.X8 opcode-11 packet layout: player X/Y, tile ID, tile X, tile layer, tile Y, catalog data, and flags.</li><li>Uses the engine packet's big-endian DataView encoding and correct field offsets.</li><li>Native opcode detection now uses the same big-endian opcode framing, so the authoritative placement gate actually sees native build packets.</li><li>Preserves Coaster Town tile layers 0/1/2 instead of treating layer 1 as an actor layer.</li></ul><hr><a name="Build 24.0.40"></a><h2>Build 24.0.40 - Coaster Town Native Tile Semantics</h2><ul><li>Uses the recovered native tile layers exactly: BLOCK_LAYER=0, FLOATER_LAYER=1, BKND_LAYER=2.</li><li>Native opcode-11 placement now uses the placement-time player coordinates carried by the native packet for the player-overlap check.</li><li>Native binary packet parsing is little-endian, matching the engine's DataView writers.</li><li>Layer-1 tiles are no longer incorrectly rejected as an actor/player layer.</li></ul><hr><a name="Build 24.0.35"></a><h2>Build 24.0.35 - Authoritative Layer Repair</h2><ul><li>Wrong-layer blocks are now repaired on both the server and every client, not just inside the server tile maps.</li><li>Stale copies on the old layer are explicitly removed so mining and block-variation modification continue to target the real block.</li><li>Client layer repairs no longer echo correction packets back to the server.</li></ul><hr><a name="Build 24.0.30"></a><h2>Build 24.0.30 - Live Player-Hitbox Placement Cells</h2><ul><li>Placement cells now stay blocked for the entire time the player physics hitbox overlaps any part of the 1x1 cell.</li><li>The check uses a live player-footprint-vs-cell intersection instead of only checking the cell center.</li><li>A cell becomes placeable immediately after the hitbox exits it, including when the player moves across cell boundaries.</li><li>The same rule is enforced client-side and authoritatively by the multiplayer server.</li></ul><hr><a name="Build 24.0.29"></a><h2>Build 24.0.29 - Native Picker Cleanup &amp; Placement Guard Hardening</h2><ul><li>Hardened the native placement guard call so the placement handler always resolves it through the global window object, eliminating the intermittent undefined-function race.</li><li>Removed the red X entry from the native block variation wheel used for block modification.</li><li>Automatically closes the native tile variation wheel when its target block is broken, preventing an invisible menu from remaining on screen.</li></ul><hr><a name="Build 24.0.26"></a><h2>Build 24.0.26 - Strict Block Placement Rules</h2><ul><li>Block placement is now a hard no-op outside the five-tile placement range.</li><li>Placement is rejected when the target cell overlaps a player.</li><li>Normal placed blocks are forced onto the foreground block layer; only native background/decorative items using layer 2 remain on the background layer.</li><li>Multiplayer tile synchronization now preserves the placement layer and supports dynamic background tiles.</li></ul><hr><a name="Build 24.0.17"></a><h2>Build 24.0.17 - Admin Modifiers &amp; Building Polish</h2><ul><li>Added admin Speed, Size, Jump, and Break Speed modifiers.</li><li>Integrated the supplied noclip radius override while preserving normal movement.</li><li>Added a placement travel/grow/spin animation and grid placement indicator.</li><li>Added block modification popup when a block is selected and an occupied cell is clicked.</li><li>Hardened rapid placement/replacement synchronization.</li></ul>
 
-		<hr><a name="Build 23.7"></a>
+		<hr><a name="Build 24.0"></a> <h2>Build 24.0 - Patches, PvP Polish &amp; RGB Weekend</h2> <ul> <li>Item drops now fall through cleared space instead of remaining suspended in mid-air.</li> <li>Mining bonus drops now use fresh random rolls, and player-placed blocks cannot be recycled for bonus-loot farming.</li> <li>PvP music now ducks during combat instead of stopping, returns to full volume on a winner, and stops cleanly when leaving PvP early.</li> <li>Restored the older Battle Royale text placement and presentation while keeping the newer in-game font.</li> <li>Added RGB Weekend: three animated RGB variants replace the normal featured Super Rares every Saturday and Sunday.</li> <li>Rebalanced True RGB mining: regular True RGB uses a 1/100,000 roll, True RGB Military Hat is 1/1,000,000, and each True RGB K-Pop piece including Stetson is 1/101,337. Successful finds use a global all-server celebration with the correct odds.</li> </ul> <hr><a name="Build 24.0"></a> <h2>Build 24.0 - Patches, PvP Polish &amp; RGB Weekend</h2> <ul> <li>Item drops now fall through cleared space instead of remaining suspended in mid-air.</li> <li>Mining bonus drops now use fresh random rolls, and player-placed blocks cannot be recycled for bonus-loot farming.</li> <li>PvP music now ducks during combat instead of stopping, returns to full volume on a winner, and stops cleanly when leaving PvP early.</li> <li>Restored the older Battle Royale text placement and presentation while keeping the newer in-game font.</li> <li>Added RGB Weekend: three animated RGB variants replace the normal featured Super Rares every Saturday and Sunday.</li> <li>Rebalanced True RGB mining: regular True RGB uses a 1/100,000 roll, True RGB Military Hat is 1/1,000,000, and each True RGB K-Pop piece including Stetson is 1/101,337. Successful finds use a global all-server celebration with the correct odds.</li> </ul> <hr><a name="Build 23.9"></a> <h2>Build 23.9 - Economy, Beta Gun, Support &amp; UPDATE Hat</h2> <ul> <li>Patched the long-standing multiplayer trade reload/duplication race.</li> <li>Fixed Beta Gun firing, added it to common mining weapon drops, and kept it tradable.</li> <li>Added the UPDATE Hat with item-specific player-head placement.</li> <li>Added Support Diggerz donations and a verified supporter leaderboard.</li> </ul> <hr><a name="Build 23.9"></a> <h2>Build 23.9 - Economy, Beta Gun, Support &amp; UPDATE Hat</h2> <ul> <li>Patched the long-standing multiplayer trade reload/duplication race.</li> <li>Fixed Beta Gun firing, added it to common mining weapon drops, and kept it tradable.</li> <li>Added the UPDATE Hat with item-specific player-head placement.</li> <li>Added Support Diggerz donations and a verified supporter leaderboard.</li> </ul> <hr><a name="Build 23.8"></a> <h2>Build 23.8 - Railway / itch Migration &amp; Fixes</h2> <ul> <li>Reduced lightsword swing sound volume to 30% and added a 120 ms anti-spam cooldown.</li> <li>Fixed server-authorized admin item, coin, and kill actions when an admin targets themselves.</li> <li>Removed the player login / logout feature and retired the passwordless account client. Diggerz now runs guest-only.</li> <li>Prepared the browser client to use the permanent Railway multiplayer/admin backend when hosted on itch.io.</li> <li>Updated active multiplayer build identifiers to 23.8.</li> </ul> <hr><a name="Build 23.8"></a> <h2>Build 23.8 - Railway / itch Migration &amp; Fixes</h2> <ul> <li>Reduced lightsword swing sound volume to 30% and added a 120 ms anti-spam cooldown.</li> <li>Fixed server-authorized admin item, coin, and kill actions when an admin targets themselves.</li> <li>Removed the player login / logout feature and retired the passwordless account client. Diggerz now runs guest-only.</li> <li>Prepared the browser client to use the permanent Railway multiplayer/admin backend when hosted on itch.io.</li> <li>Updated active multiplayer build identifiers to 23.8.</li> </ul> <hr><a name="Build 23.7"></a>
 		<h2>Build 23.7 - Security &amp; Account Hardening</h2>
 		<ul>
 			<li>Removed the legacy Base64/PHP password login path and stopped storing passwords or email credentials in the Globals save blob.</li>
@@ -117938,115 +119067,95 @@ if(!window.DiggerzIsMultiplayer(this)||!P.connected)return;if(!P.service)P.attac
 }());
 </script>
 
-
-<!-- Diggerz Google Login isolated test -->
-<script id="diggerz-google-login-test">
+<script src="/build239-client.js"></script><script src="/build240-client.js"></script><script id="diggerz-ui-container-refresh-fix">
 (function(){
-  'use strict';
-  var FIREBASE_CONFIG={
-    apiKey:"AIzaSyBMsaYJ4UMAQPkJcjG9-Ix4LXoGKppwZpk",
-    authDomain:"diggerz-86512.firebaseapp.com",
-    projectId:"diggerz-86512",
-    appId:"1:812494082190:web:d399176297e8171316f9df"
-  };
-  function addScript(src,cb){
-    var s=document.createElement('script'); s.src=src;
-    s.onload=function(){cb(null)}; s.onerror=function(){cb(new Error("load failed"))};
-    document.head.appendChild(s);
-  }
+  // When an open native inventory/trade container is rebuilt, q44() creates
+  // fresh item X children. Those children begin hidden; q46() is the normal
+  // native pass that applies their visible state. Without it the container
+  // frame remains while its interactive contents disappear.
   function install(){
-    if(!window.firebase)return;
-    var app;
-    try{app=firebase.apps&&firebase.apps.length?firebase.app():firebase.initializeApp(FIREBASE_CONFIG)}
-    catch(e){console.error("[Diggerz Firebase Login]",e);return}
-    var auth;
-    try{auth=firebase.auth(app)}catch(e){console.error("[Diggerz Firebase Login]",e);return}
-
-    var style=document.createElement('style');
-    style.id='diggerz-google-login-style';
-    style.textContent=
-      '#diggerz-google-login-test{position:fixed;right:74px;top:224px;width:124px;height:39px;z-index:1000000;box-sizing:border-box;border:4px solid #111;border-radius:3px;background:linear-gradient(#f7d83b,#d6a900);box-shadow:0 4px 0 #705600,0 6px 8px rgba(0,0,0,.35);color:#111;font:900 17px "Arial Black",Impact,Arial,sans-serif;cursor:pointer;user-select:none}'+
-      '#diggerz-google-login-test:hover{filter:brightness(1.08)}'+
-      '#diggerz-google-login-test:active{transform:translateY(3px);box-shadow:0 1px 0 #705600}'+
-      '#diggerz-google-login-modal{position:fixed;inset:0;z-index:1000001;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.58);font-family:Arial,sans-serif}'+
-      '#diggerz-google-login-modal.open{display:flex}'+
-      '#diggerz-google-login-panel{position:relative;width:min(430px,calc(100vw - 32px));box-sizing:border-box;padding:28px;border:4px solid #111;background:linear-gradient(145deg,rgba(30,38,76,.97),rgba(9,12,28,.97));box-shadow:0 9px 0 rgba(0,0,0,.5);color:#fff;text-align:center}'+
-      '#diggerz-google-login-panel h1{margin:0 0 25px;font:900 38px "Arial Black",Impact,Arial,sans-serif;text-shadow:3px 3px 0 #000}'+
-      '#diggerz-google-login-close{position:absolute;right:9px;top:8px;border:3px solid #111;background:#e23b2e;color:#fff;font:900 18px Arial,sans-serif;padding:4px 10px;cursor:pointer}'+
-      '#diggerz-google-login-button{width:100%;height:54px;border:4px solid #111;background:#fff;color:#222;font:900 19px Arial,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 5px 0 #555}'+
-      '#diggerz-google-login-status{min-height:24px;margin-top:16px;font:700 14px Arial,sans-serif;color:#ddd;line-height:1.35}'+
-      '#diggerz-google-login-account{display:none;margin-top:12px;font:700 15px Arial,sans-serif;color:#8cff72;word-break:break-word}'+
-      '#diggerz-google-login-logout{display:none;margin-top:15px;border:3px solid #111;background:#e7b92b;color:#111;padding:8px 18px;font:900 16px Arial,sans-serif;cursor:pointer}';
-    document.head.appendChild(style);
-
-    var button=document.createElement('button');
-    button.type='button'; button.id='diggerz-google-login-test'; button.textContent='Login';
-    document.body.appendChild(button);
-
-    var modal=document.createElement('div');
-    modal.id='diggerz-google-login-modal';
-    modal.innerHTML='<div id="diggerz-google-login-panel" role="dialog" aria-modal="true" aria-label="Login">'+
-      '<button id="diggerz-google-login-close" type="button">X</button>'+
-      '<h1>Login</h1>'+
-      '<button id="diggerz-google-login-button" type="button"><span style="font-size:23px">G</span><span>Sign in to Google</span></button>'+
-      '<div id="diggerz-google-login-status"></div>'+
-      '<div id="diggerz-google-login-account"></div>'+
-      '<button id="diggerz-google-login-logout" type="button">Sign out</button></div>';
-    document.body.appendChild(modal);
-
-    var signIn=modal.querySelector('#diggerz-google-login-button');
-    var close=modal.querySelector('#diggerz-google-login-close');
-    var status=modal.querySelector('#diggerz-google-login-status');
-    var account=modal.querySelector('#diggerz-google-login-account');
-    var logout=modal.querySelector('#diggerz-google-login-logout');
-
-    function updateUser(user){
-      if(user){
-        button.textContent='Logged In';
-        signIn.style.display='none'; logout.style.display='inline-block';
-        account.style.display='block';
-        account.textContent=user.email||user.displayName||'Google account connected';
-        status.textContent='Signed in with Firebase.';
-      }else{
-        button.textContent='Login';
-        signIn.style.display='flex'; logout.style.display='none';
-        account.style.display='none'; account.textContent=''; status.textContent='';
+    try{
+      if(typeof l==='undefined'||!l.z38||typeof l.z38.V37!=='function'){
+        setTimeout(install,100); return;
       }
-    }
-    button.onclick=function(){modal.classList.add('open')};
-    close.onclick=function(){modal.classList.remove('open')};
-    modal.onclick=function(e){if(e.target===modal)modal.classList.remove('open')};
-
-    signIn.onclick=function(){
-      signIn.disabled=true; status.textContent='Opening Google sign-in...';
-      var provider=new firebase.auth.GoogleAuthProvider();
-      provider.setCustomParameters({prompt:'select_account'});
-      auth.signInWithPopup(provider).then(function(result){
-        updateUser(result.user); status.textContent='Signed in with Firebase.';
-      }).catch(function(err){
-        console.error('[Diggerz Firebase Login]',err);
-        status.textContent=err&&err.code==='auth/popup-closed-by-user'?'Google sign-in was closed.':'Google sign-in failed: '+(err&&err.message?err.message:'unknown error');
-      }).finally(function(){signIn.disabled=false});
-    };
-    logout.onclick=function(){auth.signOut().then(function(){updateUser(null);status.textContent='Signed out.'})};
-
-    auth.onAuthStateChanged(updateUser);
-    window.DiggerzFirebaseLoginTest={auth:auth,open:function(){modal.classList.add('open')},close:function(){modal.classList.remove('open')}};
+      var proto=Object.getPrototypeOf(l.z38);
+      if(!proto||proto.__diggerzUiContainerRefreshFix)return;
+      var old=proto.V37;
+      function collect(node,out,depth,seen){
+        if(!node||depth>6||out.length>64)return;
+        if(seen.indexOf(node)>=0)return;
+        seen.push(node);
+        try{
+          if(typeof node.q46==='function'&&node.B30&&node.d34)out.push(node);
+        }catch(e0){}
+        var kids=node._9;
+        if(!kids||!kids.length)return;
+        for(var i=0;i<kids.length;i++)collect(kids[i],out,depth+1,seen);
+      }
+      proto.V37=function(packet){
+        var r=old.apply(this,arguments);
+        try{
+          var list=[],seen=[];
+          collect(this,list,0,seen);
+          if(l.z39&&l.z39.n38)collect(l.z39.n38,list,0,seen);
+          for(var i=0;i<list.length;i++){
+            var sc=list[i];
+            if(!sc||sc.a0!==0||typeof sc.q46!=='function')continue;
+            try{sc.q46(null,!1)}catch(e1){}
+          }
+        }catch(e2){}
+        return r;
+      };
+      proto.__diggerzUiContainerRefreshFix=true;
+    }catch(e){setTimeout(install,250)}
   }
-  function start(){
-    if(window.firebase){install();return}
-    addScript('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js',function(err){
-      if(err){console.error('[Diggerz Firebase Login]',err);return}
-      addScript('https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js',function(err2){
-        if(err2){console.error('[Diggerz Firebase Login]',err2);return}
-        install();
-      });
-    });
+  install();
+})();
+</script>
+
+<!-- Other original content may be protected by copyright. -->
+<script id="diggerz-native-ui-visibility-fix">
+(function(){
+  function install(){
+    try{
+      if(typeof l==='undefined'||!l.z38){setTimeout(install,100);return}
+      if(window.__diggerzNativeUiVisibilityFix)return;
+      window.__diggerzNativeUiVisibilityFix=true;
+      function walk(node,seen){
+        if(!node||seen.indexOf(node)>=0)return;
+        seen.push(node);
+        var kids=node._9;
+        if(kids&&kids.length){
+          for(var i=0;i<kids.length;i++){
+            var c=kids[i];
+            if(!c)continue;
+            try{
+              // Native radial/shop/trade item nodes are X objects: category 2,
+              // with a real image and a live UI container parent.
+              if(c.a4===2 && c._5 && !c.T40 && !c.t47){
+                var p=c._2;
+                var activeParent=!!(p&&p.d34&&p.B30);
+                if(activeParent && p.a0===0 && p.a2!==false)c.a2=true;
+              }
+            }catch(e0){}
+            walk(c,seen);
+          }
+        }
+      }
+      function tick(){
+        try{
+          var seen=[];
+          if(l.z38&&l.z38._9){
+            for(var i=0;i<l.z38._9.length;i++)walk(l.z38._9[i],seen);
+          }
+        }catch(e){}
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }catch(e){setTimeout(install,250)}
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
-}());
+  install();
+})();
 </script>
 </body>
 </html>
-<!-- Other original content may be protected by copyright. -->
-

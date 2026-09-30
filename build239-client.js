@@ -342,10 +342,10 @@
   }
 
   function boot(){
-    addSupportUI();
+    // Donate GUI disabled for isolation test.
     patchRuntime();
     patchTrade();
-    addAdminDonationUI();
+    // Admin donation GUI disabled for isolation test.
     if(!runtimePatched||!tradePatched||!adminUiReady)setTimeout(boot,250);
   }
 
