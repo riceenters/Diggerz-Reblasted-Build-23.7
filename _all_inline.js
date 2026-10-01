@@ -6765,7 +6765,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.d39()
         },
         E7: function(a) {
-            return !0
+            return ja.prototype.E7.call(this, a);
         },
         C39: function() {
             // Keep Customize open when clicking inventory / preview / skin / flags.
@@ -50571,8 +50571,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.y42.b7 = -240;
         }
         try {
-            this.y42.C33 = function() {}; // absorb clicks
-            this.y42.E7 = function() { return !0; };
+            // Do NOT override E7 to always-true — that steals every click in the menu.
+            // Only absorb track clicks via C33 no-op; real hit-test stays on the head.
+            this.y42.C33 = function() {};
         } catch (eSk) {}
         a += 70;
         a += -60; // user countries.y offset
@@ -51665,6 +51666,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             __prev.b6 = 0;   // user layout
             __prev.b7 = 50;  // user layout
             __prev.D7(this, !0);
+            try { __prev.C37 = !1; } catch (eC37) {} // don't steal clicks from flags/inv
             this._9.push(__prev);
             this.__dzPrevBox = __prev;
             window.__dzCustomizePanel = this;
@@ -51879,6 +51881,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             __invBox.D7(this, !0);
             this._9.push(__invBox);
             this.__dzInvBox = __invBox;
+            try { __invBox.C37 = !1; } catch (eIC37) {}
 
             var __invT = new xa(0, -__invH / 2 + 18, "^9Your Items", q.MAIN_FONT);
             __invT.D7(__invBox, !0);
@@ -52038,18 +52041,17 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 // Empty slots are still visible, but have no click action.
                 if (__item.id && __item.count) {
                     (function(item, wearSlot, cell) {
-                        var __onSlotClick = function() {
+                        cell.C33 = function() {
                             try {
-                                var ws = wearSlot;
-                                if (ws < 0 || ws > 10)
-                                    try { ws = __wearSlotForItem(item, -1); } catch (eWs) {}
-                                if (ws < 0 || ws > 10 || ws === 8) return;
+                                if (wearSlot < 0 || wearSlot > 10 || wearSlot === 8) return;
                                 var next = __equippedNow.slice();
                                 while (next.length < 11) next.push(0);
-                                next[ws] = ((next[ws]|0) === (item.id|0)) ? 0 : (item.id|0);
+                                next[wearSlot] = ((next[wearSlot]|0) === (item.id|0)) ? 0 : (item.id|0);
                                 __equippedNow = next;
                                 __app = next.slice();
                                 __applyLive(next, "");
+                                // Rebuild on the next frame so EQ markers and the
+                                // preview always reflect the newly selected item.
                                 setTimeout(function() {
                                     try {
                                         if (__previewSkelRef) __equipOnPreview(__previewSkelRef, __equippedNow);
@@ -52057,20 +52059,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                 }, 0);
                             } catch (eClick) {}
                         };
-                        cell.C33 = __onSlotClick;
-                        try { cell.E7 = function() { return !0; }; } catch (eE7) {}
-                        try { cell.b2 = !0; } catch (eB2) {}
-                        // Icon / EQ label inside the square also equip
-                        try {
-                            if (cell._9) {
-                                for (var __ci = 0; __ci < cell._9.length; __ci++) {
-                                    var __ch = cell._9[__ci];
-                                    if (!__ch) continue;
-                                    __ch.C33 = __onSlotClick;
-                                    try { __ch.E7 = function() { return !0; }; } catch (eE7b) {}
-                                }
-                            }
-                        } catch (eKids) {}
                     })(__item, __wear, __cell);
                 }
             }
@@ -52081,25 +52069,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.__dzInvH = __invH;
             this.__dzInvW = __invW;
             this.__dzInvCells = __dzInvCells;
-            // Initial clip so rows outside the box are hidden before any scroll
-            try {
-                var __iTop = -__invH / 2 + 40;
-                var __iBot = __invH / 2 - 28;
-                for (var __ici = 0; __ici < __dzInvCells.length; __ici++) {
-                    var __icc = __dzInvCells[__ici];
-                    if (!__icc) continue;
-                    var __ivy = Number(__icc.b7);
-                    var __ihide = (__ivy + 40 < __iTop) || (__ivy - 40 > __iBot);
-                    (function hideInit(n, h) {
-                        if (!n) return;
-                        try {
-                            if (typeof n.set_local_alp === "function") n.set_local_alp(h ? 0 : 1);
-                        } catch (e) {}
-                        try { if (n.a0) n.a0 = 0; } catch (e2) {}
-                        if (n._9) for (var ii = 0; ii < n._9.length; ii++) hideInit(n._9[ii], h);
-                    })(__icc, __ihide);
-                }
-            } catch (eInitClip) {}
 
             var __hint = new xa(0, __invH / 2 - 18, "^8mouse wheel / arrows", q.MAIN_FONT);
             __hint.D7(__invBox, !0);
@@ -52283,18 +52252,16 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                 if (q.KeyDown && q.KeyDown(40)) __keyDir = 1;
                             } catch (eK) {}
                             if (__wheel || __keyDir) {
+                                // Wheel up = move content up; wheel down = move content down.
                                 var __delta = __wheel ? -__wheel * 64 : __keyDir * 64;
                                 this.__dzInvScroll = Math.max(0, Math.min(
                                     this.__dzInvMaxScroll || 0,
                                     (this.__dzInvScroll || 0) + __delta
                                 ));
-                                try { q.mWheel = 0; } catch (eCw) {}
-                            }
-                            // Always keep content scrolled + cells clipped (not only on wheel)
-                            try {
-                                this.__dzInvContent.b7 = -Number(this.__dzInvScroll || 0);
-                            } catch (eSync) {}
-                            if (true) {
+                                this.__dzInvContent.b7 = -this.__dzInvScroll;
+                                // The engine's scrollRect is not sufficient for these
+                                // transformed item sprites, so also hard-clip each
+                                // inventory cell to the visible inventory viewport.
                                 try {
                                     // Viewport in invBox local space. Content is
                                     // translated by b7 = -scroll, so cell visual Y
@@ -52314,7 +52281,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                             else if (node.B1 != null)
                                                 node.B1 = hide ? 0 : 1;
                                         } catch (eAlp) {}
-                                        /* no C2 — blanks inv */
+                                        try { node.C2 = !!hide; } catch (eC2) {}
                                         try { if (node.a0) node.a0 = 0; } catch (eA0) {}
                                         var kids = node._9;
                                         if (kids && kids.length) {
@@ -52330,6 +52297,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                         __hideTree(__cc, __hide);
                                     }
                                 } catch (eCellClip) {}
+                                // Consume the engine's one-frame wheel event only here.
+                                try { q.mWheel = 0; } catch (eConsume) {}
                             }
                             try {
                                 if (this.__dzInvBox && typeof this.__dzInvBox.set_scrollRect === "function")
@@ -52410,7 +52379,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             try { q.SaveGlobals(); } catch (e) {}
         },
         E7: function(a) {
-            return !0
+            // Use real bounds so children can win the click. Always-true
+            // made the panel steal clicks before flags/inv claimed them.
+            return ja.prototype.E7.call(this, a);
         },
         e0: function() {
             this.y42.set_local_r(this.y42.set_local_g(this.y42.set_local_b(.45 + 1.1 * this.y42.D43 / 100)));
