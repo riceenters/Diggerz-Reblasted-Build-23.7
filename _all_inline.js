@@ -6775,8 +6775,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 if (this.__dzInvBox || this.__dzPrevBox) {
                     // If mouse is roughly over this panel, do not close
                     try {
-                        var mx = q.mouseX != null ? q.mouseX : (q.MOUSE_X || 0);
-                        var my = q.mouseY != null ? q.mouseY : (q.MOUSE_Y || 0);
+                        var mx = (q.mX != null) ? q.mX : (q.mouseX != null ? q.mouseX : 0);
+                        var my = (q.mY != null) ? q.mY : (q.mouseY != null ? q.mouseY : 0);
                         var halfW = (this.d32 || 1100) / 2;
                         var halfH = (this.d33 || 720) / 2;
                         var cx = this.A7 != null ? this.A7 : q.CENTERX;
@@ -51151,40 +51151,155 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
 
             function __readLiveAppearance() {
-                // Prefer the live equipped list the game already tracks.
+                // Source of truth, in order:
+                // 1) dig/trade service appearance (persisted equipped cosmetics)
+                // 2) localStorage dig save
+                // 3) in-world guy J33 (only after joining a match)
                 var app = [0,0,0,0,0,0,0,0,0,0,0];
-                try {
-                    if (q.player && q.player.J33 && q.player.J33.length) {
-                        var any = false;
-                        for (var i = 0; i < q.player.J33.length; i++)
-                            if ((q.player.J33[i]|0) !== 0) any = true;
-                        if (any) app = q.player.J33.slice(0, 11);
+                function take(src) {
+                    if (!src || !src.length) return false;
+                    var any = false, out = [0,0,0,0,0,0,0,0,0,0,0];
+                    for (var i = 0; i < 11; i++) {
+                        out[i] = (src[i]|0);
+                        if (out[i]) any = true;
                     }
+                    if (any) { app = out; return true; }
+                    return false;
+                }
+                try {
+                    if (q.diggerzService && q.diggerzService.state && q.diggerzService.state.appearance)
+                        take(q.diggerzService.state.appearance);
                 } catch (e1) {}
                 try {
-                    if (q.diggerzService && q.diggerzService.state && Array.isArray(q.diggerzService.state.appearance)) {
-                        var a2 = q.diggerzService.state.appearance.slice(0, 11);
-                        var any2 = false;
-                        for (var j = 0; j < a2.length; j++) if ((a2[j]|0) !== 0) any2 = true;
-                        if (any2) app = a2;
+                    if (!app.some(function(v){return !!v;})) {
+                        var raw = localStorage.getItem("diggerz.digtrade.rebuild.v3") ||
+                                  localStorage.getItem("diggerz.digtrade.v1");
+                        if (raw) {
+                            var parsed = JSON.parse(raw);
+                            if (parsed && parsed.appearance) take(parsed.appearance);
+                        }
                     }
                 } catch (e2) {}
-                // Inventory variant===1 marks currently worn copies
+                try {
+                    if (!app.some(function(v){return !!v;}) && l && l.z39 && l.z39.J33)
+                        take(l.z39.J33);
+                } catch (e3) {}
+                // variant===1 inventory slots are the worn copies — merge those ids
                 try {
                     var slots = null;
                     if (q.diggerzService && q.diggerzService.state && Array.isArray(q.diggerzService.state.slots))
                         slots = q.diggerzService.state.slots;
+                    if (!slots) {
+                        var raw2 = localStorage.getItem("diggerz.digtrade.rebuild.v3");
+                        if (raw2) {
+                            var p2 = JSON.parse(raw2);
+                            if (p2 && Array.isArray(p2.slots)) slots = p2.slots;
+                        }
+                    }
                     if (slots) {
                         for (var s = 0; s < slots.length; s++) {
                             var it = slots[s];
                             if (!it || !(it.id|0) || !(it.count|0) || (it.variant|0) !== 1) continue;
-                            // Best-effort: keep existing slot if already set; hat is slot 1, etc.
-                            // wear-slot mapping is handled by dig service when available.
+                            // Probe the item's wear slot via the real item factory
+                            try {
+                                var probe = new X(null, it.category|0 || 2, it.id|0, it.variant|0, 0, 1, 0, 0);
+                                try { h.n7(it.category|0 || 2, probe, it.id|0, 0); } catch (eN) {}
+                                var ws = probe.t46|0;
+                                if (ws >= 0 && ws <= 10 && ws !== 8)
+                                    app[ws] = it.id|0;
+                            } catch (eP) {}
                         }
                     }
-                } catch (e3) {}
-                while (app.length < 11) app.push(0);
-                return app.slice(0, 11);
+                } catch (e4) {}
+                return app;
+            }
+
+            // Attach one cosmetic to the mannequin the same way m38 does, without
+            // needing the in-world guy (q.player is settings — it has no m38).
+            function __attachOneWear(skel, itemId, slot, tone) {
+                if (!skel || !(itemId|0) || slot === 8) return;
+                itemId = itemId|0;
+                slot = slot|0;
+                try {
+                    var holder = {
+                        a4: 2, i33: skel, l9: tone, J33: [], _9: [],
+                        q7: { P4: (q.player && q.player.K2) ? q.player.K2 : 0 }
+                    };
+                    var f = new Yf(holder, 2, itemId, 0, slot, 1, "", 0);
+                    try { h.n7(2, f, itemId, 0); } catch (eN7) {}
+                    if (!f || !(f.h44|0)) return;
+
+                    function putOnHead() {
+                        var g = skel.f2("head");
+                        if (!g) return;
+                        var e = Yf.W48(itemId, holder);
+                        e.D7(g);
+                        f.D6(e);
+                        e.b6 = f.t44;
+                        e.b7 = f.t45;
+                        e._1 = "wear";
+                        try { e.set_r(e.b8); e.set_g(e.b9); e.set_b(e.B0); } catch (eCol) {}
+                        e.b2 = !0;
+                        if (!g._9) g._9 = [];
+                        g._9.push(e);
+                        try {
+                            e.set_local_xScale(1);
+                            e.set_local_yScale(1);
+                        } catch (eSc) {}
+                    }
+
+                    switch (slot) {
+                    case 0: // hair
+                    case 1: // hat
+                    case 9: // face accessory
+                        putOnHead();
+                        break;
+                    case 2: // shirt / torso
+                        try {
+                            var torso = skel.f2("torso");
+                            if (torso && f._3) {
+                                torso._3 = f._3;
+                                if (f._5) torso._5 = f._5;
+                                torso.set_local_r(f.b8);
+                                torso.set_local_g(f.b9);
+                                torso.set_local_b(f.B0);
+                            }
+                        } catch (eSh) {}
+                        break;
+                    case 3: // shoes
+                        try {
+                            var foot = skel.f2("front_foot");
+                            if (foot) {
+                                var e3 = Yf.W48(itemId, holder);
+                                e3.D7(foot);
+                                f.D6(e3);
+                                e3._1 = "wear";
+                                e3.b2 = !0;
+                                if (!foot._9) foot._9 = [];
+                                foot._9.push(e3);
+                                try { e3.set_local_xScale(1); e3.set_local_yScale(1); } catch (eS3) {}
+                            }
+                        } catch (eFt) {}
+                        break;
+                    case 7: // pants
+                        try {
+                            var pants = skel.f2("pants");
+                            if (pants && f._3) {
+                                pants._3 = f._3;
+                                if (f._5) pants._5 = f._5;
+                                pants.set_local_r(f.b8);
+                                pants.set_local_g(f.b9);
+                                pants.set_local_b(f.B0);
+                            }
+                        } catch (ePn) {}
+                        break;
+                    default:
+                        // Generic: try head attach for unknown cosmetic slots
+                        if (slot !== 4 && slot !== 5 && slot !== 6)
+                            putOnHead();
+                        break;
+                    }
+                } catch (eAtt) {}
             }
 
             function __equipOnPreview(skel, app) {
@@ -51194,40 +51309,47 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 try { __clearWearOnSkel(skel); } catch (eClr) {}
                 try { __ensureHeadAndEyes(skel, tone); } catch (eH) {}
 
-                var wanted = (app && app.slice) ? app.slice(0, 11) : __readLiveAppearance();
-                while (wanted.length < 11) wanted.push(0);
-                // If caller passed all zeros, fall back to live equipped
+                var wanted = (app && app.slice) ? app.slice(0, 11) : null;
                 var anyWanted = false;
-                for (var wi = 0; wi < wanted.length; wi++) if ((wanted[wi]|0) !== 0) anyWanted = true;
+                if (wanted) {
+                    for (var wi = 0; wi < wanted.length; wi++)
+                        if ((wanted[wi]|0) !== 0) anyWanted = true;
+                }
                 if (!anyWanted) wanted = __readLiveAppearance();
+                while (wanted.length < 11) wanted.push(0);
 
+                // Prefer the in-world guy's real m38 when available (in a match).
+                var guy = null;
                 try {
-                    if (q.player && typeof q.player.m38 === "function") {
-                        // Point the real player's appearance pipeline at the
-                        // mannequin skeleton for one call, then restore. This
-                        // uses the exact same m38 path as the live character.
-                        var savedSkel = q.player.i33;
-                        var savedJ33 = (q.player.J33 && q.player.J33.slice) ? q.player.J33.slice() : [];
-                        var savedM32 = q.player.m32;
-                        try {
-                            q.player.m32 = function() {}; // never strip player's hand items
-                            q.player.i33 = skel;
-                            q.player.J33 = [];
-                            q.player.m38(wanted, "");
-                        } catch (eEq) {}
-                        try {
-                            q.player.i33 = savedSkel;
-                            q.player.m32 = savedM32;
-                            // Re-apply original cosmetics to the real player
-                            q.player.J33 = [];
-                            if (savedSkel) q.player.m38(savedJ33.length ? savedJ33 : wanted, "");
-                        } catch (eRest) {
-                            try { q.player.i33 = savedSkel; } catch (eR2) {}
-                            try { q.player.m32 = savedM32; } catch (eR3) {}
-                        }
-                        if (typeof skel._38 === "function") skel._38("idle", !0, 100, .5);
+                    if (typeof l !== "undefined" && l.z39 && typeof l.z39.m38 === "function")
+                        guy = l.z39;
+                } catch (eG) {}
+
+                if (guy) {
+                    try {
+                        var savedSkel = guy.i33;
+                        var savedJ33 = (guy.J33 && guy.J33.slice) ? guy.J33.slice() : [];
+                        var savedM32 = guy.m32;
+                        guy.m32 = function() {};
+                        guy.i33 = skel;
+                        guy.J33 = [];
+                        guy.m38(wanted, "");
+                        guy.i33 = savedSkel;
+                        guy.m32 = savedM32;
+                        guy.J33 = [];
+                        if (savedSkel) guy.m38(savedJ33.length ? savedJ33 : wanted, "");
+                    } catch (eM38) {
+                        try { if (guy) { guy.i33 = guy.i33; } } catch (eR) {}
+                        // Fall through to direct attach
+                        for (var s = 0; s < 11; s++)
+                            if (wanted[s]|0) __attachOneWear(skel, wanted[s], s, tone);
                     }
-                } catch (e) {}
+                } else {
+                    // Title screen: no in-world guy — attach cosmetics directly.
+                    for (var s2 = 0; s2 < 11; s2++)
+                        if (wanted[s2]|0) __attachOneWear(skel, wanted[s2], s2, tone);
+                }
+
                 try { __normalizeWearableScales(skel); } catch (eNorm) {}
                 try { __tintPreviewSkin(skel, tone); } catch (eS) {}
                 try { __tintPreviewShirt(skel); } catch (eShirt) {}
@@ -51370,8 +51492,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     try { if (q.player && q.player.l0 != null) __scaleArg = q.player.l0; } catch (eSc) {}
                     // Pass null (not undefined Fc.M39) so G2 loads anims from JSON
                     // when the cache is still empty.
-                    var __animArg = (typeof Fc !== "undefined" && Fc.M39) ? Fc.M39 : null;
-                    __skel = __maker.G2("guy_anims", "guyskin", f, __animArg, __scaleArg, !0);
+                    // Always pass null so G2 builds Z26 from guy_anims JSON.
+                    // Passing a stale/empty Fc.M39 leaves the rig with no idle.
+                    __skel = __maker.G2("guy_anims", "guyskin", f, null, __scaleArg, !0);
+                    try {
+                        if (__skel && __skel.Z26 && __skel.Z26.length && typeof Fc !== "undefined")
+                            Fc.M39 = __skel.Z26;
+                    } catch (eCache) {}
                 } catch (eG2) {
                     try { __skel = (new z).G2("guy_anims", "guyskin", f, null, 1, !0); } catch (eG2b) {}
                 }
@@ -51669,6 +51796,26 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.__dzInvH = __invH;
             this.__dzInvW = __invW;
             this.__dzInvCells = __dzInvCells;
+            // Initial viewport clip so overflowing rows are hidden before any scroll
+            try {
+                var __iTop = -__invH / 2 + 40;
+                var __iBot = __invH / 2 - 28;
+                for (var __ici = 0; __ici < __dzInvCells.length; __ici++) {
+                    var __icc = __dzInvCells[__ici];
+                    if (!__icc) continue;
+                    var __ivy = Number(__icc.b7);
+                    var __ihide = (__ivy + 40 < __iTop) || (__ivy - 40 > __iBot);
+                    function __initHide(n, h) {
+                        if (!n) return;
+                        try {
+                            if (typeof n.set_local_alp === "function") n.set_local_alp(h ? 0 : 1);
+                        } catch (e) {}
+                        try { if (n.a0) n.a0 = 0; } catch (e2) {}
+                        if (n._9) for (var ii = 0; ii < n._9.length; ii++) __initHide(n._9[ii], h);
+                    }
+                    __initHide(__icc, __ihide);
+                }
+            } catch (eInitClip) {}
 
             var __hint = new xa(0, __invH / 2 - 18, "^8mouse wheel / arrows", q.MAIN_FONT);
             __hint.D7(__invBox, !0);
@@ -51810,6 +51957,14 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                     (this.__dzInvScroll || 0) + __delta
                                 ));
                                 this.__dzInvContent.b7 = -this.__dzInvScroll;
+                                try { q.mWheel = 0; } catch (eConsume0) {}
+                            }
+                            // Always clip cells to the viewport (not only on scroll).
+                            if (true) {
+                                // keep content y synced
+                                try {
+                                    this.__dzInvContent.b7 = -Number(this.__dzInvScroll || 0);
+                                } catch (eSync) {}
                                 // The engine's scrollRect is not sufficient for these
                                 // transformed item sprites, so also hard-clip each
                                 // inventory cell to the visible inventory viewport.
@@ -51826,13 +51981,14 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                     var __scr = Number(this.__dzInvScroll || 0);
                                     function __hideTree(node, hide) {
                                         if (!node) return;
+                                        // ONLY alpha — never C2/a0/a2 (those destroy
+                                        // or permanently blank inventory cells).
                                         try {
                                             if (typeof node.set_local_alp === "function")
                                                 node.set_local_alp(hide ? 0 : 1);
                                             else if (node.B1 != null)
                                                 node.B1 = hide ? 0 : 1;
                                         } catch (eAlp) {}
-                                        try { node.C2 = !!hide; } catch (eC2) {}
                                         try { if (node.a0) node.a0 = 0; } catch (eA0) {}
                                         var kids = node._9;
                                         if (kids && kids.length) {
@@ -51848,8 +52004,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                         __hideTree(__cc, __hide);
                                     }
                                 } catch (eCellClip) {}
-                                // Consume the engine's one-frame wheel event only here.
-                                try { q.mWheel = 0; } catch (eConsume) {}
                             }
                             try {
                                 if (this.__dzInvBox && typeof this.__dzInvBox.set_scrollRect === "function")
