@@ -51642,6 +51642,7 @@ function __normalizeWearableScales(skel) {
                         e.b6 = f.t44;
                         e.b7 = f.t45;
                         e._1 = "wear";
+                        e.__dzWearSlot = slot|0;
                         e.b2 = !0;
                         try {
                             // Exact m38 path: color the WEAR sprite from its own
@@ -51686,6 +51687,7 @@ function __normalizeWearableScales(skel) {
                                     rightWing.A4 = __nativeCW.A4;
                                     rightWing.A5 = __nativeCW.A5;
                                     rightWing._1 = "cw";
+                                    rightWing.__dzWearSlot = slot|0;
                                     rightWing.B8 = -1;
                                 }
                             } catch (eWing) {}
@@ -51790,7 +51792,7 @@ function __normalizeWearableScales(skel) {
                                 eF.D7(ff);
                                 f.D6(eF);
                                 eF.b6 = f.t44; eF.b7 = f.t45;
-                                eF._1 = "wear"; eF.b2 = !0;
+                                eF._1 = "wear"; eF.__dzWearSlot = slot|0; eF.b2 = !0;
                                 eF.c9 = f.c9;
                                 if (f.T48)
                                     ff.set_local_r(ff.set_local_g(ff.set_local_b(wearSkin)));
@@ -51808,7 +51810,7 @@ function __normalizeWearableScales(skel) {
                                 eB.D7(bf);
                                 f.D6(eB);
                                 eB.b6 = f.t44; eB.b7 = f.t45;
-                                eB._1 = "wear"; eB.b2 = !0;
+                                eB._1 = "wear"; eB.__dzWearSlot = slot|0; eB.b2 = !0;
                                 eB.c9 = f.c9;
                                 if (f.T48)
                                     bf.set_local_r(bf.set_local_g(bf.set_local_b(wearSkin)));
@@ -52029,14 +52031,18 @@ function __normalizeWearableScales(skel) {
                     node.c9 = false;
                 } catch (e) {}
             }
-            function __dzApplyRgbTree(node, def, color) {
+            function __dzApplyRgbTree(node, def, color, targetSlot) {
                 if (!node) return;
-                __dzApplyRgbNode(node, def, color);
+                // Only tint the wearable that belongs to this RGB cosmetic's
+                // appearance slot.  The old preview walked every "wear" node
+                // for every RGB definition, which made ordinary clothes turn RGB.
+                if (node._1 === 'wear' && (node.__dzWearSlot|0) === (targetSlot|0))
+                    __dzApplyRgbNode(node, def, color);
                 try {
                     var kids = node._9 || [];
                     for (var i = 0; i < kids.length; i++) {
                         var child = kids[i];
-                        if (child && child._1 === 'cw') __dzApplyRgbTree(child, def, color);
+                        if (child) __dzApplyRgbTree(child, def, color, targetSlot);
                     }
                 } catch (e) {}
             }
@@ -52071,7 +52077,8 @@ function __normalizeWearableScales(skel) {
                         try {
                             function walk(node) {
                                 if (!node) return;
-                                if (node._1 === 'wear') __dzApplyRgbTree(node, def, color);
+                                if (node._1 === 'wear' && (node.__dzWearSlot|0) === (slot|0))
+                                    __dzApplyRgbTree(node, def, color, slot);
                                 var kids = node._9 || [];
                                 for (var i = 0; i < kids.length; i++) walk(kids[i]);
                             }
@@ -52522,36 +52529,21 @@ function __normalizeWearableScales(skel) {
             try { __invBox._9.push(__invT); } catch (eTitlePush) {}
             try { __invT.set_local_xScale(__invT.set_local_yScale(.75)); } catch (eTitleScale) {}
 
-            // The scroll rectangle is a real render mask. It is applied to the box
-            // after all children are created as well, because the engine can rebuild
-            // masks during layout/e0.
-            function __applyInvClip() {
-                try {
-                    if (typeof __invBox.set_scrollRect === "function")
-                        __invBox.set_scrollRect(new r(
-                            -__invW / 2, -__invH / 2,
-                            __invW, __invH
-                        ));
-                } catch (eClip) {}
-            }
-            __applyInvClip();
+            // Dedicated fixed viewport: the frame/title stay on the outer JA, while
+            // this child owns the clipping region. The scrolling grid moves under
+            // this viewport; the viewport itself never moves.
+            var __invViewport = z.I9();
+            __invViewport.D7(__invBox, !0);
+            try { __invBox._9.push(__invViewport); } catch (eViewportPush) {}
+            __invViewport.b6 = -140;
+            __invViewport.b7 = -__invH / 2 + 64;
+            this.__dzInvViewport = __invViewport;
 
-            // Dedicated inventory viewport: the outer JA contains the frame/title,
-            // while this transparent display object is the actual clipping window.
-            // The scrolling grid moves INSIDE this fixed viewport, so sprites are
-            // partially clipped at the edges instead of their whole slot vanishing.
             var __invContent = z.I9();
-            __invContent.D7(__invBox, !0);
-            try { __invBox._9.push(__invContent); } catch (eContentPush) {}
-            // The viewport itself is fixed at the top-left of the four-column
-            // inventory area.  IMPORTANT: the scrollRect is in the viewport's
-            // own local coordinates, so it must start at (0,0).  The previous
-            // implementation used the inventory-box coordinates for the
-            // scrollRect, which translated the viewport and made clipping look
-            // like whole slots were disappearing instead of being partially
-            // clipped.
-            __invContent.b6 = -140;
-            __invContent.b7 = -__invH / 2 + 64;
+            __invContent.D7(__invViewport, !0);
+            try { __invViewport._9.push(__invContent); } catch (eContentPush) {}
+            __invContent.b6 = 0;
+            __invContent.b7 = 0;
             this.__dzInvContent = __invContent;
 
             var __invGrid = z.I9();
@@ -52561,19 +52553,18 @@ function __normalizeWearableScales(skel) {
             __invGrid.b7 = 0;
             this.__dzInvGrid = __invGrid;
 
-            // Fixed viewport.  The grid is the thing that scrolls; the viewport
-            // never moves.  A real OpenFL scrollRect clips child rendering at
-            // pixel boundaries, so sprites crossing an edge remain partially
-            // visible rather than vanishing as an entire slot.
+            // IMPORTANT: scrollRect coordinates are local to the viewport.
+            // The viewport is positioned at the top-left of the four-column
+            // inventory area, so its clipping rectangle starts at (0,0).
             try {
-                if (typeof __invContent.set_scrollRect === "function")
-                    __invContent.set_scrollRect(new r(
+                if (typeof __invViewport.set_scrollRect === "function")
+                    __invViewport.set_scrollRect(new r(
                         0,
                         0,
                         280,
-                        __invH - 82
+                        Math.max(1, __invH - 82)
                     ));
-            } catch (eContentClip) {}
+            } catch (eViewportClip) {}
             try {
                 if (typeof __invBox.set_scrollRect === "function")
                     __invBox.set_scrollRect(null);
@@ -53277,12 +53268,12 @@ function __normalizeWearableScales(skel) {
                             // Keep the viewport fixed. Its scrollRect is local (0,0),
                             // while the grid moves underneath it.
                             try {
-                                if (this.__dzInvContent && typeof this.__dzInvContent.set_scrollRect === "function")
-                                    this.__dzInvContent.set_scrollRect(new r(
+                                if (this.__dzInvViewport && typeof this.__dzInvViewport.set_scrollRect === "function")
+                                    this.__dzInvViewport.set_scrollRect(new r(
                                         0,
                                         0,
                                         280,
-                                        __invH2 - 82
+                                        Math.max(1, __invH2 - 82)
                                     ));
                             } catch (eClip3) {}
                             try { q.mWheel = 0; } catch (eConsume2) {}
