@@ -51675,6 +51675,7 @@ function __normalizeWearableScales(skel) {
                             try {
                                 e.A4 = f.A4;
                                 e.A5 = f.A5;
+                                e.B8 = -1;
                                 var __nativeCW = f.f0 && f.f0("cw");
                                 if (__nativeCW) {
                                     var rightWing = z.I9();
@@ -51685,6 +51686,7 @@ function __normalizeWearableScales(skel) {
                                     rightWing.A4 = __nativeCW.A4;
                                     rightWing.A5 = __nativeCW.A5;
                                     rightWing._1 = "cw";
+                                    rightWing.B8 = -1;
                                 }
                             } catch (eWing) {}
                         }
@@ -51974,6 +51976,111 @@ function __normalizeWearableScales(skel) {
             }
 
 
+            // Build 24 RGB/True RGB preview support. The live player renderer
+            // animates these virtual cosmetic IDs in build240-client.js; Customize
+            // needs to do the same thing locally because the mannequin is not a
+            // network player entity.
+            var __dzRgbDefs = {
+                500:{base:110,trueRgb:false,slot:1}, 550:{base:110,trueRgb:true,slot:1},
+                501:{base:213,trueRgb:false,slot:5}, 551:{base:213,trueRgb:true,slot:5},
+                502:{base:181,trueRgb:false,slot:6}, 552:{base:181,trueRgb:true,slot:6},
+                503:{base:113,trueRgb:false,slot:5}, 553:{base:113,trueRgb:true,slot:5},
+                504:{base:247,trueRgb:false,slot:1}, 554:{base:247,trueRgb:true,slot:1},
+                505:{base:127,trueRgb:false,slot:0}, 555:{base:127,trueRgb:true,slot:0},
+                506:{base:173,trueRgb:false,slot:0}, 556:{base:173,trueRgb:true,slot:0},
+                507:{base:109,trueRgb:false,slot:0}, 557:{base:109,trueRgb:true,slot:0},
+                508:{base:58,trueRgb:false,slot:0}, 558:{base:58,trueRgb:true,slot:0},
+                509:{base:67,trueRgb:false,slot:2}, 559:{base:67,trueRgb:true,slot:2},
+                510:{base:57,trueRgb:false,slot:7}, 560:{base:57,trueRgb:true,slot:7},
+                511:{base:56,trueRgb:false,slot:3}, 561:{base:56,trueRgb:true,slot:3},
+                512:{base:105,trueRgb:false,slot:1}, 562:{base:105,trueRgb:true,slot:1},
+                513:{base:234,trueRgb:false,slot:3}, 563:{base:234,trueRgb:true,slot:3},
+                514:{base:233,trueRgb:false,slot:4}, 564:{base:233,trueRgb:true,slot:4},
+                515:{base:125,trueRgb:false,slot:8}, 565:{base:125,trueRgb:true,slot:8},
+                516:{base:387,trueRgb:false,slot:4}, 566:{base:387,trueRgb:true,slot:4},
+                517:{base:379,trueRgb:false,slot:4}, 567:{base:379,trueRgb:true,slot:4},
+                518:{base:20,trueRgb:false,slot:2}, 568:{base:20,trueRgb:true,slot:2},
+                519:{base:187,trueRgb:false,slot:2}, 569:{base:187,trueRgb:true,slot:2},
+                520:{base:23,trueRgb:false,slot:7}, 570:{base:23,trueRgb:true,slot:7}
+            };
+            function __dzRainbowColor(phase) {
+                var t = ((phase % 1) + 1) % 1, q = t * 6, i = Math.floor(q), f = q - i;
+                switch (i) {
+                    case 0: return [1, f, 0];
+                    case 1: return [1-f, 1, 0];
+                    case 2: return [0, 1, f];
+                    case 3: return [0, 1-f, 1];
+                    case 4: return [f, 0, 1];
+                    default: return [1, 0, 1-f];
+                }
+            }
+            function __dzApplyRgbNode(node, def, color) {
+                if (!node || !def) return;
+                var low = def.trueRgb ? .10 : .28;
+                var gain = def.trueRgb ? .62 : 1.12;
+                var r = low + gain*color[0], g = low + gain*color[1], b = low + gain*color[2];
+                try {
+                    if (typeof node.set_local_r === 'function') node.set_local_r(r);
+                    if (typeof node.set_local_g === 'function') node.set_local_g(g);
+                    if (typeof node.set_local_b === 'function') node.set_local_b(b);
+                    if (typeof node.set_r === 'function') node.set_r(r);
+                    if (typeof node.set_g === 'function') node.set_g(g);
+                    if (typeof node.set_b === 'function') node.set_b(b);
+                    node.c9 = false;
+                } catch (e) {}
+            }
+            function __dzApplyRgbTree(node, def, color) {
+                if (!node) return;
+                __dzApplyRgbNode(node, def, color);
+                try {
+                    var kids = node._9 || [];
+                    for (var i = 0; i < kids.length; i++) {
+                        var child = kids[i];
+                        if (child && child._1 === 'cw') __dzApplyRgbTree(child, def, color);
+                    }
+                } catch (e) {}
+            }
+            function __applyCustomizeRGB(skel, app, now) {
+                if (!skel || !app) return;
+                var phase = Number(now || Date.now()) / 2400;
+                var color = __dzRainbowColor(phase);
+                for (var slot = 0; slot < 11; slot++) {
+                    var id = app[slot]|0, def = __dzRgbDefs[id];
+                    if (!def) continue;
+                    // Body-texture RGB cosmetics are rendered by tinting the exact
+                    // body parts the native player renderer uses.
+                    if (slot === 2) {
+                        __dzApplyRgbNode(skel.f2('torso'), def, color);
+                        var af = skel.f2('front_shoulder'); af = af && af.f2 ? af.f2('arm') : null;
+                        var ab = skel.f2('back_shoulder'); ab = ab && ab.f2 ? ab.f2('arm_back') : null;
+                        __dzApplyRgbNode(af, def, color); __dzApplyRgbNode(ab, def, color);
+                    } else if (slot === 7) {
+                        var fl = skel.f2('front_lowerleg'); fl = fl && fl.f2 ? fl.f2('leg') : null;
+                        var bl = skel.f2('back_lowerleg'); bl = bl && bl.f2 ? bl.f2('leg_back') : null;
+                        __dzApplyRgbNode(fl, def, color); __dzApplyRgbNode(bl, def, color);
+                        __dzApplyRgbNode(skel.f2('pants'), def, color);
+                    } else if (slot === 3) {
+                        __dzApplyRgbNode(skel.f2('front_foot'), def, color);
+                        __dzApplyRgbNode(skel.f2('back_foot'), def, color);
+                    } else if (slot === 8) {
+                        // Pets are handled by the pet preview system; don't tint the
+                        // mannequin body for the pet's RGB variant.
+                    } else {
+                        // Hair/hats/face/back/gloves/weapons: tint only the wearable
+                        // nodes for this slot. This also reaches both wing sprites.
+                        try {
+                            function walk(node) {
+                                if (!node) return;
+                                if (node._1 === 'wear') __dzApplyRgbTree(node, def, color);
+                                var kids = node._9 || [];
+                                for (var i = 0; i < kids.length; i++) walk(kids[i]);
+                            }
+                            walk(skel);
+                        } catch (eWalk) {}
+                    }
+                }
+            }
+
             function __equipOnPreview(skel, app) {
                 if (!skel) return;
                 var tone = (typeof __currentSkinTone === 'function') ? __currentSkinTone() : 90;
@@ -52025,6 +52132,7 @@ function __normalizeWearableScales(skel) {
                 }
 
                 try { __normalizeWearableScales(skel); } catch (eNorm) {}
+                try { __applyCustomizeRGB(skel, wanted, Date.now()); } catch (eRgb) {}
                 // Tint AFTER wear so skin-showing clothes (T48) get correct limb color
                 try { __tintPreviewSkin(skel, tone); } catch (eS) {}
                 // Only force the stored shirt palette when no shirt cosmetic is equipped.
@@ -52435,8 +52543,15 @@ function __normalizeWearableScales(skel) {
             var __invContent = z.I9();
             __invContent.D7(__invBox, !0);
             try { __invBox._9.push(__invContent); } catch (eContentPush) {}
-            __invContent.b6 = 0;
-            __invContent.b7 = 0;
+            // The viewport itself is fixed at the top-left of the four-column
+            // inventory area.  IMPORTANT: the scrollRect is in the viewport's
+            // own local coordinates, so it must start at (0,0).  The previous
+            // implementation used the inventory-box coordinates for the
+            // scrollRect, which translated the viewport and made clipping look
+            // like whole slots were disappearing instead of being partially
+            // clipped.
+            __invContent.b6 = -140;
+            __invContent.b7 = -__invH / 2 + 64;
             this.__dzInvContent = __invContent;
 
             var __invGrid = z.I9();
@@ -52446,13 +52561,15 @@ function __normalizeWearableScales(skel) {
             __invGrid.b7 = 0;
             this.__dzInvGrid = __invGrid;
 
-            // Tight four-column viewport. Because the rect belongs to the fixed
-            // viewport (not the moving grid), clipping is true partial clipping.
+            // Fixed viewport.  The grid is the thing that scrolls; the viewport
+            // never moves.  A real OpenFL scrollRect clips child rendering at
+            // pixel boundaries, so sprites crossing an edge remain partially
+            // visible rather than vanishing as an entire slot.
             try {
                 if (typeof __invContent.set_scrollRect === "function")
                     __invContent.set_scrollRect(new r(
-                        -140,
-                        -__invH / 2 + 64,
+                        0,
+                        0,
                         280,
                         __invH - 82
                     ));
@@ -52484,8 +52601,10 @@ function __normalizeWearableScales(skel) {
             var __slotSize = 70;
             var __rowH = 72;
             var __gridW = __cols * __slotSize;
-            var __startX = -__gridW / 2 + __slotSize / 2;
-            var __startY = -__invH / 2 + 82;
+            // Coordinates are relative to the fixed viewport whose local origin
+            // is the top-left of the four-column clipping area.
+            var __startX = __slotSize / 2;
+            var __startY = 18;
             // Match the in-game 95-slot visual inventory
             var __slotCount = Math.max(95, __rawSlots.length);
             var __rows = Math.ceil(Math.max(__visIndex || __slotCount, 1) / __cols);
@@ -53043,6 +53162,10 @@ function __normalizeWearableScales(skel) {
                     } catch (eLiveSkin) {}
 
                     try {
+                        if (__previewSkelRef && __app) __applyCustomizeRGB(__previewSkelRef, __app, Date.now());
+                    } catch (eRgbTick) {}
+
+                    try {
                         if (this.__dzInvContent) {
                             var __invBox2 = this.__dzInvBox;
                             var __invW2 = this.__dzInvW || 320;
@@ -53147,16 +53270,17 @@ function __normalizeWearableScales(skel) {
                             if (Math.abs(__tar2 - __cur2) < .15) __cur2 = __tar2;
                             this.__dzInvSmoothScroll = __cur2;
                             this.__dzInvScroll = __cur2;
-                            this.__dzInvContent.b7 = -__cur2;
+                            // Scroll the CONTENT GRID, never the fixed viewport.
+                            // Moving the viewport itself defeats partial clipping.
+                            if (this.__dzInvGrid) this.__dzInvGrid.b7 = -__cur2;
 
-                            // Keep the frame/title outside the mask. Only the moving grid
-                            // lives inside the fixed viewport, so crossing an edge produces
-                            // real partial clipping rather than hiding the whole inventory box.
+                            // Keep the viewport fixed. Its scrollRect is local (0,0),
+                            // while the grid moves underneath it.
                             try {
                                 if (this.__dzInvContent && typeof this.__dzInvContent.set_scrollRect === "function")
                                     this.__dzInvContent.set_scrollRect(new r(
-                                        -140,
-                                        -__invH2 / 2 + 64,
+                                        0,
+                                        0,
                                         280,
                                         __invH2 - 82
                                     ));

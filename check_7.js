@@ -4444,7 +4444,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         q.thisMain.removeChildren();
         q.AddLayers();
         q.children.push(new Cf);
-        try { E.U7(Zl.n7(), !0); } catch (__dzTitleAmbienceError) {}
+        // Main-menu ambience: birds / outdoor theme that also plays in-game outside.
+        try {
+            if (typeof Zl !== "undefined" && Zl.n7 && Zl.n7())
+                E.U7(Zl.n7(), !0);
+            else if (typeof Zl !== "undefined" && Zl.n6)
+                E.U7(Zl.n6, !0);
+        } catch (eAmb) {}
     }
     ;
     q.GetChildByName = function(a) {
@@ -5199,33 +5205,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         },
         a36: function(a) {
             null == a && (a = 1);
-            // Base menu background (always default title art)
             var b = z.I9();
             b.Init(sa.TITLE_BKND_PNG());
             b.D7(this);
             b.set_local_xScale(2 * q.SCREENWIDTH / b._5.width);
             b.set_local_yScale(2 * q.SCREENHEIGHT / b._5.height);
-            // Overlay above base — index 0 = transparent (show default), 1 = Grey, 2 = Space
-            try {
-                var __bgI = 0;
-                try { __bgI = Math.max(0, Math.min(2, parseInt(localStorage.getItem("diggerz.menuBg.v1") || "0", 10) || 0)); } catch (e0) {}
-                var __ov = z.I9();
-                if (__bgI === 1) __ov.Init(sa.GREY_BKND_PNG());
-                else if (__bgI === 2) __ov.Init(sa.SPACE_BKND_PNG());
-                else __ov.Init(sa.TITLE_BKND_PNG());
-                __ov.D7(this);
-                __ov.set_local_xScale(2 * q.SCREENWIDTH / __ov._5.width);
-                __ov.set_local_yScale(2 * q.SCREENHEIGHT / __ov._5.height);
-                if (__bgI === 0) {
-                    try { __ov.set_local_alp(0); } catch (eA) { try { __ov.set_alp(0); } catch (eA2) {} }
-                } else {
-                    try { __ov.set_local_alp(1); } catch (eA3) {}
-                }
-                __ov._1 = "diggerz_menu_bg_overlay";
-                this._9.push(__ov);
-                window.__diggerzMenuBgOverlay = __ov;
-                window.__diggerzMenuBgBase = b;
-            } catch (eBg) {}
             b.set_local_r(b.set_local_g(b.set_local_b(a)));
             this._9.push(b);
             b._1 = "gradient";
@@ -6436,6 +6420,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
             var diggerzTypedNow = String(this.D31.q35 || "");
             if (diggerzTypedNow !== this.diggerzLastTypedText) {
+                // Play on every change (type or backspace). dg.e0 also plays; this
+                // covers the chat box path that reads text after the fact.
+                E.v2(Pj.n7());
                 this.diggerzLastTypedText = diggerzTypedNow
             }
             this.d37();
@@ -6630,7 +6617,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.d39()
         },
         E7: function(a) {
-            return !0
+            return ja.prototype.E7.call(this, a);
         },
         C39: function() {
             // Keep Customize open when clicking inventory / preview / skin / flags.
@@ -6640,8 +6627,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 if (this.__dzInvBox || this.__dzPrevBox) {
                     // If mouse is roughly over this panel, do not close
                     try {
-                        var mx = q.mouseX != null ? q.mouseX : (q.MOUSE_X || 0);
-                        var my = q.mouseY != null ? q.mouseY : (q.MOUSE_Y || 0);
+                        var mx = (q.mX != null) ? q.mX : (q.mouseX != null ? q.mouseX : 0);
+                        var my = (q.mY != null) ? q.mY : (q.mouseY != null ? q.mouseY : 0);
                         var halfW = (this.d32 || 1100) / 2;
                         var halfH = (this.d33 || 720) / 2;
                         var cx = this.A7 != null ? this.A7 : q.CENTERX;
@@ -17810,7 +17797,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         },
         e0: function() {
             l.b41 = !1;
-            var __dzTypedBefore = String(this.q35 || "").length;
             this.Q31 && q.thisMain.stage.set_focus(this.Q30);
             if (null != this._2 && !this._2.a2)
                 return xa.prototype.e0.call(this);
@@ -17819,7 +17805,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     for (var a = 0, b = this.Q30.get_length(); a < b; ) {
                         var c = a++;
                         c = T.substr(this.Q30.get_text(), c, 1);
-                        null != this.E31.M17.allchars[T.cca(c, 0)] && (this.q35 += c)
+                        null != this.E31.M17.allchars[T.cca(c, 0)] && (this.q35 += c,
+                        // Typing sound for soft-keyboard / IME character insert
+                        E.v2(Pj.n7()))
                     }
                     this.E37(this.q35)
                 }
@@ -17832,15 +17820,26 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 ++b;
                 String.fromCodePoint(d);
                 a = !0;
-                13 == d && null != this.q39 ? (this.q39(),
-                this.a0 = 1,
-                q.mKeyDown[d] = !1) : 27 != d && 1073742094 != d || null == this.q38 ? 8 == d && 0 < this.q35.length && (this.q35 = T.substr(this.q35, 0, this.q35.length - 1),
-                this.a1 = 0) : (q.mKeyDown[d] = !1,
-                this.q38(),
-                this.a0 = 1)
-            }
-            if (String(this.q35 || "").length > __dzTypedBefore) {
-                try { E.v2(Pj.n7()); } catch (__dzTypeSoundError) {}
+                // Every key that changes the field (printable or backspace) plays type.ogg
+                if (8 == d) {
+                    if (0 < this.q35.length) {
+                        this.q35 = T.substr(this.q35, 0, this.q35.length - 1);
+                        this.a1 = 0;
+                        E.v2(Pj.n7());
+                    }
+                } else if (13 == d && null != this.q39) {
+                    this.q39();
+                    this.a0 = 1;
+                    q.mKeyDown[d] = !1;
+                } else if (27 == d || 1073742094 == d) {
+                    if (null != this.q38) {
+                        q.mKeyDown[d] = !1;
+                        this.q38();
+                        this.a0 = 1;
+                    }
+                }
+                // Printable chars are inserted via Q30 soft-keyboard path above
+                // (already plays type sound). Do not play on bare keycodes here.
             }
             if (a || 25 > this.a1 % 20 != 25 > (this.a1 - 1) % 50) {
                 if (this.q36) {
@@ -22311,7 +22310,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 variants[objectIndex] = objectVariant
             }
             var slots = [];
-            for (x = 0; x < 30; x++) slots.push(this.emptyItem());
+            // Visual arrange-grid is 95 slots — match that capacity
+            for (x = 0; x < 95; x++) slots.push(this.emptyItem());
             // Preserve the recovered starter loadout in both local modes.
             slots[0] = this.item(2, 326, 1, 1, 0, "");
             slots[1] = this.item(2, 240, 0, 1, 0, "");
@@ -22329,6 +22329,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 variants: variants,
                 slots: slots,
                 appearance: [0, 247, 0, 0, 326, 0, 0, 0, 0, 0, 0],
+                skin_tone: 90,
                 appearanceText: "",
                 x: 12,
                 y: surfaceAt[12] - 2,
@@ -22349,7 +22350,14 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             // Build 23.0 release migration: old saves may have fewer inventory slots.
             // Keep every existing item and pad the inventory to at least 30 slots.
             this.state.slots = Array.isArray(saved.slots) ? saved.slots.slice() : [];
-            while (this.state.slots.length < 30) this.state.slots.push(this.emptyItem());
+            // Expand older saves up to the full 95-slot visual grid
+            while (this.state.slots.length < 95) this.state.slots.push(this.emptyItem());
+            if (this.state.slots.length > 95) this.state.slots = this.state.slots.slice(0, 95);
+            if (this.state.skin_tone == null || !isFinite(Number(this.state.skin_tone)))
+                this.state.skin_tone = 90;
+            try {
+                if (q.player) q.player.l9 = Number(this.state.skin_tone);
+            } catch (eSkL) {}
             this.state.appearance = (saved.appearance || []).slice(0, 11);
             this.state.appearanceText = saved.appearanceText || "";
             this.state.coins = saved.coins || 0;
@@ -22589,6 +22597,22 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 break;
             case 12:
                 this.chat(packet);
+                break;
+            case 71:
+                // Sort — pack inventory, remove empty gaps
+                try {
+                    var slots = this.state.slots || [];
+                    var packed = [];
+                    for (var i = 0; i < slots.length; i++) {
+                        var it = slots[i];
+                        if (it && (it.id|0) && (it.count|0) > 0) packed.push(it);
+                    }
+                    while (packed.length < slots.length)
+                        packed.push(this.emptyItem());
+                    this.state.slots = packed;
+                    this.markDirty();
+                    this.sendInventory();
+                } catch (eSort) {}
                 break;
             case 14:
                 this.sendInventory();
@@ -23363,7 +23387,17 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         adminViewInventory:function(name){var mp=window.DiggerzPvp22;if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!mp||!mp.joined)return {ok:false,message:'Multiplayer server required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};this.pvpSend({t:'admin-inventory-request',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid});return {ok:true,message:'Requesting inventory…'}},
         adminInventoryAction:function(name,action,slot,count){if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};this.pvpSend({t:'admin-inventory-action',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid,action:String(action),slot:slot|0,count:Math.max(1,count|0)});return {ok:true,message:'Inventory action requested.'}},
         adminApplyBackground:function(background){var mp=window.DiggerzPvp22;if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!mp||!mp.joined)return {ok:false,message:'Multiplayer server required.'};background=Math.max(0,Math.min(9,background|0));this.pvpSend({t:'admin-background',adminToken:window.DiggerzAdminSessionToken,background:background});this.adminApplyBackgroundLocal(background);return {ok:true,message:'Background '+background+' applied to everyone.'}},
-        adminApplyBackgroundLocal:function(background){background=Math.max(0,Math.min(9,background|0));this.adminBackground=background;try{this.enqueue(102,1,function(packet){packet.R2(background)})}catch(e){}},
+        adminApplyBackgroundLocal:function(background){background=Math.max(0,Math.min(9,background|0));this.adminBackground=background;try{this.enqueue(102,1,function(packet){packet.R2(background)})}catch(e){}
+          // Also apply immediately on the live world so hosts/peers see it without waiting for packet drain
+          try{
+            if(typeof l!=="undefined"&&l.z38&&typeof cg==="function"){
+              try{if(l.z38.d34){l.z38.d34.a0=1;try{T.remove(l.z38._9,l.z38.d34)}catch(_r){}}}catch(_h){}
+              var ncg=new cg(background);
+              l.z38.d34=ncg;
+              try{l.z38._9.splice(0,0,ncg)}catch(_p){try{l.z38._9.push(ncg)}catch(_p2){}}
+            }
+          }catch(_cg){}
+        },
         miningHashAt: function(x, y) {
             return Math.abs(((x + 17) * 73856093 ^ (y + 31) * 19349663) | 0)
         },
@@ -42012,8 +42046,45 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         R44: null,
         R45: null,
         R46: function() {
-            K._17();
-            l.z39.n38.q43 = -1
+            // Network sort (official servers)
+            try { K._17(); } catch (eNet) {}
+            // Local compact: remove empty gaps between items
+            try {
+                // Dig+Trade / offline slot array
+                if (q.diggerzService && q.diggerzService.state && Array.isArray(q.diggerzService.state.slots)) {
+                    var slots = q.diggerzService.state.slots;
+                    var packed = [];
+                    for (var si = 0; si < slots.length; si++) {
+                        var it = slots[si];
+                        if (it && (it.id|0) && (it.count|0) > 0) packed.push(it);
+                    }
+                    while (packed.length < slots.length)
+                        packed.push(q.diggerzService.emptyItem ? q.diggerzService.emptyItem() : {category:0,id:0,variant:0,count:0,text:""});
+                    q.diggerzService.state.slots = packed;
+                    try { q.diggerzService.markDirty && q.diggerzService.markDirty(); } catch (eD) {}
+                    try { q.diggerzService.sendInventory && q.diggerzService.sendInventory(); } catch (eS) {}
+                }
+            } catch (eLocal) {}
+            // Also compact live n38.B30 visual items (gap indices)
+            try {
+                if (l.z39 && l.z39.n38 && l.z39.n38.B30) {
+                    var b30 = l.z39.n38.B30;
+                    var kept = [];
+                    for (var bi = 0; bi < b30.length; bi++) {
+                        var x = b30[bi];
+                        if (x && (x.h44|0) && (x.g36|0) > 0) kept.push(x);
+                        else if (x && (x.h44|0)) kept.push(x);
+                    }
+                    // Re-index positions tightly
+                    for (var ki = 0; ki < kept.length; ki++) {
+                        try {
+                            if (typeof kept[ki].u43 === "function") kept[ki].u43(ki);
+                        } catch (eU) {}
+                    }
+                    l.z39.n38.B30 = kept;
+                }
+            } catch (eB30) {}
+            try { l.z39.n38.q43 = -1; } catch (eQ) {}
         },
         R47: function() {
             for (var a = 0, b = this.Q46; a < b.length; ) {
@@ -50343,14 +50414,121 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.c0 = !0;
         this.A7 = q.CENTERX;
         this.A8 = q.CENTERY;
+        // Hide main fight/title GUI via alpha (do not destroy) + swap the
+        // real title backdrop (same path the game uses for menu themes /
+        // the old accidental menu-bknd change).
+        try {
+            this.__dzHiddenGui = [];
+            this.__dzBgRestore = [];
+            var __title = q.GetChildByType(Cf);
+            if (__title && __title._9) {
+                for (var __hi = 0; __hi < __title._9.length; __hi++) {
+                    var __hc = __title._9[__hi];
+                    if (!__hc) continue;
+                    var __n = "";
+                    try { __n = String(__hc._1 || ""); } catch (eN) {}
+                    if (__n.indexOf("para") === 0 || __n === "gradient" || __n === "diggerz_menu_bg_cg" || __n === "diggerz_customize_beta_bknd") continue;
+                    if (__hc === __title.d34) continue;
+                    try {
+                        var __prevAlp = (__hc.a7 != null) ? __hc.a7 : 1;
+                        this.__dzHiddenGui.push({ node: __hc, alp: __prevAlp });
+                        if (typeof __hc.set_alp === "function") __hc.set_alp(0);
+                        else if (typeof __hc.set_local_alp === "function") __hc.set_local_alp(0);
+                    } catch (eH) {}
+                }
+                // Explicitly hide logo + reblasted extension (nested under C58)
+                try {
+                    var __logos = [__title.C58, __title.C60];
+                    for (var __li = 0; __li < __logos.length; __li++) {
+                        var __lg = __logos[__li];
+                        if (!__lg) continue;
+                        var __la = (__lg.a7 != null) ? __lg.a7 : 1;
+                        this.__dzHiddenGui.push({ node: __lg, alp: __la });
+                        if (typeof __lg.set_alp === "function") __lg.set_alp(0);
+                        else if (typeof __lg.set_local_alp === "function") __lg.set_local_alp(0);
+                    }
+                    // Walk C58 children for reblasted_logo_extension
+                    if (__title.C58 && __title.C58._9) {
+                        for (var __ri = 0; __ri < __title.C58._9.length; __ri++) {
+                            var __rc = __title.C58._9[__ri];
+                            if (!__rc) continue;
+                            var __ra = (__rc.a7 != null) ? __rc.a7 : 1;
+                            this.__dzHiddenGui.push({ node: __rc, alp: __ra });
+                            if (typeof __rc.set_alp === "function") __rc.set_alp(0);
+                            else if (typeof __rc.set_local_alp === "function") __rc.set_local_alp(0);
+                        }
+                    }
+                } catch (eLogo) {}
+            }
+            // Force Beta Bknd (theme 9) while Customize is open
+            try {
+                this.__dzPrevMenuBgIdx = window.DiggerzGetMenuBgIndex
+                    ? window.DiggerzGetMenuBgIndex() : 0;
+                try { window.__diggerzMenuCgTheme = -1; } catch (eInvB) {}
+                if (window.DiggerzApplyMenuBackground)
+                    window.DiggerzApplyMenuBackground(9); // Beta Bknd
+                this.__dzBetaBknd = window.__diggerzMenuCg || null;
+            } catch (eBeta) {}
+        } catch (eHideGui) {}
         var a = -320
           , b = new xa(0,a,"^9Customize",q.MAIN_FONT_BIG);
         b.D7(this, !0);
         this._9.push(b);
+        // Red X close button — must be `ra` so the engine click path runs C33
+        try {
+            var __closeX = new ra;
+            __closeX.D7(this, !0);
+            __closeX.X6(f.RED_X_PNG());
+            __closeX.b6 = this.d32 / 2 - 30;
+            __closeX.b7 = -this.d33 / 2 + 30;
+            try {
+                __closeX.set_local_xScale(__closeX.set_local_yScale(0.75));
+            } catch (eXs) {}
+            this._9.push(__closeX);
+            this.__dzCloseX = __closeX;
+            var __closeSelf = this;
+            __closeX.C33 = function() {
+                try {
+                    if (typeof __closeSelf.__dzTryClose === "function")
+                        __closeSelf.__dzTryClose();
+                    else {
+                        __closeSelf.a0 = 1;
+                        try { E.u4(__closeSelf, 0, 300, 1, .5, 0, 1, 0); } catch (eU) {}
+                    }
+                } catch (eClose) {}
+            };
+            __closeX.C39 = function() {
+                try { if (this.C33) this.C33(); } catch (eC) {}
+                try { q.canBeHot = !1; } catch (eH) {}
+            };
+            try { __closeX.C37 = !0; } catch (eC37) {}
+            try { __closeX.b2 = !0; } catch (eXb) {}
+        } catch (eCloseX) {}
         a += 85;
         this.y42 = new vl(this,0,a,280,50,2,f.HEAD_PNG(),Th.n7(),null,q.player.l9);
-        this.y42.b7 = -240; // user layout
-        this.y42.b6 = 95; // user layout
+        // Place track at layout center; handle offset reflects current skin tone
+        try {
+            var __initTone = 90;
+            try {
+                if (q.diggerzService && q.diggerzService.state && q.diggerzService.state.skin_tone != null)
+                    __initTone = Number(q.diggerzService.state.skin_tone);
+                else if (q.player && q.player.l9 != null)
+                    __initTone = Number(q.player.l9);
+            } catch (eTone) {}
+            if (!isFinite(__initTone)) __initTone = 90;
+            __initTone = Math.max(0, Math.min(100, __initTone));
+            try { if (q.player) q.player.l9 = __initTone; } catch (ePl) {}
+            this.y42.D43 = __initTone;
+            var __initW = this.y42.D40 || 280;
+            var __initOff = __initTone * __initW / 100 - __initW / 2;
+            // Track base at x=140; handle offset on top (d49 compensates)
+            this.y42.b6 = __initOff;
+            this.y42.b7 = -240;
+            if (this.y42.d49) this.y42.d49.b6 = -__initOff;
+        } catch (eInitSk) {
+            this.y42.b7 = -240;
+            this.y42.b6 = 0;
+        }
         this.y42.d49.set_alp(0);
         this._9.push(this.y42);
         this.y43 = z.I9();
@@ -50368,10 +50546,26 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         b.set_local_xScale(b.set_local_yScale(.7));
         this.y42._9.push(b);
         this.__dzSkinLabel = b;
-        // Keep the skin slider in the saved layout position. Native vl hit-testing
-        // remains untouched so the little HEAD_PNG handle is draggable.
-        this.y42.b6 = 95;
-        this.y42.b7 = -240;
+        // Force skin BAR track center; handle sits at the tone value
+        try {
+            var __barTone = (this.y42.D43 != null) ? Number(this.y42.D43) :
+                ((q.player && q.player.l9 != null) ? Number(q.player.l9) : 90);
+            if (!isFinite(__barTone)) __barTone = 90;
+            this.y42.D43 = __barTone;
+            var __barW = this.y42.D40 || 280;
+            var __barOff = __barTone * __barW / 100 - __barW / 2;
+            this.y42.b6 = __barOff;
+            this.y42.b7 = -240;
+            if (this.y42.d49) this.y42.d49.b6 = -__barOff;
+        } catch (eBar) {
+            this.y42.b6 = 140;
+            this.y42.b7 = -240;
+        }
+        try {
+            // Do NOT override E7 to always-true — that steals every click in the menu.
+            // Only absorb track clicks via C33 no-op; real hit-test stays on the head.
+            this.y42.C33 = function() {};
+        } catch (eSk) {}
         a += 70;
         a += -60; // user countries.y offset
         b = -480; // -520 + user countries.x (40)
@@ -50646,6 +50840,22 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 
         // --- Extended Customize: engine idle rig + shop-style inventory ---
         var __previewSkelRef = null;
+        // Customize BGM: loop track 2 while this panel is open
+        try {
+            if (!window.__dzCustomizeMusic) {
+                var __cm = new Audio('/music_theme2.ogg');
+                __cm.loop = true;
+                __cm.volume = 0.55;
+                window.__dzCustomizeMusic = __cm;
+            }
+            var __cm2 = window.__dzCustomizeMusic;
+            __cm2.currentTime = 0;
+            var __p = __cm2.play();
+            if (__p && typeof __p.catch === 'function') __p.catch(function(){});
+            // Duck the outdoor ambience while customize is open
+            try { if (E.U4) E.U4.stop(); } catch (eDuck) {}
+        } catch (eMus) {}
+
         try {
             var __self = this;
 
@@ -50721,7 +50931,21 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         if (inv && setPos(inv, L.inventory.x, L.inventory.y)) ok.push("inventory");
                     }
                     if (L.skin && p.y42) {
-                        if (setPos(p.y42, L.skin.x, L.skin.y)) ok.push("skin");
+                        // skin.x/y = TRACK base; handle offset is applied on top
+                        try {
+                            var __st = (p.y42.D43 != null) ? Number(p.y42.D43) : 90;
+                            if (!isFinite(__st)) __st = 90;
+                            var __sw = p.y42.D40 || 280;
+                            var __so = __st * __sw / 100 - __sw / 2;
+                            var __sx = (L.skin.x != null ? Number(L.skin.x) : 0);
+                            var __sy = (L.skin.y != null ? Number(L.skin.y) : -240);
+                            p.y42.b6 = __sx + __so;
+                            p.y42.b7 = __sy;
+                            if (p.y42.d49) p.y42.d49.b6 = -__so;
+                            ok.push("skin");
+                        } catch (eSkA) {
+                            if (setPos(p.y42, L.skin.x, L.skin.y)) ok.push("skin");
+                        }
                     }
                     // Countries = group of flags; L.countries.x/y are OFFSETS from original layout
                     if (L.countries && p.__dzCountryFlags && p.__dzCountryBase) {
@@ -50846,13 +51070,36 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
 
             function __skinColor(tone) {
-                // Use the exact same mapping that Customize's native slider uses
-                // for its little head: .45 + 1.1 * tone / 100.
+                // Slightly darker than the raw slider head so the mannequin
+                // doesn't look washed out under the customize panel lighting.
                 tone = Number(tone);
-                if (!isFinite(tone)) tone = (q.player && q.player.l9 != null) ? Number(q.player.l9) : 45;
+                if (!isFinite(tone)) tone = 90;
                 tone = Math.max(0, Math.min(100, tone));
-                return .45 + 1.1 * tone / 100;
+                return .38 + .95 * tone / 100;
             }
+            // Exact Build 24 item colors used by h3/h4 for WC shirts.
+            function __wcShirtColor(itemId) {
+                switch (itemId|0) {
+                    case 187: return [1, .3, .3];   // red
+                    case 188: return [.3, 1, .3];   // green
+                    case 189: return [.3, .3, 1];   // blue
+                    case 190: return [1, .5, .1];   // orange
+                    case 191: return [.2, .2, .2];   // black
+                    case 192: return [.3, 1, 1];     // cyan
+                    case 193: return [1, .85, .15];  // yellow
+                }
+                return null;
+            }
+
+            // Build 23.7 stores one permanent 0-11 shirt-color index per player.
+            // The recovered client had the persistence half implemented but never
+            // applied it to the customize rig. Keep the palette deterministic.
+            var __shirtPalette = [
+                [0.90,0.12,0.12], [0.95,0.42,0.08], [0.95,0.78,0.08],
+                [0.20,0.72,0.22], [0.08,0.72,0.68], [0.10,0.40,0.90],
+                [0.35,0.18,0.78], [0.78,0.16,0.70], [0.58,0.31,0.12],
+                [0.35,0.35,0.38], [0.08,0.08,0.10], [0.92,0.92,0.92]
+            ];
             function __getStoredShirtColor() {
                 try {
                     if (typeof window.DiggerzGetShirtColor === "function")
@@ -50865,21 +51112,67 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 return 0;
             }
             function __tintPreviewShirt(skel) {
-                // Intentionally empty. The authoritative m38 -> m37 path applies
-                // the player's real/default shirt texture and color.
+                if (!skel || typeof skel.f2 !== "function") return;
+                try {
+                    var torso = skel.f2("torso");
+                    if (!torso) return;
+                    var col = __shirtPalette[__getStoredShirtColor()] || __shirtPalette[0];
+                    torso.set_local_r(col[0]);
+                    torso.set_local_g(col[1]);
+                    torso.set_local_b(col[2]);
+                } catch (e) {}
             }
             function __tintPreviewSkin(skel, tone) {
                 if (!skel || typeof skel.f2 !== "function") return;
+                // Mapped brightness (.45-1.55) — same as head/slider.
+                // NEVER paint wear sprites; only body meshes that should show skin.
                 var c = __skinColor(tone);
-                var slots = ["head", "front_arm", "back_arm"];
-                for (var i = 0; i < slots.length; i++) {
-                    try {
-                        var part = skel.f2(slots[i]);
-                        if (!part) continue;
-                        if (typeof part.set_local_r === "function")
-                            part.set_local_r(part.set_local_g(part.set_local_b(c)));
-                    } catch (eSlot) {}
+                var cLimb = Math.max(0.2, c * 0.88);
+                var flags = skel.__dzSkinFlags || {};
+                function paint(node, col) {
+                    if (!node || typeof node.set_local_r !== "function") return;
+                    var cc = (col != null ? col : c);
+                    try { node.set_local_r(node.set_local_g(node.set_local_b(cc))); } catch (eP) {}
                 }
+                // Head is always skin (unless a T41 hat hid it)
+                try {
+                    if (!flags.hideHead) {
+                        var head = skel.f2("head");
+                        paint(head, c);
+                    }
+                } catch (eH) {}
+                // Arms: only if no shirt, or shirt is T48 (skin-showing)
+                try {
+                    if (!flags.shirtCoversArms) {
+                        var armF = skel.f2("front_shoulder");
+                        if (armF) paint(armF.f2 ? armF.f2("arm") : null, cLimb);
+                        paint(armF, cLimb);
+                        var armB = skel.f2("back_shoulder");
+                        if (armB) paint(armB.f2 ? armB.f2("arm_back") : null, cLimb);
+                        paint(armB, cLimb);
+                    }
+                    paint(skel.f2("front_arm"), cLimb);
+                    paint(skel.f2("back_arm"), cLimb);
+                } catch (eA) {}
+                // Lower legs: skin-tint when pants are T48 (shorts) or no pants
+                // This is what makes Black WC Shorts follow the skin slider.
+                try {
+                    if (!flags.pantsCoverLegs) {
+                        var fl = skel.f2("front_lowerleg");
+                        if (fl) paint(fl.f2 ? fl.f2("leg") : null, cLimb);
+                        paint(fl, cLimb);
+                        var bl = skel.f2("back_lowerleg");
+                        if (bl) paint(bl.f2 ? bl.f2("leg_back") : null, cLimb);
+                        paint(bl, cLimb);
+                    }
+                } catch (eL) {}
+                // Feet: only if no shoes, or shoes are T48
+                try {
+                    if (!flags.shoesCoverFeet) {
+                        paint(skel.f2("front_foot"), cLimb);
+                        paint(skel.f2("back_foot"), cLimb);
+                    }
+                } catch (eF) {}
             }
             // Match player m35: reset head texture + attach eyes
             function __ensureHeadAndEyes(skel, tone) {
@@ -50919,178 +51212,801 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 } catch (e) {}
             }
 
-            var __previewIdleWatch = null;
             var __previewWearer = null;
-            // Customize has its own clothing renderer.  It uses the game's
-            // clothing assets/attachment metadata, but it never calls the
-            // player's m38() pipeline and never asks the live player rig to
-            // render the mannequin.
-            function __clearPreviewWear(skel) {
-                if (!skel || typeof skel.f2 !== "function") return;
-                var bones = ["head","front_arm","back_arm","front_foot","back_foot","torso","pants"];
-                for (var bi = 0; bi < bones.length; bi++) {
-                    try {
-                        var bone = skel.f2(bones[bi]);
-                        if (!bone || !bone._9) continue;
-                        for (var wi = bone._9.length - 1; wi >= 0; wi--) {
-                            var ch = bone._9[wi];
-                            if (ch && ch._1 === "wear") bone._9.splice(wi, 1);
+            function __clearWearOnSkel(skel) {
+                if (!skel) return;
+                function strip(node) {
+                    if (!node || !node._9) return;
+                    var keep = [];
+                    for (var i = 0; i < node._9.length; i++) {
+                        var c = node._9[i];
+                        if (!c) continue;
+                        if (c._1 === "wear") {
+                            try { if (typeof c.e1 === "function") c.e1(); } catch (eE) {}
+                            try { c._2 = null; } catch (e2) {}
+                            continue;
                         }
-                    } catch (eBone) {}
+                        keep.push(c);
+                        strip(c);
+                    }
+                    node._9.length = 0;
+                    for (var j = 0; j < keep.length; j++) node._9.push(keep[j]);
                 }
-                try { skel.f2("front_foot").a2 = !0; } catch (eF1) {}
-                try { skel.f2("back_foot").a2 = !0; } catch (eF2) {}
-                try { skel.f2("leg").C2 = !1; } catch (eL1) {}
-                try { skel.f2("leg_back").C2 = !1; } catch (eL2) {}
-                try { skel.f2("front_lowerleg").f2("leg").C2 = !1; } catch (eLL1) {}
-                try { skel.f2("back_lowerleg").f2("leg_back").C2 = !1; } catch (eLL2) {}
+                strip(skel);
             }
 
-            function __resetPreviewBody(skel, wearer, tone) {
+            
+            function __resetBodyMeshes(skel, tone) {
                 if (!skel || typeof skel.f2 !== "function") return;
                 var c = __skinColor(tone);
-                // Rebuild the exported mannequin's base body directly. This is the
-                // same body setup as the player, but it is private to Customize and
-                // never calls the player's equipment renderer.
+                var cWear = Math.max(0.2, c * 0.88);
+                try { skel.__dzSkinFlags = {}; } catch (eF) {}
                 try {
-                    var ll = skel.f2("front_lowerleg").f2("leg");
-                    ll.Init(f.LEG_PNG()); ll.C2 = !1; ll.set_local_r(ll.set_local_g(ll.set_local_b(1))); ll.c9 = !1;
-                    var llb = skel.f2("back_lowerleg").f2("leg_back");
-                    llb.Init(f.LEG_BACK_PNG()); llb.set_local_r(llb.set_local_g(llb.set_local_b(1))); llb.c9 = !1; llb.C2 = !1;
-                    var pants = skel.f2("pants");
-                    pants.Init(f.PANTS_PNG()); pants.set_local_r(pants.set_local_g(pants.set_local_b(1))); pants.c9 = !1;
-                } catch (e33) {}
-                try {
-                    var head = skel.f2("head");
-                    head.F5(); head.Init(f.HEAD_PNG()); head.F5(); head.C2 = !1;
-                    head.set_local_r(head.set_local_g(head.set_local_b(c)));
-                    if (head._9) for (var i = head._9.length - 1; i >= 0; i--)
-                        try { if (head._9[i] && head._9[i]._1 === "eyes") head._9.splice(i,1); } catch(eEyeRm) {}
-                    var eyes = z.I9(); eyes.D7(head, !0); eyes.Init(f.EYES_PNG()); eyes.b6=-7; eyes.b7=-3; eyes.b2=!0; eyes._1="eyes"; eyes.set_r(eyes.set_g(eyes.set_b(1))); head._9.push(eyes);
-                } catch (e35) {}
-                try {
-                    var fa = skel.f2("front_arm");
-                    for (var ai=0; ai<fa._9.length; ai++) fa._9[ai].C2=!1;
-                    fa.C2=!1; fa.set_local_r(fa.set_local_g(fa.set_local_b(c)));
-                    var ba = skel.f2("back_arm");
-                    for (var aj=0; aj<ba._9.length; aj++) ba._9[aj].C2=!1;
-                    ba.C2=!1; ba.set_local_r(ba.set_local_g(ba.set_local_b(c)));
-                } catch (e36) {}
-                try {
-                    var q7 = null;
-                    if (typeof l !== "undefined" && l.z39 && l.z39.q7) q7 = l.z39.q7;
-                    else if (q.player && q.player.q7) q7 = q.player.q7;
-                    if (q7) {
-                        var a = skel.f2("front_shoulder").f2("arm");
-                        a.Init(f.WHITE_ARM_PNG()); a.h4(Wc.e14(q7.P4)%Wc.e14(10)|0);
-                        var b = skel.f2("back_shoulder").f2("arm_back");
-                        b.Init(f.WHITE_ARM_PNG()); b.h4(Wc.e14(q7.P4)%Wc.e14(10)|0);
-                        var torso = skel.f2("torso");
-                        torso.Init(f.WHITE_TORSO_PNG()); torso.h4(Wc.e14(q7.P4)%Wc.e14(10)|0);
-                    } else {
-                        skel.f2("front_shoulder").f2("arm").Init(f.WHITE_ARM_PNG());
-                        skel.f2("back_shoulder").f2("arm_back").Init(f.WHITE_ARM_PNG());
-                        skel.f2("torso").Init(f.WHITE_TORSO_PNG());
+                    var fl = skel.f2("front_lowerleg");
+                    if (fl) fl = fl.f2("leg");
+                    if (fl) {
+                        try { fl.Init(f.LEG_PNG()); } catch (e1) {}
+                        try { fl.C2 = !1; } catch (e2) {}
+                        try { fl.c9 = !1; } catch (e3) {}
+                        try { fl.set_local_r(fl.set_local_g(fl.set_local_b(cWear))); } catch (e4) {}
                     }
-                } catch (e37) {}
+                } catch (eL1) {}
+                try {
+                    var bl = skel.f2("back_lowerleg");
+                    if (bl) bl = bl.f2("leg_back");
+                    if (bl) {
+                        try { bl.Init(f.LEG_BACK_PNG()); } catch (e1) {}
+                        try { bl.C2 = !1; } catch (e2) {}
+                        try { bl.c9 = !1; } catch (e3) {}
+                        try { bl.set_local_r(bl.set_local_g(bl.set_local_b(cWear))); } catch (e4) {}
+                    }
+                } catch (eL2) {}
+                try {
+                    var pn = skel.f2("pants");
+                    if (pn) {
+                        try { pn.Init(f.PANTS_PNG()); } catch (e1) {}
+                        try { pn.c9 = !1; } catch (e2) {}
+                        try { pn.set_local_r(pn.set_local_g(pn.set_local_b(1))); } catch (e3) {}
+                    }
+                } catch (ePn) {}
+                try {
+                    var armF = skel.f2("front_shoulder");
+                    if (armF) armF = armF.f2("arm");
+                    if (armF) {
+                        try { armF.Init(f.WHITE_ARM_PNG()); } catch (e1) {}
+                        try { armF.set_local_r(armF.set_local_g(armF.set_local_b(cWear))); } catch (e2) {}
+                    }
+                } catch (eA1) {}
+                try {
+                    var armB = skel.f2("back_shoulder");
+                    if (armB) armB = armB.f2("arm_back");
+                    if (armB) {
+                        try { armB.Init(f.WHITE_ARM_PNG()); } catch (e1) {}
+                        try { armB.set_local_r(armB.set_local_g(armB.set_local_b(cWear))); } catch (e2) {}
+                    }
+                } catch (eA2) {}
+                try {
+                    var torso = skel.f2("torso");
+                    if (torso) {
+                        try { torso.Init(f.WHITE_TORSO_PNG()); } catch (e1) {}
+                        try { torso.set_local_r(torso.set_local_g(torso.set_local_b(cWear))); } catch (e2) {}
+                    }
+                } catch (eTo) {}
+                try {
+                    var ff = skel.f2("front_foot");
+                    if (ff) {
+                        try { if (f.FOOT_WHITE_PNG) ff.Init(f.FOOT_WHITE_PNG()); } catch (e1) {}
+                        try { ff.set_local_r(ff.set_local_g(ff.set_local_b(cWear))); } catch (e2) {}
+                        try { ff.a2 = !0; } catch (e3) {}
+                    }
+                } catch (eF1) {}
+                try {
+                    var bf = skel.f2("back_foot");
+                    if (bf) {
+                        try { if (f.FOOT_WHITE_PNG) bf.Init(f.FOOT_WHITE_PNG()); } catch (e1) {}
+                        try { bf.set_local_r(bf.set_local_g(bf.set_local_b(cWear))); } catch (e2) {}
+                        try { bf.a2 = !0; } catch (e3) {}
+                    }
+                } catch (eF2) {}
+                try {
+                    var ha = skel.f2("front_arm");
+                    if (ha) {
+                        try { ha.C2 = !1; } catch (e1) {}
+                        try { ha.set_local_r(ha.set_local_g(ha.set_local_b(cWear))); } catch (e2) {}
+                    }
+                } catch (eH1) {}
+                try {
+                    var hb = skel.f2("back_arm");
+                    if (hb) {
+                        try { hb.C2 = !1; } catch (e1) {}
+                        try { hb.set_local_r(hb.set_local_g(hb.set_local_b(cWear))); } catch (e2) {}
+                    }
+                } catch (eH2) {}
             }
 
-            function __renderPreviewClothing(skel, app, tone) {
+            function __currentSkinTone() {
+                try {
+                    var title = null;
+                    try {
+                        if (typeof q.GetChildByName === "function")
+                            title = q.GetChildByName("title_screen");
+                    } catch (eN) {}
+                    try {
+                        if (!title && typeof v !== "undefined" && v.C55)
+                            title = q.GetChildByType(v.C55);
+                    } catch (eT) {}
+                    try {
+                        if (!title && q.children) {
+                            for (var ti = 0; ti < q.children.length; ti++) {
+                                if (q.children[ti] && q.children[ti]._1 === "title_screen") {
+                                    title = q.children[ti]; break;
+                                }
+                            }
+                        }
+                    } catch (eC) {}
+                    if (title && title._9) {
+                        for (var i = 0; i < title._9.length; i++) {
+                            var n = title._9[i];
+                            if (n && n.y42 && n.y42.D43 != null)
+                                return Math.max(0, Math.min(100, Number(n.y42.D43)));
+                        }
+                    }
+                    if (q.children) {
+                        for (var ci = 0; ci < q.children.length; ci++) {
+                            var p = q.children[ci];
+                            if (p && p.y42 && p.y42.D43 != null)
+                                return Math.max(0, Math.min(100, Number(p.y42.D43)));
+                            if (p && p._9) {
+                                for (var cj = 0; cj < p._9.length; cj++) {
+                                    var cjn = p._9[cj];
+                                    if (cjn && cjn.y42 && cjn.y42.D43 != null)
+                                        return Math.max(0, Math.min(100, Number(cjn.y42.D43)));
+                                }
+                            }
+                        }
+                    }
+                } catch (e1) {}
+                try {
+                    if (q.player && q.player.l9 != null)
+                        return Math.max(0, Math.min(100, Number(q.player.l9)));
+                } catch (e2) {}
+                try {
+                    if (q.diggerzService && q.diggerzService.state && q.diggerzService.state.skin_tone != null)
+                        return Math.max(0, Math.min(100, Number(q.diggerzService.state.skin_tone)));
+                } catch (e3) {}
+                return 90;
+            }
+
+function __normalizeWearableScales(skel) {
                 if (!skel) return;
-                var wearer = __previewWearer;
-                if (!wearer) {
-                    try { wearer = Object.create(q.player || {}); } catch (eW) { wearer = {}; }
-                    __previewWearer = wearer;
-                }
-                wearer.i33 = skel;
-                wearer.l9 = __skinColor(tone);
-                try { wearer.a4 = (l.z39 && l.z39.a4 != null) ? l.z39.a4 : (q.player && q.player.a4 != null ? q.player.a4 : 2); } catch(eA4) { wearer.a4=2; }
-                try { wearer.q7 = (l.z39 && l.z39.q7) ? l.z39.q7 : (q.player && q.player.q7 ? q.player.q7 : null); } catch(eQ7) {}
-                __clearPreviewWear(skel);
-                __resetPreviewBody(skel, wearer, tone);
-                var wanted = (app && app.slice) ? app.slice(0,11) : [];
-                while (wanted.length < 11) wanted.push(0);
-                wearer.J33 = wanted.slice();
-
-                function item(id, slot) {
-                    if (!(id|0) || slot < 0 || slot > 10) return null;
+                function walk(node) {
+                    if (!node) return;
                     try {
-                        var yf = new Yf(wearer, wearer.a4 != null ? wearer.a4 : 2, id|0, 0, slot|0, 1, "", 0);
-                        h.n7(2, yf, id|0, 0);
-                        return yf.h44 ? yf : null;
-                    } catch(eItem) { return null; }
+                        if (node._1 === "wear") {
+                            if (typeof node.set_local_xScale === "function")
+                                node.set_local_xScale(1);
+                            if (typeof node.set_local_yScale === "function")
+                                node.set_local_yScale(1);
+                            try { if (node.a8 != null) node.a8 = 1; } catch (eA8) {}
+                            try { if (node.a9 != null) node.a9 = 1; } catch (eA9) {}
+                            try { if (node.b4 != null) node.b4 = 1; } catch (eB4) {}
+                            try { if (node.b5 != null) node.b5 = 1; } catch (eB5) {}
+                        }
+                    } catch (eW) {}
+                    var kids = node._9;
+                    if (kids && kids.length) {
+                        for (var i = 0; i < kids.length; i++) walk(kids[i]);
+                    }
                 }
-                function visual(id, yf, boneName, insertAt) {
-                    if (!yf) return null;
-                    try {
-                        var bone = skel.f2(boneName);
-                        var v = Yf.W48(id|0, wearer); // IMPORTANT: W48 gets the ITEM ID, exactly like m38().
-                        v.D7(bone); yf.D6(v);
-                        v.b6=yf.t44; v.b7=yf.t45; v._1="wear";
-                        v.set_r(v.b8); v.set_g(v.b9); v.set_b(v.B0); v.b2=!0;
-                        if (insertAt == null) bone._9.push(v); else bone._9.splice(insertAt,0,v);
-                        return v;
-                    } catch(eV) { return null; }
-                }
+                walk(skel);
+            }
 
-                var d=false, yf, g, e;
-                // These cases mirror m38()'s placement rules, but operate only on
-                // the standalone mannequin skeleton.
-                yf=item(wanted[0],0);
-                visual(wanted[0],yf,"head",null);
-                yf=item(wanted[1],1);
-                if(yf){
-                    g=skel.f2("head"); e=Yf.W48(wanted[1]|0,wearer); e.D7(g); yf.D6(e); e.b6=yf.t44; e.b7=yf.t45; e._1="wear"; e.set_r(e.b8); e.set_g(e.b9); e.set_b(e.B0); e.b2=!0;
-                    if(yf.T41){ for(var hi=0;hi<g._9.length;hi++) try{g._9[hi].C2=!0}catch(ex){}; g.C2=!0; g.set_local_r(g.set_local_g(g.set_local_b(1))); d=true; }
-                    g._9.splice(2,0,e);
+            function __readLiveAppearance() {
+                // Source of truth, in order:
+                // 1) dig/trade service appearance (persisted equipped cosmetics)
+                // 2) localStorage dig save
+                // 3) in-world guy J33 (only after joining a match)
+                var app = [0,0,0,0,0,0,0,0,0,0,0];
+                function take(src) {
+                    if (!src || !src.length) return false;
+                    var any = false, out = [0,0,0,0,0,0,0,0,0,0,0];
+                    for (var i = 0; i < 11; i++) {
+                        out[i] = (src[i]|0);
+                        if (out[i]) any = true;
+                    }
+                    if (any) { app = out; return true; }
+                    return false;
                 }
-                yf=item(wanted[2],2);
-                if(yf){
-                    try{
-                        g=skel.f2("front_shoulder").f2("arm"); if(yf._9[0]){g._3=yf._9[0]._3;g._5=yf._9[0]._5;g.c9=yf._9[0].c9;yf.T48?g.set_local_r(g.set_local_g(g.set_local_b(__skinColor(tone)))):(g.set_local_r(yf.b8),g.set_local_g(yf.b9),g.set_local_b(yf.B0));}
-                        g=skel.f2("back_shoulder").f2("arm_back"); if(yf._9[0]){g._3=yf._9[0]._3;g._5=yf._9[0]._5;g.c9=yf._9[0].c9;yf.T48?g.set_local_r(g.set_local_g(g.set_local_b(__skinColor(tone)))):(g.set_local_r(yf.b8),g.set_local_g(yf.b9),g.set_local_b(yf.B0));}
-                        g=skel.f2("torso"); g._3=yf._3;g._5=yf._5;g.c9=yf.c9;g.set_local_r(yf.b8);g.set_local_g(yf.b9);g.set_local_b(yf.B0);
-                    }catch(ex2){}
+                try {
+                    if (q.diggerzService && q.diggerzService.state && q.diggerzService.state.appearance)
+                        take(q.diggerzService.state.appearance);
+                } catch (e1) {}
+                try {
+                    if (!app.some(function(v){return !!v;})) {
+                        var raw = localStorage.getItem("diggerz.digtrade.rebuild.v3") ||
+                                  localStorage.getItem("diggerz.digtrade.v1");
+                        if (raw) {
+                            var parsed = JSON.parse(raw);
+                            if (parsed && parsed.appearance) take(parsed.appearance);
+                        }
+                    }
+                } catch (e2) {}
+                try {
+                    if (!app.some(function(v){return !!v;}) && l && l.z39 && l.z39.J33)
+                        take(l.z39.J33);
+                } catch (e3) {}
+                // variant===1 inventory slots are the worn copies — merge those ids
+                try {
+                    var slots = null;
+                    if (q.diggerzService && q.diggerzService.state && Array.isArray(q.diggerzService.state.slots))
+                        slots = q.diggerzService.state.slots;
+                    if (!slots) {
+                        var raw2 = localStorage.getItem("diggerz.digtrade.rebuild.v3");
+                        if (raw2) {
+                            var p2 = JSON.parse(raw2);
+                            if (p2 && Array.isArray(p2.slots)) slots = p2.slots;
+                        }
+                    }
+                    if (slots) {
+                        for (var s = 0; s < slots.length; s++) {
+                            var it = slots[s];
+                            if (!it || !(it.id|0) || !(it.count|0) || (it.variant|0) !== 1) continue;
+                            // Probe the item's wear slot via the real item factory
+                            try {
+                                var probe = new X(null, it.category|0 || 2, it.id|0, it.variant|0, 0, 1, 0, 0);
+                                try { h.n7(it.category|0 || 2, probe, it.id|0, 0); } catch (eN) {}
+                                var ws = probe.t46|0;
+                                if (ws >= 0 && ws <= 10 && ws !== 8)
+                                    app[ws] = it.id|0;
+                            } catch (eP) {}
+                        }
+                    }
+                } catch (e4) {}
+                return app;
+            }
+
+            // Attach one cosmetic to the mannequin the same way m38 does, without
+            // needing the in-world guy (q.player is settings — it has no m38).
+            function __attachOneWear(skel, itemId, slot, tone) {
+                if (!skel || !(itemId|0) || slot === 8) return;
+                itemId = itemId|0;
+                slot = slot|0;
+                tone = (typeof __currentSkinTone === 'function') ? __currentSkinTone() : (tone || 90);
+                var wearSkin = Math.max(0.2, __skinColor(tone) * 0.88);
+                try {
+                    var holder = {
+                        a4: 2, i33: skel, l9: tone, J33: [], _9: [],
+                        q7: { P4: 0 }
+                    };
+                    var f = new Yf(holder, 2, itemId, 0, slot, 1, "", 0);
+                    try { h.n7(2, f, itemId, 0); } catch (eN7) {}
+                    if (!f || !(f.h44|0)) return;
+
+                    function scaleWear(e) {
+                        try {
+                            if (typeof e.set_local_xScale === "function") e.set_local_xScale(1);
+                            if (typeof e.set_local_yScale === "function") e.set_local_yScale(1);
+                        } catch (eSc) {}
+                    }
+                    function putOnBone(boneName, insertAt, dimBack) {
+                        var g = skel.f2(boneName);
+                        if (!g) return null;
+                        var e = Yf.W48(itemId, holder);
+                        e.D7(g);
+                        f.D6(e);
+                        e.b6 = f.t44;
+                        e.b7 = f.t45;
+                        e._1 = "wear";
+                        e.b2 = !0;
+                        try {
+                            // Exact m38 path: color the WEAR sprite from its own
+                            // palette after D6 (e.b8/b9/B0). Never paint wear with skin.
+                            var wr = (e.b8 != null ? e.b8 : f.b8);
+                            var wg = (e.b9 != null ? e.b9 : f.b9);
+                            var wb = (e.B0 != null ? e.B0 : f.B0);
+                            if (dimBack) { wr *= .9; wg *= .9; wb *= .9; }
+                            try {
+                                e.set_r(wr); e.set_g(wg); e.set_b(wb);
+                            } catch (eCol) {
+                                try {
+                                    e.set_local_r(wr); e.set_local_g(wg); e.set_local_b(wb);
+                                } catch (e2) {}
+                            }
+                            // T48 = body part under/around this wear shows skin
+                            if (f.T48) {
+                                try {
+                                    g.set_local_r(g.set_local_g(g.set_local_b(wearSkin)));
+                                } catch (eT) {}
+                            }
+                        } catch (eCol2) {}
+                        try { e.c9 = f.c9; } catch (eC9) {}
+                        scaleWear(e);
+
+                        // Native back/wing wearables (m38 case 5): preserve the
+                        // item's authored anchor and its real "cw" child instead of
+                        // rebuilding the right wing from sprite dimensions.
+                        var __isWing = (slot === 5 && (itemId === 211 || itemId === 212 || itemId === 213));
+                        if (__isWing) {
+                            try {
+                                e.A4 = f.A4;
+                                e.A5 = f.A5;
+                                e.B8 = -1;
+                                var __nativeCW = f.f0 && f.f0("cw");
+                                if (__nativeCW) {
+                                    var rightWing = z.I9();
+                                    rightWing.D7(e, !0);
+                                    __nativeCW.D6(rightWing);
+                                    if (!e._9) e._9 = [];
+                                    e._9.push(rightWing);
+                                    rightWing.A4 = __nativeCW.A4;
+                                    rightWing.A5 = __nativeCW.A5;
+                                    rightWing._1 = "cw";
+                                    rightWing.B8 = -1;
+                                }
+                            } catch (eWing) {}
+                        }
+
+                        if (!g._9) g._9 = [];
+                        if (insertAt != null && insertAt >= 0)
+                            g._9.splice(insertAt, 0, e);
+                        else if (__isWing)
+                            // Back wearables go first in the torso child list so they
+                            // sit behind other torso overlays in the mannequin preview.
+                            g._9.splice(0, 0, e);
+                        else
+                            g._9.push(e);
+                        return e;
+                    }
+
+                    switch (slot) {
+                    case 0: // hair
+                        putOnBone("head", null, false);
+                        break;
+                    case 1: // hat
+                        putOnBone("head", 2, false);
+                        // Some hats hide the head mesh
+                        try {
+                            if (f.T41) {
+                                var hd = skel.f2("head");
+                                if (hd) {
+                                    hd.C2 = !0;
+                                    hd.set_local_r(hd.set_local_g(hd.set_local_b(1)));
+                                    if (hd._9) for (var hi = 0; hi < hd._9.length; hi++)
+                                        try { if (hd._9[hi] && hd._9[hi]._1 !== "wear") hd._9[hi].C2 = !0; } catch (eH) {}
+                                }
+                            }
+                        } catch (eMask) {}
+                        break;
+                    case 2: // shirt — torso + both arm textures (match m38 case 2)
+                        try {
+                            // Non-T48 shirts replace arm textures with cloth colors —
+                            // mark so live skin updates do NOT overwrite them.
+                            if (!skel.__dzSkinFlags) skel.__dzSkinFlags = {};
+                            skel.__dzSkinFlags.shirtCoversArms = !f.T48;
+                            var armF = skel.f2("front_shoulder");
+                            if (armF) armF = armF.f2("arm");
+                            if (armF && f._9 && f._9[0]) {
+                                armF._3 = f._9[0]._3;
+                                if (f._9[0]._5) armF._5 = f._9[0]._5;
+                                armF.c9 = f._9[0].c9;
+                                if (f.T48)
+                                    armF.set_local_r(armF.set_local_g(armF.set_local_b(wearSkin)));
+                                else {
+                                    armF.set_local_r(f.b8);
+                                    armF.set_local_g(f.b9);
+                                    armF.set_local_b(f.B0);
+                                }
+                            }
+                            var armB = skel.f2("back_shoulder");
+                            if (armB) armB = armB.f2("arm_back");
+                            if (armB && f._9 && f._9[0]) {
+                                armB._3 = f._9[0]._3;
+                                if (f._9[0]._5) armB._5 = f._9[0]._5;
+                                armB.c9 = f._9[0].c9;
+                                if (f.T48)
+                                    armB.set_local_r(armB.set_local_g(armB.set_local_b(wearSkin)));
+                                else {
+                                    armB.set_local_r(f.b8);
+                                    armB.set_local_g(f.b9);
+                                    armB.set_local_b(f.B0);
+                                }
+                            }
+                            var torso = skel.f2("torso");
+                            if (torso) {
+                                if (f._3) torso._3 = f._3;
+                                if (f._5) torso._5 = f._5;
+                                torso.c9 = f.c9;
+                                // Item color only — never skin
+                                torso.set_local_r(f.b8);
+                                torso.set_local_g(f.b9);
+                                torso.set_local_b(f.B0);
+                            }
+                            // WC shirts are authored with h3/h4 palette indices.
+                            // Apply those exact palette values to torso and both arms
+                            // instead of relying on the reconstructed item's inherited tint.
+                            var __wcCol = __wcShirtColor(itemId);
+                            if (__wcCol) {
+                                skel.__dzSkinFlags.shirtCoversArms = true;
+                                try {
+                                    if (armF) { armF.set_local_r(__wcCol[0]); armF.set_local_g(__wcCol[1]); armF.set_local_b(__wcCol[2]); }
+                                    if (armB) { armB.set_local_r(__wcCol[0]); armB.set_local_g(__wcCol[1]); armB.set_local_b(__wcCol[2]); }
+                                    if (torso) { torso.set_local_r(__wcCol[0]); torso.set_local_g(__wcCol[1]); torso.set_local_b(__wcCol[2]); }
+                                } catch (eWCCol) {}
+                            }
+                        } catch (eSh) {}
+                        break;
+                    case 3: // shoes — BOTH feet
+                        try {
+                            if (!skel.__dzSkinFlags) skel.__dzSkinFlags = {};
+                            skel.__dzSkinFlags.shoesCoverFeet = !f.T48;
+                            var ff = skel.f2("front_foot");
+                            if (ff) {
+                                var eF = Yf.W48(itemId, holder);
+                                eF.D7(ff);
+                                f.D6(eF);
+                                eF.b6 = f.t44; eF.b7 = f.t45;
+                                eF._1 = "wear"; eF.b2 = !0;
+                                eF.c9 = f.c9;
+                                if (f.T48)
+                                    ff.set_local_r(ff.set_local_g(ff.set_local_b(wearSkin)));
+                                else {
+                                    try { eF.set_r(eF.b8 != null ? eF.b8 : f.b8); eF.set_g(eF.b9 != null ? eF.b9 : f.b9); eF.set_b(eF.B0 != null ? eF.B0 : f.B0); }
+                                    catch (eCf) { eF.set_local_r(f.b8); eF.set_local_g(f.b9); eF.set_local_b(f.B0); }
+                                }
+                                scaleWear(eF);
+                                if (!ff._9) ff._9 = [];
+                                ff._9.push(eF);
+                            }
+                            var bf = skel.f2("back_foot");
+                            if (bf) {
+                                var eB = Yf.W48(itemId, holder);
+                                eB.D7(bf);
+                                f.D6(eB);
+                                eB.b6 = f.t44; eB.b7 = f.t45;
+                                eB._1 = "wear"; eB.b2 = !0;
+                                eB.c9 = f.c9;
+                                if (f.T48)
+                                    bf.set_local_r(bf.set_local_g(bf.set_local_b(wearSkin)));
+                                else {
+                                    try { eB.set_r(.9 * (eB.b8 != null ? eB.b8 : f.b8)); eB.set_g(.9 * (eB.b9 != null ? eB.b9 : f.b9)); eB.set_b(.9 * (eB.B0 != null ? eB.B0 : f.B0)); }
+                                    catch (eCb) { eB.set_local_r(.9 * f.b8); eB.set_local_g(.9 * f.b9); eB.set_local_b(.9 * f.B0); }
+                                }
+                                scaleWear(eB);
+                                if (!bf._9) bf._9 = [];
+                                bf._9.push(eB);
+                            }
+                        } catch (eFt) {}
+                        break;
+                    case 5: // torso accessory (cape/backpack-ish)
+                        putOnBone("torso", null, false);
+                        break;
+                    case 6: // face / glasses
+                        try {
+                            var head6 = skel.f2("head");
+                            if (head6) {
+                                // Some face items hide eyes
+                                try {
+                                    if (f.T43) {
+                                        var eyes = head6.f0 && head6.f0("eyes");
+                                        if (eyes) eyes.a0 = 1;
+                                        // also search _9
+                                        if (head6._9) for (var ei = 0; ei < head6._9.length; ei++)
+                                            if (head6._9[ei] && head6._9[ei]._1 === "eyes")
+                                                head6._9[ei].a0 = 1;
+                                    }
+                                } catch (eEy) {}
+                                putOnBone("head", 1, false);
+                            }
+                        } catch (eFc) {}
+                        break;
+                    case 7: // pants — both legs + pants bone
+                        try {
+                            if (f.T44) {
+                                try { skel.f2("front_foot").a2 = !1; } catch (e1) {}
+                                try { skel.f2("back_foot").a2 = !1; } catch (e2) {}
+                            }
+                            if (f.T41) {
+                                // overlay pants sprite, hide default legs
+                                putOnBone("pants", null, false);
+                                try { var lg = skel.f2("leg"); if (lg) lg.C2 = !0; } catch (eL) {}
+                                try { var lgb = skel.f2("leg_back"); if (lgb) lgb.C2 = !0; } catch (eLb) {}
+                            } else {
+                                // texture-swap front leg, back leg, and pants
+                                var fl = skel.f2("front_lowerleg");
+                                if (fl) fl = fl.f2("leg");
+                                if (fl && f._9 && f._9[0]) {
+                                    fl._3 = f._9[0]._3;
+                                    if (f._9[0]._5) fl._5 = f._9[0]._5;
+                                    fl.c9 = f.c9;
+                                    if (f.T48)
+                                        fl.set_local_r(fl.set_local_g(fl.set_local_b(wearSkin)));
+                                    else {
+                                        fl.set_local_r(f.b8);
+                                        fl.set_local_g(f.b9);
+                                        fl.set_local_b(f.B0);
+                                    }
+                                    if (!skel.__dzSkinFlags) skel.__dzSkinFlags = {};
+                                    skel.__dzSkinFlags.pantsCoverLegs = !f.T48;
+                                }
+                                var bl = skel.f2("back_lowerleg");
+                                if (bl) bl = bl.f2("leg_back");
+                                if (bl && f._9 && f._9[0]) {
+                                    bl._3 = f._9[0]._3;
+                                    if (f._9[0]._5) bl._5 = f._9[0]._5;
+                                    bl.c9 = f.c9;
+                                    if (f.T48)
+                                        bl.set_local_r(bl.set_local_g(bl.set_local_b(wearSkin)));
+                                    else {
+                                        bl.set_local_r(f.b8);
+                                        bl.set_local_g(f.b9);
+                                        bl.set_local_b(f.B0);
+                                    }
+                                }
+                                var pn = skel.f2("pants");
+                                if (pn) {
+                                    if (f._3) pn._3 = f._3;
+                                    if (f._5) pn._5 = f._5;
+                                    pn.c9 = f.c9;
+                                    pn.set_local_r(f.b8);
+                                    pn.set_local_g(f.b9);
+                                    pn.set_local_b(f.B0);
+                                }
+                            }
+                        } catch (ePn) {}
+                        break;
+                    case 9: // face accessory alt
+                        putOnBone("head", 2, false);
+                        break;
+                    default:
+                        if (slot !== 4)
+                            putOnBone("head", null, false);
+                        break;
+                    }
+                } catch (eAtt) {}
+            }
+
+            
+            function __clearPreviewPet(prev) {
+                try {
+                    if (!prev || !prev._9) return;
+                    for (var i = prev._9.length - 1; i >= 0; i--) {
+                        var n = prev._9[i];
+                        if (n && n.__dzPetPreview) {
+                            try { n.a0 = 1; } catch (eA) {}
+                            prev._9.splice(i, 1);
+                        }
+                    }
+                } catch (e) {}
+            }
+            function __equipPetPreview(prev, petId) {
+                __clearPreviewPet(prev);
+                petId = petId|0;
+                if (!prev || !petId) return;
+                try {
+                    // Map cosmetic id → pet skin key (pet_1, pet_2, …)
+                    var skin = "pet_1";
+                    try {
+                        // Common pet item ids from shop / digtrade
+                        if (petId === 120) skin = "pet_1"; // cat-ish
+                        else if (petId === 94) skin = "pet_2";
+                        else if (petId === 126) skin = "pet_3";
+                        else skin = "pet_" + Math.max(1, Math.min(20, petId % 20 || 1));
+                    } catch (eSk) {}
+                    var maker = new z;
+                    // Load pet_anims if needed
+                    try {
+                        if (typeof Td !== "undefined" && !Td.M39 && typeof E !== "undefined" && E.u2) {
+                            var raw = E.u2("pet_anims");
+                            if (raw && typeof Mm !== "undefined")
+                                Td.M39 = (new Mm(raw, !0)).getValue();
+                        }
+                    } catch (eLoad) {}
+                    var pet = maker.G2("pet_anims", skin, f, null, null, !0);
+                    if (!pet) {
+                        try { pet = maker.G2("pet_anims", "pet_1", f, null, null, !0); } catch (eP2) {}
+                    }
+                    if (!pet) return;
+                    pet.__dzPetPreview = !0;
+                    pet.D7(prev, !0);
+                    // Beside the player, slightly forward, drawn behind the guy
+                    pet.b6 = 55;
+                    pet.b7 = 70;
+                    try { pet.B8 = -2; } catch (eZ) {}
+                    try {
+                        if (typeof pet.set_local_xScale === "function")
+                            pet.set_local_xScale(pet.set_local_yScale(1.6));
+                    } catch (eSc) {}
+                    try { prev._9.unshift(pet); } catch (eU) {
+                        try { prev._9.push(pet); } catch (eP) {}
+                    }
+                    try {
+                        if (typeof pet._38 === "function")
+                            pet._38("idle", !0, 100, .5);
+                    } catch (eId) {}
+                    // Keep a ref for e0 idle maintenance
+                    try { window.__dzPreviewPet = pet; } catch (eR) {}
+                } catch (ePet) {
+                    try { console.warn("[PetPreview]", ePet); } catch (eW) {}
                 }
-                yf=item(wanted[3],3);
-                if(yf){
-                    g=skel.f2("front_foot"); e=Yf.W48(wanted[3]|0,wearer); e.D7(g); yf.D6(e); e.b6=yf.t44;e.b7=yf.t45;e._1="wear";yf.T48?g.set_local_r(g.set_local_g(g.set_local_b(__skinColor(tone)))):(e.set_local_r(yf.b8),e.set_local_g(yf.b9),e.set_local_b(yf.B0));e.c9=yf.c9;g._9.push(e);
-                    g=skel.f2("back_foot"); e=Yf.W48(wanted[3]|0,wearer); e.D7(g); yf.D6(e); e.b6=yf.t44;e.b7=yf.t45;e._1="wear";yf.T48?g.set_local_r(g.set_local_g(g.set_local_b(__skinColor(tone)))):(e.set_local_r(.9*yf.b8),e.set_local_g(.9*yf.b9),e.set_local_b(.9*yf.B0));e.c9=yf.c9;g._9.push(e);
+            }
+
+
+            // Build 24 RGB/True RGB preview support. The live player renderer
+            // animates these virtual cosmetic IDs in build240-client.js; Customize
+            // needs to do the same thing locally because the mannequin is not a
+            // network player entity.
+            var __dzRgbDefs = {
+                500:{base:110,trueRgb:false,slot:1}, 550:{base:110,trueRgb:true,slot:1},
+                501:{base:213,trueRgb:false,slot:5}, 551:{base:213,trueRgb:true,slot:5},
+                502:{base:181,trueRgb:false,slot:6}, 552:{base:181,trueRgb:true,slot:6},
+                503:{base:113,trueRgb:false,slot:5}, 553:{base:113,trueRgb:true,slot:5},
+                504:{base:247,trueRgb:false,slot:1}, 554:{base:247,trueRgb:true,slot:1},
+                505:{base:127,trueRgb:false,slot:0}, 555:{base:127,trueRgb:true,slot:0},
+                506:{base:173,trueRgb:false,slot:0}, 556:{base:173,trueRgb:true,slot:0},
+                507:{base:109,trueRgb:false,slot:0}, 557:{base:109,trueRgb:true,slot:0},
+                508:{base:58,trueRgb:false,slot:0}, 558:{base:58,trueRgb:true,slot:0},
+                509:{base:67,trueRgb:false,slot:2}, 559:{base:67,trueRgb:true,slot:2},
+                510:{base:57,trueRgb:false,slot:7}, 560:{base:57,trueRgb:true,slot:7},
+                511:{base:56,trueRgb:false,slot:3}, 561:{base:56,trueRgb:true,slot:3},
+                512:{base:105,trueRgb:false,slot:1}, 562:{base:105,trueRgb:true,slot:1},
+                513:{base:234,trueRgb:false,slot:3}, 563:{base:234,trueRgb:true,slot:3},
+                514:{base:233,trueRgb:false,slot:4}, 564:{base:233,trueRgb:true,slot:4},
+                515:{base:125,trueRgb:false,slot:8}, 565:{base:125,trueRgb:true,slot:8},
+                516:{base:387,trueRgb:false,slot:4}, 566:{base:387,trueRgb:true,slot:4},
+                517:{base:379,trueRgb:false,slot:4}, 567:{base:379,trueRgb:true,slot:4},
+                518:{base:20,trueRgb:false,slot:2}, 568:{base:20,trueRgb:true,slot:2},
+                519:{base:187,trueRgb:false,slot:2}, 569:{base:187,trueRgb:true,slot:2},
+                520:{base:23,trueRgb:false,slot:7}, 570:{base:23,trueRgb:true,slot:7}
+            };
+            function __dzRainbowColor(phase) {
+                var t = ((phase % 1) + 1) % 1, q = t * 6, i = Math.floor(q), f = q - i;
+                switch (i) {
+                    case 0: return [1, f, 0];
+                    case 1: return [1-f, 1, 0];
+                    case 2: return [0, 1, f];
+                    case 3: return [0, 1-f, 1];
+                    case 4: return [f, 0, 1];
+                    default: return [1, 0, 1-f];
                 }
-                // Slot 4 is weapons/tools and is deliberately not rendered.
-                yf=item(wanted[5],5);
-                if(yf){ g=skel.f2("torso"); e=Yf.W48(wanted[5]|0,wearer); e.D7(g); yf.D6(e); e.b6=yf.t44;e.b7=yf.t45;e.A4=yf.A4;e.A5=yf.A5;e._1="wear";g._9.push(e);e.b2=!0;e.set_r(e.b8);e.set_g(e.b9);e.set_b(e.B0);g.C3=yf.T47||g.C3; var cw=yf.f0("cw"); if(cw!=null){var cv=z.I9();cv.D7(e,!0);cw.D6(cv);e._9.push(cv);cv.A4=cw.A4;cv.A5=cw.A5;cv._1="cw";} }
-                yf=item(wanted[6],6);
-                if(yf&&!d){ g=skel.f2("head"); try{var eyes2=g.f0("eyes");if(yf.T43&&eyes2)eyes2.a0=1}catch(ex6){} e=Yf.W48(wanted[6]|0,wearer);e.D7(g);yf.D6(e);e.b6=yf.t44;e.b7=yf.t45;e._1="wear";e.set_r(e.b8);e.set_g(e.b9);e.set_b(e.B0);e.b2=!0;g._9.splice(1,0,e); }
-                yf=item(wanted[7],7);
-                if(yf){
-                    if(yf.T44){skel.f2("front_foot").a2=!1;skel.f2("back_foot").a2=!1;}
-                    if(yf.T41){ g=skel.f2("pants");e=Yf.W48(wanted[7]|0,wearer);e.D7(g);yf.D6(e);e.b6=yf.t44;e.b7=yf.t45;e.set_local_r(yf.b8);e.set_local_g(yf.b9);e.set_local_b(yf.B0);e.c9=yf.c9;e._1="wear";g._9.push(e);skel.f2("leg").C2=!0;skel.f2("leg_back").C2=!0; }
-                    else if(yf._9[0]){ g=skel.f2("front_lowerleg").f2("leg");g._3=yf._9[0]._3;g._5=yf._9[0]._5;yf.T48?g.set_local_r(g.set_local_g(g.set_local_b(__skinColor(tone)))):(g.set_local_r(yf.b8),g.set_local_g(yf.b9),g.set_local_b(yf.B0));g.c9=yf.c9;g=skel.f2("back_lowerleg").f2("leg_back");g._3=yf._9[0]._3;g._5=yf._9[0]._5;yf.T48?g.set_local_r(g.set_local_g(g.set_local_b(__skinColor(tone)))):(g.set_local_r(yf.b8),g.set_local_g(yf.b9),g.set_local_b(yf.B0));g.c9=yf.c9;g=skel.f2("pants");g._3=yf._3;g._5=yf._5;g.set_local_r(yf.b8);g.set_local_g(yf.b9);g.set_local_b(yf.B0);g.c9=yf.c9; }
+            }
+            function __dzApplyRgbNode(node, def, color) {
+                if (!node || !def) return;
+                var low = def.trueRgb ? .10 : .28;
+                var gain = def.trueRgb ? .62 : 1.12;
+                var r = low + gain*color[0], g = low + gain*color[1], b = low + gain*color[2];
+                try {
+                    if (typeof node.set_local_r === 'function') node.set_local_r(r);
+                    if (typeof node.set_local_g === 'function') node.set_local_g(g);
+                    if (typeof node.set_local_b === 'function') node.set_local_b(b);
+                    if (typeof node.set_r === 'function') node.set_r(r);
+                    if (typeof node.set_g === 'function') node.set_g(g);
+                    if (typeof node.set_b === 'function') node.set_b(b);
+                    node.c9 = false;
+                } catch (e) {}
+            }
+            function __dzApplyRgbTree(node, def, color) {
+                if (!node) return;
+                __dzApplyRgbNode(node, def, color);
+                try {
+                    var kids = node._9 || [];
+                    for (var i = 0; i < kids.length; i++) {
+                        var child = kids[i];
+                        if (child && child._1 === 'cw') __dzApplyRgbTree(child, def, color);
+                    }
+                } catch (e) {}
+            }
+            function __applyCustomizeRGB(skel, app, now) {
+                if (!skel || !app) return;
+                var phase = Number(now || Date.now()) / 2400;
+                var color = __dzRainbowColor(phase);
+                for (var slot = 0; slot < 11; slot++) {
+                    var id = app[slot]|0, def = __dzRgbDefs[id];
+                    if (!def) continue;
+                    // Body-texture RGB cosmetics are rendered by tinting the exact
+                    // body parts the native player renderer uses.
+                    if (slot === 2) {
+                        __dzApplyRgbNode(skel.f2('torso'), def, color);
+                        var af = skel.f2('front_shoulder'); af = af && af.f2 ? af.f2('arm') : null;
+                        var ab = skel.f2('back_shoulder'); ab = ab && ab.f2 ? ab.f2('arm_back') : null;
+                        __dzApplyRgbNode(af, def, color); __dzApplyRgbNode(ab, def, color);
+                    } else if (slot === 7) {
+                        var fl = skel.f2('front_lowerleg'); fl = fl && fl.f2 ? fl.f2('leg') : null;
+                        var bl = skel.f2('back_lowerleg'); bl = bl && bl.f2 ? bl.f2('leg_back') : null;
+                        __dzApplyRgbNode(fl, def, color); __dzApplyRgbNode(bl, def, color);
+                        __dzApplyRgbNode(skel.f2('pants'), def, color);
+                    } else if (slot === 3) {
+                        __dzApplyRgbNode(skel.f2('front_foot'), def, color);
+                        __dzApplyRgbNode(skel.f2('back_foot'), def, color);
+                    } else if (slot === 8) {
+                        // Pets are handled by the pet preview system; don't tint the
+                        // mannequin body for the pet's RGB variant.
+                    } else {
+                        // Hair/hats/face/back/gloves/weapons: tint only the wearable
+                        // nodes for this slot. This also reaches both wing sprites.
+                        try {
+                            function walk(node) {
+                                if (!node) return;
+                                if (node._1 === 'wear') __dzApplyRgbTree(node, def, color);
+                                var kids = node._9 || [];
+                                for (var i = 0; i < kids.length; i++) walk(kids[i]);
+                            }
+                            walk(skel);
+                        } catch (eWalk) {}
+                    }
                 }
-                yf=item(wanted[9],9); if(yf&&!d) visual(wanted[9],yf,"head",2);
-                try{skel.a2=1;skel.e0();}catch(eDone){}
             }
 
             function __equipOnPreview(skel, app) {
                 if (!skel) return;
-                var tone = 90;
-                try { if (q.player && q.player.l9 != null) tone = q.player.l9; } catch (eT) {}
-                try {
-                    if (!__previewWearer || __previewWearer.__dzSkeleton !== skel) {
-                        __previewWearer = Object.create(q.player || {});
-                        __previewWearer.__dzSkeleton = skel;
-                    }
-                    __previewWearer.i33 = skel;
-                    __previewWearer.l9 = tone;
-                    __previewWearer.a4 = q.player && q.player.a4;
-                    __previewWearer.q7 = q.player && q.player.q7;
-                    __renderPreviewClothing(skel, app, tone);
-                    if (typeof skel._38 === "function") skel._38("idle", !0, 100, .5);
-                } catch (e) {
-                    try { __ensureHeadAndEyes(skel, tone); __tintPreviewSkin(skel, tone); } catch (eFallback) {}
+                var tone = (typeof __currentSkinTone === 'function') ? __currentSkinTone() : 90;
+                try { __clearWearOnSkel(skel); } catch (eClr) {}
+                try { if (typeof __resetBodyMeshes === 'function') __resetBodyMeshes(skel, tone); } catch (eRst) {}
+                try { __ensureHeadAndEyes(skel, tone); } catch (eH) {}
+
+                var wanted = (app && app.slice) ? app.slice(0, 11) : null;
+                var anyWanted = false;
+                if (wanted) {
+                    for (var wi = 0; wi < wanted.length; wi++)
+                        if ((wanted[wi]|0) !== 0) anyWanted = true;
                 }
+                if (!anyWanted) wanted = __readLiveAppearance();
+                while (wanted.length < 11) wanted.push(0);
+
+                // Prefer the in-world guy's real m38 when available (in a match).
+                var guy = null;
+                try {
+                    if (typeof l !== "undefined" && l.z39 && typeof l.z39.m38 === "function")
+                        guy = l.z39;
+                } catch (eG) {}
+
+                if (guy) {
+                    try {
+                        var savedSkel = guy.i33;
+                        var savedJ33 = (guy.J33 && guy.J33.slice) ? guy.J33.slice() : [];
+                        var savedM32 = guy.m32;
+                        guy.m32 = function() {};
+                        guy.i33 = skel;
+                        guy.J33 = [];
+                        guy.m38(wanted, "");
+                        guy.i33 = savedSkel;
+                        guy.m32 = savedM32;
+                        guy.J33 = [];
+                        if (savedSkel) guy.m38(savedJ33.length ? savedJ33 : wanted, "");
+                    } catch (eM38) {
+                        try { if (guy) { guy.i33 = guy.i33; } } catch (eR) {}
+                        // Fall through to direct attach
+                        try { skel.__dzSkinFlags = {}; } catch (eFl0) {}
+                        for (var s = 0; s < 11; s++)
+                            if (wanted[s]|0) __attachOneWear(skel, wanted[s], s, tone);
+                    }
+                } else {
+                    // Title screen: no in-world guy — attach cosmetics directly.
+                    try { skel.__dzSkinFlags = {}; } catch (eFl) {}
+                    for (var s2 = 0; s2 < 11; s2++)
+                        if (wanted[s2]|0) __attachOneWear(skel, wanted[s2], s2, tone);
+                }
+
+                try { __normalizeWearableScales(skel); } catch (eNorm) {}
+                try { __applyCustomizeRGB(skel, wanted, Date.now()); } catch (eRgb) {}
+                // Tint AFTER wear so skin-showing clothes (T48) get correct limb color
+                try { __tintPreviewSkin(skel, tone); } catch (eS) {}
+                // Only force the stored shirt palette when no shirt cosmetic is equipped.
+                // Otherwise it overwrites the real shirt/torso textures we just applied.
+                try {
+                    if (!(wanted[2]|0)) __tintPreviewShirt(skel);
+                } catch (eShirt) {}
                 try { skel.a2 = 1; } catch (eActive) {}
+                try {
+                    var __busy = !!skel.__dzEmoting;
+                    if (!__busy && typeof skel._38 === "function" && skel.Z28 !== "idle")
+                        skel._38("idle", !0, 100, .5);
+                } catch (eIdle2) {}
+                // Pet lives in appearance slot 8
+                try {
+                    var __petId = (wanted && wanted[8]) ? (wanted[8]|0) : 0;
+                    var __prevBox = skel._2;
+                    if (__prevBox) __equipPetPreview(__prevBox, __petId);
+                } catch (ePetEq) {}
             }
 
             function __makeItemIcon(parent, itemId, category, count) {
@@ -51150,22 +52066,106 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 
             var __save = __loadDigSave();
             var __slots = (__save && __save.slots) ? __save.slots : [];
-            // The live player is the authority. J33 is exactly what m38() uses
-            // for the outfit currently equipped on the player. Do not infer worn
-            // items from inventory variants or from a second cache.
-            var __app = [];
+
+            function __ownedCosmeticIds() {
+                var owned = {};
+                try {
+                    if (q.diggerzService && q.diggerzService.state && Array.isArray(q.diggerzService.state.slots)) {
+                        var slots = q.diggerzService.state.slots;
+                        for (var i = 0; i < slots.length; i++) {
+                            var it = slots[i];
+                            if (it && (it.id|0) && (it.count|0) > 0) owned[it.id|0] = true;
+                        }
+                    }
+                } catch (e1) {}
+                try {
+                    if (l.z39 && l.z39.n38 && l.z39.n38.B30) {
+                        for (var j = 0; j < l.z39.n38.B30.length; j++) {
+                            var x = l.z39.n38.B30[j];
+                            if (x && (x.h44|0)) owned[x.h44|0] = true;
+                        }
+                    }
+                } catch (e2) {}
+                return owned;
+            }
+            function __sanitizeAppearance(app) {
+                if (!app || !app.slice) return app;
+                app = app.slice();
+                while (app.length < 11) app.push(0);
+                var owned = __ownedCosmeticIds();
+                var changed = false;
+                // Only strip when we actually have an inventory source to check
+                var hasInv = false;
+                for (var k in owned) { hasInv = true; break; }
+                if (!hasInv) return app;
+                for (var s = 0; s < 11; s++) {
+                    var id = app[s]|0;
+                    if (id && !owned[id]) {
+                        app[s] = 0;
+                        changed = true;
+                    }
+                }
+                if (changed) {
+                    try {
+                        // Apply strip to live player so the glitch cannot stick
+                        if (q.player && typeof q.player.m38 === "function" && q.player.i33 && q.player.i33.Z28 != null)
+                            q.player.m38(app.slice(), "");
+                    } catch (eM) {}
+                    try {
+                        if (q.diggerzService && q.diggerzService.state) {
+                            q.diggerzService.state.appearance = app.slice();
+                            if (typeof q.diggerzService.markDirty === "function") q.diggerzService.markDirty();
+                            if (typeof q.diggerzService.save === "function") q.diggerzService.save(true);
+                        }
+                    } catch (eS) {}
+                }
+                return app;
+            }
+
+            var __app = __appearanceFromSave(__save);
+            // Prefer live service appearance (most accurate when available)
             try {
-                if (q.player && Array.isArray(q.player.J33) && q.player.J33.length)
-                    __app = q.player.J33.slice(0, 11);
+                if (q.diggerzService && q.diggerzService.state && q.diggerzService.state.appearance)
+                    __app = q.diggerzService.state.appearance.slice(0, 11);
+            } catch (eSvc) {}
+            try {
+                if (q.player && q.player.J33 && q.player.J33.length) {
+                    var any = false;
+                    for (var zi = 0; zi < q.player.J33.length; zi++) if (q.player.J33[zi]|0) any = true;
+                    if (any) __app = q.player.J33.slice().concat([0,0,0,0,0,0,0,0,0,0,0]).slice(0, 11);
+                }
             } catch (eLive) {}
-            if (!__app.length) __app = __appearanceFromSave(__save);
+            // Pad appearance to 11
             while (__app.length < 11) __app.push(0);
+            // Strip equipped cosmetics the player no longer owns
+            try { __app = __sanitizeAppearance(__app); } catch (eSan) {}
+
+            // The inventory cache marks the last worn copy with variant === 1.
+            // Reconstruct those slots too, because the cached appearance array
+            // can lag behind the inventory after closing/reopening Customize.
+            try {
+                var __cachedSlots = (__save && Array.isArray(__save.slots)) ? __save.slots.slice() : [];
+                try {
+                    if (q.diggerzService && q.diggerzService.state && Array.isArray(q.diggerzService.state.slots)) {
+                        __cachedSlots = q.diggerzService.state.slots.slice();
+                    }
+                } catch (eLiveCachedSlots) {}
+                for (var __ci = 0; __ci < __cachedSlots.length; __ci++) {
+                    var __cachedItem = __cachedSlots[__ci];
+                    if (!__cachedItem || !(__cachedItem.id|0) || !(__cachedItem.count|0) ||
+                        (__cachedItem.variant|0) !== 1) continue;
+                    var __cachedWear = __wearSlotForItem(__cachedItem, __ci);
+                    if (__cachedWear >= 0 && __cachedWear < 11 && __cachedWear !== 8)
+                        __app[__cachedWear] = __cachedItem.id|0;
+                }
+            } catch (eCachedWear) {}
 
             // ---- Center: player preview box (engine idle rig) ----
             var __prev = new ja(240, 360, !0);
             __prev.b6 = 0;   // user layout
             __prev.b7 = 50;  // user layout
             __prev.D7(this, !0);
+            try { __prev.C37 = !1; } catch (eC37) {} // don't steal clicks from flags/inv
             this._9.push(__prev);
             this.__dzPrevBox = __prev;
             window.__dzCustomizePanel = this;
@@ -51179,12 +52179,64 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             } catch (ePool) {}
             if (!__skel) {
                 try {
+                    // Title-screen Customize runs before GameSpecificInit, so
+                    // Fc.M39 (guy_anims) is often still null. Load it here so
+                    // idle actually has keyframes to play on the mannequin.
+                    try {
+                        if (typeof Fc !== "undefined" && !Fc.M39) {
+                            if (typeof E !== "undefined" && E.u2) {
+                                var __animRaw = E.u2("guy_anims");
+                                if (__animRaw && typeof Mm !== "undefined")
+                                    Fc.M39 = (new Mm(__animRaw, !0)).getValue();
+                            }
+                        }
+                        // If player already has a fully-animated skeleton (post-join),
+                        // reuse its animation table so title Customize can idle too.
+                        if (typeof Fc !== "undefined" && !Fc.M39 && q.player && q.player.i33 && q.player.i33.Z26)
+                            Fc.M39 = q.player.i33.Z26;
+                    } catch (eAnimLoad) {}
                     var __maker = new z;
                     var __scaleArg = 1;
                     try { if (q.player && q.player.l0 != null) __scaleArg = q.player.l0; } catch (eSc) {}
-                    __skel = __maker.G2("guy_anims", "guyskin", f, Fc.M39, __scaleArg, !0);
+                    // Pass null (not undefined Fc.M39) so G2 loads anims from JSON
+                    // when the cache is still empty.
+                    // Always pass null so G2 builds Z26 from guy_anims JSON.
+                    // Passing a stale/empty Fc.M39 leaves the rig with no idle.
+                    // Same guy_anims/guyskin rig as v6. 5th MUST be null so Z26
+                    // is built from the JSON animations (passing scale kills Z26).
+                    __skel = __maker.G2("guy_anims", "guyskin", f, null, null, !0);
+                    try {
+                        if (__skel && typeof __skel.set_local_xScale === "function")
+                            __skel.set_local_xScale(__skel.set_local_yScale(__scaleArg || 1));
+                    } catch (eSc2) {}
+                    try {
+                        // NEVER write the mannequin's Z26 back into Fc.M39
+                    } catch (eCache) {}
+                    // Merge any extra emote names from mannequin_anims.js that the
+                    // base table is missing. Does NOT change bones/skins/rig mesh.
+                    try {
+                        var __extra = window.DiggerzMannequinAnims;
+                        if (__skel && __extra && typeof Ql !== "undefined") {
+                            if (!__skel.Z26) __skel.Z26 = [];
+                            var __have = {};
+                            for (var __hi = 0; __hi < __skel.Z26.length; __hi++) {
+                                try { if (__skel.Z26[__hi] && __skel.Z26[__hi]._1) __have[__skel.Z26[__hi]._1] = 1; } catch (eH) {}
+                            }
+                            var __names = Object.keys(__extra);
+                            for (var __ni = 0; __ni < __names.length; __ni++) {
+                                var __an = __names[__ni];
+                                if (__have[__an]) continue;
+                                try {
+                                    var __p = new Ql(__skel);
+                                    __p.J4(__extra[__an], __an);
+                                    __skel.Z26.push(__p);
+                                    __have[__an] = 1;
+                                } catch (eAdd) {}
+                            }
+                        }
+                    } catch (eMerge) {}
                 } catch (eG2) {
-                    try { __skel = (new z).G2("guy_anims", "guyskin", f, null, 1, !0); } catch (eG2b) {}
+                    try { __skel = (new z).G2("guy_anims", "guyskin", f, null, null, !0); } catch (eG2b) {}
                 }
             }
 
@@ -51199,17 +52251,45 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                             __skel.set_local_xScale(__skel.set_local_yScale(2.0));
                     } catch (eScale) {}
                     try { __prev._9.push(__skel); } catch (ePush) {}
-                    // Force idle (loop)
+                    // Mannequin-only idle + occasional fun emotes. Uses the
+                    // rig's own Z26 animation table (from guy_anims), not the
+                    // live player's current animation state.
                     try {
+                        if ((!__skel.Z26 || !__skel.Z26.length) && typeof Fc !== "undefined" && Fc.M39)
+                            __skel.Z26 = Fc.M39;
                         if (typeof __skel._38 === "function") {
                             __skel._38("idle", !0, 100, .5);
-                            // second kick in case first is ignored on title
-                            setTimeout(function() {
-                                try { __skel._38("idle", !0, 100, .5); } catch (e2) {}
-                            }, 200);
-                        } else if (typeof __skel.G7 === "function") {
-                            __skel.G7("idle");
                         }
+                        // Every 5s, maybe play a random emote. Idle resumes when
+                        // the skeleton reports the anim is finished (_34 === false).
+                        try {
+                            if (__skel.__dzEmoteTimer) clearInterval(__skel.__dzEmoteTimer);
+                            var __emotes = ["pump", "strut", "yeah", "yipee", "dab", "wow"];
+                            var __emoteSkel = __skel;
+                            __skel.__dzEmoting = !1;
+                            __skel.__dzEmoteTimer = setInterval(function() {
+                                try {
+                                    if (!__emoteSkel || __emoteSkel.a0 == 1) return;
+                                    if (__emoteSkel.__dzEmoting) return;
+                                    if (Math.random() > 0.45) return;
+                                    var available = [];
+                                    for (var ei = 0; ei < __emotes.length; ei++) {
+                                        try {
+                                            if (typeof __emoteSkel._31 === "function" && __emoteSkel._31(__emotes[ei]))
+                                                available.push(__emotes[ei]);
+                                            else
+                                                available.push(__emotes[ei]);
+                                        } catch (eA) { available.push(__emotes[ei]); }
+                                    }
+                                    if (!available.length) return;
+                                    var name = available[Math.floor(Math.random() * available.length)];
+                                    if (typeof __emoteSkel._38 === "function") {
+                                        __emoteSkel.__dzEmoting = !0;
+                                        __emoteSkel._38(name, !1, 50);
+                                    }
+                                } catch (eEm) {}
+                            }, 5000);
+                        } catch (eEmoteSetup) {}
                     } catch (eIdle) {}
                     __previewSkelRef = __skel;
                     this.__diggerzPreviewSkel = __skel;
@@ -51224,22 +52304,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     setTimeout(function() {
                         try { __equipOnPreview(__skel, __app); } catch (eLate2) {}
                     }, 800);
-                    // Exported mannequin rigs can occasionally start before their
-                    // animation channels are fully active. Check periodically, but
-                    // only restart idle when it has actually stopped.
-                    try {
-                        __previewIdleWatch = setInterval(function() {
-                            try {
-                                if (!__previewSkelRef || typeof __previewSkelRef._38 !== "function") return;
-                                var needs = __previewSkelRef.Z28 !== "idle";
-                                try {
-                                    if (!needs && typeof __previewSkelRef._34 === "function")
-                                        needs = !__previewSkelRef._34();
-                                } catch (eWatchCheck) {}
-                                if (needs) __previewSkelRef._38("idle", !0, 100, .5);
-                            } catch (eWatch) {}
-                        }, 500);
-                    } catch (eWatchSetup) {}
                 } catch (eAttach) { __skel = null; }
             }
 
@@ -51299,40 +52363,76 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             } catch (ePrev) {}
 
             var __invW = __L("inventory", "w", 320);
-            var __invH = __L("inventory", "h", 500);
+            var __invH = __L("inventory", "h", 560);
             var __invBox = new ja(__invW, __invH, !0);
             __invBox.b6 = __L("inventory", "x", 350);
             __invBox.b7 = __L("inventory", "y", 10);
             __invBox.D7(this, !0);
             this._9.push(__invBox);
             this.__dzInvBox = __invBox;
+            try { __invBox.C37 = !1; } catch (eIC37) {}
 
             var __invT = new xa(0, -__invH / 2 + 18, "^9Your Items", q.MAIN_FONT);
             __invT.D7(__invBox, !0);
             try { __invBox._9.push(__invT); } catch (eTitlePush) {}
             try { __invT.set_local_xScale(__invT.set_local_yScale(.75)); } catch (eTitleScale) {}
 
-            // The viewport mask belongs on the fixed inventory box, NOT on the
-            // scrolling content. The content moves; the mask must stay put.
+            // The scroll rectangle is a real render mask. It is applied to the box
+            // after all children are created as well, because the engine can rebuild
+            // masks during layout/e0.
             function __applyInvClip() {
                 try {
                     if (typeof __invBox.set_scrollRect === "function")
                         __invBox.set_scrollRect(new r(
-                            -__invW / 2 + 6,
-                            -__invH / 2 + 42,
-                            __invW - 12,
-                            __invH - 82
+                            -__invW / 2, -__invH / 2,
+                            __invW, __invH
                         ));
                 } catch (eClip) {}
             }
             __applyInvClip();
 
+            // Dedicated inventory viewport: the outer JA contains the frame/title,
+            // while this transparent display object is the actual clipping window.
+            // The scrolling grid moves INSIDE this fixed viewport, so sprites are
+            // partially clipped at the edges instead of their whole slot vanishing.
             var __invContent = z.I9();
             __invContent.D7(__invBox, !0);
             try { __invBox._9.push(__invContent); } catch (eContentPush) {}
-            __invContent.b6 = 0;
-            __invContent.b7 = 0;
+            // The viewport itself is fixed at the top-left of the four-column
+            // inventory area.  IMPORTANT: the scrollRect is in the viewport's
+            // own local coordinates, so it must start at (0,0).  The previous
+            // implementation used the inventory-box coordinates for the
+            // scrollRect, which translated the viewport and made clipping look
+            // like whole slots were disappearing instead of being partially
+            // clipped.
+            __invContent.b6 = -140;
+            __invContent.b7 = -__invH / 2 + 64;
             this.__dzInvContent = __invContent;
+
+            var __invGrid = z.I9();
+            __invGrid.D7(__invContent, !0);
+            try { __invContent._9.push(__invGrid); } catch (eGridPush) {}
+            __invGrid.b6 = 0;
+            __invGrid.b7 = 0;
+            this.__dzInvGrid = __invGrid;
+
+            // Fixed viewport.  The grid is the thing that scrolls; the viewport
+            // never moves.  A real OpenFL scrollRect clips child rendering at
+            // pixel boundaries, so sprites crossing an edge remain partially
+            // visible rather than vanishing as an entire slot.
+            try {
+                if (typeof __invContent.set_scrollRect === "function")
+                    __invContent.set_scrollRect(new r(
+                        0,
+                        0,
+                        280,
+                        __invH - 82
+                    ));
+            } catch (eContentClip) {}
+            try {
+                if (typeof __invBox.set_scrollRect === "function")
+                    __invBox.set_scrollRect(null);
+            } catch (eOuterClip) {}
 
             // Pull the authoritative inventory from the live service first, then
             // fall back to the local saved copy. Empty slots are retained so the
@@ -51349,20 +52449,20 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 } catch (eSaveSlots) {}
             }
             if (!Array.isArray(__rawSlots)) __rawSlots = [];
-
-            // Customize is a CLOTHING inventory, not the normal item inventory.
-            // These are the mannequin's wearable appearance slots.  Weapon/tool
-            // slot 4, non-clothing slot 10, blocks and other gameplay items are
-            // deliberately excluded.
-            var __clothingWearSlots = {0:1,1:1,2:1,3:1,5:1,6:1,7:1,9:1};
+            while (__rawSlots.length < 50)
+                __rawSlots.push({category:0,id:0,variant:0,count:0,extra:0,text:""});
 
             var __cols = 4;
             var __slotSize = 70;
             var __rowH = 72;
             var __gridW = __cols * __slotSize;
-            var __startX = -__gridW / 2 + __slotSize / 2;
-            var __startY = -__invH / 2 + 62;
-            var __clothingItems = [];
+            // Coordinates are relative to the fixed viewport whose local origin
+            // is the top-left of the four-column clipping area.
+            var __startX = __slotSize / 2;
+            var __startY = 18;
+            // Match the in-game 95-slot visual inventory
+            var __slotCount = Math.max(95, __rawSlots.length);
+            var __rows = Math.ceil(Math.max(__visIndex || __slotCount, 1) / __cols);
 
             function __wearSlotForItem(item, slotIndex) {
                 if (!item || !(item.id|0)) return -1;
@@ -51400,25 +52500,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 return -1;
             }
 
-            for (var __ri = 0; __ri < __rawSlots.length; __ri++) {
-                var __riItem = __rawSlots[__ri];
-                if (!__riItem || !(__riItem.id|0) || !(__riItem.count|0)) continue;
-                var __riWear = __wearSlotForItem(__riItem, __ri);
-                if (__clothingWearSlots[__riWear]) {
-                    __clothingItems.push({ item: __riItem, wear: __riWear, sourceIndex: __ri });
-                }
-            }
-            var __slotCount = __clothingItems.length;
-            var __rows = Math.max(1, Math.ceil(Math.max(1, __slotCount) / __cols));
-
             function __makeRealSlot(parent, x, y) {
                 var slot = new ra;
                 try { slot.X6(f.INVENTORYGRID_PNG()); } catch (eGrid) {}
                 slot.D7(parent, !0);
-                // ja is non-interactive by default. Give the cell a 60x60 hitbox;
-                // its child icon is visual-only so clicking an item cannot invoke
-                // the game's normal inventory C39 (which can rebuild/hide slots).
-                try { slot.d35 = !0; slot.c39 = new r(0,0,60,60); } catch (eCellHit) {}
                 try { parent._9.push(slot); } catch (eSlotPush) {}
                 slot.b6 = x;
                 slot.b7 = y;
@@ -51432,16 +52517,38 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             function __putInventoryIcon(slot, item) {
                 if (!item || !(item.id|0) || !(item.count|0)) return null;
                 try {
-                    var icon = new X(slot, item.category|0, item.id|0,
-                        item.variant|0, 0, item.count|0, item.b14|0, item.g39);
-                    icon.N23();
-                    try { icon.E7 = function() { return !1; }; } catch (eIconHit) {}
+                    var cat = (item.category|0) || 2;
+                    var id = item.id|0;
+                    var count = Math.max(1, Math.min(999, item.count|0));
+                    var icon = new X(slot, cat, id, item.variant|0, 0, count, 0, 0);
+                    try { h.n7(cat, icon, id, item.variant|0); } catch (eN7) {}
+                    try { if (typeof icon.N23 === "function") icon.N23(); } catch (eN23) {}
+                    // Neutral tint — never inherit weird parent colors
+                    try {
+                        if (typeof icon.set_local_r === "function") {
+                            icon.set_local_r(1); icon.set_local_g(1); icon.set_local_b(1);
+                        }
+                        if (typeof icon.set_r === "function") {
+                            icon.set_r(1); icon.set_g(1); icon.set_b(1);
+                        }
+                    } catch (eCol) {}
                     try { slot._9.push(icon); } catch (eIconPush) {}
                     icon.b6 = 0;
                     icon.b7 = 0;
                     try {
                         icon.set_local_xScale(icon.set_local_yScale(.72));
                     } catch (eIconScale) {}
+                    // Hide giant count labels on cosmetics (only show if > 1 and reasonable)
+                    try {
+                        if (icon._9) {
+                            for (var ci = 0; ci < icon._9.length; ci++) {
+                                var ch = icon._9[ci];
+                                if (ch && ch.E32 != null && count <= 1) {
+                                    try { ch.set_alp(0); } catch (eH) {}
+                                }
+                            }
+                        }
+                    } catch (eCnt) {}
                     return icon;
                 } catch (eIcon) {
                     return null;
@@ -51452,17 +52559,25 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var __equippedNow = (__app && __app.slice) ? __app.slice() : [];
             while (__equippedNow.length < 11) __equippedNow.push(0);
 
+            var __visIndex = 0;
             for (var __slotIndex = 0; __slotIndex < __slotCount; __slotIndex++) {
-                var __row = Math.floor(__slotIndex / __cols);
-                var __col = __slotIndex % __cols;
+                var __item = __rawSlots[__slotIndex] || null;
+                if (!__item || !(__item.id|0) || !(__item.count|0)) continue;
+                // Only show wearable cosmetics (skip blocks/tools/etc.)
+                var __preWear = -1;
+                try { __preWear = __wearSlotForItem(__item, __slotIndex); } catch (ePW) {}
+                // Allow pet slot 8 for pet preview; skip pure non-wearables
+                if (__preWear < 0) continue;
+                var __row = Math.floor(__visIndex / __cols);
+                var __col = __visIndex % __cols;
+                __visIndex++;
                 var __sx = __startX + __col * __slotSize;
                 var __sy = __startY + __row * __rowH;
-                var __cell = __makeRealSlot(__invContent, __sx, __sy);
+                var __cell = __makeRealSlot(__invGrid, __sx, __sy);
                 __dzInvCells.push(__cell);
-                var __clothEntry = __clothingItems[__slotIndex];
-                var __item = __clothEntry.item;
+
                 var __icon = __putInventoryIcon(__cell, __item);
-                var __wear = __clothEntry.wear;
+                var __wear = __wearSlotForItem(__item, __slotIndex);
                 var __isWorn = (__wear >= 0 && (__equippedNow[__wear]|0) === (__item.id|0));
 
                 if (__isWorn) {
@@ -51477,34 +52592,242 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 // Empty slots are still visible, but have no click action.
                 if (__item.id && __item.count) {
                     (function(item, wearSlot, cell) {
-                        cell.C33 = function() {
+                        var __onSlotClick = function() {
                             try {
-                                if (wearSlot < 0 || wearSlot > 10 || wearSlot === 8) return;
+                                var ws = wearSlot;
+                                if (ws < 0 || ws > 10)
+                                    try { ws = __wearSlotForItem(item, -1); } catch (eWs) {}
+                                if (ws < 0 || ws > 10) return;
                                 var next = __equippedNow.slice();
                                 while (next.length < 11) next.push(0);
-                                next[wearSlot] = ((next[wearSlot]|0) === (item.id|0)) ? 0 : (item.id|0);
+                                next[ws] = ((next[ws]|0) === (item.id|0)) ? 0 : (item.id|0);
                                 __equippedNow = next;
                                 __app = next.slice();
-                                __applyLive(next, "");
-                                // Rebuild on the next frame so EQ markers and the
-                                // preview always reflect the newly selected item.
-                                setTimeout(function() {
-                                    try {
-                                        if (__previewSkelRef) __equipOnPreview(__previewSkelRef, __equippedNow);
-                                    } catch (eRefresh) {}
-                                }, 0);
+                                // Preview only — do NOT auto-save. Mark dirty for Save Player.
+                                try { window.__dzCustomizeDirty = !0; } catch (eD) {}
+                                try {
+                                    if (__previewSkelRef) __equipOnPreview(__previewSkelRef, __equippedNow);
+                                } catch (eEq) {}
+                                // Reset inv EQ markers without destroying the box
+                                try {
+                                    if (typeof __refreshInvEQ === "function")
+                                        __refreshInvEQ();
+                                } catch (eRef) {}
                             } catch (eClick) {}
                         };
+                        // Selection is deliberately deferred until mouse-up. The
+                        // inventory e0 below records which cell was pressed and only
+                        // calls this function if release happens over that same cell.
+                        // This prevents dragging the inventory from accidentally equipping.
+                        cell.__dzSelect = __onSlotClick;
+                        cell.C33 = function() {};
+                        cell.C39 = function() {
+                            try { q.canBeHot = !1; } catch (eH) {}
+                        };
+                        try { cell.b2 = !0; } catch (eB2) {}
+                        try {
+                            if (cell._9) {
+                                for (var __ci = 0; __ci < cell._9.length; __ci++) {
+                                    var __ch = cell._9[__ci];
+                                    if (!__ch) continue;
+                                    __ch.C33 = function() {};
+                                    __ch.C39 = cell.C39;
+                                }
+                            }
+                        } catch (eKids) {}
                     })(__item, __wear, __cell);
                 }
             }
 
             this.__dzInvScroll = 0;
+            this.__dzInvTargetScroll = 0;
+            this.__dzInvSmoothScroll = 0;
+            this.__dzInvDragging = false;
+            this.__dzInvDragCandidate = false;
+            this.__dzInvPointerWasDown = false;
+            this.__dzInvPressCell = null;
+            this.__dzInvPressX = 0;
+            this.__dzInvPressY = 0;
+            var __visRows = Math.ceil(Math.max(__dzInvCells.length, 1) / __cols);
             this.__dzInvMaxScroll = Math.max(0,
-                (__rows * __rowH) - (__invH - 82));
+                (__visRows * __rowH) - (__invH - 82));
             this.__dzInvH = __invH;
             this.__dzInvW = __invW;
             this.__dzInvCells = __dzInvCells;
+            this.__dzEquippedNow = __equippedNow;
+            this.__dzSavedAppearance = (__app && __app.slice) ? __app.slice() : [0,0,0,0,0,0,0,0,0,0,0];
+            window.__dzCustomizeDirty = !1;
+
+            // Refresh green EQ labels under currently equipped items
+            function __refreshInvEQ() {
+                try {
+                    var cells = __dzInvCells || [];
+                    var eq = __equippedNow || [];
+                    for (var ci = 0; ci < cells.length; ci++) {
+                        var cell = cells[ci];
+                        if (!cell) continue;
+                        // Remove old EQ labels
+                        try {
+                            if (cell._9) {
+                                var keep = [];
+                                for (var k = 0; k < cell._9.length; k++) {
+                                    var ch = cell._9[k];
+                                    if (ch && ch.__dzEQ) {
+                                        try { ch.a0 = 1; } catch (eR) {}
+                                        continue;
+                                    }
+                                    keep.push(ch);
+                                }
+                                cell._9.length = 0;
+                                for (var k2 = 0; k2 < keep.length; k2++) cell._9.push(keep[k2]);
+                            }
+                        } catch (eRm) {}
+                        // Add EQ if this cell's item id is in equipped
+                        try {
+                            var item = __rawSlots[ci];
+                            if (!item || !(item.id|0)) continue;
+                            var worn = false;
+                            for (var ei = 0; ei < eq.length; ei++) {
+                                if ((eq[ei]|0) === (item.id|0)) { worn = true; break; }
+                            }
+                            if (!worn) continue;
+                            var eqLabel = new xa(0, 23, "^2EQ", q.MAIN_FONT_SMALL);
+                            eqLabel.__dzEQ = !0;
+                            eqLabel.D7(cell, !0);
+                            try { cell._9.push(eqLabel); } catch (eP) {}
+                            try { eqLabel.set_local_xScale(eqLabel.set_local_yScale(.62)); } catch (eS) {}
+                        } catch (eAdd) {}
+                    }
+                } catch (eRef) {}
+            }
+            try { __refreshInvEQ(); } catch (eInitEQ) {}
+
+            // Save Player — real text button (ob), no black hit-box sprite
+            try {
+                var __saveBtn = new ob(this.d32 / 2 - 100, this.d33 / 2 - 30, "^2Save Player", q.MAIN_FONT);
+                __saveBtn.D7(this, !0);
+                this._9.push(__saveBtn);
+                this.__dzSaveBtn = __saveBtn;
+                var __saveSelf = this;
+                __saveBtn.C33 = function() {
+                    try {
+                        var app = (__equippedNow && __equippedNow.slice) ? __equippedNow.slice() : [];
+                        while (app.length < 11) app.push(0);
+                        // Persist skin tone with the outfit
+                        try {
+                            var tone = (__saveSelf.y42 && __saveSelf.y42.D43 != null)
+                                ? Number(__saveSelf.y42.D43) : 90;
+                            if (!isFinite(tone)) tone = 90;
+                            tone = Math.max(0, Math.min(100, tone));
+                            if (q.player) q.player.l9 = tone;
+                            if (q.diggerzService && q.diggerzService.state) {
+                                q.diggerzService.state.skin_tone = tone;
+                                if (typeof q.diggerzService.markDirty === "function")
+                                    q.diggerzService.markDirty();
+                            }
+                        } catch (eToneS) {}
+                        // Strip any items no longer owned before saving
+                        try { app = __sanitizeAppearance(app); __equippedNow = app.slice(); } catch (eSan2) {}
+                        __applyLive(app, "");
+                        __saveSelf.__dzSavedAppearance = app.slice();
+                        window.__dzCustomizeDirty = !1;
+                        try { E.v2 && E.v2(Pj.n7()); } catch (eSfx) {}
+                    } catch (eSave) {}
+                };
+            } catch (eSaveBtn) {}
+
+            // Close with unsaved-outfit warning
+            this.__dzTryClose = function() {
+                try {
+                    // Prevent repeated close events from spawning the warning over itself.
+                    if (this.__dzClosePromptOpen) return;
+                    var dirty = !!window.__dzCustomizeDirty;
+                    var cur = (__equippedNow && __equippedNow.slice) ? __equippedNow.slice() : [];
+                    var saved = (this.__dzSavedAppearance && this.__dzSavedAppearance.slice)
+                        ? this.__dzSavedAppearance.slice() : [];
+                    while (cur.length < 11) cur.push(0);
+                    while (saved.length < 11) saved.push(0);
+                    if (!dirty) {
+                        for (var i = 0; i < 11; i++)
+                            if ((cur[i]|0) !== (saved[i]|0)) { dirty = true; break; }
+                    }
+                    if (!dirty) {
+                        this.__dzDoClose();
+                        return;
+                    }
+                    // Delay one frame + clear click so the same mouse-up
+                    // does not instantly dismiss the prompt.
+                    var self = this;
+                    try { q.mClicked = !1; q.clickedFunction = null; } catch (eClr) {}
+                    setTimeout(function() {
+                        try {
+                            if (self.__dzClosePromptOpen) return;
+                            self.__dzClosePromptOpen = !0;
+                            try { q.mClicked = !1; q.clickedFunction = null; } catch (eClr2) {}
+                            var dlg = new vb(
+                                self,
+                                "^1Warning",
+                                "^1Warning, unsaved outfit detected",
+                                null,
+                                vb.g30,
+                                function() { // Proceed
+                                    try { dlg.a0 = 1; } catch (e1) {}
+                                    self.__dzClosePromptOpen = !1;
+                                    try { self.__dzDoClose(); } catch (e2) {}
+                                },
+                                function() { // Cancel
+                                    try { dlg.a0 = 1; } catch (e3) {}
+                                    self.__dzClosePromptOpen = !1;
+                                }
+                            );
+                            try {
+                                if (dlg.F32) {
+                                    if (dlg.F32.E37) dlg.F32.E37("Proceed");
+                                    else if (dlg.F32.E32 != null) dlg.F32.E32 = "Proceed";
+                                }
+                                if (dlg.F33) {
+                                    if (dlg.F33.E37) dlg.F33.E37("Cancel");
+                                    else if (dlg.F33.E32 != null) dlg.F33.E32 = "Cancel";
+                                }
+                            } catch (eLbl) {}
+                            try { q.children.push(dlg); } catch (ePush) {
+                                try { self._9.push(dlg); } catch (eP2) {}
+                            }
+                        } catch (eDlg) {
+                            self.__dzClosePromptOpen = !1;
+                            try { self.__dzDoClose(); } catch (eF) {}
+                        }
+                    }, 80);
+                } catch (eTry) {
+                    try { this.__dzDoClose(); } catch (eF) {}
+                }
+            };
+            this.__dzDoClose = function() {
+                try {
+                    if (this.__dzHiddenGui) {
+                        for (var i = 0; i < this.__dzHiddenGui.length; i++) {
+                            var h = this.__dzHiddenGui[i];
+                            if (!h || !h.node) continue;
+                            try {
+                                if (typeof h.node.set_alp === "function") h.node.set_alp(h.alp);
+                                else if (typeof h.node.set_local_alp === "function") h.node.set_local_alp(h.alp);
+                            } catch (eR) {}
+                        }
+                        this.__dzHiddenGui = null;
+                    }
+                    // Restore the player's saved menu background
+                    try {
+                        this.__dzBetaBknd = null;
+                        var __restoreIdx = (this.__dzPrevMenuBgIdx != null)
+                            ? this.__dzPrevMenuBgIdx
+                            : (window.DiggerzGetMenuBgIndex ? window.DiggerzGetMenuBgIndex() : 0);
+                        if (window.DiggerzApplyMenuBackground)
+                            window.DiggerzApplyMenuBackground(__restoreIdx);
+                    } catch (eBgR) {}
+                } catch (eRest) {}
+                this.a0 = 1;
+                try { E.u4(this, 0, 300, 1, .5, 0, 1, 0); } catch (eU) {}
+            };
 
             var __hint = new xa(0, __invH / 2 - 18, "^8mouse wheel / arrows", q.MAIN_FONT);
             __hint.D7(__invBox, !0);
@@ -51521,7 +52844,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         w: __invW,
                         h: __invH
                     },
-                    skin: { x: __L("skin", "x", 95), y: __L("skin", "y", -240) },
+                    skin: { x: 0, y: -240 },  // fixed; do not read localStorage (it was fighting live edits)
                     title: { x: __L("title", "x", 0), y: __L("title", "y", -320) },
                     countries: { x: __L("countries", "x", 0), y: __L("countries", "y", 0) }
                 };
@@ -51535,103 +52858,289 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     this.__dzInvBox.b7 = __forceL.inventory.y;
                 }
                 if (this.y42) {
-                    this.y42.b6 = __forceL.skin.x;
-                    this.y42.b7 = __forceL.skin.y;
-                }
-                var __selfForce = this;
-                setTimeout(function() {
+                    // Layout x/y is the TRACK center. Handle offset encodes skin tone.
+                    // Never overwrite brightness/D43 — only place the bar correctly.
                     try {
-                        if (__selfForce.__dzPrevBox) {
-                            __selfForce.__dzPrevBox.b6 = __forceL.preview.x;
-                            __selfForce.__dzPrevBox.b7 = __forceL.preview.y;
-                        }
-                        if (__selfForce.__dzInvBox) {
-                            __selfForce.__dzInvBox.b6 = __forceL.inventory.x;
-                            __selfForce.__dzInvBox.b7 = __forceL.inventory.y;
-                        }
-                        if (__selfForce.y42) {
-                            __selfForce.y42.b6 = __forceL.skin.x;
-                            __selfForce.y42.b7 = __forceL.skin.y;
-                        }
-                        if (window.DiggerzCustomizeLayout && window.DiggerzCustomizeLayout.apply)
-                            window.DiggerzCustomizeLayout.apply(__forceL);
-                    } catch (eT) {}
-                }, 50);
+                        var __tone = (this.y42.D43 != null) ? Number(this.y42.D43) :
+                            ((q.player && q.player.l9 != null) ? Number(q.player.l9) : 90);
+                        if (!isFinite(__tone)) __tone = 90;
+                        this.y42.D43 = __tone;
+                        var __tw = this.y42.D40 || 280;
+                        var __off = __tone * __tw / 100 - __tw / 2;
+                        this.y42.b6 = __forceL.skin.x + __off;
+                        this.y42.b7 = __forceL.skin.y;
+                        if (this.y42.d49) this.y42.d49.b6 = -__off;
+                    } catch (eSkinPos) {
+                        this.y42.b6 = __forceL.skin.x;
+                        this.y42.b7 = __forceL.skin.y;
+                    }
+                }
+                // No recurring skin-bar position lock: native slider remains fully free after initialization.
             } catch (eForce) {}
 
-            // Leave the native vl slider hit testing/dragging intact. The slider
-            // itself carries HEAD_PNG, so its native E7 hitbox is the little head;
-            // the d49 child is the background track.
+            // Only the little head/handle may start a skin-tone drag. Clicking the
+            // track itself must not jump the value or start dragging.
+            try {
+                var __origSkinC39 = this.y42.C39;
+                this.y42.C39 = function() {
+                    // Skin slider: the little HEAD is the handle (texture on this
+                    // vl via X6). Only start a drag when the click hits the head,
+                    // not the wide track behind it.
+                    var hit = false;
+                    try {
+                        var hx = Number(this.A7), hy = Number(this.A8);
+                        // head sprite is roughly 40x40; use a generous but small hit box
+                        var hw = 36, hh = 36;
+                        try {
+                            if (this._5 && this._5.width)
+                                hw = Math.max(28, this._5.width * Math.abs(this.a8 || this.b4 || 1) * 0.6);
+                            if (this._5 && this._5.height)
+                                hh = Math.max(28, this._5.height * Math.abs(this.a9 || this.b5 || 1) * 0.6);
+                        } catch (eSz) {}
+                        hit = Math.abs(q.mX - hx) <= hw / 2 &&
+                              Math.abs(q.mY - hy) <= hh / 2;
+                    } catch (eHandleHit) {}
+                    if (!hit) {
+                        // Absorb the click so the track doesn't jump the value
+                        this.i32 = 1;
+                        return;
+                    }
+                    return __origSkinC39.call(this);
+                };
+            } catch (eSkinGuard) {}
 
             // Live skin + idle + inventory scroll. q.mWheel is the engine's actual
             // one-frame wheel value; the old code read q.mouseWheel, which never exists.
             try {
                 var __mpE0 = Mp.prototype.e0;
                 this.e0 = function() {
+                    // Stop customize BGM when this panel is being destroyed
+                    try {
+                        if (this.a0 == 1) {
+                            if (window.__dzCustomizeMusic) {
+                                window.__dzCustomizeMusic.pause();
+                                window.__dzCustomizeMusic.currentTime = 0;
+                            }
+                            try {
+                                if (__previewSkelRef && __previewSkelRef.__dzEmoteTimer) {
+                                    clearInterval(__previewSkelRef.__dzEmoteTimer);
+                                    __previewSkelRef.__dzEmoteTimer = null;
+                                }
+                            } catch (eClrT) {}
+                            // Restore title GUI if we never went through __dzDoClose
+                            try {
+                                if (typeof this.__dzDoClose === "function") {
+                                    // reuse full restore without double-close
+                                    var __hg = this.__dzHiddenGui, __br = this.__dzBgRestore, __pm = this.__dzPrevMenuBg;
+                                    if (__hg) {
+                                        for (var __ri = 0; __ri < __hg.length; __ri++) {
+                                            var __rh = __hg[__ri];
+                                            if (!__rh || !__rh.node) continue;
+                                            try {
+                                                if (typeof __rh.node.set_alp === "function") __rh.node.set_alp(__rh.alp);
+                                                else if (typeof __rh.node.set_local_alp === "function") __rh.node.set_local_alp(__rh.alp);
+                                            } catch (eRR) {}
+                                        }
+                                        this.__dzHiddenGui = null;
+                                    }
+                                    try {
+                                        if (this.__dzBetaBknd) {
+                                            var __bb2 = this.__dzBetaBknd;
+                                            this.__dzBetaBknd = null;
+                                            try { __bb2.a0 = 1; } catch (eA02) {}
+                                            try {
+                                                var __t3 = q.GetChildByType(Cf);
+                                                if (__t3 && __t3._9) {
+                                                    var __ix2 = __t3._9.indexOf(__bb2);
+                                                    if (__ix2 >= 0) __t3._9.splice(__ix2, 1);
+                                                }
+                                            } catch (eRm2) {}
+                                        }
+                                    } catch (eBeta2) {}
+                                    if (__br) {
+                                        for (var __bi2 = 0; __bi2 < __br.length; __bi2++) {
+                                            var __brn = __br[__bi2];
+                                            if (!__brn || !__brn.node) continue;
+                                            try {
+                                                if (typeof __brn.node.set_alp === "function") __brn.node.set_alp(__brn.alp);
+                                                else if (typeof __brn.node.set_local_alp === "function") __brn.node.set_local_alp(__brn.alp);
+                                            } catch (eBr2) {}
+                                        }
+                                        this.__dzBgRestore = null;
+                                    }
+                                }
+                            } catch (eGuiRest) {}
+                            try {
+                                if (typeof Zl !== "undefined" && Zl.n7 && Zl.n7())
+                                    E.U7(Zl.n7(), !0);
+                            } catch (eRestAmb) {}
+                        }
+                    } catch (eStopM) {}
                     var __ret = __mpE0.call(this);
                     try {
                         if (__previewSkelRef) {
-                            var __t2 = (q.player && q.player.l9 != null) ? q.player.l9 :
-                                (this.y42 ? this.y42.D43 : 45);
+                            var __t2 = (typeof __currentSkinTone === 'function') ? __currentSkinTone() : 90;
                             __tintPreviewSkin(__previewSkelRef, __t2);
-                            try { __tintPreviewShirt(__previewSkelRef); } catch (eShirtLive) {}
+                            // Don't recolor torso every frame if a shirt is equipped
                             try {
-                                // Keep the mannequin in a real looping idle state.
-                                // Some exported/title-screen skeletons can lose their
-                                // animation channels after their clothing children are
-                                // rebuilt, so only restart when the idle state is no
-                                // longer actually running. Never restart a healthy
-                                // animation every frame (that would freeze frame 0).
-                                if (typeof __previewSkelRef._38 === "function") {
-                                    var __idleNeedsKick = (__previewSkelRef.Z28 !== "idle");
+                                var __hasShirt = false;
+                                try {
+                                    if (q.diggerzService && q.diggerzService.state && q.diggerzService.state.appearance)
+                                        __hasShirt = !!(q.diggerzService.state.appearance[2]|0);
+                                } catch (eHS) {}
+                                if (!__hasShirt) __tintPreviewShirt(__previewSkelRef);
+                            } catch (eShirtLive) {}
+                            try {
+                                // If an emote is active, wait until the skeleton
+                                // says the timeline is finished (_34 === false),
+                                // then return to looping idle.
+                                if (__previewSkelRef.__dzEmoting) {
+                                    var __still = false;
                                     try {
-                                        if (!__idleNeedsKick && typeof __previewSkelRef._34 === "function")
-                                            __idleNeedsKick = !__previewSkelRef._34();
-                                    } catch (eIdleCheck) {}
-                                    if (__idleNeedsKick)
-                                        __previewSkelRef._38("idle", !0, 100, .5);
+                                        if (typeof __previewSkelRef._34 === "function")
+                                            __still = !!__previewSkelRef._34();
+                                    } catch (e34) {}
+                                    if (!__still && __previewSkelRef.Z28 &&
+                                        __previewSkelRef.Z28 !== "idle") {
+                                        __previewSkelRef.__dzEmoting = !1;
+                                        if (typeof __previewSkelRef._38 === "function")
+                                            __previewSkelRef._38("idle", !0, 100, .5);
+                                    }
+                                } else if (typeof __previewSkelRef._38 === "function" &&
+                                    __previewSkelRef.Z28 !== "idle") {
+                                    // Safety: snap back to idle if something else
+                                    // left a non-idle state with no emote flag.
+                                    __previewSkelRef._38("idle", !0, 100, .5);
                                 }
                             } catch (eId) {}
                         }
                     } catch (eLiveSkin) {}
 
                     try {
+                        if (__previewSkelRef && __app) __applyCustomizeRGB(__previewSkelRef, __app, Date.now());
+                    } catch (eRgbTick) {}
+
+                    try {
                         if (this.__dzInvContent) {
-                            var __wheel = 0;
+                            var __invBox2 = this.__dzInvBox;
+                            var __invW2 = this.__dzInvW || 320;
+                            var __invH2 = this.__dzInvH || 500;
+                            var __max2 = this.__dzInvMaxScroll || 0;
+
+                            if (this.__dzInvTargetScroll == null)
+                                this.__dzInvTargetScroll = Number(this.__dzInvScroll || 0);
+                            if (this.__dzInvSmoothScroll == null)
+                                this.__dzInvSmoothScroll = Number(this.__dzInvScroll || 0);
+
+                            // Wheel still works, but it feeds the same smooth target
+                            // used by dragging so both input methods feel identical.
+                            var __wheel2 = 0;
                             try {
-                                __wheel = q.mWheel|0;
-                                // Only steal wheel input when the pointer is over the
-                                // inventory. Arrow keys still work anywhere in Customize.
-                                if (__wheel && this.__dzInvBox) {
-                                    var __mx = Number(q.mX), __my = Number(q.mY);
-                                    var __cx = Number(this.__dzInvBox.A7), __cy = Number(this.__dzInvBox.A8);
-                                    if (!isFinite(__mx) || !isFinite(__my) ||
-                                        Math.abs(__mx - __cx) > (this.__dzInvW || 320) / 2 ||
-                                        Math.abs(__my - __cy) > (this.__dzInvH || 500) / 2)
-                                        __wheel = 0;
+                                __wheel2 = q.mWheel|0;
+                                if (__wheel2 && __invBox2) {
+                                    var __mx2 = Number(q.mX), __my2 = Number(q.mY);
+                                    var __cx2 = Number(__invBox2.A7), __cy2 = Number(__invBox2.A8);
+                                    if (!isFinite(__mx2) || !isFinite(__my2) ||
+                                        Math.abs(__mx2 - __cx2) > __invW2 / 2 ||
+                                        Math.abs(__my2 - __cy2) > __invH2 / 2)
+                                        __wheel2 = 0;
                                 }
-                            } catch (eW) {} 
-                            var __keyDir = 0;
+                            } catch (eW2) {}
+                            if (__wheel2)
+                                this.__dzInvTargetScroll += -__wheel2 * 64;
+
+                            // Shop-style drag scrolling, rotated to vertical. A
+                            // press records the exact inventory cell underneath it;
+                            // release selects ONLY if it is still that same cell.
+                            // Any meaningful drag cancels the pending selection.
                             try {
-                                if (q.KeyDown && q.KeyDown(38)) __keyDir = -1;
-                                if (q.KeyDown && q.KeyDown(40)) __keyDir = 1;
-                            } catch (eK) {}
-                            if (__wheel || __keyDir) {
-                                // Wheel up = move content up; wheel down = move content down.
-                                var __delta = __wheel ? -__wheel * 64 : __keyDir * 64;
-                                this.__dzInvScroll = Math.max(0, Math.min(
-                                    this.__dzInvMaxScroll || 0,
-                                    (this.__dzInvScroll || 0) + __delta
-                                ));
-                                this.__dzInvContent.b7 = -this.__dzInvScroll;
-                                // The fixed __invBox scrollRect above does the clipping.
-                                // Never toggle a0 on cells: that made off-screen slots
-                                // disappear permanently instead of reappearing.
-                                try { __applyInvClip(); } catch (eReclip) {}
-                                // Consume the engine's one-frame wheel event only here.
-                                try { q.mWheel = 0; } catch (eConsume) {}
-                            }
-                            try { __applyInvClip(); } catch (eClip2) {}
+                                var __inside2 = false;
+                                if (__invBox2) {
+                                    var __ix = Number(q.mX), __iy = Number(q.mY);
+                                    var __icx = Number(__invBox2.A7), __icy = Number(__invBox2.A8);
+                                    var __vpTop = __icy - __invH2 / 2 + 64;
+                                    var __vpBottom = __vpTop + (__invH2 - 82);
+                                    __inside2 = isFinite(__ix) && isFinite(__iy) &&
+                                        Math.abs(__ix - __icx) <= (__invW2 / 2) &&
+                                        __iy >= __vpTop && __iy <= __vpBottom;
+                                }
+
+                                // Convert the pointer into the moving grid's local space
+                                // so the cell test follows the smooth scroll position.
+                                function __cellAtPointer(px, py) {
+                                    if (!__inside2 || !this.__dzInvCells) return null;
+                                    var gx = Number(px) - Number(__invBox2.A7);
+                                    var gy = Number(py) - Number(__invBox2.A8) + Number(this.__dzInvSmoothScroll || 0);
+                                    var col = Math.floor((gx + (__invW2 / 2)) / 70);
+                                    var row = Math.floor((gy - (-__invH2 / 2 + 82) + 36) / 72);
+                                    if (col < 0 || col >= 4 || row < 0) return null;
+                                    var idx = row * 4 + col;
+                                    return this.__dzInvCells[idx] || null;
+                                }
+
+                                if (q.mState === 1) {
+                                    if (!this.__dzInvPointerWasDown) {
+                                        this.__dzInvPointerWasDown = true;
+                                        this.__dzInvDragCandidate = !!__inside2;
+                                        this.__dzInvDragging = false;
+                                        this.__dzInvPressX = Number(q.mX);
+                                        this.__dzInvPressY = Number(q.mY);
+                                        this.__dzInvDragStartScroll = Number(this.__dzInvTargetScroll || 0);
+                                        this.__dzInvPressCell = __inside2 ? __cellAtPointer.call(this, q.mX, q.mY) : null;
+                                    }
+
+                                    if (this.__dzInvDragCandidate) {
+                                        var __dxD = Number(q.mX) - Number(this.__dzInvPressX || 0);
+                                        var __dyD = Number(q.mY) - Number(this.__dzInvPressY || 0);
+                                        if (!this.__dzInvDragging && Math.abs(__dyD) > 5) {
+                                            this.__dzInvDragging = true;
+                                            this.__dzInvPressCell = null;
+                                            try { q.clickedFunction = null; q.mClicked = !1; } catch (eCancelClick) {}
+                                        }
+                                        if (this.__dzInvDragging)
+                                            this.__dzInvTargetScroll = Number(this.__dzInvDragStartScroll || 0) - __dyD;
+                                    }
+                                } else if (this.__dzInvPointerWasDown) {
+                                    // Mouse-up: select only when release is over the
+                                    // exact same cell that was pressed.
+                                    var __releaseCell = __inside2 ? __cellAtPointer.call(this, q.mX, q.mY) : null;
+                                    if (!this.__dzInvDragging && this.__dzInvPressCell &&
+                                        __releaseCell === this.__dzInvPressCell) {
+                                        try {
+                                            if (this.__dzInvPressCell.__dzSelect)
+                                                this.__dzInvPressCell.__dzSelect();
+                                        } catch (eSelectRelease) {}
+                                    }
+                                    this.__dzInvPointerWasDown = false;
+                                    this.__dzInvDragging = false;
+                                    this.__dzInvDragCandidate = false;
+                                    this.__dzInvPressCell = null;
+                                }
+                            } catch (eDrag) {}
+
+                            this.__dzInvTargetScroll = Math.max(0, Math.min(__max2, Number(this.__dzInvTargetScroll || 0)));
+                            var __cur2 = Number(this.__dzInvSmoothScroll || 0);
+                            var __tar2 = Number(this.__dzInvTargetScroll || 0);
+                            __cur2 += (__tar2 - __cur2) * .28;
+                            if (Math.abs(__tar2 - __cur2) < .15) __cur2 = __tar2;
+                            this.__dzInvSmoothScroll = __cur2;
+                            this.__dzInvScroll = __cur2;
+                            // Scroll the CONTENT GRID, never the fixed viewport.
+                            // Moving the viewport itself defeats partial clipping.
+                            if (this.__dzInvGrid) this.__dzInvGrid.b7 = -__cur2;
+
+                            // Keep the viewport fixed. Its scrollRect is local (0,0),
+                            // while the grid moves underneath it.
+                            try {
+                                if (this.__dzInvContent && typeof this.__dzInvContent.set_scrollRect === "function")
+                                    this.__dzInvContent.set_scrollRect(new r(
+                                        0,
+                                        0,
+                                        280,
+                                        __invH2 - 82
+                                    ));
+                            } catch (eClip3) {}
+                            try { q.mWheel = 0; } catch (eConsume2) {}
                         }
                     } catch (eScroll) {}
 
@@ -51639,16 +53148,21 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     // child (including an inventory slot or the skin handle) sets
                     // q.clickedFunction, so those clicks are left alone.
                     try {
+                        // Only auto-close on a true outside click. Never clear
+                        // mClicked for inside clicks — that breaks child C33.
                         if (q.mClicked && q.clickedFunction == null) {
-                            var __outside = false;
                             var __px = Number(this.A7), __py = Number(this.A8);
-                            var __pw = Number(this.d32), __ph = Number(this.d33);
-                            if (isFinite(__px) && isFinite(__py) && isFinite(__pw) && isFinite(__ph)) {
-                                __outside = q.mX < __px - __pw / 2 || q.mX > __px + __pw / 2 ||
-                                            q.mY < __py - __ph / 2 || q.mY > __py + __ph / 2;
-                            }
+                            var __pw = Number(this.d32) || 1100, __ph = Number(this.d33) || 720;
+                            var __outside = isFinite(__px) && isFinite(__py) && (
+                                q.mX < __px - __pw / 2 || q.mX > __px + __pw / 2 ||
+                                q.mY < __py - __ph / 2 || q.mY > __py + __ph / 2
+                            );
                             if (__outside) {
-                                this.C39();
+                                if (typeof this.__dzTryClose === "function") this.__dzTryClose();
+                                else {
+                                    this.a0 = 1;
+                                    try { E.u4(this, 0, 300, 1, .5, 0, 1, 0); } catch (eU2) {}
+                                }
                                 q.mClicked = !1;
                             }
                         }
@@ -51700,11 +53214,20 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             try { q.SaveGlobals(); } catch (e) {}
         },
         E7: function(a) {
-            return !0
+            // Use real bounds so children can win the click. Always-true
+            // made the panel steal clicks before flags/inv claimed them.
+            return ja.prototype.E7.call(this, a);
         },
         e0: function() {
             this.y42.set_local_r(this.y42.set_local_g(this.y42.set_local_b(.45 + 1.1 * this.y42.D43 / 100)));
-            q.player.l9 = Math.max(q.player.k7, Math.min(q.player.k8, this.y42.D43));
+            q.player.l9 = Math.max(0, Math.min(100, this.y42.D43));
+            try {
+                if (q.diggerzService && q.diggerzService.state) {
+                    q.diggerzService.state.skin_tone = q.player.l9;
+                    if (typeof q.diggerzService.markDirty === "function")
+                        q.diggerzService.markDirty();
+                }
+            } catch (eSkinSave) {}
             return ja.prototype.e0.call(this)
         },
         C39: function() {
@@ -52215,20 +53738,30 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         a.set_local_xScale(a.set_local_yScale(.7));
         this.Z47._9.push(a);
         a = 170;
-        // Menu background cycle
-        var bgNames = ["Default (clear)", "Grey", "Space"];
-        var bgKey = "diggerz.menuBg.v1";
+        // Menu background cycle — all real cg themes (Background 0–9)
+        var bgList = window.DiggerzMenuBgList || [
+            { name: "Mountains", theme: 0 }, { name: "Beta Bknd", theme: 9 }
+        ];
         var bgIdx = 0;
-        try { bgIdx = Math.max(0, Math.min(2, parseInt(localStorage.getItem(bgKey) || "0", 10) || 0)); } catch (eBg) {}
-        var bgLbl = new ob(0, a, "^9Background: ^7" + bgNames[bgIdx], q.MAIN_FONT);
+        try {
+            if (window.DiggerzGetMenuBgIndex) bgIdx = window.DiggerzGetMenuBgIndex();
+            else bgIdx = Math.max(0, Math.min(bgList.length - 1, parseInt(localStorage.getItem("diggerz.menuBg.v1") || "0", 10) || 0));
+        } catch (eBg) {}
+        var bgLbl = new ob(0, a, "^9Background: ^7" + (bgList[bgIdx] ? bgList[bgIdx].name : ("#" + bgIdx)), q.MAIN_FONT);
         bgLbl.D7(this, !0);
         bgLbl.C33 = A(this, function() {
             try {
-                var i = Math.max(0, Math.min(2, parseInt(localStorage.getItem(bgKey) || "0", 10) || 0));
-                i = (i + 1) % 3;
-                localStorage.setItem(bgKey, String(i));
-                try { bgLbl.E37("^9Background: ^7" + bgNames[i]); } catch (eL) {}
-                if (window.DiggerzApplyMenuBackground) window.DiggerzApplyMenuBackground();
+                var i = 0;
+                if (window.DiggerzCycleMenuBackground)
+                    i = window.DiggerzCycleMenuBackground();
+                else {
+                    i = (window.DiggerzGetMenuBgIndex ? window.DiggerzGetMenuBgIndex() : 0);
+                    i = (i + 1) % bgList.length;
+                    localStorage.setItem("diggerz.menuBg.v1", String(i));
+                    if (window.DiggerzApplyMenuBackground) window.DiggerzApplyMenuBackground(i);
+                }
+                var nm = (bgList[i] && bgList[i].name) ? bgList[i].name : ("#" + i);
+                try { bgLbl.E37("^9Background: ^7" + nm); } catch (eL) {}
             } catch (eC) {}
         });
         this._9.push(bgLbl);
@@ -87930,6 +89463,15 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.d34.D7(this);
         this._9.push(this.d34);
         this._1 = "title_screen";
+        // Apply saved menu background (real cg theme)
+        try {
+            setTimeout(function() {
+                try {
+                    if (window.DiggerzApplyMenuBackground)
+                        window.DiggerzApplyMenuBackground();
+                } catch (eBgInit) {}
+            }, 50);
+        } catch (eBgT) {}
         this.C58 = z.I9();
         this.C58.Init(sa.SQLOGO_PNG());
         this.C58.D7(this);
@@ -88047,7 +89589,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.C57.A8 = this.C57._5.height / 2 + 12;
             this.A7 = q.CENTERX;
             this.A8 = q.CENTERY;
-            this.d34.h2()
+            if (this.d34 && typeof this.d34.h2 === "function") this.d34.h2();
         },
         d56: function() {
             for (var a = 0, b = this._9; a < b.length; ) {
