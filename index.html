@@ -120780,34 +120780,26 @@ e50: function(a) {
 
 <script id="diggerz-menu-bg-apply">
 (function(){
-  // LOCAL BKND PACK
-  // The game's original cg() constructor is driven by assets/bknd.png and the
-  // recipes below. We keep those recipes locally so the Settings background
-  // choice never depends on multiplayer/admin bknd state.
+  // MENU-ONLY BKND SELECTOR
+  // The title screen's own Cf class owns the real backdrop as title.d34.
+  // We replace that exact native object instead of creating a second overlay.
+  // This keeps T31()/h2()/render ordering using the game's normal BKND path.
   window.DiggerzLocalBkndData = {
     atlas: "assets/bknd.png",
     version: 1,
     themes: [
-      {id:0,name:"Mountains",recipe:"A39(MOUNTAIN_PNG,HILL_PNG,1,0,a36,1)"},
-      {id:1,name:"Grey",recipe:"A30()"},
-      {id:2,name:"Sunset",recipe:"a31()"},
-      {id:3,name:"Moon",recipe:"A38()"},
-      {id:4,name:"Icy Mountains",recipe:"A39(ICY_MOUNTAINS_PNG,ICY_HILLS_PNG,0,1,a36,1)"},
-      {id:5,name:"Clouds",recipe:"a39()"},
-      {id:6,name:"Background 6",recipe:"A32()"},
-      {id:7,name:"Background 7",recipe:"A31()"},
-      {id:8,name:"Green Screen",recipe:"a33(green)"},
-      {id:9,name:"Beta Bknd",recipe:"a32()"}
-    ],
-    sprites: {
-      CLOUD1_PNG:[442,0,151,93], HILL_PNG:[594,0,352,169],
-      ICY_HILLS_PNG:[607,774,352,177], ICY_MOUNTAINS_PNG:[0,389,606,380],
-      MOON_PNG:[0,1151,377,369], MOUNTAIN_PNG:[0,1521,606,380],
-      SPACEMOUNTAINS_PNG:[0,770,606,380], SPACE_BKND_PNG:[1238,389,630,384],
-      SPACE_HILLS_PNG:[0,0,352,169], GREY_BKND_PNG:[607,389,630,384]
-    }
+      {id:0,name:"Mountains"},
+      {id:1,name:"Grey"},
+      {id:2,name:"Sunset"},
+      {id:3,name:"Moon"},
+      {id:4,name:"Icy Mountains"},
+      {id:5,name:"Clouds"},
+      {id:6,name:"Background 6"},
+      {id:7,name:"Background 7"},
+      {id:8,name:"Green Screen"},
+      {id:9,name:"Beta Bknd"}
+    ]
   };
-
   window.DiggerzMenuBgList = window.DiggerzLocalBkndData.themes.map(function(x){
     return {name:x.name,theme:x.id};
   });
@@ -120820,73 +120812,102 @@ e50: function(a) {
     }catch(e){return 0;}
   };
 
-  function titleScreen(){
-    try{if(window.q&&q.GetChildByName){var a=q.GetChildByName("title_screen");if(a)return a;}}catch(e){}
-    try{if(window.q&&q.GetChildByType&&window.v&&v.C55){var b=q.GetChildByType(v.C55);if(b)return b;}}catch(e){}
-    try{if(window.q&&q.children)for(var i=0;i<q.children.length;i++){var c=q.children[i];if(c&&c._1==="title_screen")return c;}}catch(e){}
+  function findTitle(){
+    try{
+      if(window.q&&q.GetChildByType&&window.v&&v.C55){
+        var a=q.GetChildByType(v.C55); if(a)return a;
+      }
+    }catch(e){}
+    try{
+      if(window.q&&q.children)for(var i=0;i<q.children.length;i++){
+        var c=q.children[i];
+        if(c&&c._1==="title_screen")return c;
+      }
+    }catch(e){}
     return null;
   }
 
-  function localAtlas(){
+  function ensureBkndAtlas(){
+    // The game already preloads this atlas. The local file is also shipped as
+    // a fallback so this customization never depends on a server request.
     try{
       if(typeof $c!=="undefined" && $c.getBitmapData){
         var bmp=$c.getBitmapData(window.DiggerzLocalBkndData.atlas,false);
         if(bmp && typeof sa!=="undefined") sa.bmd=bmp;
-        return !!bmp;
       }
-    }catch(e){console.warn("[Local BKND] atlas",e)}
-    return false;
+    }catch(e){}
   }
 
   window.DiggerzApplyMenuBackground=function(forceIdx){
     try{
+      var list=window.DiggerzMenuBgList||[];
+      if(!list.length)return false;
       var idx=forceIdx==null?window.DiggerzGetMenuBgIndex():forceIdx|0;
-      idx=Math.max(0,Math.min(window.DiggerzMenuBgList.length-1,idx));
+      idx=Math.max(0,Math.min(list.length-1,idx));
       localStorage.setItem("diggerz.menuBg.v1",String(idx));
       window.__diggerzMenuBgIdx=idx;
-      var title=titleScreen();
-      if(!title || typeof cg!=="function"){
-        setTimeout(function(){window.DiggerzApplyMenuBackground(idx)},250);return false;
+
+      // Never touch the multiplayer/world BKND.
+      try{if(typeof l!=="undefined"&&l&&l.z38)return false;}catch(eWorld){}
+
+      var title=findTitle();
+      if(!title||typeof cg!=="function"){
+        setTimeout(function(){window.DiggerzApplyMenuBackground(idx)},200);
+        return false;
       }
 
-      localAtlas();
-      var theme=idx;
-      var old=window.__diggerzLocalBkndScene;
-      if(old){try{old.a0=1;old._2=null;}catch(e){}try{if(title._9){var oi=title._9.indexOf(old);if(oi>=0)title._9.splice(oi,1);}}catch(e){}}
+      ensureBkndAtlas();
 
-      // Hide the original title backdrop. Do not mutate it; the title screen
-      // can restore it whenever its own lifecycle runs.
-      try{if(title.d34)title.d34.a0=1;}catch(e){}
+      // If this exact native d34 is already selected, leave it alone.
+      if(title.d34 && title.d34._diggerzMenuTheme===idx && !title.d34.a0){
+        return true;
+      }
 
-      // Build a fresh native cg scene from the LOCAL BKND pack.
-      var scene=new cg(theme);
-      scene._1="diggerz_local_menu_bknd";
-      scene.a2=true; scene.a0=0;
-      scene.D7(title);
-      scene.A7=q.CENTERX; scene.A8=q.CENTERY;
-      if(typeof scene.h2==="function")scene.h2();
+      // IMPORTANT: Cf/T31 uses title.d34 and f4(cg). Replace that exact field.
+      // Do not create a parallel overlay; the old v40 approach could leave the
+      // original cg(0) as the backdrop T31() continued to find.
+      var old=title.d34;
+      if(old){
+        try{old.a0=1;}catch(e1){}
+        try{var oi=title._9.indexOf(old);if(oi>=0)title._9.splice(oi,1);}catch(e2){}
+      }
 
-      // Put it at the back of the title's child list.
+      var fresh=new cg(idx);
+      fresh._diggerzMenuTheme=idx;
+      fresh._1="diggerz_menu_bknd";
+      fresh.D7(title);
+      fresh.A7=q.CENTERX;
+      fresh.A8=q.CENTERY;
+      fresh.a0=0;
+
+      title.d34=fresh;
       if(title._9){
-        var at=title._9.indexOf(scene);
-        if(at>=0)title._9.splice(at,1);
-        title._9.unshift(scene);
+        title._9.unshift(fresh);
       }
-      window.__diggerzLocalBkndScene=scene;
-      window.__diggerzLocalBkndTheme=theme;
+
+      // Match the native title resize/layout path.
+      try{if(typeof fresh.h2==="function")fresh.h2();}catch(e3){}
+      window.__diggerzMenuCg=fresh;
+      window.__diggerzMenuCgTheme=idx;
       return true;
-    }catch(e){console.warn("[Local BKND] apply",e);return false;}
+    }catch(e){
+      try{console.warn("[Menu BKND]",e);}catch(x){}
+      return false;
+    }
   };
 
   window.DiggerzCycleMenuBackground=function(){
-    var n=(window.DiggerzGetMenuBgIndex()+1)%window.DiggerzMenuBgList.length;
-    localStorage.setItem("diggerz.menuBg.v1",String(n));
+    var list=window.DiggerzMenuBgList||[];
+    if(!list.length)return 0;
+    var n=(window.DiggerzGetMenuBgIndex()+1)%list.length;
     window.DiggerzApplyMenuBackground(n);
     return n;
   };
 
-  // Wait until the native asset library/title are ready.
-  [150,700,1500,3000].forEach(function(ms){setTimeout(function(){window.DiggerzApplyMenuBackground()},ms);});
+  // Initial selection. The retry is only for startup ordering.
+  [150,700,1500,3000].forEach(function(ms){
+    setTimeout(function(){window.DiggerzApplyMenuBackground();},ms);
+  });
 })();
 </script>
 <script src="/build239-client.js"></script><script src="/build240-client.js"></script></body>
