@@ -50647,12 +50647,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.y42.D43 = __initTone;
             var __initW = this.y42.D40 || 280;
             var __initOff = __initTone * __initW / 100 - __initW / 2;
-            this.y42.b6 = 95 + __initOff;
+            this.y42.b6 = __initOff;  // centered L/R; handle offset only
             this.y42.b7 = -240;
             if (this.y42.d49) this.y42.d49.b6 = -__initOff;
         } catch (eInitSk) {
             this.y42.b7 = -240;
-            this.y42.b6 = 95;
+            this.y42.b6 = 0;
         }
         this.y42.d49.set_alp(0);
         this._9.push(this.y42);
@@ -50679,11 +50679,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.y42.D43 = __barTone;
             var __barW = this.y42.D40 || 280;
             var __barOff = __barTone * __barW / 100 - __barW / 2;
-            this.y42.b6 = 95 + __barOff;
+            this.y42.b6 = __barOff;  // centered L/R
             this.y42.b7 = -240;
             if (this.y42.d49) this.y42.d49.b6 = -__barOff;
         } catch (eBar) {
-            this.y42.b6 = 95;
+            this.y42.b6 = 0;
             this.y42.b7 = -240;
         }
         try {
@@ -52750,7 +52750,7 @@ function __equipOnPreview(skel, app) {
                         w: __invW,
                         h: __invH
                     },
-                    skin: { x: __L("skin", "x", 95), y: __L("skin", "y", -240) },
+                    skin: { x: 0, y: __L("skin", "y", -240) },  // always center L/R; keep vertical
                     title: { x: __L("title", "x", 0), y: __L("title", "y", -320) },
                     countries: { x: __L("countries", "x", 0), y: __L("countries", "y", 0) }
                 };
