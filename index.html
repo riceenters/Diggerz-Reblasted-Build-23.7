@@ -51921,7 +51921,23 @@ function __normalizeWearableScales(skel) {
                 }
             }
 
-function __equipOnPreview(skel, app) {
+function __lockSkinBarPos(panel) {
+                try {
+                    if (!panel || !panel.y42) return;
+                    var bar = panel.y42;
+                    var tone = (bar.D43 != null) ? Number(bar.D43) : 90;
+                    if (!isFinite(tone)) tone = 90;
+                    tone = Math.max(0, Math.min(100, tone));
+                    var w = bar.D40 || 280;
+                    var off = tone * w / 100 - w / 2;
+                    // HARD LOCK — track base x=140, y=-240
+                    bar.b6 = 140 + off;
+                    bar.b7 = -240;
+                    if (bar.d49) bar.d49.b6 = -off;
+                } catch (e) {}
+            }
+
+            function __equipOnPreview(skel, app) {
                 if (!skel) return;
                 var tone = (typeof __currentSkinTone === 'function') ? __currentSkinTone() : 90;
                 try { __clearWearOnSkel(skel); } catch (eClr) {}
@@ -52839,6 +52855,7 @@ function __equipOnPreview(skel, app) {
                         }
                         if (window.DiggerzCustomizeLayout && window.DiggerzCustomizeLayout.apply)
                             window.DiggerzCustomizeLayout.apply(__forceL);
+                        try { __lockSkinBarPos(__selfForce); } catch (eLB) {}
                     } catch (eT) {}
                 }, 50);
             } catch (eForce) {}
@@ -52942,6 +52959,7 @@ function __equipOnPreview(skel, app) {
                         }
                     } catch (eStopM) {}
                     var __ret = __mpE0.call(this);
+                    try { __lockSkinBarPos(this); } catch (eLockBar) {}
                     try {
                         if (__previewSkelRef) {
                             var __t2 = (typeof __currentSkinTone === 'function') ? __currentSkinTone() : 90;
