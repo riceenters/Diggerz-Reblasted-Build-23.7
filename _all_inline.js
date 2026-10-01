@@ -51244,32 +51244,51 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
             function __tintPreviewSkin(skel, tone) {
                 if (!skel || typeof skel.f2 !== "function") return;
-                // ALWAYS use mapped brightness (.45–1.55). Raw l9 (e.g. 90)
-                // blows the mesh out to pure white on the title mannequin.
+                // Mapped brightness (.45-1.55) — same as head/slider.
+                // NEVER paint wear sprites; only body meshes that should show skin.
                 var c = __skinColor(tone);
-                var bones = [
-                    "head",
-                    "front_arm", "back_arm",
-                    "front_foot", "back_foot",
-                    "front_shoulder", "back_shoulder"
-                ];
-                for (var i = 0; i < bones.length; i++) {
-                    try {
-                        var part = skel.f2(bones[i]);
-                        if (!part) continue;
-                        if (typeof part.set_local_r === "function")
-                            part.set_local_r(part.set_local_g(part.set_local_b(c)));
-                        try {
-                            var nested = ["arm", "arm_front", "arm_back"];
-                            for (var ni = 0; ni < nested.length; ni++) {
-                                if (typeof part.f2 !== "function") break;
-                                var sub = part.f2(nested[ni]);
-                                if (sub && typeof sub.set_local_r === "function")
-                                    sub.set_local_r(sub.set_local_g(sub.set_local_b(c)));
-                            }
-                        } catch (eN) {}
-                    } catch (eSlot) {}
+                var flags = skel.__dzSkinFlags || {};
+                function paint(node) {
+                    if (!node || typeof node.set_local_r !== "function") return;
+                    try { node.set_local_r(node.set_local_g(node.set_local_b(c))); } catch (eP) {}
                 }
+                // Head is always skin (unless a T41 hat hid it)
+                try {
+                    if (!flags.hideHead) {
+                        var head = skel.f2("head");
+                        paint(head);
+                    }
+                } catch (eH) {}
+                // Arms: only if no shirt, or shirt is T48 (skin-showing)
+                try {
+                    if (!flags.shirtCoversArms) {
+                        var armF = skel.f2("front_shoulder");
+                        if (armF) paint(armF.f2 ? armF.f2("arm") : null);
+                        paint(armF);
+                        var armB = skel.f2("back_shoulder");
+                        if (armB) paint(armB.f2 ? armB.f2("arm_back") : null);
+                        paint(armB);
+                    }
+                } catch (eA) {}
+                // Lower legs: skin-tint when pants are T48 (shorts) or no pants
+                // This is what makes Black WC Shorts follow the skin slider.
+                try {
+                    if (!flags.pantsCoverLegs) {
+                        var fl = skel.f2("front_lowerleg");
+                        if (fl) paint(fl.f2 ? fl.f2("leg") : null);
+                        paint(fl);
+                        var bl = skel.f2("back_lowerleg");
+                        if (bl) paint(bl.f2 ? bl.f2("leg_back") : null);
+                        paint(bl);
+                    }
+                } catch (eL) {}
+                // Feet: only if no shoes, or shoes are T48
+                try {
+                    if (!flags.shoesCoverFeet) {
+                        paint(skel.f2("front_foot"));
+                        paint(skel.f2("back_foot"));
+                    }
+                } catch (eF) {}
             }
             // Match player m35: reset head texture + attach eyes
             function __ensureHeadAndEyes(skel, tone) {
@@ -51452,27 +51471,25 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         e._1 = "wear";
                         e.b2 = !0;
                         try {
-                            // Match player.m38: T48 means the BODY PART shows skin
-                            // (tint the bone with raw l9); the wear sprite keeps item color.
+                            // Exact m38 path: color the WEAR sprite from its own
+                            // palette after D6 (e.b8/b9/B0). Never paint wear with skin.
+                            var wr = (e.b8 != null ? e.b8 : f.b8);
+                            var wg = (e.b9 != null ? e.b9 : f.b9);
+                            var wb = (e.B0 != null ? e.B0 : f.B0);
+                            if (dimBack) { wr *= .9; wg *= .9; wb *= .9; }
+                            try {
+                                e.set_r(wr); e.set_g(wg); e.set_b(wb);
+                            } catch (eCol) {
+                                try {
+                                    e.set_local_r(wr); e.set_local_g(wg); e.set_local_b(wb);
+                                } catch (e2) {}
+                            }
+                            // T48 = body part under/around this wear shows skin
                             if (f.T48) {
                                 try {
                                     var sc = __skinColor(tone);
                                     g.set_local_r(g.set_local_g(g.set_local_b(sc)));
                                 } catch (eT) {}
-                                // Wear overlay keeps its own palette (not skin-blown)
-                                try {
-                                    e.set_local_r(f.b8); e.set_local_g(f.b9); e.set_local_b(f.B0);
-                                } catch (eW) {}
-                            } else if (dimBack) {
-                                e.set_local_r(.9 * f.b8);
-                                e.set_local_g(.9 * f.b9);
-                                e.set_local_b(.9 * f.B0);
-                            } else {
-                                try {
-                                    e.set_local_r(f.b8); e.set_local_g(f.b9); e.set_local_b(f.B0);
-                                } catch (eCol) {
-                                    try { e.set_r(f.b8); e.set_g(f.b9); e.set_b(f.B0); } catch (e2) {}
-                                }
                             }
                         } catch (eCol2) {}
                         try { e.c9 = f.c9; } catch (eC9) {}
@@ -51504,8 +51521,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                             }
                         } catch (eMask) {}
                         break;
-                    case 2: // shirt — torso + both arm textures
+                    case 2: // shirt — torso + both arm textures (match m38 case 2)
                         try {
+                            // Non-T48 shirts replace arm textures with cloth colors —
+                            // mark so live skin updates do NOT overwrite them.
+                            if (!skel.__dzSkinFlags) skel.__dzSkinFlags = {};
+                            skel.__dzSkinFlags.shirtCoversArms = !f.T48;
                             var armF = skel.f2("front_shoulder");
                             if (armF) armF = armF.f2("arm");
                             if (armF && f._9 && f._9[0]) {
@@ -51539,6 +51560,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                 if (f._3) torso._3 = f._3;
                                 if (f._5) torso._5 = f._5;
                                 torso.c9 = f.c9;
+                                // Item color only — never skin
                                 torso.set_local_r(f.b8);
                                 torso.set_local_g(f.b9);
                                 torso.set_local_b(f.B0);
@@ -51547,6 +51569,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         break;
                     case 3: // shoes — BOTH feet
                         try {
+                            if (!skel.__dzSkinFlags) skel.__dzSkinFlags = {};
+                            skel.__dzSkinFlags.shoesCoverFeet = !f.T48;
                             var ff = skel.f2("front_foot");
                             if (ff) {
                                 var eF = Yf.W48(itemId, holder);
@@ -51556,11 +51580,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                 eF._1 = "wear"; eF.b2 = !0;
                                 eF.c9 = f.c9;
                                 if (f.T48)
-                                    ff.set_local_r(ff.set_local_g(ff.set_local_b(tone)));
+                                    ff.set_local_r(ff.set_local_g(ff.set_local_b(__skinColor(tone))));
                                 else {
-                                    eF.set_local_r(f.b8);
-                                    eF.set_local_g(f.b9);
-                                    eF.set_local_b(f.B0);
+                                    try { eF.set_r(eF.b8 != null ? eF.b8 : f.b8); eF.set_g(eF.b9 != null ? eF.b9 : f.b9); eF.set_b(eF.B0 != null ? eF.B0 : f.B0); }
+                                    catch (eCf) { eF.set_local_r(f.b8); eF.set_local_g(f.b9); eF.set_local_b(f.B0); }
                                 }
                                 scaleWear(eF);
                                 if (!ff._9) ff._9 = [];
@@ -51575,11 +51598,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                 eB._1 = "wear"; eB.b2 = !0;
                                 eB.c9 = f.c9;
                                 if (f.T48)
-                                    bf.set_local_r(bf.set_local_g(bf.set_local_b(tone)));
+                                    bf.set_local_r(bf.set_local_g(bf.set_local_b(__skinColor(tone))));
                                 else {
-                                    eB.set_local_r(.9 * f.b8);
-                                    eB.set_local_g(.9 * f.b9);
-                                    eB.set_local_b(.9 * f.B0);
+                                    try { eB.set_r(.9 * (eB.b8 != null ? eB.b8 : f.b8)); eB.set_g(.9 * (eB.b9 != null ? eB.b9 : f.b9)); eB.set_b(.9 * (eB.B0 != null ? eB.B0 : f.B0)); }
+                                    catch (eCb) { eB.set_local_r(.9 * f.b8); eB.set_local_g(.9 * f.b9); eB.set_local_b(.9 * f.B0); }
                                 }
                                 scaleWear(eB);
                                 if (!bf._9) bf._9 = [];
@@ -51635,6 +51657,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                         fl.set_local_g(f.b9);
                                         fl.set_local_b(f.B0);
                                     }
+                                    if (!skel.__dzSkinFlags) skel.__dzSkinFlags = {};
+                                    skel.__dzSkinFlags.pantsCoverLegs = !f.T48;
                                 }
                                 var bl = skel.f2("back_lowerleg");
                                 if (bl) bl = bl.f2("leg_back");
@@ -51777,11 +51801,13 @@ function __equipOnPreview(skel, app) {
                     } catch (eM38) {
                         try { if (guy) { guy.i33 = guy.i33; } } catch (eR) {}
                         // Fall through to direct attach
+                        try { skel.__dzSkinFlags = {}; } catch (eFl0) {}
                         for (var s = 0; s < 11; s++)
                             if (wanted[s]|0) __attachOneWear(skel, wanted[s], s, tone);
                     }
                 } else {
                     // Title screen: no in-world guy — attach cosmetics directly.
+                    try { skel.__dzSkinFlags = {}; } catch (eFl) {}
                     for (var s2 = 0; s2 < 11; s2++)
                         if (wanted[s2]|0) __attachOneWear(skel, wanted[s2], s2, tone);
                 }
@@ -120206,11 +120232,31 @@ e50: function(a) {
       var idx = (forceIdx != null && forceIdx !== undefined) ? (forceIdx|0) : window.DiggerzGetMenuBgIndex();
       idx = Math.max(0, Math.min(list.length - 1, idx));
       try { localStorage.setItem("diggerz.menuBg.v1", String(idx)); } catch (eS) {}
+      window.__diggerzMenuBgIdx = idx;
       var theme = (list[idx] && list[idx].theme != null) ? (list[idx].theme|0) : idx;
+      // Never touch in-game world backdrop
+      try {
+        if (l && l.z38 && l.z39) {
+          return true;
+        }
+      } catch (eInGame) {}
       var title = null;
       try { title = q.GetChildByType(Cf); } catch (eT) {}
-      if (!title) return false;
-      // Remove ANY previous backdrop cg on the title (including original d34)
+      if (!title) {
+        try {
+          setTimeout(function() {
+            try { window.DiggerzApplyMenuBackground(idx); } catch (eR) {}
+          }, 200);
+        } catch (eTO) {}
+        return false;
+      }
+      // Skip rebuild if already showing this theme
+      try {
+        if (window.__diggerzMenuCg && window.__diggerzMenuCgTheme === theme &&
+            title.d34 === window.__diggerzMenuCg && !window.__diggerzMenuCg.a0)
+          return true;
+      } catch (eSkip) {}
+      // Remove ANY previous backdrop cg on the title
       try {
         var toKill = [];
         if (title.d34) toKill.push(title.d34);
@@ -120219,15 +120265,18 @@ e50: function(a) {
           for (var i = 0; i < title._9.length; i++) {
             var n = title._9[i];
             if (!n) continue;
-            if (n === title.d34 || n === window.__diggerzMenuCg) continue;
             try {
+              if (n === title.d34 || n === window.__diggerzMenuCg) { toKill.push(n); continue; }
               if (n._1 === "diggerz_menu_bg_cg" || n._1 === "bknd") toKill.push(n);
+              if (typeof n._1 === "string" && n._1.indexOf("para") === 0) toKill.push(n);
             } catch (eN) {}
           }
         }
         for (var k = 0; k < toKill.length; k++) {
           var dead = toKill[k];
+          if (!dead) continue;
           try { dead.a0 = 1; } catch (eA) {}
+          try { if (typeof dead.set_alp === "function") dead.set_alp(0); } catch (eAl) {}
           try {
             if (title._9) {
               var ix = title._9.indexOf(dead);
@@ -120252,6 +120301,7 @@ e50: function(a) {
         try { title._9.push(cgNew); } catch (eP2) {}
       }
       window.__diggerzMenuCg = cgNew;
+      window.__diggerzMenuCgTheme = theme;
       return true;
     } catch (e) {
       try { console.warn("[MenuBg]", e); } catch (e2) {}
