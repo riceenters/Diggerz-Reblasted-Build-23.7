@@ -50647,12 +50647,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.y42.D43 = __initTone;
             var __initW = this.y42.D40 || 280;
             var __initOff = __initTone * __initW / 100 - __initW / 2;
-            this.y42.b6 = __initOff;  // centered L/R; handle offset only
+            // Track base at x=140; handle offset on top (d49 compensates)
+            this.y42.b6 = 140 + __initOff;
             this.y42.b7 = -240;
             if (this.y42.d49) this.y42.d49.b6 = -__initOff;
         } catch (eInitSk) {
             this.y42.b7 = -240;
-            this.y42.b6 = 0;
+            this.y42.b6 = 140;
         }
         this.y42.d49.set_alp(0);
         this._9.push(this.y42);
@@ -50679,11 +50680,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.y42.D43 = __barTone;
             var __barW = this.y42.D40 || 280;
             var __barOff = __barTone * __barW / 100 - __barW / 2;
-            this.y42.b6 = __barOff;  // centered L/R
+            this.y42.b6 = 140 + __barOff;
             this.y42.b7 = -240;
             if (this.y42.d49) this.y42.d49.b6 = -__barOff;
         } catch (eBar) {
-            this.y42.b6 = 0;
+            this.y42.b6 = 140;
             this.y42.b7 = -240;
         }
         try {
@@ -51056,7 +51057,21 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         if (inv && setPos(inv, L.inventory.x, L.inventory.y)) ok.push("inventory");
                     }
                     if (L.skin && p.y42) {
-                        if (setPos(p.y42, L.skin.x, L.skin.y)) ok.push("skin");
+                        // skin.x/y = TRACK base; handle offset is applied on top
+                        try {
+                            var __st = (p.y42.D43 != null) ? Number(p.y42.D43) : 90;
+                            if (!isFinite(__st)) __st = 90;
+                            var __sw = p.y42.D40 || 280;
+                            var __so = __st * __sw / 100 - __sw / 2;
+                            var __sx = (L.skin.x != null ? Number(L.skin.x) : 140);
+                            var __sy = (L.skin.y != null ? Number(L.skin.y) : -240);
+                            p.y42.b6 = __sx + __so;
+                            p.y42.b7 = __sy;
+                            if (p.y42.d49) p.y42.d49.b6 = -__so;
+                            ok.push("skin");
+                        } catch (eSkA) {
+                            if (setPos(p.y42, L.skin.x, L.skin.y)) ok.push("skin");
+                        }
                     }
                     // Countries = group of flags; L.countries.x/y are OFFSETS from original layout
                     if (L.countries && p.__dzCountryFlags && p.__dzCountryBase) {
@@ -52750,7 +52765,7 @@ function __equipOnPreview(skel, app) {
                         w: __invW,
                         h: __invH
                     },
-                    skin: { x: 0, y: __L("skin", "y", -240) },  // always center L/R; keep vertical
+                    skin: { x: 140, y: -240 },  // fixed; do not read localStorage (it was fighting live edits)
                     title: { x: __L("title", "x", 0), y: __L("title", "y", -320) },
                     countries: { x: __L("countries", "x", 0), y: __L("countries", "y", 0) }
                 };
