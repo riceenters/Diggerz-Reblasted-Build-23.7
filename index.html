@@ -51087,7 +51087,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             function __tintPreviewShirt(skel) {
                 if (!skel || typeof skel.f2 !== "function") return;
                 try {
-                    var torso = skel.f2("torso");
+                    var torso = __bone(skel, "torso");
                     if (!torso) return;
                     var col = __shirtPalette[__getStoredShirtColor()] || __shirtPalette[0];
                     torso.set_local_r(col[0]);
@@ -51112,7 +51112,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             function __ensureHeadAndEyes(skel, tone) {
                 if (!skel || typeof skel.f2 !== "function") return;
                 try {
-                    var head = skel.f2("head");
+                    var head = __bone(skel, "head");
                     if (!head) return;
                     try { head.F5(); } catch (eF) {}
                     try { head.Init(f.HEAD_PNG()); } catch (eI) {}
@@ -51147,6 +51147,39 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
 
             var __previewWearer = null;
+
+            // Editor rig uses slightly different bone names than the live player.
+            // Map common wear targets so cosmetics still attach correctly.
+            function __bone(skel, name) {
+                if (!skel || typeof skel.f2 !== "function") return null;
+                var mapped = {
+                    head: ["head_bone", "head"],
+                    torso: ["chest", "torso", "stomach"],
+                    pants: ["pants", "chest", "hips"],
+                    front_foot: ["front_foot_bone", "front_foot"],
+                    back_foot: ["back_foot_bone", "back_foot"],
+                    front_shoulder: ["front_shoulder"],
+                    back_shoulder: ["back_shoulder"],
+                    arm: ["front_arm_bone", "arm", "front_shoulder"],
+                    arm_back: ["back_arm_bone", "arm_back", "back_shoulder"],
+                    leg: ["front_lowerleg", "leg", "front_upperleg"],
+                    leg_back: ["back_lowerleg", "leg_back", "back_upperleg"],
+                    front_lowerleg: ["front_lowerleg", "front_upperleg"],
+                    back_lowerleg: ["back_lowerleg", "back_upperleg"],
+                    front_arm: ["front_arm_bone", "front_arm", "front_shoulder"],
+                    back_arm: ["back_arm_bone", "back_arm", "back_shoulder"]
+                };
+                var names = mapped[name] || [name];
+                for (var i = 0; i < names.length; i++) {
+                    try {
+                        var b = skel.f2(names[i]);
+                        if (b) return b;
+                    } catch (e) {}
+                }
+                try { return skel.f2(name); } catch (e2) {}
+                return null;
+            }
+
             function __clearWearOnSkel(skel) {
                 if (!skel) return;
                 function strip(node) {
@@ -51279,7 +51312,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         } catch (eSc) {}
                     }
                     function putOnBone(boneName, insertAt, dimBack) {
-                        var g = skel.f2(boneName);
+                        var g = __bone(skel, boneName);
                         if (!g) return null;
                         var e = Yf.W48(itemId, holder);
                         e.D7(g);
@@ -51316,7 +51349,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         // Some hats hide the head mesh
                         try {
                             if (f.T41) {
-                                var hd = skel.f2("head");
+                                var hd = __bone(skel, "head");
                                 if (hd) {
                                     hd.C2 = !0;
                                     hd.set_local_r(hd.set_local_g(hd.set_local_b(1)));
@@ -51326,10 +51359,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                             }
                         } catch (eMask) {}
                         break;
-                    case 2: // shirt — torso + both arm textures
+                    case 2: // shirt — torso + both arm textures (match m38)
                         try {
-                            var armF = skel.f2("front_shoulder");
-                            if (armF) armF = armF.f2("arm");
+                            var armF = __bone(skel, "arm") || __bone(skel, "front_shoulder");
                             if (armF && f._9 && f._9[0]) {
                                 armF._3 = f._9[0]._3;
                                 if (f._9[0]._5) armF._5 = f._9[0]._5;
@@ -51342,8 +51374,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                     armF.set_local_b(f.B0);
                                 }
                             }
-                            var armB = skel.f2("back_shoulder");
-                            if (armB) armB = armB.f2("arm_back");
+                            var armB = __bone(skel, "arm_back") || __bone(skel, "back_shoulder");
                             if (armB && f._9 && f._9[0]) {
                                 armB._3 = f._9[0]._3;
                                 if (f._9[0]._5) armB._5 = f._9[0]._5;
@@ -51356,20 +51387,42 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                     armB.set_local_b(f.B0);
                                 }
                             }
-                            var torso = skel.f2("torso");
+                            var torso = __bone(skel, "torso");
                             if (torso) {
-                                if (f._3) torso._3 = f._3;
-                                if (f._5) torso._5 = f._5;
-                                torso.c9 = f.c9;
-                                torso.set_local_r(f.b8);
-                                torso.set_local_g(f.b9);
-                                torso.set_local_b(f.B0);
+                                // Prefer the shirt's own torso child if present
+                                // (multi-part shirts store the body mesh there)
+                                var src = f;
+                                try {
+                                    if (f._9) {
+                                        for (var ti = 0; ti < f._9.length; ti++) {
+                                            var ch = f._9[ti];
+                                            if (ch && (ch._1 === "torso" || ch._1 === "body" || ch._1 === "shirt"))
+                                                { src = ch; break; }
+                                        }
+                                    }
+                                } catch (eSrc) {}
+                                if (src._3) torso._3 = src._3;
+                                else if (f._3) torso._3 = f._3;
+                                if (src._5) torso._5 = src._5;
+                                else if (f._5) torso._5 = f._5;
+                                torso.c9 = (src.c9 != null) ? src.c9 : f.c9;
+                                // Use item tint, but if it's pure white (1,1,1) keep
+                                // a neutral white so the texture colors show through
+                                var tr = (src.b8 != null) ? src.b8 : f.b8;
+                                var tg = (src.b9 != null) ? src.b9 : f.b9;
+                                var tb = (src.B0 != null) ? src.B0 : f.B0;
+                                if (tr == null) tr = 1;
+                                if (tg == null) tg = 1;
+                                if (tb == null) tb = 1;
+                                torso.set_local_r(tr);
+                                torso.set_local_g(tg);
+                                torso.set_local_b(tb);
                             }
                         } catch (eSh) {}
                         break;
                     case 3: // shoes — BOTH feet
                         try {
-                            var ff = skel.f2("front_foot");
+                            var ff = __bone(skel, "front_foot");
                             if (ff) {
                                 var eF = Yf.W48(itemId, holder);
                                 eF.D7(ff);
@@ -51388,7 +51441,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                 if (!ff._9) ff._9 = [];
                                 ff._9.push(eF);
                             }
-                            var bf = skel.f2("back_foot");
+                            var bf = __bone(skel, "back_foot");
                             if (bf) {
                                 var eB = Yf.W48(itemId, holder);
                                 eB.D7(bf);
@@ -51414,7 +51467,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         break;
                     case 6: // face / glasses
                         try {
-                            var head6 = skel.f2("head");
+                            var head6 = __bone(skel, "head");
                             if (head6) {
                                 // Some face items hide eyes
                                 try {
@@ -51434,18 +51487,17 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     case 7: // pants — both legs + pants bone
                         try {
                             if (f.T44) {
-                                try { skel.f2("front_foot").a2 = !1; } catch (e1) {}
-                                try { skel.f2("back_foot").a2 = !1; } catch (e2) {}
+                                try { __bone(skel, "front_foot").a2 = !1; } catch (e1) {}
+                                try { __bone(skel, "back_foot").a2 = !1; } catch (e2) {}
                             }
                             if (f.T41) {
                                 // overlay pants sprite, hide default legs
                                 putOnBone("pants", null, false);
-                                try { var lg = skel.f2("leg"); if (lg) lg.C2 = !0; } catch (eL) {}
-                                try { var lgb = skel.f2("leg_back"); if (lgb) lgb.C2 = !0; } catch (eLb) {}
+                                try { var lg = __bone(skel, "leg"); if (lg) lg.C2 = !0; } catch (eL) {}
+                                try { var lgb = __bone(skel, "leg_back"); if (lgb) lgb.C2 = !0; } catch (eLb) {}
                             } else {
                                 // texture-swap front leg, back leg, and pants
-                                var fl = skel.f2("front_lowerleg");
-                                if (fl) fl = fl.f2("leg");
+                                var fl = __bone(skel, "leg") || __bone(skel, "front_lowerleg");
                                 if (fl && f._9 && f._9[0]) {
                                     fl._3 = f._9[0]._3;
                                     if (f._9[0]._5) fl._5 = f._9[0]._5;
@@ -51458,8 +51510,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                         fl.set_local_b(f.B0);
                                     }
                                 }
-                                var bl = skel.f2("back_lowerleg");
-                                if (bl) bl = bl.f2("leg_back");
+                                var bl = __bone(skel, "leg_back") || __bone(skel, "back_lowerleg");
                                 if (bl && f._9 && f._9[0]) {
                                     bl._3 = f._9[0]._3;
                                     if (f._9[0]._5) bl._5 = f._9[0]._5;
@@ -51472,7 +51523,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                         bl.set_local_b(f.B0);
                                     }
                                 }
-                                var pn = skel.f2("pants");
+                                var pn = __bone(skel, "pants");
                                 if (pn) {
                                     if (f._3) pn._3 = f._3;
                                     if (f._5) pn._5 = f._5;
@@ -51665,6 +51716,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             try {
                 if (typeof Fc !== "undefined" && Fc.n30 && Fc.n30.length > 0)
                     __skel = Fc.n30.pop();
+                // Pool skeletons may have been built with a broken Z26 (scale
+                // number). Reject anything that is not a real anim table.
+                if (__skel && (!__skel.Z26 || !__skel.Z26.length || typeof __skel.Z26 === "number"))
+                    __skel = null;
             } catch (ePool) {}
             if (!__skel) {
                 try {
@@ -51687,17 +51742,48 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     var __maker = new z;
                     var __scaleArg = 1;
                     try { if (q.player && q.player.l0 != null) __scaleArg = q.player.l0; } catch (eSc) {}
-                    // Pass null (not undefined Fc.M39) so G2 loads anims from JSON
-                    // when the cache is still empty.
-                    // Always pass null so G2 builds Z26 from guy_anims JSON.
-                    // Passing a stale/empty Fc.M39 leaves the rig with no idle.
-                    __skel = __maker.G2("guy_anims", "guyskin", f, null, __scaleArg, !0);
+                    // Prefer the dedicated mannequin rig+anims file (from the
+                    // Player Rig Editor). Falls back to in-game guy_anims.
+                    var __rigData = null;
+                    try {
+                        if (window.DiggerzMannequinRig && window.DiggerzMannequinRig.bones)
+                            __rigData = window.DiggerzMannequinRig;
+                    } catch (eRig) {}
+                    // 4th = full spine JSON (bones/slots/skins/animations)
+                    // 5th = null so G2 builds Z26 from data.animations
+                    __skel = __maker.G2("guy_anims", "guyskin", f, __rigData, null, !0);
+                    // If the editor anims object exists separately, rebuild Z26
+                    // from it so every emote (pump/strut/dab/…) is present.
+                    try {
+                        var __extra = window.DiggerzMannequinAnims;
+                        if (__skel && __extra && typeof Ql !== "undefined") {
+                            var __names = Object.keys(__extra);
+                            if (__names.length) {
+                                __skel.Z26 = [];
+                                for (var __ni = 0; __ni < __names.length; __ni++) {
+                                    var __an = __names[__ni];
+                                    var __p = new Ql(__skel);
+                                    __p.J4(__extra[__an], __an);
+                                    __skel.Z26.push(__p);
+                                }
+                                try {
+                                    __skel.Z26.sort(function(a, b) {
+                                        return (a._1 < b._1) ? -1 : (a._1 > b._1) ? 1 : 0;
+                                    });
+                                } catch (eSort) {}
+                            }
+                        }
+                    } catch (eAnimMerge) {}
                     try {
                         if (__skel && __skel.Z26 && __skel.Z26.length && typeof Fc !== "undefined")
                             Fc.M39 = __skel.Z26;
                     } catch (eCache) {}
+                    try {
+                        if (__skel && typeof __skel.set_local_xScale === "function")
+                            __skel.set_local_xScale(__skel.set_local_yScale(__scaleArg || 1));
+                    } catch (eSc2) {}
                 } catch (eG2) {
-                    try { __skel = (new z).G2("guy_anims", "guyskin", f, null, 1, !0); } catch (eG2b) {}
+                    try { __skel = (new z).G2("guy_anims", "guyskin", f, null, null, !0); } catch (eG2b) {}
                 }
             }
 
@@ -51735,21 +51821,29 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                             __skel.__dzEmoteTimer = setInterval(function() {
                                 try {
                                     if (!__emoteSkel || __emoteSkel.a0 == 1) return;
-                                    // ~35% chance each tick so it feels occasional
                                     if (Math.random() > 0.35) return;
-                                    var name = __emotes[Math.floor(Math.random() * __emotes.length)];
+                                    // Only play emotes that actually exist on this rig
+                                    var available = [];
+                                    for (var ei = 0; ei < __emotes.length; ei++) {
+                                        try {
+                                            if (typeof __emoteSkel._31 === "function" && __emoteSkel._31(__emotes[ei]))
+                                                available.push(__emotes[ei]);
+                                        } catch (eA) {}
+                                    }
+                                    if (!available.length) return;
+                                    var name = available[Math.floor(Math.random() * available.length)];
+                                    // Same signature the chat /dab command uses
                                     if (typeof __emoteSkel._38 === "function") {
-                                        __emoteSkel._38(name, !1, 0, 1);
-                                        // Return to idle after the emote (~1.8s)
+                                        __emoteSkel._38(name, !1, 50);
                                         setTimeout(function() {
                                             try {
                                                 if (__emoteSkel && typeof __emoteSkel._38 === "function")
                                                     __emoteSkel._38("idle", !0, 100, .5);
                                             } catch (eBack) {}
-                                        }, 1800);
+                                        }, 2000);
                                     }
                                 } catch (eEm) {}
-                            }, 7000); // every ~7s consider playing one
+                            }, 7000);
                         } catch (eEmoteSetup) {}
                     } catch (eIdle) {}
                     __previewSkelRef = __skel;
@@ -51894,9 +51988,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 
             function __wearSlotForItem(item, slotIndex) {
                 if (!item || !(item.id|0)) return -1;
-                // Prefer the live inventory entry at the exact slot. This keeps
-                // duplicate copies of the same item from equipping the wrong
-                // cosmetic slot.
+                // 1) Live inventory entry at this slot
                 try {
                     var invExact = l.z39 && l.z39.n38 && l.z39.n38.B30;
                     var exact = invExact && invExact[slotIndex|0];
@@ -51904,16 +51996,23 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         exact.t46 >= 0 && exact.t46 <= 10)
                         return exact.t46|0;
                 } catch (eExactWear) {}
-                // The real item renderer gets the authoritative appearance slot
-                // from h.n7/O27. Use a temporary icon so we don't guess slot 1.
+                // 2) Probe via real item factory (X + h.n7)
                 try {
                     var probe = new X(__invContent, item.category|0, item.id|0,
                         item.variant|0, 0, Math.max(1, item.count|0), item.b14|0, item.g39);
+                    try { h.n7(item.category|0, probe, item.id|0, item.variant|0); } catch (eN) {}
                     var ws = probe.t46;
                     if (ws != null && ws >= 0 && ws <= 10) return ws|0;
                 } catch (eProbe) {}
-                // If the item is currently equipped, the live inventory object
-                // remains the most reliable source.
+                // 3) Yf probe (same class m38 uses)
+                try {
+                    var yProbe = new Yf({a4:2,i33:null,l9:90,J33:[],_9:[],q7:{P4:0}},
+                        item.category|0 || 2, item.id|0, item.variant|0, 0, 1, "", 0);
+                    try { h.n7(item.category|0 || 2, yProbe, item.id|0, 0); } catch (eYN) {}
+                    if (yProbe.t46 != null && yProbe.t46 >= 0 && yProbe.t46 <= 10)
+                        return yProbe.t46|0;
+                } catch (eY) {}
+                // 4) Any live inventory copy of this id
                 try {
                     var invLive = l.z39 && l.z39.n38 && l.z39.n38.B30;
                     if (invLive) {
@@ -51925,6 +52024,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         }
                     }
                 } catch (eLiveWear) {}
+                // 5) If already in appearance array, use that slot
+                try {
+                    for (var ai = 0; ai < 11; ai++) {
+                        if ((__equippedNow[ai]|0) === (item.id|0)) return ai;
+                    }
+                } catch (eApp) {}
                 return -1;
             }
 
@@ -51992,15 +52097,18 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     (function(item, wearSlot, cell) {
                         cell.C33 = function() {
                             try {
-                                if (wearSlot < 0 || wearSlot > 10 || wearSlot === 8) return;
+                                // Re-resolve wear slot at click time (build-time
+                                // probe can miss items that load late)
+                                var ws = wearSlot;
+                                if (ws < 0 || ws > 10)
+                                    ws = __wearSlotForItem(item, -1);
+                                if (ws < 0 || ws > 10 || ws === 8) return;
                                 var next = __equippedNow.slice();
                                 while (next.length < 11) next.push(0);
-                                next[wearSlot] = ((next[wearSlot]|0) === (item.id|0)) ? 0 : (item.id|0);
+                                next[ws] = ((next[ws]|0) === (item.id|0)) ? 0 : (item.id|0);
                                 __equippedNow = next;
                                 __app = next.slice();
                                 __applyLive(next, "");
-                                // Rebuild on the next frame so EQ markers and the
-                                // preview always reflect the newly selected item.
                                 setTimeout(function() {
                                     try {
                                         if (__previewSkelRef) __equipOnPreview(__previewSkelRef, __equippedNow);
@@ -52098,6 +52206,32 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 }, 50);
             } catch (eForce) {}
 
+            // One-shot: re-sync the head handle to the true tone position once
+            // world transforms (A7) have settled. Fixes the remaining ~half-slot offset.
+            try {
+                var __skinSelf = this;
+                setTimeout(function() {
+                    try {
+                        var s = __skinSelf.y42;
+                        if (!s) return;
+                        var tone = (s.D43 != null) ? Number(s.D43) :
+                            ((q.player && q.player.l9 != null) ? Number(q.player.l9) : 90);
+                        if (!isFinite(tone)) tone = 90;
+                        s.D43 = tone;
+                        var tw = s.D40 || 280;
+                        // Track center is at layout skin.x (95). Handle local x = tone offset.
+                        var off = tone * tw / 100 - tw / 2;
+                        var trackCenter = 95;
+                        try {
+                            var L = JSON.parse(localStorage.getItem("diggerz.customize.layout.v1") || "{}");
+                            if (L && L.skin && L.skin.x != null) trackCenter = Number(L.skin.x);
+                        } catch (eL) {}
+                        s.b6 = trackCenter + off;
+                        if (s.d49) s.d49.b6 = -off;
+                    } catch (eSyncSkin) {}
+                }, 80);
+            } catch (eSyncSetup) {}
+
             // Only the little head/handle may start a skin-tone drag. Clicking the
             // track itself must not jump the value or start dragging.
             try {
@@ -52158,6 +52292,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         if (__previewSkelRef) {
                             var __t2 = Math.max(.01, (q.player && q.player.l9) ?
                                 q.player.l9 : (this.y42 ? this.y42.D43 : 90));
+                            // Advance mannequin animation every frame
+                            try {
+                                if (typeof __previewSkelRef.e0 === "function")
+                                    __previewSkelRef.e0();
+                            } catch (skelTick) {}
                             __tintPreviewSkin(__previewSkelRef, __t2);
                             // Don't recolor torso every frame if a shirt is equipped
                             try {
@@ -52224,13 +52363,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                     var __scr = Number(this.__dzInvScroll || 0);
                                     function __hideTree(node, hide) {
                                         if (!node) return;
+                                        // Alpha only — C2 blanks inventory cells permanently
                                         try {
                                             if (typeof node.set_local_alp === "function")
                                                 node.set_local_alp(hide ? 0 : 1);
                                             else if (node.B1 != null)
                                                 node.B1 = hide ? 0 : 1;
                                         } catch (eAlp) {}
-                                        try { node.C2 = !!hide; } catch (eC2) {}
                                         try { if (node.a0) node.a0 = 0; } catch (eA0) {}
                                         var kids = node._9;
                                         if (kids && kids.length) {
@@ -117104,7 +117243,8 @@ e50: function(a) {
 </aside>
 <noscript>This webpage makes extensive use of JavaScript. Please enable JavaScript in your web browser to view this page.</noscript>
 	<div id="diggerz-io_300x250" style="background-color: white; visibility: hidden; position: absolute; top: 30px; left: 30px; z-index: 100;">
-		<script type="text/javascript">
+		<script src="mannequin_anims.js"></script>
+<script type="text/javascript">
 			aiptag.cmd.display.push(function() { aipDisplayTag.display('diggerz-io_300x250'); });
 		</script>
 	</div>
