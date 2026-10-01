@@ -50509,10 +50509,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         b.set_local_xScale(b.set_local_yScale(.7));
         this.y42._9.push(b);
         this.__dzSkinLabel = b;
-        // Keep the skin slider in the saved layout position. Native vl hit-testing
-        // remains untouched so the little HEAD_PNG handle is draggable.
+        // Force skin BAR position (label is parented to bar so it stays on it)
         this.y42.b6 = 95;
         this.y42.b7 = -240;
+        try {
+            this.y42.C33 = function() {}; // absorb clicks
+            this.y42.E7 = function() { return !0; };
+        } catch (eSk) {}
         a += 70;
         a += -60; // user countries.y offset
         b = -480; // -520 + user countries.x (40)
@@ -50987,13 +50990,24 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
 
             function __skinColor(tone) {
-                // The real player renderer passes l9 directly to the body parts.
-                // Use that exact value so the preview has precisely the same
-                // darkness limits as the little head on the real slider.
+                // Match the ACTUAL skin-tone slider/head exactly. The slider's
+                // head is never pure black: its darkness floor is .45 and its
+                // brightest value is 1.55. The preview must use that same range.
                 tone = Number(tone);
-                if (!isFinite(tone)) tone = (q.player && q.player.l9 != null) ? Number(q.player.l9) : 45;
-                return tone;
+                if (!isFinite(tone)) tone = 90;
+                tone = Math.max(0, Math.min(100, tone));
+                return .45 + 1.1 * tone / 100;
             }
+
+            // Build 23.7 stores one permanent 0-11 shirt-color index per player.
+            // The recovered client had the persistence half implemented but never
+            // applied it to the customize rig. Keep the palette deterministic.
+            var __shirtPalette = [
+                [0.90,0.12,0.12], [0.95,0.42,0.08], [0.95,0.78,0.08],
+                [0.20,0.72,0.22], [0.08,0.72,0.68], [0.10,0.40,0.90],
+                [0.35,0.18,0.78], [0.78,0.16,0.70], [0.58,0.31,0.12],
+                [0.35,0.35,0.38], [0.08,0.08,0.10], [0.92,0.92,0.92]
+            ];
             function __getStoredShirtColor() {
                 try {
                     if (typeof window.DiggerzGetShirtColor === "function")
@@ -51006,8 +51020,15 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 return 0;
             }
             function __tintPreviewShirt(skel) {
-                // Intentionally empty. The authoritative m38 -> m37 path applies
-                // the player's real/default shirt texture and color.
+                if (!skel || typeof skel.f2 !== "function") return;
+                try {
+                    var torso = skel.f2("torso");
+                    if (!torso) return;
+                    var col = __shirtPalette[__getStoredShirtColor()] || __shirtPalette[0];
+                    torso.set_local_r(col[0]);
+                    torso.set_local_g(col[1]);
+                    torso.set_local_b(col[2]);
+                } catch (e) {}
             }
             function __tintPreviewSkin(skel, tone) {
                 if (!skel || typeof skel.f2 !== "function") return;
@@ -51061,110 +51082,93 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
 
             var __previewWearer = null;
-            // Customize has its own clothing renderer.  It uses the game's
-            // clothing assets/attachment metadata, but it never calls the
-            // player's m38() pipeline and never asks the live player rig to
-            // render the mannequin.
-            function __clearPreviewWear(skel) {
-                if (!skel || typeof skel.f2 !== "function") return;
-                var bones = ["head","front_arm","back_arm","front_foot","back_foot","torso","pants"];
-                for (var bi = 0; bi < bones.length; bi++) {
-                    try {
-                        var bone = skel.f2(bones[bi]);
-                        if (!bone || !bone._9) continue;
-                        for (var wi = bone._9.length - 1; wi >= 0; wi--) {
-                            var ch = bone._9[wi];
-                            if (ch && ch._1 === "wear") bone._9.splice(wi, 1);
-                        }
-                    } catch (eBone) {}
-                }
-                try { skel.f2("front_foot").a2 = !0; } catch (eF1) {}
-                try { skel.f2("back_foot").a2 = !0; } catch (eF2) {}
-                try { skel.f2("leg").C2 = !1; } catch (eL1) {}
-                try { skel.f2("leg_back").C2 = !1; } catch (eL2) {}
-                try { skel.f2("front_lowerleg").f2("leg").C2 = !1; } catch (eLL1) {}
-                try { skel.f2("back_lowerleg").f2("leg_back").C2 = !1; } catch (eLL2) {}
-            }
-
-            function __resetPreviewBody(skel, wearer, tone) {
-                if (!skel || !wearer || typeof skel.f2 !== "function") return;
-                // Default shirt/body, reproduced directly instead of invoking m37().
-                try {
-                    var shirtIndex = 0;
-                    if (wearer.q7 && wearer.q7.P4 != null)
-                        shirtIndex = Wc.e14(wearer.q7.P4) % Wc.e14(10) | 0;
-                    var fs = skel.f2("front_shoulder").f2("arm");
-                    fs.Init(f.WHITE_ARM_PNG()); fs.h4(shirtIndex);
-                    var bs = skel.f2("back_shoulder").f2("arm_back");
-                    bs.Init(f.WHITE_ARM_PNG()); bs.h4(shirtIndex);
-                    var torso = skel.f2("torso");
-                    torso.Init(f.WHITE_TORSO_PNG()); torso.h4(shirtIndex);
-                } catch (eShirt) {}
-                __ensureHeadAndEyes(skel, tone);
-                __tintPreviewSkin(skel, tone);
-                try { skel.f2("front_arm").C2 = !1; skel.f2("back_arm").C2 = !1; } catch (eArm) {}
-                try {
-                    var fa = skel.f2("front_arm");
-                    fa.set_local_r(fa.set_local_g(fa.set_local_b(tone)));
-                    var ba = skel.f2("back_arm");
-                    ba.set_local_r(ba.set_local_g(ba.set_local_b(tone)));
-                } catch (eTone) {}
-            }
-
-            function __renderPreviewClothing(skel, app, tone) {
+            function __clearWearOnSkel(skel) {
+                // Strip every previously attached "wear" sprite from the mannequin
+                // so re-equip does not stack duplicates or leave wrong-sized leftovers.
                 if (!skel) return;
-                var wearer = __previewWearer;
-                if (!wearer || wearer.__dzSkeleton !== skel) {
-                    var __wearBase = null;
-                    try { __wearBase = l && l.z39 ? l.z39 : null; } catch (eBase) {}
-                    try { wearer = Object.create(__wearBase || q.player || {}); }
-                    catch (eW) { wearer = Object.create(q.player || {}); }
-                    wearer.__dzSkeleton = skel;
-                    __previewWearer = wearer;
+                function strip(node) {
+                    if (!node || !node._9) return;
+                    var keep = [];
+                    for (var i = 0; i < node._9.length; i++) {
+                        var c = node._9[i];
+                        if (!c) continue;
+                        if (c._1 === "wear") {
+                            try { if (typeof c.e1 === "function") c.e1(); } catch (eE) {}
+                            try { c._2 = null; } catch (e2) {}
+                            continue;
+                        }
+                        keep.push(c);
+                        strip(c);
+                    }
+                    node._9.length = 0;
+                    for (var j = 0; j < keep.length; j++) node._9.push(keep[j]);
                 }
+                strip(skel);
+            }
 
-                // Use the real player's clothing renderer against the standalone
-                // mannequin skeleton.  This is NOT the live player's rig: the
-                // proxy's i33 points only at the preview skeleton, so m38() applies
-                // the game's exact item transforms, scales, offsets, slot ordering,
-                // pants/feet logic, hair/hats, and accessory children to the
-                // mannequin.
-                try {
-                    wearer.i33 = skel;
-                    wearer.l9 = tone;
-                    wearer.a4 = (l && l.z39 && l.z39.a4 != null)
-                        ? l.z39.a4
-                        : (q.player && q.player.a4 != null ? q.player.a4 : 2);
-                    wearer.q7 = (l && l.z39 && l.z39.q7)
-                        ? l.z39.q7
-                        : (q.player && q.player.q7 ? q.player.q7 : null);
-                    // A proxy created from the live character inherits its J33 array.
-                    // Give the proxy its own outfit state so m38() actually rebuilds
-                    // the wearable attachments instead of deciding nothing changed.
-                    wearer.J33 = [];
-
-                    var wanted = (app && app.slice) ? app.slice(0, 11) : [];
-                    while (wanted.length < 11) wanted.push(0);
-
-                    // m38's second parameter is only used by the item's metadata
-                    // object; zero matches the normal local player path when no
-                    // special network item value is present.
-                    wearer.m38(wanted, 0);
-                    skel.a2 = 1;
-                    skel.e0();
-                    return;
-                } catch (eExactWear) {
-                    // Keep a tiny fallback for unusual title-screen states where
-                    // the inherited player methods are unavailable.
+            function __normalizeWearableScales(skel) {
+                // Inventory Yf items get a 56px-slot scale via D6. On the mannequin
+                // that scale is wrong relative to the body. Tile-sheet frames are
+                // already body-correct — force local scale 1 so wearables inherit
+                // only the mannequin root scale (same relative size as the player).
+                if (!skel) return;
+                function walk(node) {
+                    if (!node) return;
                     try {
-                        wearer.i33 = skel;
-                        wearer.l9 = tone;
-                        __clearPreviewWear(skel);
-                        __resetPreviewBody(skel, wearer, tone);
-                        skel.a2 = 1;
-                        skel.e0();
-                    } catch (eFallbackWear) {}
+                        if (node._1 === "wear") {
+                            if (typeof node.set_local_xScale === "function")
+                                node.set_local_xScale(1);
+                            if (typeof node.set_local_yScale === "function")
+                                node.set_local_yScale(1);
+                            try { if (node.a8 != null) node.a8 = 1; } catch (eA8) {}
+                            try { if (node.a9 != null) node.a9 = 1; } catch (eA9) {}
+                            try { if (node.b4 != null) node.b4 = 1; } catch (eB4) {}
+                            try { if (node.b5 != null) node.b5 = 1; } catch (eB5) {}
+                        }
+                    } catch (eW) {}
+                    var kids = node._9;
+                    if (kids && kids.length) {
+                        for (var i = 0; i < kids.length; i++) walk(kids[i]);
+                    }
                 }
+                walk(skel);
+            }
+
+            function __makePreviewWearer(skel, tone) {
+                // MUST NOT Object.create(q.player) — that shares the player's _9
+                // array via the prototype chain, so m38 case-10 / m32 / Yf parenting
+                // mutate the live player. Build a shallow isolated stand-in instead.
+                var w = {
+                    i33: skel,
+                    J33: [],
+                    l9: tone,
+                    a4: 2,
+                    _9: [],
+                    B2: false,
+                    B3: false,
+                    I32: "idle",
+                    I36: "walk",
+                    j30: "zswing",
+                    q7: (q.player && q.player.q7) ? q.player.q7 : { P4: 0 },
+                    // clear helpers used by m38 full rebuild — operate on skel only
+                    m32: function() {},
+                    m33: function() {
+                        try { q.player.m33.call(this); } catch (e) {}
+                    },
+                    m35: function() {
+                        try { q.player.m35.call(this); } catch (e) {}
+                    },
+                    m36: function() {
+                        try { q.player.m36.call(this); } catch (e) {}
+                    },
+                    m37: function() {
+                        try { q.player.m37.call(this); } catch (e) {}
+                    },
+                    L39: function() { this.I32 = "idle"; },
+                    m30: function() { this.I36 = "walk"; },
+                    m31: function() { this.j30 = "zswing"; }
+                };
+                return w;
             }
 
             function __equipOnPreview(skel, app) {
@@ -51172,29 +51176,26 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 var tone = 90;
                 try { if (q.player && q.player.l9 != null) tone = q.player.l9; } catch (eT) {}
                 try {
-                    if (!__previewWearer || __previewWearer.__dzSkeleton !== skel) {
-                        // IMPORTANT: use the actual character class as the *prototype*
-                        // for the mannequin wearer, not q.player (which is only the
-                        // player settings object).  This keeps all of the clothing
-                        // visual constructors (hair, hats, shoes, pants, back
-                        // accessories, etc.) using the same defaults/fields as the
-                        // real character, while the mannequin still owns a completely
-                        // separate skeleton and never renders through m38().
-                        var __wearBase = null;
-                        try { __wearBase = l && l.z39 ? l.z39 : null; } catch (eBase) {}
-                        try { __previewWearer = Object.create(__wearBase || q.player || {}); }
-                        catch (eObj) { __previewWearer = Object.create(q.player || {}); }
-                        __previewWearer.__dzSkeleton = skel;
+                    // Always strip old wear first so bones are clean before m38
+                    __clearWearOnSkel(skel);
+                } catch (eClr) {}
+                try {
+                    if (q.player && typeof q.player.m38 === "function") {
+                        var wearer = __makePreviewWearer(skel, tone);
+                        __previewWearer = wearer;
+                        var wanted = (app && app.slice) ? app.slice(0, 11) : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+                        while (wanted.length < 11) wanted.push(0);
+                        // Force full rebuild path (empty J33 → c === true in m38)
+                        wearer.J33 = [];
+                        q.player.m38.call(wearer, wanted, "");
+                        if (typeof skel._38 === "function") skel._38("idle", !0, 100, .5);
                     }
-                    __previewWearer.i33 = skel;
-                    __previewWearer.l9 = tone;
-                    try { __previewWearer.a4 = (l && l.z39 && l.z39.a4 != null) ? l.z39.a4 : q.player && q.player.a4; } catch (eA4p) { __previewWearer.a4 = q.player && q.player.a4; }
-                    try { __previewWearer.q7 = (l && l.z39 && l.z39.q7) ? l.z39.q7 : q.player && q.player.q7; } catch (eQ7p) { __previewWearer.q7 = q.player && q.player.q7; }
-                    __renderPreviewClothing(skel, app, tone);
-                    if (typeof skel._38 === "function") skel._38("idle", !0, 100, .5);
-                } catch (e) {
-                    try { __ensureHeadAndEyes(skel, tone); __tintPreviewSkin(skel, tone); } catch (eFallback) {}
-                }
+                } catch (e) {}
+                // Body-correct size: drop inventory-slot scale from D6
+                try { __normalizeWearableScales(skel); } catch (eNorm) {}
+                try { __ensureHeadAndEyes(skel, tone); } catch (eH) {}
+                try { __tintPreviewSkin(skel, tone); } catch (eS) {}
+                try { __tintPreviewShirt(skel); } catch (eShirt) {}
                 try { skel.a2 = 1; } catch (eActive) {}
             }
 
@@ -51216,61 +51217,80 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
 
             function __applyLive(app, text) {
-                // The Customize mannequin is intentionally independent from the
-                // game's live clothing renderer.  Do not call m38() here: besides
-                // being unnecessary, it can cause the normal inventory/equipment
-                // UI to rebuild while a Customize slot is being clicked.
+                try {
+                    if (q.player && typeof q.player.m38 === "function" && q.player.i33 && q.player.i33.Z28 != null)
+                        q.player.m38(app.slice(), text || "");
+                } catch (e) {}
                 try {
                     if (__previewSkelRef) __equipOnPreview(__previewSkelRef, app);
                 } catch (e2) {}
-
-                // Keep the service state as data only.  Do not call service.save()
-                // from a slot click; that save path can rebuild other inventory
-                // views and was the source of the disappearing Customize cells.
+                // Keep the live Dig+Trade service in sync too. Otherwise the
+                // Customize preview changes visually but the authoritative cached
+                // appearance immediately snaps back when the panel is reopened.
                 try {
                     if (q.diggerzService && q.diggerzService.state) {
                         q.diggerzService.state.appearance = app.slice(0, 11);
                         while (q.diggerzService.state.appearance.length < 11)
                             q.diggerzService.state.appearance.push(0);
                         if (typeof q.diggerzService.markDirty === "function") q.diggerzService.markDirty();
+                        if (typeof q.diggerzService.save === "function") q.diggerzService.save(true);
                     }
                 } catch (eServiceAppearance) {}
                 try {
                     var save = __loadDigSave() || { version: 6, slots: [], appearance: app.slice() };
                     save.appearance = app.slice();
-                    var rawKey = localStorage.getItem("diggerz.digtrade.rebuild.v3");
-                    if (rawKey) {
-                        try {
+                    try {
+                        var rawKey = localStorage.getItem("diggerz.digtrade.rebuild.v3");
+                        if (rawKey) {
                             var full = JSON.parse(rawKey);
                             full.appearance = app.slice();
                             localStorage.setItem("diggerz.digtrade.rebuild.v3", JSON.stringify(full));
-                        } catch (eParseKey) {
+                        } else {
                             localStorage.setItem("diggerz.digtrade.rebuild.v3", JSON.stringify(save));
                         }
-                    } else {
-                        localStorage.setItem("diggerz.digtrade.rebuild.v3", JSON.stringify(save));
+                    } catch (eKey) {
+                        localStorage.setItem("diggerz.digtrade.v1", JSON.stringify(save));
                     }
                 } catch (e3) {}
             }
 
             var __save = __loadDigSave();
             var __slots = (__save && __save.slots) ? __save.slots : [];
-            // The live player is the authority. J33 is exactly what m38() uses
-            // for the outfit currently equipped on the player. Do not infer worn
-            // items from inventory variants or from a second cache.
-            var __app = [];
+            var __app = __appearanceFromSave(__save);
+            // Prefer live service appearance (most accurate when available)
             try {
-                if (q.diggerzService && q.diggerzService.state &&
-                    Array.isArray(q.diggerzService.state.appearance) &&
-                    q.diggerzService.state.appearance.length)
+                if (q.diggerzService && q.diggerzService.state && q.diggerzService.state.appearance)
                     __app = q.diggerzService.state.appearance.slice(0, 11);
-            } catch (eSvcApp) {}
+            } catch (eSvc) {}
             try {
-                if (!__app.length && q.player && Array.isArray(q.player.J33) && q.player.J33.length)
-                    __app = q.player.J33.slice(0, 11);
+                if (q.player && q.player.J33 && q.player.J33.length) {
+                    var any = false;
+                    for (var zi = 0; zi < q.player.J33.length; zi++) if (q.player.J33[zi]|0) any = true;
+                    if (any) __app = q.player.J33.slice().concat([0,0,0,0,0,0,0,0,0,0,0]).slice(0, 11);
+                }
             } catch (eLive) {}
-            if (!__app.length) __app = __appearanceFromSave(__save);
+            // Pad appearance to 11
             while (__app.length < 11) __app.push(0);
+
+            // The inventory cache marks the last worn copy with variant === 1.
+            // Reconstruct those slots too, because the cached appearance array
+            // can lag behind the inventory after closing/reopening Customize.
+            try {
+                var __cachedSlots = (__save && Array.isArray(__save.slots)) ? __save.slots.slice() : [];
+                try {
+                    if (q.diggerzService && q.diggerzService.state && Array.isArray(q.diggerzService.state.slots)) {
+                        __cachedSlots = q.diggerzService.state.slots.slice();
+                    }
+                } catch (eLiveCachedSlots) {}
+                for (var __ci = 0; __ci < __cachedSlots.length; __ci++) {
+                    var __cachedItem = __cachedSlots[__ci];
+                    if (!__cachedItem || !(__cachedItem.id|0) || !(__cachedItem.count|0) ||
+                        (__cachedItem.variant|0) !== 1) continue;
+                    var __cachedWear = __wearSlotForItem(__cachedItem, __ci);
+                    if (__cachedWear >= 0 && __cachedWear < 11 && __cachedWear !== 8)
+                        __app[__cachedWear] = __cachedItem.id|0;
+                }
+            } catch (eCachedWear) {}
 
             // ---- Center: player preview box (engine idle rig) ----
             var __prev = new ja(240, 360, !0);
@@ -51291,14 +51311,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             if (!__skel) {
                 try {
                     var __maker = new z;
-                    // The actual player is constructed as new pa(..., .8, ...).
-                    // G2 itself builds the skeleton at native scale; .8 is the
-                    // character object's scale, so the preview must use the same
-                    // value rather than q.player.l0 (which is not the rig scale).
-                    __skel = __maker.G2("guy_anims", "guyskin", f, Fc.M39, null, !0);
-                    __skel.set_local_xScale(__skel.set_local_yScale(.8));
+                    var __scaleArg = 1;
+                    try { if (q.player && q.player.l0 != null) __scaleArg = q.player.l0; } catch (eSc) {}
+                    __skel = __maker.G2("guy_anims", "guyskin", f, Fc.M39, __scaleArg, !0);
                 } catch (eG2) {
-                    try { __skel = (new z).G2("guy_anims", "guyskin", f, null, null, !0); __skel.set_local_xScale(__skel.set_local_yScale(.8)); } catch (eG2b) {}
+                    try { __skel = (new z).G2("guy_anims", "guyskin", f, null, 1, !0); } catch (eG2b) {}
                 }
             }
 
@@ -51308,11 +51325,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     __skel.b6 = 0;
                     __skel.b7 = 50;
                     try { __skel.a0 = 0; } catch (eA0) {}
-                    // IMPORTANT: do not rescale the mannequin here.  G2() above
-                    // already receives q.player.l0, exactly like the real Fc rig.
-                    // Fc's constructor leaves its own scale at 1. Applying l0 a
-                    // second time makes the body and every attached wearable use
-                    // a different effective rig size than the real player.
+                    try {
+                        if (typeof __skel.set_local_xScale === "function")
+                            __skel.set_local_xScale(__skel.set_local_yScale(2.0));
+                    } catch (eScale) {}
                     try { __prev._9.push(__skel); } catch (ePush) {}
                     // Force idle (loop)
                     try {
@@ -51411,16 +51427,15 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             try { __invBox._9.push(__invT); } catch (eTitlePush) {}
             try { __invT.set_local_xScale(__invT.set_local_yScale(.75)); } catch (eTitleScale) {}
 
-            // The viewport mask belongs on the fixed inventory box, NOT on the
-            // scrolling content. The content moves; the mask must stay put.
+            // The scroll rectangle is a real render mask. It is applied to the box
+            // after all children are created as well, because the engine can rebuild
+            // masks during layout/e0.
             function __applyInvClip() {
                 try {
                     if (typeof __invBox.set_scrollRect === "function")
                         __invBox.set_scrollRect(new r(
-                            -__invW / 2 + 6,
-                            -__invH / 2 + 42,
-                            __invW - 12,
-                            __invH - 82
+                            -__invW / 2, -__invH / 2,
+                            __invW, __invH
                         ));
                 } catch (eClip) {}
             }
@@ -51432,71 +51447,85 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             __invContent.b6 = 0;
             __invContent.b7 = 0;
             this.__dzInvContent = __invContent;
+            // Clip the scrolling content itself. Clipping the outer JA alone can
+            // be bypassed by transformed child icons in the renderer.
+            try {
+                if (typeof __invContent.set_scrollRect === "function")
+                    __invContent.set_scrollRect(new r(
+                        -__invW / 2,
+                        -__invH / 2 + 48,
+                        __invW,
+                        __invH - 76
+                    ));
+            } catch (eContentClip) {}
 
             // Pull the authoritative inventory from the live service first, then
             // fall back to the local saved copy. Empty slots are retained so the
             // customize UI actually looks/behaves like an inventory.
-            var __rawSlots = [];
+            var __rawSlots = null;
             try {
-                // Use the real player's Sc inventory objects when available.
-                // They already contain the authoritative appearance slot (t46),
-                // category (a4), item id (h44), variant (b14), and count (g36).
-                var __liveInv = l && l.z39 && l.z39.n38 && l.z39.n38.B30;
-                if (Array.isArray(__liveInv)) {
-                    for (var __li = 0; __li < __liveInv.length; __li++) {
-                        var __liveItem = __liveInv[__li];
-                        if (__liveItem && (__liveItem.h44|0) && (__liveItem.g36|0))
-                            __rawSlots.push({
-                                id: __liveItem.h44|0,
-                                category: __liveItem.a4|0,
-                                variant: __liveItem.b14|0,
-                                count: __liveItem.g36|0,
-                                b14: __liveItem.b14|0,
-                                g39: __liveItem.g39,
-                                wear: (__liveItem.t46 == null ? -1 : __liveItem.t46|0),
-                                source: __liveItem
-                            });
-                    }
-                }
-            } catch (eLiveInv) {}
-            if (!__rawSlots.length) {
+                var __stNow = q.diggerzService && q.diggerzService.state;
+                if (__stNow && Array.isArray(__stNow.slots)) __rawSlots = __stNow.slots;
+            } catch (eSvcSlots) {}
+            if (!__rawSlots) {
                 try {
                     var __saveNow = __loadDigSave();
-                    if (__saveNow && Array.isArray(__saveNow.slots)) {
-                        for (var __si = 0; __si < __saveNow.slots.length; __si++) {
-                            var __sv = __saveNow.slots[__si];
-                            if (__sv && (__sv.id|0) && (__sv.count|0)) __rawSlots.push(__sv);
-                        }
-                    }
+                    if (__saveNow && Array.isArray(__saveNow.slots)) __rawSlots = __saveNow.slots;
                 } catch (eSaveSlots) {}
             }
+            if (!Array.isArray(__rawSlots)) __rawSlots = [];
+            while (__rawSlots.length < 50)
+                __rawSlots.push({category:0,id:0,variant:0,count:0,extra:0,text:""});
 
-            // Only appearance slots are shown in Customize. Gameplay tools,
-            // blocks, guns and swords never enter this list.
-            var __clothingWearSlots = {0:1,1:1,2:1,3:1,5:1,6:1,7:1,9:1};
-            var __clothingItems = [];
-            for (var __ri = 0; __ri < __rawSlots.length; __ri++) {
-                var __riItem = __rawSlots[__ri];
-                if (!__riItem || !(__riItem.id|0) || !(__riItem.count|0)) continue;
-                var __riWear = (__riItem.wear != null) ? (__riItem.wear|0) : -1;
-                if (__riWear < 0) {
-                    try { __riWear = __wearSlotForItem(__riItem, __ri); } catch (eWearMap) { __riWear = -1; }
-                }
-                if (__clothingWearSlots[__riWear]) {
-                    __clothingItems.push({ item: __riItem, wear: __riWear, sourceIndex: __ri });
-                }
+            var __cols = 4;
+            var __slotSize = 70;
+            var __rowH = 72;
+            var __gridW = __cols * __slotSize;
+            var __startX = -__gridW / 2 + __slotSize / 2;
+            var __startY = -__invH / 2 + 62;
+            var __slotCount = Math.max(50, __rawSlots.length);
+            var __rows = Math.ceil(__slotCount / __cols);
+
+            function __wearSlotForItem(item, slotIndex) {
+                if (!item || !(item.id|0)) return -1;
+                // Prefer the live inventory entry at the exact slot. This keeps
+                // duplicate copies of the same item from equipping the wrong
+                // cosmetic slot.
+                try {
+                    var invExact = l.z39 && l.z39.n38 && l.z39.n38.B30;
+                    var exact = invExact && invExact[slotIndex|0];
+                    if (exact && exact.a4 === 2 && exact.h44 === (item.id|0) &&
+                        exact.t46 >= 0 && exact.t46 <= 10)
+                        return exact.t46|0;
+                } catch (eExactWear) {}
+                // The real item renderer gets the authoritative appearance slot
+                // from h.n7/O27. Use a temporary icon so we don't guess slot 1.
+                try {
+                    var probe = new X(__invContent, item.category|0, item.id|0,
+                        item.variant|0, 0, Math.max(1, item.count|0), item.b14|0, item.g39);
+                    var ws = probe.t46;
+                    if (ws != null && ws >= 0 && ws <= 10) return ws|0;
+                } catch (eProbe) {}
+                // If the item is currently equipped, the live inventory object
+                // remains the most reliable source.
+                try {
+                    var invLive = l.z39 && l.z39.n38 && l.z39.n38.B30;
+                    if (invLive) {
+                        for (var wi = 0; wi < invLive.length; wi++) {
+                            var live = invLive[wi];
+                            if (live && live.h44 === (item.id|0) && live.a4 === 2 &&
+                                live.t46 >= 0 && live.t46 <= 10)
+                                return live.t46|0;
+                        }
+                    }
+                } catch (eLiveWear) {}
+                return -1;
             }
-            var __slotCount = __clothingItems.length;
-            var __rows = Math.max(1, Math.ceil(Math.max(1, __slotCount) / __cols));
 
             function __makeRealSlot(parent, x, y) {
                 var slot = new ra;
                 try { slot.X6(f.INVENTORYGRID_PNG()); } catch (eGrid) {}
                 slot.D7(parent, !0);
-                // ja is non-interactive by default. Give the cell a 60x60 hitbox;
-                // its child icon is visual-only so clicking an item cannot invoke
-                // the game's normal inventory C39 (which can rebuild/hide slots).
-                try { slot.d35 = !0; slot.c39 = new r(0,0,60,60); } catch (eCellHit) {}
                 try { parent._9.push(slot); } catch (eSlotPush) {}
                 slot.b6 = x;
                 slot.b7 = y;
@@ -51513,7 +51542,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     var icon = new X(slot, item.category|0, item.id|0,
                         item.variant|0, 0, item.count|0, item.b14|0, item.g39);
                     icon.N23();
-                    try { icon.E7 = function() { return !1; }; } catch (eIconHit) {}
                     try { slot._9.push(icon); } catch (eIconPush) {}
                     icon.b6 = 0;
                     icon.b7 = 0;
@@ -51537,10 +51565,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 var __sy = __startY + __row * __rowH;
                 var __cell = __makeRealSlot(__invContent, __sx, __sy);
                 __dzInvCells.push(__cell);
-                var __clothEntry = __clothingItems[__slotIndex];
-                var __item = __clothEntry.item;
+                var __item = __rawSlots[__slotIndex] || null;
+                if (!__item) __item = {category:0,id:0,variant:0,count:0,text:""};
+
                 var __icon = __putInventoryIcon(__cell, __item);
-                var __wear = __clothEntry.wear;
+                var __wear = __wearSlotForItem(__item, __slotIndex);
                 var __isWorn = (__wear >= 0 && (__equippedNow[__wear]|0) === (__item.id|0));
 
                 if (__isWorn) {
@@ -51583,27 +51612,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.__dzInvH = __invH;
             this.__dzInvW = __invW;
             this.__dzInvCells = __dzInvCells;
-
-            // Keep the Customize inventory layer self-contained.  Some game-side
-            // state changes can toggle display flags on descendants of a JA; never
-            // let that permanently remove a clothing cell.  Reassert the cells'
-            // parent/visibility/positions each frame without recreating them.
-            this.__dzRepairInventory = function() {
-                try {
-                    if (!__invContent || !__dzInvCells) return;
-                    for (var ri = 0; ri < __dzInvCells.length; ri++) {
-                        var cell = __dzInvCells[ri];
-                        if (!cell) continue;
-                        if (cell._2 !== __invContent) { try { cell.D7(__invContent, !0); } catch (eReparent) {} }
-                        cell.a0 = 1;
-                        var rr = Math.floor(ri / __cols), cc = ri % __cols;
-                        cell.b6 = __startX + cc * __slotSize;
-                        cell.b7 = __startY + rr * __rowH - (this.__dzInvScroll || 0);
-                    }
-                    __applyInvClip();
-                } catch (eRepair) {}
-            };
-            this.__dzRepairInventory();
 
             var __hint = new xa(0, __invH / 2 - 18, "^8mouse wheel / arrows", q.MAIN_FONT);
             __hint.D7(__invBox, !0);
@@ -51658,9 +51666,28 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 }, 50);
             } catch (eForce) {}
 
-            // Leave the native vl slider hit testing/dragging intact. The slider
-            // itself carries HEAD_PNG, so its native E7 hitbox is the little head;
-            // the d49 child is the background track.
+            // Only the little head/handle may start a skin-tone drag. Clicking the
+            // track itself must not jump the value or start dragging.
+            try {
+                var __origSkinC39 = this.y42.C39;
+                this.y42.C39 = function() {
+                    var handle = this.d49;
+                    var hit = false;
+                    try {
+                        var hw = (handle && handle._5) ? handle._5.width * Math.abs(handle.a8 || 1) : 24;
+                        var hh = (handle && handle._5) ? handle._5.height * Math.abs(handle.a9 || 1) : 24;
+                        var hx = handle ? Number(handle.A7) : Number(this.A7);
+                        var hy = handle ? Number(handle.A8) : Number(this.A8);
+                        hit = Math.abs(q.mX - hx) <= hw / 2 &&
+                              Math.abs(q.mY - hy) <= hh / 2;
+                    } catch (eHandleHit) {}
+                    if (!hit) {
+                        this.i32 = 1;
+                        return;
+                    }
+                    return __origSkinC39.call(this);
+                };
+            } catch (eSkinGuard) {}
 
             // Live skin + idle + inventory scroll. q.mWheel is the engine's actual
             // one-frame wheel value; the old code read q.mouseWheel, which never exists.
@@ -51670,8 +51697,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     var __ret = __mpE0.call(this);
                     try {
                         if (__previewSkelRef) {
-                            var __t2 = (q.player && q.player.l9 != null) ? q.player.l9 :
-                                (this.y42 ? this.y42.D43 : 45);
+                            var __t2 = Math.max(.01, (q.player && q.player.l9) ?
+                                q.player.l9 : (this.y42 ? this.y42.D43 : 90));
                             __tintPreviewSkin(__previewSkelRef, __t2);
                             try { __tintPreviewShirt(__previewSkelRef); } catch (eShirtLive) {}
                             try {
@@ -51714,18 +51741,34 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                     (this.__dzInvScroll || 0) + __delta
                                 ));
                                 this.__dzInvContent.b7 = -this.__dzInvScroll;
-                                // The fixed __invBox scrollRect above does the clipping.
-                                // Never toggle a0 on cells: that made off-screen slots
-                                // disappear permanently instead of reappearing.
-                                try { __applyInvClip(); } catch (eReclip) {}
+                                // The engine's scrollRect is not sufficient for these
+                                // transformed item sprites, so also hard-clip each
+                                // inventory cell to the visible inventory viewport.
+                                try {
+                                    var __clipTop = -(this.__dzInvH || 500) / 2 + 48;
+                                    var __clipBottom = (this.__dzInvH || 500) / 2 - 42;
+                                    var __cells = this.__dzInvCells || [];
+                                    for (var __ci2 = 0; __ci2 < __cells.length; __ci2++) {
+                                        var __cc = __cells[__ci2];
+                                        if (!__cc) continue;
+                                        var __vy = Number(__cc.b7) - Number(this.__dzInvScroll || 0);
+                                        __cc.a0 = (__vy + 35 < __clipTop || __vy - 35 > __clipBottom) ? 0 : 1;
+                                    }
+                                } catch (eCellClip) {}
                                 // Consume the engine's one-frame wheel event only here.
                                 try { q.mWheel = 0; } catch (eConsume) {}
                             }
-                            try { __applyInvClip(); } catch (eClip2) {}
+                            try {
+                                if (this.__dzInvBox && typeof this.__dzInvBox.set_scrollRect === "function")
+                                    this.__dzInvBox.set_scrollRect(new r(
+                                        -(this.__dzInvW || 320) / 2,
+                                        -(this.__dzInvH || 500) / 2,
+                                        this.__dzInvW || 320,
+                                        this.__dzInvH || 500
+                                    ));
+                            } catch (eClip2) {}
                         }
                     } catch (eScroll) {}
-
-                    try { if (this.__dzRepairInventory) this.__dzRepairInventory(); } catch (eRepairFrame) {}
 
                     // Clicking outside the Customize JA closes it. A click on any
                     // child (including an inventory slot or the skin handle) sets
@@ -51796,7 +51839,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         },
         e0: function() {
             this.y42.set_local_r(this.y42.set_local_g(this.y42.set_local_b(.45 + 1.1 * this.y42.D43 / 100)));
-            q.player.l9 = Math.max(q.player.k7, Math.min(q.player.k8, this.y42.D43));
+            q.player.l9 = Math.max(0, Math.min(100, this.y42.D43));
             return ja.prototype.e0.call(this)
         },
         C39: function() {
@@ -119426,166 +119469,7 @@ e50: function(a) {
   };
 })();
 </script>
-<script src="/build239-client.js"></script><script src="/build240-client.js"></script>
-<script id="diggerz-customize-screen-v19">
-(function(){
-  // V19: build on the known-good V16 Customize implementation.
-  // Keep all existing parents/containers alive.  The title/menu is hidden by
-  // the normal client parent visibility mechanism; nothing is destroyed.
-  var active=false, beta=null, customizeMusic=null, title=null;
-
-  function setAlpha(o,a){
-    if(!o) return;
-    try {
-      if(typeof o.set_local_alp==='function') o.set_local_alp(a);
-      else if(typeof o.set_alp==='function') o.set_alp(a);
-    } catch(e){}
-  }
-
-  function fade(o,to,ms){
-    if(!o) return;
-    try {
-      var from = (o.a7 != null) ? Number(o.a7) : 1;
-      if(!isFinite(from)) from=1;
-      E.u4(o,0,ms||300,from,to,0,1,0);
-    } catch(e){ setAlpha(o,to); }
-  }
-
-  function getTitle(){
-    try { return q.GetChildByType(Cf); } catch(e){ return null; }
-  }
-
-  function getCustomize(){
-    try {
-      var t=getTitle();
-      if(t && t._9) for(var i=0;i<t._9.length;i++)
-        if(t._9[i] instanceof Mp) return t._9[i];
-    } catch(e){}
-    return null;
-  }
-
-  function ensureBeta(){
-    if(beta && beta._2===l.z38) return beta;
-    try {
-      if(beta && beta._2 && beta._2._9) beta.a0=1;
-    } catch(eOld){}
-    beta=null;
-    try {
-      // This is the game's real Beta Bknd implementation (theme 9), rather
-      // than a PNG child of the hidden title-screen parent.
-      beta = new cg(9);
-      beta._1 = "diggerz_customize_beta_bknd";
-      beta.D7(l.z38);
-      l.z38._9.splice(0,0,beta);
-      beta.a0=0;
-      setAlpha(beta,0);
-      return beta;
-    } catch(e){ beta=null; return null; }
-  }
-
-  function startMusic(){
-    if(customizeMusic) return;
-    try {
-      customizeMusic = new Howl({
-        src:['music_theme2.ogg'],
-        preload:true,
-        loop:true,
-        volume:.7
-      });
-      customizeMusic.play();
-    } catch(e){ customizeMusic=null; }
-  }
-
-  function stopMusic(){
-    if(!customizeMusic) return;
-    try { customizeMusic.stop(); } catch(e){}
-    try { customizeMusic.unload(); } catch(e2){}
-    customizeMusic=null;
-  }
-
-  function openCustomize(){
-    if(active) return;
-    title=getTitle();
-    var panel=getCustomize();
-    if(!title || !panel) return;
-    active=true;
-
-    // The existing game call l.b45(panel) already hides the old menu parents
-    // instead of removing them. Keep that behavior; do not rebuild anything.
-    try { l.b45(panel); } catch(eHide){}
-
-    beta=ensureBeta();
-    if(beta){
-      beta.a0=0;
-      fade(beta,1,450);
-    }
-    startMusic();
-  }
-
-  function closeCustomize(){
-    if(!active) return;
-    active=false;
-    stopMusic();
-
-    // Hide the beta backdrop, but keep its object alive for the next open.
-    if(beta){
-      try { fade(beta,0,350); } catch(e){}
-      try { beta.a0=1; } catch(e2){}
-    }
-
-    // Restore the original title-screen parent/UI instead of recreating it.
-    var t=getTitle();
-    if(t){
-      try {
-        t.a0=0;
-        setAlpha(t,1);
-        // The original main-menu backdrop is the Cf.d34 cg(0).
-        if(t.d34){
-          t.d34.a0=0;
-          setAlpha(t.d34,1);
-        }
-      } catch(eRestore){}
-    }
-  }
-
-  window.DiggerzCustomizeScreenV19={
-    open:openCustomize,
-    close:closeCustomize,
-    isOpen:function(){return active;}
-  };
-
-  function hook(){
-    if(typeof Op==='undefined' || typeof Mp==='undefined') return false;
-
-    if(!Op.prototype.__dzV19Hooked){
-      var oldOpen=Op.prototype._56;
-      Op.prototype._56=function(){
-        var r=oldOpen.apply(this,arguments);
-        try { window.setTimeout(openCustomize,0); } catch(e){}
-        return r;
-      };
-      Op.prototype.__dzV19Hooked=true;
-    }
-
-    if(!Mp.prototype.__dzV19Hooked){
-      var oldClose=Mp.prototype.C39;
-      Mp.prototype.C39=function(){
-        try { closeCustomize(); } catch(e){}
-        return oldClose.apply(this,arguments);
-      };
-      Mp.prototype.__dzV19Hooked=true;
-    }
-    return true;
-  }
-
-  var tries=0;
-  var timer=setInterval(function(){
-    if(hook() || ++tries>120) clearInterval(timer);
-  },100);
-})();
-</script>
-
-</body>
+<script src="/build239-client.js"></script><script src="/build240-client.js"></script></body>
 </html>
 <!-- Other original content may be protected by copyright. -->
 

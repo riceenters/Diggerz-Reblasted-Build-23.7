@@ -51063,38 +51063,119 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
 
             var __previewWearer = null;
+            function __clearWearOnSkel(skel) {
+                // Strip every previously attached "wear" sprite from the mannequin
+                // so re-equip does not stack duplicates or leave wrong-sized leftovers.
+                if (!skel) return;
+                function strip(node) {
+                    if (!node || !node._9) return;
+                    var keep = [];
+                    for (var i = 0; i < node._9.length; i++) {
+                        var c = node._9[i];
+                        if (!c) continue;
+                        if (c._1 === "wear") {
+                            try { if (typeof c.e1 === "function") c.e1(); } catch (eE) {}
+                            try { c._2 = null; } catch (e2) {}
+                            continue;
+                        }
+                        keep.push(c);
+                        strip(c);
+                    }
+                    node._9.length = 0;
+                    for (var j = 0; j < keep.length; j++) node._9.push(keep[j]);
+                }
+                strip(skel);
+            }
+
+            function __normalizeWearableScales(skel) {
+                // Inventory Yf items get a 56px-slot scale via D6. On the mannequin
+                // that scale is wrong relative to the body. Tile-sheet frames are
+                // already body-correct — force local scale 1 so wearables inherit
+                // only the mannequin root scale (same relative size as the player).
+                if (!skel) return;
+                function walk(node) {
+                    if (!node) return;
+                    try {
+                        if (node._1 === "wear") {
+                            if (typeof node.set_local_xScale === "function")
+                                node.set_local_xScale(1);
+                            if (typeof node.set_local_yScale === "function")
+                                node.set_local_yScale(1);
+                            try { if (node.a8 != null) node.a8 = 1; } catch (eA8) {}
+                            try { if (node.a9 != null) node.a9 = 1; } catch (eA9) {}
+                            try { if (node.b4 != null) node.b4 = 1; } catch (eB4) {}
+                            try { if (node.b5 != null) node.b5 = 1; } catch (eB5) {}
+                        }
+                    } catch (eW) {}
+                    var kids = node._9;
+                    if (kids && kids.length) {
+                        for (var i = 0; i < kids.length; i++) walk(kids[i]);
+                    }
+                }
+                walk(skel);
+            }
+
+            function __makePreviewWearer(skel, tone) {
+                // MUST NOT Object.create(q.player) — that shares the player's _9
+                // array via the prototype chain, so m38 case-10 / m32 / Yf parenting
+                // mutate the live player. Build a shallow isolated stand-in instead.
+                var w = {
+                    i33: skel,
+                    J33: [],
+                    l9: tone,
+                    a4: 2,
+                    _9: [],
+                    B2: false,
+                    B3: false,
+                    I32: "idle",
+                    I36: "walk",
+                    j30: "zswing",
+                    q7: (q.player && q.player.q7) ? q.player.q7 : { P4: 0 },
+                    // clear helpers used by m38 full rebuild — operate on skel only
+                    m32: function() {},
+                    m33: function() {
+                        try { q.player.m33.call(this); } catch (e) {}
+                    },
+                    m35: function() {
+                        try { q.player.m35.call(this); } catch (e) {}
+                    },
+                    m36: function() {
+                        try { q.player.m36.call(this); } catch (e) {}
+                    },
+                    m37: function() {
+                        try { q.player.m37.call(this); } catch (e) {}
+                    },
+                    L39: function() { this.I32 = "idle"; },
+                    m30: function() { this.I36 = "walk"; },
+                    m31: function() { this.j30 = "zswing"; }
+                };
+                return w;
+            }
+
             function __equipOnPreview(skel, app) {
                 if (!skel) return;
                 var tone = 90;
                 try { if (q.player && q.player.l9 != null) tone = q.player.l9; } catch (eT) {}
                 try {
+                    // Always strip old wear first so bones are clean before m38
+                    __clearWearOnSkel(skel);
+                } catch (eClr) {}
+                try {
                     if (q.player && typeof q.player.m38 === "function") {
-                        // Run the real appearance pipeline against a proxy object.
-                        // This gives the preview the exact same Yf item attachment
-                        // logic as the player without temporarily replacing the
-                        // real player's skeleton.
-                        if (!__previewWearer || __previewWearer.__dzSkeleton !== skel) {
-                            __previewWearer = Object.create(q.player);
-                            __previewWearer.__dzSkeleton = skel;
-                            __previewWearer.i33 = skel;
-                            __previewWearer.J33 = [];
-                            __previewWearer.m32 = function() {}; // never touch player's children
-                        }
-                        __previewWearer.i33 = skel;
-                        __previewWearer.l9 = tone;
-                        __previewWearer.J33 = [];
-                        var wanted = (app && app.slice) ? app.slice(0,11) : [0,0,0,0,0,0,0,0,0,0,0];
+                        var wearer = __makePreviewWearer(skel, tone);
+                        __previewWearer = wearer;
+                        var wanted = (app && app.slice) ? app.slice(0, 11) : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
                         while (wanted.length < 11) wanted.push(0);
-                        q.player.m38.call(__previewWearer, wanted, "");
-                        // m38 intentionally enters the wear animation while it
-                        // rebuilds cosmetics; immediately hand control back to idle.
+                        // Force full rebuild path (empty J33 → c === true in m38)
+                        wearer.J33 = [];
+                        q.player.m38.call(wearer, wanted, "");
                         if (typeof skel._38 === "function") skel._38("idle", !0, 100, .5);
                     }
                 } catch (e) {}
-                // Always restore head texture + eyes + exact slider skin tone.
+                // Body-correct size: drop inventory-slot scale from D6
+                try { __normalizeWearableScales(skel); } catch (eNorm) {}
                 try { __ensureHeadAndEyes(skel, tone); } catch (eH) {}
                 try { __tintPreviewSkin(skel, tone); } catch (eS) {}
-                // And apply the player's permanent starting shirt color.
                 try { __tintPreviewShirt(skel); } catch (eShirt) {}
                 try { skel.a2 = 1; } catch (eActive) {}
             }

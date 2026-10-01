@@ -53,13 +53,12 @@
             var name = String(path || "").toLowerCase(), now = Date.now();
             // The original client and the reconstructed service can report the
             // same action in one frame. Avoid turning one hit into two sounds.
-            var cooldown = /lightsword/.test(name) ? 120 : 24;
-            if (lastPlayed[name] && now - lastPlayed[name] < cooldown) return true;
+            if (lastPlayed[name] && now - lastPlayed[name] < 24) return true;
             lastPlayed[name] = now;
             var ctx = audioContext();
             if (!ctx) return false;
             if (ctx.state === "suspended" && ctx.resume) ctx.resume().catch(function () {});
-            var destination = output(ctx, /lightsword/.test(name) ? volume * .3 : volume);
+            var destination = output(ctx, volume);
             if (/coin|purchase|levelup|checkpoint/.test(name)) {
                 tone(ctx, destination, 620, 880, .11, "sine");
                 tone(ctx, destination, 880, 1240, .14, "sine", .08)
