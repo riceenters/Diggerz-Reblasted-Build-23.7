@@ -16282,31 +16282,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         e.a0 = 0
                     }
             }
-            /* DZ PATCH: force every mannequin wearable to the exact player rig scale.
-               Remove wearable scale animation tracks so the normal animation tick cannot
-               immediately restore the item-native scale. */
-            var __dzWearScale = Number(q.player.l0);
-            if (isFinite(__dzWearScale)) {
-                var __dzWearStack = [this.i33];
-                while (__dzWearStack.length) {
-                    var __dzWearNode = __dzWearStack.pop();
-                    if (null == __dzWearNode) continue;
-                    if (__dzWearNode._1 === "wear") {
-                        if (__dzWearNode._8) {
-                            for (var __dzAi = 0; __dzAi < __dzWearNode._8.length; __dzAi++) {
-                                var __dzAnim = __dzWearNode._8[__dzAi];
-                                if (__dzAnim && (__dzAnim.x4 === 3 || __dzAnim.x4 === 4))
-                                    __dzWearNode._8[__dzAi] = null;
-                            }
-                        }
-                        __dzWearNode.set_local_xScale(__dzWearScale);
-                        __dzWearNode.set_local_yScale(__dzWearScale);
-                    }
-                    if (__dzWearNode._9)
-                        for (var __dzCi = 0; __dzCi < __dzWearNode._9.length; __dzCi++)
-                            if (__dzWearNode._9[__dzCi]) __dzWearStack.push(__dzWearNode._9[__dzCi]);
-                }
-            }
             this.B2 = this.B3 = !0;
             this.i33.e0()
         },
@@ -51148,16 +51123,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 }
                 wearer.i33 = skel;
                 wearer.l9 = tone;
-                // Use the exact player rig size variable for wearable visuals.
-                // Keep each item's native visual scale, then apply the same base
-                // rig scale the real player rig uses.  Do NOT resize the mannequin
-                // rig itself to compensate for clothing.
-                var __dzWearScale = 1;
-                try {
-                    if (q.player && q.player.l0 != null && isFinite(Number(q.player.l0)))
-                        __dzWearScale = Number(q.player.l0);
-                } catch (eWearScale) {}
-                try { wearer.__dzWearScale = __dzWearScale; } catch (eWearScaleStore) {}
+                // The mannequin skeleton itself is scaled to the exact player rig
+                // scale. Clothing must keep the game's native local scale so it
+                // inherits that same rig scale exactly once.
+                try { wearer.__dzWearScale = 1; } catch (eWearScaleStore) {}
                 try { wearer.a4 = (l && l.z39 && l.z39.a4 != null) ? l.z39.a4 : q.player && q.player.a4; } catch (eA42) {}
                 try { wearer.q7 = (l && l.z39 && l.z39.q7) ? l.z39.q7 : q.player && q.player.q7; } catch (eQ72) {}
                 __clearPreviewWear(skel);
@@ -51195,16 +51164,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 }
 
                 function __dzApplyWearScale(visual) {
-                    if (!visual) return;
-                    try {
-                        var s = (wearer && wearer.__dzWearScale != null) ?
-                            Number(wearer.__dzWearScale) : 1;
-                        if (!isFinite(s) || s <= 0) s = 1;
-                        // Preserve the clothing renderer's native b4/b5 sizing and
-                        // apply the player's exact rig-size variable on top.
-                        visual.set_local_xScale(visual.b4 * s);
-                        visual.set_local_yScale(visual.b5 * s);
-                    } catch (eScaleWear) {}
+                    // No extra clothing multiplier. D6() already applies the
+                    // item's authoritative local scale; the parent mannequin
+                    // carries the exact player rig scale.
+                    return visual;
                 }
 
                 // 0 = headwear, 1 = hair/face, 2 = shirt/top, 3 = shoes,
@@ -51435,8 +51398,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     __skel.b7 = 50;
                     try { __skel.a0 = 0; } catch (eA0) {}
                     try {
+                        var __playerRigScale = 1;
+                        if (q.player && q.player.l0 != null && isFinite(Number(q.player.l0)))
+                            __playerRigScale = Number(q.player.l0);
+                        if (__playerRigScale <= 0) __playerRigScale = 1;
                         if (typeof __skel.set_local_xScale === "function")
-                            __skel.set_local_xScale(__skel.set_local_yScale(2.0));
+                            __skel.set_local_xScale(__skel.set_local_yScale(__playerRigScale));
                     } catch (eScale) {}
                     try { __prev._9.push(__skel); } catch (ePush) {}
                     // Force idle (loop)
