@@ -50515,8 +50515,20 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this._9.push(b);
         a += 85;
         this.y42 = new vl(this,0,a,280,50,2,f.HEAD_PNG(),Th.n7(),null,q.player.l9);
-        this.y42.b7 = -240; // user layout
-        this.y42.b6 = 95; // user layout
+        // Place track at layout center; handle offset reflects current skin tone
+        try {
+            var __initTone = (q.player && q.player.l9 != null) ? Number(q.player.l9) : 90;
+            if (!isFinite(__initTone)) __initTone = 90;
+            this.y42.D43 = __initTone;
+            var __initW = this.y42.D40 || 280;
+            var __initOff = __initTone * __initW / 100 - __initW / 2;
+            this.y42.b6 = 95 + __initOff;
+            this.y42.b7 = -240;
+            if (this.y42.d49) this.y42.d49.b6 = -__initOff;
+        } catch (eInitSk) {
+            this.y42.b7 = -240;
+            this.y42.b6 = 95;
+        }
         this.y42.d49.set_alp(0);
         this._9.push(this.y42);
         this.y43 = z.I9();
@@ -51241,80 +51253,230 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 try {
                     var holder = {
                         a4: 2, i33: skel, l9: tone, J33: [], _9: [],
-                        q7: { P4: (q.player && q.player.K2) ? q.player.K2 : 0 }
+                        q7: { P4: 0 }
                     };
                     var f = new Yf(holder, 2, itemId, 0, slot, 1, "", 0);
                     try { h.n7(2, f, itemId, 0); } catch (eN7) {}
                     if (!f || !(f.h44|0)) return;
 
-                    function putOnHead() {
-                        var g = skel.f2("head");
-                        if (!g) return;
+                    function scaleWear(e) {
+                        try {
+                            if (typeof e.set_local_xScale === "function") e.set_local_xScale(1);
+                            if (typeof e.set_local_yScale === "function") e.set_local_yScale(1);
+                        } catch (eSc) {}
+                    }
+                    function putOnBone(boneName, insertAt, dimBack) {
+                        var g = skel.f2(boneName);
+                        if (!g) return null;
                         var e = Yf.W48(itemId, holder);
                         e.D7(g);
                         f.D6(e);
                         e.b6 = f.t44;
                         e.b7 = f.t45;
                         e._1 = "wear";
-                        try { e.set_r(e.b8); e.set_g(e.b9); e.set_b(e.B0); } catch (eCol) {}
                         e.b2 = !0;
-                        if (!g._9) g._9 = [];
-                        g._9.push(e);
                         try {
-                            e.set_local_xScale(1);
-                            e.set_local_yScale(1);
-                        } catch (eSc) {}
+                            if (dimBack) {
+                                e.set_local_r(.9 * f.b8);
+                                e.set_local_g(.9 * f.b9);
+                                e.set_local_b(.9 * f.B0);
+                            } else {
+                                e.set_r(e.b8); e.set_g(e.b9); e.set_b(e.B0);
+                            }
+                        } catch (eCol) {}
+                        try { e.c9 = f.c9; } catch (eC9) {}
+                        scaleWear(e);
+                        if (!g._9) g._9 = [];
+                        if (insertAt != null && insertAt >= 0)
+                            g._9.splice(insertAt, 0, e);
+                        else
+                            g._9.push(e);
+                        return e;
                     }
 
                     switch (slot) {
                     case 0: // hair
-                    case 1: // hat
-                    case 9: // face accessory
-                        putOnHead();
+                        putOnBone("head", null, false);
                         break;
-                    case 2: // shirt / torso
+                    case 1: // hat
+                        putOnBone("head", 2, false);
+                        // Some hats hide the head mesh
                         try {
+                            if (f.T41) {
+                                var hd = skel.f2("head");
+                                if (hd) {
+                                    hd.C2 = !0;
+                                    hd.set_local_r(hd.set_local_g(hd.set_local_b(1)));
+                                    if (hd._9) for (var hi = 0; hi < hd._9.length; hi++)
+                                        try { if (hd._9[hi] && hd._9[hi]._1 !== "wear") hd._9[hi].C2 = !0; } catch (eH) {}
+                                }
+                            }
+                        } catch (eMask) {}
+                        break;
+                    case 2: // shirt — torso + both arm textures
+                        try {
+                            var armF = skel.f2("front_shoulder");
+                            if (armF) armF = armF.f2("arm");
+                            if (armF && f._9 && f._9[0]) {
+                                armF._3 = f._9[0]._3;
+                                if (f._9[0]._5) armF._5 = f._9[0]._5;
+                                armF.c9 = f._9[0].c9;
+                                if (f.T48)
+                                    armF.set_local_r(armF.set_local_g(armF.set_local_b(tone)));
+                                else {
+                                    armF.set_local_r(f.b8);
+                                    armF.set_local_g(f.b9);
+                                    armF.set_local_b(f.B0);
+                                }
+                            }
+                            var armB = skel.f2("back_shoulder");
+                            if (armB) armB = armB.f2("arm_back");
+                            if (armB && f._9 && f._9[0]) {
+                                armB._3 = f._9[0]._3;
+                                if (f._9[0]._5) armB._5 = f._9[0]._5;
+                                armB.c9 = f._9[0].c9;
+                                if (f.T48)
+                                    armB.set_local_r(armB.set_local_g(armB.set_local_b(tone)));
+                                else {
+                                    armB.set_local_r(f.b8);
+                                    armB.set_local_g(f.b9);
+                                    armB.set_local_b(f.B0);
+                                }
+                            }
                             var torso = skel.f2("torso");
-                            if (torso && f._3) {
-                                torso._3 = f._3;
+                            if (torso) {
+                                if (f._3) torso._3 = f._3;
                                 if (f._5) torso._5 = f._5;
+                                torso.c9 = f.c9;
                                 torso.set_local_r(f.b8);
                                 torso.set_local_g(f.b9);
                                 torso.set_local_b(f.B0);
                             }
                         } catch (eSh) {}
                         break;
-                    case 3: // shoes
+                    case 3: // shoes — BOTH feet
                         try {
-                            var foot = skel.f2("front_foot");
-                            if (foot) {
-                                var e3 = Yf.W48(itemId, holder);
-                                e3.D7(foot);
-                                f.D6(e3);
-                                e3._1 = "wear";
-                                e3.b2 = !0;
-                                if (!foot._9) foot._9 = [];
-                                foot._9.push(e3);
-                                try { e3.set_local_xScale(1); e3.set_local_yScale(1); } catch (eS3) {}
+                            var ff = skel.f2("front_foot");
+                            if (ff) {
+                                var eF = Yf.W48(itemId, holder);
+                                eF.D7(ff);
+                                f.D6(eF);
+                                eF.b6 = f.t44; eF.b7 = f.t45;
+                                eF._1 = "wear"; eF.b2 = !0;
+                                eF.c9 = f.c9;
+                                if (f.T48)
+                                    ff.set_local_r(ff.set_local_g(ff.set_local_b(tone)));
+                                else {
+                                    eF.set_local_r(f.b8);
+                                    eF.set_local_g(f.b9);
+                                    eF.set_local_b(f.B0);
+                                }
+                                scaleWear(eF);
+                                if (!ff._9) ff._9 = [];
+                                ff._9.push(eF);
+                            }
+                            var bf = skel.f2("back_foot");
+                            if (bf) {
+                                var eB = Yf.W48(itemId, holder);
+                                eB.D7(bf);
+                                f.D6(eB);
+                                eB.b6 = f.t44; eB.b7 = f.t45;
+                                eB._1 = "wear"; eB.b2 = !0;
+                                eB.c9 = f.c9;
+                                if (f.T48)
+                                    bf.set_local_r(bf.set_local_g(bf.set_local_b(tone)));
+                                else {
+                                    eB.set_local_r(.9 * f.b8);
+                                    eB.set_local_g(.9 * f.b9);
+                                    eB.set_local_b(.9 * f.B0);
+                                }
+                                scaleWear(eB);
+                                if (!bf._9) bf._9 = [];
+                                bf._9.push(eB);
                             }
                         } catch (eFt) {}
                         break;
-                    case 7: // pants
+                    case 5: // torso accessory (cape/backpack-ish)
+                        putOnBone("torso", null, false);
+                        break;
+                    case 6: // face / glasses
                         try {
-                            var pants = skel.f2("pants");
-                            if (pants && f._3) {
-                                pants._3 = f._3;
-                                if (f._5) pants._5 = f._5;
-                                pants.set_local_r(f.b8);
-                                pants.set_local_g(f.b9);
-                                pants.set_local_b(f.B0);
+                            var head6 = skel.f2("head");
+                            if (head6) {
+                                // Some face items hide eyes
+                                try {
+                                    if (f.T43) {
+                                        var eyes = head6.f0 && head6.f0("eyes");
+                                        if (eyes) eyes.a0 = 1;
+                                        // also search _9
+                                        if (head6._9) for (var ei = 0; ei < head6._9.length; ei++)
+                                            if (head6._9[ei] && head6._9[ei]._1 === "eyes")
+                                                head6._9[ei].a0 = 1;
+                                    }
+                                } catch (eEy) {}
+                                putOnBone("head", 1, false);
+                            }
+                        } catch (eFc) {}
+                        break;
+                    case 7: // pants — both legs + pants bone
+                        try {
+                            if (f.T44) {
+                                try { skel.f2("front_foot").a2 = !1; } catch (e1) {}
+                                try { skel.f2("back_foot").a2 = !1; } catch (e2) {}
+                            }
+                            if (f.T41) {
+                                // overlay pants sprite, hide default legs
+                                putOnBone("pants", null, false);
+                                try { var lg = skel.f2("leg"); if (lg) lg.C2 = !0; } catch (eL) {}
+                                try { var lgb = skel.f2("leg_back"); if (lgb) lgb.C2 = !0; } catch (eLb) {}
+                            } else {
+                                // texture-swap front leg, back leg, and pants
+                                var fl = skel.f2("front_lowerleg");
+                                if (fl) fl = fl.f2("leg");
+                                if (fl && f._9 && f._9[0]) {
+                                    fl._3 = f._9[0]._3;
+                                    if (f._9[0]._5) fl._5 = f._9[0]._5;
+                                    fl.c9 = f.c9;
+                                    if (f.T48)
+                                        fl.set_local_r(fl.set_local_g(fl.set_local_b(tone)));
+                                    else {
+                                        fl.set_local_r(f.b8);
+                                        fl.set_local_g(f.b9);
+                                        fl.set_local_b(f.B0);
+                                    }
+                                }
+                                var bl = skel.f2("back_lowerleg");
+                                if (bl) bl = bl.f2("leg_back");
+                                if (bl && f._9 && f._9[0]) {
+                                    bl._3 = f._9[0]._3;
+                                    if (f._9[0]._5) bl._5 = f._9[0]._5;
+                                    bl.c9 = f.c9;
+                                    if (f.T48)
+                                        bl.set_local_r(bl.set_local_g(bl.set_local_b(tone)));
+                                    else {
+                                        bl.set_local_r(f.b8);
+                                        bl.set_local_g(f.b9);
+                                        bl.set_local_b(f.B0);
+                                    }
+                                }
+                                var pn = skel.f2("pants");
+                                if (pn) {
+                                    if (f._3) pn._3 = f._3;
+                                    if (f._5) pn._5 = f._5;
+                                    pn.c9 = f.c9;
+                                    pn.set_local_r(f.b8);
+                                    pn.set_local_g(f.b9);
+                                    pn.set_local_b(f.B0);
+                                }
                             }
                         } catch (ePn) {}
                         break;
+                    case 9: // face accessory alt
+                        putOnBone("head", 2, false);
+                        break;
                     default:
-                        // Generic: try head attach for unknown cosmetic slots
-                        if (slot !== 4 && slot !== 5 && slot !== 6)
-                            putOnHead();
+                        if (slot !== 4)
+                            putOnBone("head", null, false);
                         break;
                     }
                 } catch (eAtt) {}
@@ -51370,7 +51532,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 
                 try { __normalizeWearableScales(skel); } catch (eNorm) {}
                 try { __tintPreviewSkin(skel, tone); } catch (eS) {}
-                try { __tintPreviewShirt(skel); } catch (eShirt) {}
+                // Only force the stored shirt palette when no shirt cosmetic is equipped.
+                // Otherwise it overwrites the real shirt/torso textures we just applied.
+                try {
+                    if (!(wanted[2]|0)) __tintPreviewShirt(skel);
+                } catch (eShirt) {}
                 try { skel.a2 = 1; } catch (eActive) {}
                 try {
                     if (typeof skel._38 === "function")
@@ -51533,8 +51699,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                             __skel.set_local_xScale(__skel.set_local_yScale(2.0));
                     } catch (eScale) {}
                     try { __prev._9.push(__skel); } catch (ePush) {}
-                    // Force idle (loop). Never call G7("idle") — G7 destroys
-                    // children by name. Load anim table if still missing.
+                    // Mannequin-only idle + occasional fun emotes. Uses the
+                    // rig's own Z26 animation table (from guy_anims), not the
+                    // live player's current animation state.
                     try {
                         if ((!__skel.Z26 || !__skel.Z26.length) && typeof Fc !== "undefined" && Fc.M39)
                             __skel.Z26 = Fc.M39;
@@ -51547,6 +51714,30 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                 try { __skel._38("idle", !0, 100, .5); } catch (e3) {}
                             }, 600);
                         }
+                        // Occasional random emotes (not too often)
+                        try {
+                            if (__skel.__dzEmoteTimer) clearInterval(__skel.__dzEmoteTimer);
+                            var __emotes = ["pump", "strut", "yeah", "yipee", "dab", "wow"];
+                            var __emoteSkel = __skel;
+                            __skel.__dzEmoteTimer = setInterval(function() {
+                                try {
+                                    if (!__emoteSkel || __emoteSkel.a0 == 1) return;
+                                    // ~35% chance each tick so it feels occasional
+                                    if (Math.random() > 0.35) return;
+                                    var name = __emotes[Math.floor(Math.random() * __emotes.length)];
+                                    if (typeof __emoteSkel._38 === "function") {
+                                        __emoteSkel._38(name, !1, 0, 1);
+                                        // Return to idle after the emote (~1.8s)
+                                        setTimeout(function() {
+                                            try {
+                                                if (__emoteSkel && typeof __emoteSkel._38 === "function")
+                                                    __emoteSkel._38("idle", !0, 100, .5);
+                                            } catch (eBack) {}
+                                        }, 1800);
+                                    }
+                                } catch (eEm) {}
+                            }, 7000); // every ~7s consider playing one
+                        } catch (eEmoteSetup) {}
                     } catch (eIdle) {}
                     __previewSkelRef = __skel;
                     this.__diggerzPreviewSkel = __skel;
@@ -51814,26 +52005,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.__dzInvH = __invH;
             this.__dzInvW = __invW;
             this.__dzInvCells = __dzInvCells;
-            // Initial viewport clip so overflowing rows are hidden before any scroll
-            try {
-                var __iTop = -__invH / 2 + 40;
-                var __iBot = __invH / 2 - 28;
-                for (var __ici = 0; __ici < __dzInvCells.length; __ici++) {
-                    var __icc = __dzInvCells[__ici];
-                    if (!__icc) continue;
-                    var __ivy = Number(__icc.b7);
-                    var __ihide = (__ivy + 40 < __iTop) || (__ivy - 40 > __iBot);
-                    function __initHide(n, h) {
-                        if (!n) return;
-                        try {
-                            if (typeof n.set_local_alp === "function") n.set_local_alp(h ? 0 : 1);
-                        } catch (e) {}
-                        try { if (n.a0) n.a0 = 0; } catch (e2) {}
-                        if (n._9) for (var ii = 0; ii < n._9.length; ii++) __initHide(n._9[ii], h);
-                    }
-                    __initHide(__icc, __ihide);
-                }
-            } catch (eInitClip) {}
 
             var __hint = new xa(0, __invH / 2 - 18, "^8mouse wheel / arrows", q.MAIN_FONT);
             __hint.D7(__invBox, !0);
@@ -51864,8 +52035,22 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     this.__dzInvBox.b7 = __forceL.inventory.y;
                 }
                 if (this.y42) {
-                    this.y42.b6 = __forceL.skin.x;
-                    this.y42.b7 = __forceL.skin.y;
+                    // Layout x/y is the TRACK center. Handle offset encodes skin tone.
+                    // Never overwrite brightness/D43 — only place the bar correctly.
+                    try {
+                        var __tone = (this.y42.D43 != null) ? Number(this.y42.D43) :
+                            ((q.player && q.player.l9 != null) ? Number(q.player.l9) : 90);
+                        if (!isFinite(__tone)) __tone = 90;
+                        this.y42.D43 = __tone;
+                        var __tw = this.y42.D40 || 280;
+                        var __off = __tone * __tw / 100 - __tw / 2;
+                        this.y42.b6 = __forceL.skin.x + __off;
+                        this.y42.b7 = __forceL.skin.y;
+                        if (this.y42.d49) this.y42.d49.b6 = -__off;
+                    } catch (eSkinPos) {
+                        this.y42.b6 = __forceL.skin.x;
+                        this.y42.b7 = __forceL.skin.y;
+                    }
                 }
                 var __selfForce = this;
                 setTimeout(function() {
@@ -51879,8 +52064,20 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                             __selfForce.__dzInvBox.b7 = __forceL.inventory.y;
                         }
                         if (__selfForce.y42) {
-                            __selfForce.y42.b6 = __forceL.skin.x;
-                            __selfForce.y42.b7 = __forceL.skin.y;
+                            try {
+                                var __t2 = (__selfForce.y42.D43 != null) ? Number(__selfForce.y42.D43) :
+                                    ((q.player && q.player.l9 != null) ? Number(q.player.l9) : 90);
+                                if (!isFinite(__t2)) __t2 = 90;
+                                __selfForce.y42.D43 = __t2;
+                                var __tw2 = __selfForce.y42.D40 || 280;
+                                var __off2 = __t2 * __tw2 / 100 - __tw2 / 2;
+                                __selfForce.y42.b6 = __forceL.skin.x + __off2;
+                                __selfForce.y42.b7 = __forceL.skin.y;
+                                if (__selfForce.y42.d49) __selfForce.y42.d49.b6 = -__off2;
+                            } catch (eST) {
+                                __selfForce.y42.b6 = __forceL.skin.x;
+                                __selfForce.y42.b7 = __forceL.skin.y;
+                            }
                         }
                         if (window.DiggerzCustomizeLayout && window.DiggerzCustomizeLayout.apply)
                             window.DiggerzCustomizeLayout.apply(__forceL);
@@ -51901,10 +52098,17 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 this.e0 = function() {
                     // Stop customize BGM when this panel is being destroyed
                     try {
-                        if (this.a0 == 1 && window.__dzCustomizeMusic) {
-                            window.__dzCustomizeMusic.pause();
-                            window.__dzCustomizeMusic.currentTime = 0;
-                            // Restore outdoor ambience on title
+                        if (this.a0 == 1) {
+                            if (window.__dzCustomizeMusic) {
+                                window.__dzCustomizeMusic.pause();
+                                window.__dzCustomizeMusic.currentTime = 0;
+                            }
+                            try {
+                                if (__previewSkelRef && __previewSkelRef.__dzEmoteTimer) {
+                                    clearInterval(__previewSkelRef.__dzEmoteTimer);
+                                    __previewSkelRef.__dzEmoteTimer = null;
+                                }
+                            } catch (eClrT) {}
                             try {
                                 if (typeof Zl !== "undefined" && Zl.n7 && Zl.n7())
                                     E.U7(Zl.n7(), !0);
@@ -51917,7 +52121,15 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                             var __t2 = Math.max(.01, (q.player && q.player.l9) ?
                                 q.player.l9 : (this.y42 ? this.y42.D43 : 90));
                             __tintPreviewSkin(__previewSkelRef, __t2);
-                            try { __tintPreviewShirt(__previewSkelRef); } catch (eShirtLive) {}
+                            // Don't recolor torso every frame if a shirt is equipped
+                            try {
+                                var __hasShirt = false;
+                                try {
+                                    if (q.diggerzService && q.diggerzService.state && q.diggerzService.state.appearance)
+                                        __hasShirt = !!(q.diggerzService.state.appearance[2]|0);
+                                } catch (eHS) {}
+                                if (!__hasShirt) __tintPreviewShirt(__previewSkelRef);
+                            } catch (eShirtLive) {}
                             try {
                                 // Do NOT call _38 every frame: _38 resets the
                                 // animation timeline to frame 0. Only restart idle
@@ -51958,14 +52170,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                     (this.__dzInvScroll || 0) + __delta
                                 ));
                                 this.__dzInvContent.b7 = -this.__dzInvScroll;
-                                try { q.mWheel = 0; } catch (eConsume0) {}
-                            }
-                            // Always clip cells to the viewport (not only on scroll).
-                            if (true) {
-                                // keep content y synced
-                                try {
-                                    this.__dzInvContent.b7 = -Number(this.__dzInvScroll || 0);
-                                } catch (eSync) {}
                                 // The engine's scrollRect is not sufficient for these
                                 // transformed item sprites, so also hard-clip each
                                 // inventory cell to the visible inventory viewport.
@@ -51982,14 +52186,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                     var __scr = Number(this.__dzInvScroll || 0);
                                     function __hideTree(node, hide) {
                                         if (!node) return;
-                                        // ONLY alpha — never C2/a0/a2 (those destroy
-                                        // or permanently blank inventory cells).
                                         try {
                                             if (typeof node.set_local_alp === "function")
                                                 node.set_local_alp(hide ? 0 : 1);
                                             else if (node.B1 != null)
                                                 node.B1 = hide ? 0 : 1;
                                         } catch (eAlp) {}
+                                        try { node.C2 = !!hide; } catch (eC2) {}
                                         try { if (node.a0) node.a0 = 0; } catch (eA0) {}
                                         var kids = node._9;
                                         if (kids && kids.length) {
@@ -52005,6 +52208,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                         __hideTree(__cc, __hide);
                                     }
                                 } catch (eCellClip) {}
+                                // Consume the engine's one-frame wheel event only here.
+                                try { q.mWheel = 0; } catch (eConsume) {}
                             }
                             try {
                                 if (this.__dzInvBox && typeof this.__dzInvBox.set_scrollRect === "function")
