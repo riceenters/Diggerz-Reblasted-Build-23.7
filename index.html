@@ -52428,19 +52428,39 @@ function __normalizeWearableScales(skel) {
             }
             __applyInvClip();
 
+            // Dedicated inventory viewport: the outer JA contains the frame/title,
+            // while this transparent display object is the actual clipping window.
+            // The scrolling grid moves INSIDE this fixed viewport, so sprites are
+            // partially clipped at the edges instead of their whole slot vanishing.
             var __invContent = z.I9();
             __invContent.D7(__invBox, !0);
             try { __invBox._9.push(__invContent); } catch (eContentPush) {}
             __invContent.b6 = 0;
             __invContent.b7 = 0;
             this.__dzInvContent = __invContent;
-            // Do NOT put scrollRect on the moving content node — the rect travels
-            // with b7 and effectively clips inward. Outer invBox scrollRect is
-            // the stable viewport; per-cell alp handles overflow hide/show.
+
+            var __invGrid = z.I9();
+            __invGrid.D7(__invContent, !0);
+            try { __invContent._9.push(__invGrid); } catch (eGridPush) {}
+            __invGrid.b6 = 0;
+            __invGrid.b7 = 0;
+            this.__dzInvGrid = __invGrid;
+
+            // Tight four-column viewport. Because the rect belongs to the fixed
+            // viewport (not the moving grid), clipping is true partial clipping.
             try {
                 if (typeof __invContent.set_scrollRect === "function")
-                    __invContent.set_scrollRect(null);
+                    __invContent.set_scrollRect(new r(
+                        -140,
+                        -__invH / 2 + 64,
+                        280,
+                        __invH - 82
+                    ));
             } catch (eContentClip) {}
+            try {
+                if (typeof __invBox.set_scrollRect === "function")
+                    __invBox.set_scrollRect(null);
+            } catch (eOuterClip) {}
 
             // Pull the authoritative inventory from the live service first, then
             // fall back to the local saved copy. Empty slots are retained so the
@@ -52579,7 +52599,7 @@ function __normalizeWearableScales(skel) {
                 __visIndex++;
                 var __sx = __startX + __col * __slotSize;
                 var __sy = __startY + __row * __rowH;
-                var __cell = __makeRealSlot(__invContent, __sx, __sy);
+                var __cell = __makeRealSlot(__invGrid, __sx, __sy);
                 __dzInvCells.push(__cell);
 
                 var __icon = __putInventoryIcon(__cell, __item);
@@ -52621,10 +52641,13 @@ function __normalizeWearableScales(skel) {
                                 } catch (eRef) {}
                             } catch (eClick) {}
                         };
-                        cell.C33 = __onSlotClick;
-                        // CRITICAL: default ra.C39 sets parent.a0=1 which hides the whole inv
+                        // Selection is deliberately deferred until mouse-up. The
+                        // inventory e0 below records which cell was pressed and only
+                        // calls this function if release happens over that same cell.
+                        // This prevents dragging the inventory from accidentally equipping.
+                        cell.__dzSelect = __onSlotClick;
+                        cell.C33 = function() {};
                         cell.C39 = function() {
-                            try { if (this.C33) this.C33(); } catch (eC) {}
                             try { q.canBeHot = !1; } catch (eH) {}
                         };
                         try { cell.b2 = !0; } catch (eB2) {}
@@ -52633,7 +52656,7 @@ function __normalizeWearableScales(skel) {
                                 for (var __ci = 0; __ci < cell._9.length; __ci++) {
                                     var __ch = cell._9[__ci];
                                     if (!__ch) continue;
-                                    __ch.C33 = __onSlotClick;
+                                    __ch.C33 = function() {};
                                     __ch.C39 = cell.C39;
                                 }
                             }
@@ -52647,6 +52670,10 @@ function __normalizeWearableScales(skel) {
             this.__dzInvSmoothScroll = 0;
             this.__dzInvDragging = false;
             this.__dzInvDragCandidate = false;
+            this.__dzInvPointerWasDown = false;
+            this.__dzInvPressCell = null;
+            this.__dzInvPressX = 0;
+            this.__dzInvPressY = 0;
             var __visRows = Math.ceil(Math.max(__dzInvCells.length, 1) / __cols);
             this.__dzInvMaxScroll = Math.max(0,
                 (__visRows * __rowH) - (__invH - 82));
@@ -53044,38 +53071,72 @@ function __normalizeWearableScales(skel) {
                             if (__wheel2)
                                 this.__dzInvTargetScroll += -__wheel2 * 64;
 
-                            // Shop-style click/drag scrolling, but vertical. A small
-                            // movement threshold preserves normal item clicks. Once the
-                            // pointer moves far enough, the pending slot click is cancelled.
+                            // Shop-style drag scrolling, rotated to vertical. A
+                            // press records the exact inventory cell underneath it;
+                            // release selects ONLY if it is still that same cell.
+                            // Any meaningful drag cancels the pending selection.
                             try {
                                 var __inside2 = false;
                                 if (__invBox2) {
                                     var __ix = Number(q.mX), __iy = Number(q.mY);
                                     var __icx = Number(__invBox2.A7), __icy = Number(__invBox2.A8);
+                                    var __vpTop = __icy - __invH2 / 2 + 64;
+                                    var __vpBottom = __vpTop + (__invH2 - 82);
                                     __inside2 = isFinite(__ix) && isFinite(__iy) &&
-                                        Math.abs(__ix - __icx) <= __invW2 / 2 &&
-                                        Math.abs(__iy - __icy) <= __invH2 / 2;
+                                        Math.abs(__ix - __icx) <= (__invW2 / 2) &&
+                                        __iy >= __vpTop && __iy <= __vpBottom;
                                 }
-                                if (q.mState === 1 && __inside2) {
-                                    if (!this.__dzInvDragging && !this.__dzInvDragCandidate) {
-                                        this.__dzInvDragCandidate = true;
-                                        this.__dzInvDragStartX = Number(q.mX);
-                                        this.__dzInvDragStartY = Number(q.mY);
+
+                                // Convert the pointer into the moving grid's local space
+                                // so the cell test follows the smooth scroll position.
+                                function __cellAtPointer(px, py) {
+                                    if (!__inside2 || !this.__dzInvCells) return null;
+                                    var gx = Number(px) - Number(__invBox2.A7);
+                                    var gy = Number(py) - Number(__invBox2.A8) + Number(this.__dzInvSmoothScroll || 0);
+                                    var col = Math.floor((gx + (__invW2 / 2)) / 70);
+                                    var row = Math.floor((gy - (-__invH2 / 2 + 82) + 36) / 72);
+                                    if (col < 0 || col >= 4 || row < 0) return null;
+                                    var idx = row * 4 + col;
+                                    return this.__dzInvCells[idx] || null;
+                                }
+
+                                if (q.mState === 1) {
+                                    if (!this.__dzInvPointerWasDown) {
+                                        this.__dzInvPointerWasDown = true;
+                                        this.__dzInvDragCandidate = !!__inside2;
+                                        this.__dzInvDragging = false;
+                                        this.__dzInvPressX = Number(q.mX);
+                                        this.__dzInvPressY = Number(q.mY);
                                         this.__dzInvDragStartScroll = Number(this.__dzInvTargetScroll || 0);
+                                        this.__dzInvPressCell = __inside2 ? __cellAtPointer.call(this, q.mX, q.mY) : null;
                                     }
+
                                     if (this.__dzInvDragCandidate) {
-                                        var __dxD = Number(q.mX) - Number(this.__dzInvDragStartX || 0);
-                                        var __dyD = Number(q.mY) - Number(this.__dzInvDragStartY || 0);
+                                        var __dxD = Number(q.mX) - Number(this.__dzInvPressX || 0);
+                                        var __dyD = Number(q.mY) - Number(this.__dzInvPressY || 0);
                                         if (!this.__dzInvDragging && Math.abs(__dyD) > 5) {
                                             this.__dzInvDragging = true;
+                                            this.__dzInvPressCell = null;
                                             try { q.clickedFunction = null; q.mClicked = !1; } catch (eCancelClick) {}
                                         }
                                         if (this.__dzInvDragging)
                                             this.__dzInvTargetScroll = Number(this.__dzInvDragStartScroll || 0) - __dyD;
                                     }
-                                } else if (q.mState === 0) {
+                                } else if (this.__dzInvPointerWasDown) {
+                                    // Mouse-up: select only when release is over the
+                                    // exact same cell that was pressed.
+                                    var __releaseCell = __inside2 ? __cellAtPointer.call(this, q.mX, q.mY) : null;
+                                    if (!this.__dzInvDragging && this.__dzInvPressCell &&
+                                        __releaseCell === this.__dzInvPressCell) {
+                                        try {
+                                            if (this.__dzInvPressCell.__dzSelect)
+                                                this.__dzInvPressCell.__dzSelect();
+                                        } catch (eSelectRelease) {}
+                                    }
+                                    this.__dzInvPointerWasDown = false;
                                     this.__dzInvDragging = false;
                                     this.__dzInvDragCandidate = false;
+                                    this.__dzInvPressCell = null;
                                 }
                             } catch (eDrag) {}
 
@@ -53088,22 +53149,18 @@ function __normalizeWearableScales(skel) {
                             this.__dzInvScroll = __cur2;
                             this.__dzInvContent.b7 = -__cur2;
 
-                            // Stable render mask: the viewport follows the inventory box,
-                            // not the moving content. The X bounds are tightened to the
-                            // actual four-column grid so sprites clip at the item area.
+                            // Keep the frame/title outside the mask. Only the moving grid
+                            // lives inside the fixed viewport, so crossing an edge produces
+                            // real partial clipping rather than hiding the whole inventory box.
                             try {
-                                if (__invBox2 && typeof __invBox2.set_scrollRect === "function")
-                                    __invBox2.set_scrollRect(new r(
-                                        -((__invW2 - 40) / 2),
+                                if (this.__dzInvContent && typeof this.__dzInvContent.set_scrollRect === "function")
+                                    this.__dzInvContent.set_scrollRect(new r(
+                                        -140,
                                         -__invH2 / 2 + 64,
-                                        __invW2 - 40,
+                                        280,
                                         __invH2 - 82
                                     ));
                             } catch (eClip3) {}
-
-                            // IMPORTANT: no per-cell alpha/C2 hiding. The stable scrollRect
-                            // now performs true partial clipping, so an item can cross the
-                            // boundary without its entire 70px square disappearing.
                             try { q.mWheel = 0; } catch (eConsume2) {}
                         }
                     } catch (eScroll) {}
