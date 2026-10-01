@@ -22477,7 +22477,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 variants[objectIndex] = objectVariant
             }
             var slots = [];
-            for (x = 0; x < 30; x++) slots.push(this.emptyItem());
+            // Visual arrange-grid is 95 slots — match that capacity
+            for (x = 0; x < 95; x++) slots.push(this.emptyItem());
             // Preserve the recovered starter loadout in both local modes.
             slots[0] = this.item(2, 326, 1, 1, 0, "");
             slots[1] = this.item(2, 240, 0, 1, 0, "");
@@ -22515,7 +22516,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             // Build 23.0 release migration: old saves may have fewer inventory slots.
             // Keep every existing item and pad the inventory to at least 30 slots.
             this.state.slots = Array.isArray(saved.slots) ? saved.slots.slice() : [];
-            while (this.state.slots.length < 30) this.state.slots.push(this.emptyItem());
+            // Expand older saves up to the full 95-slot visual grid
+            while (this.state.slots.length < 95) this.state.slots.push(this.emptyItem());
+            if (this.state.slots.length > 95) this.state.slots = this.state.slots.slice(0, 95);
             this.state.appearance = (saved.appearance || []).slice(0, 11);
             this.state.appearanceText = saved.appearanceText || "";
             this.state.coins = saved.coins || 0;
@@ -22755,6 +22758,22 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 break;
             case 12:
                 this.chat(packet);
+                break;
+            case 71:
+                // Sort — pack inventory, remove empty gaps
+                try {
+                    var slots = this.state.slots || [];
+                    var packed = [];
+                    for (var i = 0; i < slots.length; i++) {
+                        var it = slots[i];
+                        if (it && (it.id|0) && (it.count|0) > 0) packed.push(it);
+                    }
+                    while (packed.length < slots.length)
+                        packed.push(this.emptyItem());
+                    this.state.slots = packed;
+                    this.markDirty();
+                    this.sendInventory();
+                } catch (eSort) {}
                 break;
             case 14:
                 this.sendInventory();
@@ -23529,7 +23548,17 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         adminViewInventory:function(name){var mp=window.DiggerzPvp22;if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!mp||!mp.joined)return {ok:false,message:'Multiplayer server required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};this.pvpSend({t:'admin-inventory-request',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid});return {ok:true,message:'Requesting inventory…'}},
         adminInventoryAction:function(name,action,slot,count){if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};this.pvpSend({t:'admin-inventory-action',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid,action:String(action),slot:slot|0,count:Math.max(1,count|0)});return {ok:true,message:'Inventory action requested.'}},
         adminApplyBackground:function(background){var mp=window.DiggerzPvp22;if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!mp||!mp.joined)return {ok:false,message:'Multiplayer server required.'};background=Math.max(0,Math.min(9,background|0));this.pvpSend({t:'admin-background',adminToken:window.DiggerzAdminSessionToken,background:background});this.adminApplyBackgroundLocal(background);return {ok:true,message:'Background '+background+' applied to everyone.'}},
-        adminApplyBackgroundLocal:function(background){background=Math.max(0,Math.min(9,background|0));this.adminBackground=background;try{this.enqueue(102,1,function(packet){packet.R2(background)})}catch(e){}},
+        adminApplyBackgroundLocal:function(background){background=Math.max(0,Math.min(9,background|0));this.adminBackground=background;try{this.enqueue(102,1,function(packet){packet.R2(background)})}catch(e){}
+          // Also apply immediately on the live world so hosts/peers see it without waiting for packet drain
+          try{
+            if(typeof l!=="undefined"&&l.z38&&typeof cg==="function"){
+              try{if(l.z38.d34){l.z38.d34.a0=1;try{T.remove(l.z38._9,l.z38.d34)}catch(_r){}}}catch(_h){}
+              var ncg=new cg(background);
+              l.z38.d34=ncg;
+              try{l.z38._9.splice(0,0,ncg)}catch(_p){try{l.z38._9.push(ncg)}catch(_p2){}}
+            }
+          }catch(_cg){}
+        },
         miningHashAt: function(x, y) {
             return Math.abs(((x + 17) * 73856093 ^ (y + 31) * 19349663) | 0)
         },
@@ -42178,8 +42207,45 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         R44: null,
         R45: null,
         R46: function() {
-            K._17();
-            l.z39.n38.q43 = -1
+            // Network sort (official servers)
+            try { K._17(); } catch (eNet) {}
+            // Local compact: remove empty gaps between items
+            try {
+                // Dig+Trade / offline slot array
+                if (q.diggerzService && q.diggerzService.state && Array.isArray(q.diggerzService.state.slots)) {
+                    var slots = q.diggerzService.state.slots;
+                    var packed = [];
+                    for (var si = 0; si < slots.length; si++) {
+                        var it = slots[si];
+                        if (it && (it.id|0) && (it.count|0) > 0) packed.push(it);
+                    }
+                    while (packed.length < slots.length)
+                        packed.push(q.diggerzService.emptyItem ? q.diggerzService.emptyItem() : {category:0,id:0,variant:0,count:0,text:""});
+                    q.diggerzService.state.slots = packed;
+                    try { q.diggerzService.markDirty && q.diggerzService.markDirty(); } catch (eD) {}
+                    try { q.diggerzService.sendInventory && q.diggerzService.sendInventory(); } catch (eS) {}
+                }
+            } catch (eLocal) {}
+            // Also compact live n38.B30 visual items (gap indices)
+            try {
+                if (l.z39 && l.z39.n38 && l.z39.n38.B30) {
+                    var b30 = l.z39.n38.B30;
+                    var kept = [];
+                    for (var bi = 0; bi < b30.length; bi++) {
+                        var x = b30[bi];
+                        if (x && (x.h44|0) && (x.g36|0) > 0) kept.push(x);
+                        else if (x && (x.h44|0)) kept.push(x);
+                    }
+                    // Re-index positions tightly
+                    for (var ki = 0; ki < kept.length; ki++) {
+                        try {
+                            if (typeof kept[ki].u43 === "function") kept[ki].u43(ki);
+                        } catch (eU) {}
+                    }
+                    l.z39.n38.B30 = kept;
+                }
+            } catch (eB30) {}
+            try { l.z39.n38.q43 = -1; } catch (eQ) {}
         },
         R47: function() {
             for (var a = 0, b = this.Q46; a < b.length; ) {
@@ -50509,36 +50575,72 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.c0 = !0;
         this.A7 = q.CENTERX;
         this.A8 = q.CENTERY;
+        // Hide main fight/title GUI via alpha (do not destroy) + swap the
+        // real title backdrop (same path the game uses for menu themes /
+        // the old accidental menu-bknd change).
+        try {
+            this.__dzHiddenGui = [];
+            this.__dzBgRestore = [];
+            var __title = q.GetChildByType(Cf);
+            if (__title && __title._9) {
+                for (var __hi = 0; __hi < __title._9.length; __hi++) {
+                    var __hc = __title._9[__hi];
+                    if (!__hc) continue;
+                    var __n = "";
+                    try { __n = String(__hc._1 || ""); } catch (eN) {}
+                    // Leave the parallax host + gradient; fade UI buttons/logo chrome
+                    if (__n.indexOf("para") === 0 || __n === "gradient") continue;
+                    // d34 is the cg backdrop host — handle below
+                    if (__hc === __title.d34) continue;
+                    try {
+                        var __prevAlp = (__hc.a7 != null) ? __hc.a7 : 1;
+                        this.__dzHiddenGui.push({ node: __hc, alp: __prevAlp });
+                        if (typeof __hc.set_alp === "function") __hc.set_alp(0);
+                        else if (typeof __hc.set_local_alp === "function") __hc.set_local_alp(0);
+                    } catch (eH) {}
+                }
+            }
+            // Force Beta Bknd (theme 9) while Customize is open
+            try {
+                this.__dzPrevMenuBgIdx = window.DiggerzGetMenuBgIndex
+                    ? window.DiggerzGetMenuBgIndex() : 0;
+                if (window.DiggerzApplyMenuBackground)
+                    window.DiggerzApplyMenuBackground(9); // Beta Bknd
+                this.__dzBetaBknd = window.__diggerzMenuCg || null;
+            } catch (eBeta) {}
+        } catch (eHideGui) {}
         var a = -320
           , b = new xa(0,a,"^9Customize",q.MAIN_FONT_BIG);
         b.D7(this, !0);
         this._9.push(b);
-        // Red X close button — top-right corner of the JA (small hit area only)
+        // Red X close button — must be `ra` so the engine click path runs C33
         try {
-            var __closeX = z.I9();
+            var __closeX = new ra;
             __closeX.D7(this, !0);
-            __closeX.Init(f.RED_X_PNG());
+            __closeX.X6(f.RED_X_PNG());
             __closeX.b6 = this.d32 / 2 - 30;
             __closeX.b7 = -this.d33 / 2 + 30;
             try {
-                __closeX.set_local_xScale(__closeX.set_local_yScale(0.7));
+                __closeX.set_local_xScale(__closeX.set_local_yScale(0.75));
             } catch (eXs) {}
-            // Keep hit box tight so it never covers the rest of the menu
-            try {
-                if (__closeX._5) {
-                    // no-op: texture defines size; scale already shrunk it
-                }
-            } catch (eSz) {}
             this._9.push(__closeX);
             this.__dzCloseX = __closeX;
             var __closeSelf = this;
             __closeX.C33 = function() {
                 try {
-                    // Force close (bypass "over panel" guard)
-                    __closeSelf.a0 = 1;
-                    try { E.u4(__closeSelf, 0, 300, 1, .5, 0, 1, 0); } catch (eU) {}
+                    if (typeof __closeSelf.__dzTryClose === "function")
+                        __closeSelf.__dzTryClose();
+                    else {
+                        __closeSelf.a0 = 1;
+                        try { E.u4(__closeSelf, 0, 300, 1, .5, 0, 1, 0); } catch (eU) {}
+                    }
                 } catch (eClose) {}
             };
+            __closeX.C39 = function() {
+                try { if (this.C33) this.C33(); } catch (eC) {}
+                try { q.canBeHot = !1; } catch (eH) {}
+            };
+            try { __closeX.C37 = !0; } catch (eC37) {}
             try { __closeX.b2 = !0; } catch (eXb) {}
         } catch (eCloseX) {}
         a += 85;
@@ -51567,7 +51669,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 } catch (eShirt) {}
                 try { skel.a2 = 1; } catch (eActive) {}
                 try {
-                    var __busy = skel.__dzEmotingUntil && Date.now() < skel.__dzEmotingUntil;
+                    var __busy = !!skel.__dzEmoting;
                     if (!__busy && typeof skel._38 === "function" && skel.Z28 !== "idle")
                         skel._38("idle", !0, 100, .5);
                 } catch (eIdle2) {}
@@ -51767,44 +51869,35 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         if (typeof __skel._38 === "function") {
                             __skel._38("idle", !0, 100, .5);
                         }
-                        // Occasional random emotes (not too often)
+                        // Every 5s, maybe play a random emote. Idle resumes when
+                        // the skeleton reports the anim is finished (_34 === false).
                         try {
                             if (__skel.__dzEmoteTimer) clearInterval(__skel.__dzEmoteTimer);
                             var __emotes = ["pump", "strut", "yeah", "yipee", "dab", "wow"];
                             var __emoteSkel = __skel;
-                            __skel.__dzEmotingUntil = 0;
+                            __skel.__dzEmoting = !1;
                             __skel.__dzEmoteTimer = setInterval(function() {
                                 try {
                                     if (!__emoteSkel || __emoteSkel.a0 == 1) return;
-                                    // Don't stack emotes
-                                    if (__emoteSkel.__dzEmotingUntil && Date.now() < __emoteSkel.__dzEmotingUntil)
-                                        return;
-                                    if (Math.random() > 0.35) return;
+                                    if (__emoteSkel.__dzEmoting) return;
+                                    if (Math.random() > 0.45) return;
                                     var available = [];
                                     for (var ei = 0; ei < __emotes.length; ei++) {
                                         try {
                                             if (typeof __emoteSkel._31 === "function" && __emoteSkel._31(__emotes[ei]))
                                                 available.push(__emotes[ei]);
                                             else
-                                                available.push(__emotes[ei]); // try anyway
+                                                available.push(__emotes[ei]);
                                         } catch (eA) { available.push(__emotes[ei]); }
                                     }
+                                    if (!available.length) return;
                                     var name = available[Math.floor(Math.random() * available.length)];
                                     if (typeof __emoteSkel._38 === "function") {
-                                        // Match chat emote call; hold ~3.2s before idle
-                                        __emoteSkel.__dzEmotingUntil = Date.now() + 3200;
+                                        __emoteSkel.__dzEmoting = !0;
                                         __emoteSkel._38(name, !1, 50);
-                                        setTimeout(function() {
-                                            try {
-                                                if (!__emoteSkel || __emoteSkel.a0 == 1) return;
-                                                __emoteSkel.__dzEmotingUntil = 0;
-                                                if (typeof __emoteSkel._38 === "function")
-                                                    __emoteSkel._38("idle", !0, 100, .5);
-                                            } catch (eBack) {}
-                                        }, 3000);
                                     }
                                 } catch (eEm) {}
-                            }, 7000);
+                            }, 5000);
                         } catch (eEmoteSetup) {}
                     } catch (eIdle) {}
                     __previewSkelRef = __skel;
@@ -51945,7 +52038,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var __gridW = __cols * __slotSize;
             var __startX = -__gridW / 2 + __slotSize / 2;
             var __startY = -__invH / 2 + 62;
-            var __slotCount = Math.max(50, __rawSlots.length);
+            // Match the in-game 95-slot visual inventory
+            var __slotCount = Math.max(95, __rawSlots.length);
             var __rows = Math.ceil(__slotCount / __cols);
 
             function __wearSlotForItem(item, slotIndex) {
@@ -52046,24 +52140,46 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 // Empty slots are still visible, but have no click action.
                 if (__item.id && __item.count) {
                     (function(item, wearSlot, cell) {
-                        cell.C33 = function() {
+                        var __onSlotClick = function() {
                             try {
-                                if (wearSlot < 0 || wearSlot > 10 || wearSlot === 8) return;
+                                var ws = wearSlot;
+                                if (ws < 0 || ws > 10)
+                                    try { ws = __wearSlotForItem(item, -1); } catch (eWs) {}
+                                if (ws < 0 || ws > 10 || ws === 8) return;
                                 var next = __equippedNow.slice();
                                 while (next.length < 11) next.push(0);
-                                next[wearSlot] = ((next[wearSlot]|0) === (item.id|0)) ? 0 : (item.id|0);
+                                next[ws] = ((next[ws]|0) === (item.id|0)) ? 0 : (item.id|0);
                                 __equippedNow = next;
                                 __app = next.slice();
-                                __applyLive(next, "");
-                                // Rebuild on the next frame so EQ markers and the
-                                // preview always reflect the newly selected item.
-                                setTimeout(function() {
-                                    try {
-                                        if (__previewSkelRef) __equipOnPreview(__previewSkelRef, __equippedNow);
-                                    } catch (eRefresh) {}
-                                }, 0);
+                                // Preview only — do NOT auto-save. Mark dirty for Save Player.
+                                try { window.__dzCustomizeDirty = !0; } catch (eD) {}
+                                try {
+                                    if (__previewSkelRef) __equipOnPreview(__previewSkelRef, __equippedNow);
+                                } catch (eEq) {}
+                                // Reset inv EQ markers without destroying the box
+                                try {
+                                    if (typeof __refreshInvEQ === "function")
+                                        __refreshInvEQ();
+                                } catch (eRef) {}
                             } catch (eClick) {}
                         };
+                        cell.C33 = __onSlotClick;
+                        // CRITICAL: default ra.C39 sets parent.a0=1 which hides the whole inv
+                        cell.C39 = function() {
+                            try { if (this.C33) this.C33(); } catch (eC) {}
+                            try { q.canBeHot = !1; } catch (eH) {}
+                        };
+                        try { cell.b2 = !0; } catch (eB2) {}
+                        try {
+                            if (cell._9) {
+                                for (var __ci = 0; __ci < cell._9.length; __ci++) {
+                                    var __ch = cell._9[__ci];
+                                    if (!__ch) continue;
+                                    __ch.C33 = __onSlotClick;
+                                    __ch.C39 = cell.C39;
+                                }
+                            }
+                        } catch (eKids) {}
                     })(__item, __wear, __cell);
                 }
             }
@@ -52074,6 +52190,171 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.__dzInvH = __invH;
             this.__dzInvW = __invW;
             this.__dzInvCells = __dzInvCells;
+            this.__dzEquippedNow = __equippedNow;
+            this.__dzSavedAppearance = (__app && __app.slice) ? __app.slice() : [0,0,0,0,0,0,0,0,0,0,0];
+            window.__dzCustomizeDirty = !1;
+
+            // Refresh green EQ labels under currently equipped items
+            function __refreshInvEQ() {
+                try {
+                    var cells = __dzInvCells || [];
+                    var eq = __equippedNow || [];
+                    for (var ci = 0; ci < cells.length; ci++) {
+                        var cell = cells[ci];
+                        if (!cell) continue;
+                        // Remove old EQ labels
+                        try {
+                            if (cell._9) {
+                                var keep = [];
+                                for (var k = 0; k < cell._9.length; k++) {
+                                    var ch = cell._9[k];
+                                    if (ch && ch.__dzEQ) {
+                                        try { ch.a0 = 1; } catch (eR) {}
+                                        continue;
+                                    }
+                                    keep.push(ch);
+                                }
+                                cell._9.length = 0;
+                                for (var k2 = 0; k2 < keep.length; k2++) cell._9.push(keep[k2]);
+                            }
+                        } catch (eRm) {}
+                        // Add EQ if this cell's item id is in equipped
+                        try {
+                            var item = __rawSlots[ci];
+                            if (!item || !(item.id|0)) continue;
+                            var worn = false;
+                            for (var ei = 0; ei < eq.length; ei++) {
+                                if ((eq[ei]|0) === (item.id|0)) { worn = true; break; }
+                            }
+                            if (!worn) continue;
+                            var eqLabel = new xa(0, 23, "^2EQ", q.MAIN_FONT_SMALL);
+                            eqLabel.__dzEQ = !0;
+                            eqLabel.D7(cell, !0);
+                            try { cell._9.push(eqLabel); } catch (eP) {}
+                            try { eqLabel.set_local_xScale(eqLabel.set_local_yScale(.62)); } catch (eS) {}
+                        } catch (eAdd) {}
+                    }
+                } catch (eRef) {}
+            }
+            try { __refreshInvEQ(); } catch (eInitEQ) {}
+
+            // Save Player button — bottom-right of the Customize JA
+            try {
+                var __saveBtn = new xa(this.d32 / 2 - 90, this.d33 / 2 - 28, "^2Save Player", q.MAIN_FONT);
+                __saveBtn.D7(this, !0);
+                this._9.push(__saveBtn);
+                this.__dzSaveBtn = __saveBtn;
+                var __saveSelf = this;
+                __saveBtn.C33 = function() {
+                    try {
+                        var app = (__equippedNow && __equippedNow.slice) ? __equippedNow.slice() : [];
+                        while (app.length < 11) app.push(0);
+                        __applyLive(app, "");
+                        __saveSelf.__dzSavedAppearance = app.slice();
+                        window.__dzCustomizeDirty = !1;
+                        try { E.v2 && E.v2(Pj.n7()); } catch (eSfx) {}
+                    } catch (eSave) {}
+                };
+                // ra-like click: wrap in a small hit box
+                try {
+                    var __saveHit = new ra;
+                    __saveHit.D7(this, !0);
+                    // invisible hit target over the text
+                    __saveHit.b6 = this.d32 / 2 - 90;
+                    __saveHit.b7 = this.d33 / 2 - 28;
+                    try {
+                        // give it a reasonable hit area via a tiny texture scale
+                        if (f.INVENTORYGRID_PNG) {
+                            __saveHit.X6(f.INVENTORYGRID_PNG());
+                            __saveHit.set_local_xScale(__saveHit.set_local_yScale(1.6));
+                            __saveHit.set_alp(0.01);
+                        }
+                    } catch (eTx) {}
+                    this._9.push(__saveHit);
+                    __saveHit.C33 = __saveBtn.C33;
+                    __saveHit.C39 = function() {
+                        try { if (this.C33) this.C33(); } catch (eC) {}
+                        try { q.canBeHot = !1; } catch (eH) {}
+                    };
+                } catch (eHit) {}
+            } catch (eSaveBtn) {}
+
+            // Close with unsaved-outfit warning
+            this.__dzTryClose = function() {
+                try {
+                    var dirty = !!window.__dzCustomizeDirty;
+                    var cur = (__equippedNow && __equippedNow.slice) ? __equippedNow.slice() : [];
+                    var saved = (this.__dzSavedAppearance && this.__dzSavedAppearance.slice)
+                        ? this.__dzSavedAppearance.slice() : [];
+                    while (cur.length < 11) cur.push(0);
+                    while (saved.length < 11) saved.push(0);
+                    if (!dirty) {
+                        for (var i = 0; i < 11; i++)
+                            if ((cur[i]|0) !== (saved[i]|0)) { dirty = true; break; }
+                    }
+                    if (!dirty) {
+                        this.__dzDoClose();
+                        return;
+                    }
+                    // Diggerz JA prompt: Cancel stays, Proceed closes
+                    var self = this;
+                    try {
+                        var dlg = new vb(
+                            self,
+                            "^1Warning",
+                            "^1Warning, unsaved outfit detected",
+                            null,
+                            vb.g30,
+                            function() { // Yes / Proceed
+                                try { dlg.a0 = 1; } catch (e1) {}
+                                try { self.__dzDoClose(); } catch (e2) {}
+                            },
+                            function() { // No / Cancel
+                                try { dlg.a0 = 1; } catch (e3) {}
+                            }
+                        );
+                        // Relabel buttons if possible
+                        try {
+                            if (dlg.F32 && dlg.F32.E37) dlg.F32.E37("Proceed");
+                            if (dlg.F33 && dlg.F33.E37) dlg.F33.E37("Cancel");
+                        } catch (eLbl) {}
+                        try { q.children.push(dlg); } catch (ePush) {
+                            try { self._9.push(dlg); } catch (eP2) {}
+                        }
+                    } catch (eDlg) {
+                        // Fallback: just close
+                        this.__dzDoClose();
+                    }
+                } catch (eTry) {
+                    try { this.__dzDoClose(); } catch (eF) {}
+                }
+            };
+            this.__dzDoClose = function() {
+                try {
+                    if (this.__dzHiddenGui) {
+                        for (var i = 0; i < this.__dzHiddenGui.length; i++) {
+                            var h = this.__dzHiddenGui[i];
+                            if (!h || !h.node) continue;
+                            try {
+                                if (typeof h.node.set_alp === "function") h.node.set_alp(h.alp);
+                                else if (typeof h.node.set_local_alp === "function") h.node.set_local_alp(h.alp);
+                            } catch (eR) {}
+                        }
+                        this.__dzHiddenGui = null;
+                    }
+                    // Restore the player's saved menu background
+                    try {
+                        this.__dzBetaBknd = null;
+                        var __restoreIdx = (this.__dzPrevMenuBgIdx != null)
+                            ? this.__dzPrevMenuBgIdx
+                            : (window.DiggerzGetMenuBgIndex ? window.DiggerzGetMenuBgIndex() : 0);
+                        if (window.DiggerzApplyMenuBackground)
+                            window.DiggerzApplyMenuBackground(__restoreIdx);
+                    } catch (eBgR) {}
+                } catch (eRest) {}
+                this.a0 = 1;
+                try { E.u4(this, 0, 300, 1, .5, 0, 1, 0); } catch (eU) {}
+            };
 
             var __hint = new xa(0, __invH / 2 - 18, "^8mouse wheel / arrows", q.MAIN_FONT);
             __hint.D7(__invBox, !0);
@@ -52178,6 +52459,49 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                     __previewSkelRef.__dzEmoteTimer = null;
                                 }
                             } catch (eClrT) {}
+                            // Restore title GUI if we never went through __dzDoClose
+                            try {
+                                if (typeof this.__dzDoClose === "function") {
+                                    // reuse full restore without double-close
+                                    var __hg = this.__dzHiddenGui, __br = this.__dzBgRestore, __pm = this.__dzPrevMenuBg;
+                                    if (__hg) {
+                                        for (var __ri = 0; __ri < __hg.length; __ri++) {
+                                            var __rh = __hg[__ri];
+                                            if (!__rh || !__rh.node) continue;
+                                            try {
+                                                if (typeof __rh.node.set_alp === "function") __rh.node.set_alp(__rh.alp);
+                                                else if (typeof __rh.node.set_local_alp === "function") __rh.node.set_local_alp(__rh.alp);
+                                            } catch (eRR) {}
+                                        }
+                                        this.__dzHiddenGui = null;
+                                    }
+                                    try {
+                                        if (this.__dzBetaBknd) {
+                                            var __bb2 = this.__dzBetaBknd;
+                                            this.__dzBetaBknd = null;
+                                            try { __bb2.a0 = 1; } catch (eA02) {}
+                                            try {
+                                                var __t3 = q.GetChildByType(Cf);
+                                                if (__t3 && __t3._9) {
+                                                    var __ix2 = __t3._9.indexOf(__bb2);
+                                                    if (__ix2 >= 0) __t3._9.splice(__ix2, 1);
+                                                }
+                                            } catch (eRm2) {}
+                                        }
+                                    } catch (eBeta2) {}
+                                    if (__br) {
+                                        for (var __bi2 = 0; __bi2 < __br.length; __bi2++) {
+                                            var __brn = __br[__bi2];
+                                            if (!__brn || !__brn.node) continue;
+                                            try {
+                                                if (typeof __brn.node.set_alp === "function") __brn.node.set_alp(__brn.alp);
+                                                else if (typeof __brn.node.set_local_alp === "function") __brn.node.set_local_alp(__brn.alp);
+                                            } catch (eBr2) {}
+                                        }
+                                        this.__dzBgRestore = null;
+                                    }
+                                }
+                            } catch (eGuiRest) {}
                             try {
                                 if (typeof Zl !== "undefined" && Zl.n7 && Zl.n7())
                                     E.U7(Zl.n7(), !0);
@@ -52200,12 +52524,27 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                 if (!__hasShirt) __tintPreviewShirt(__previewSkelRef);
                             } catch (eShirtLive) {}
                             try {
-                                // Never force idle while an emote is playing.
-                                var __emoting = __previewSkelRef.__dzEmotingUntil &&
-                                    Date.now() < __previewSkelRef.__dzEmotingUntil;
-                                if (!__emoting && typeof __previewSkelRef._38 === "function" &&
-                                    __previewSkelRef.Z28 !== "idle")
+                                // If an emote is active, wait until the skeleton
+                                // says the timeline is finished (_34 === false),
+                                // then return to looping idle.
+                                if (__previewSkelRef.__dzEmoting) {
+                                    var __still = false;
+                                    try {
+                                        if (typeof __previewSkelRef._34 === "function")
+                                            __still = !!__previewSkelRef._34();
+                                    } catch (e34) {}
+                                    if (!__still && __previewSkelRef.Z28 &&
+                                        __previewSkelRef.Z28 !== "idle") {
+                                        __previewSkelRef.__dzEmoting = !1;
+                                        if (typeof __previewSkelRef._38 === "function")
+                                            __previewSkelRef._38("idle", !0, 100, .5);
+                                    }
+                                } else if (typeof __previewSkelRef._38 === "function" &&
+                                    __previewSkelRef.Z28 !== "idle") {
+                                    // Safety: snap back to idle if something else
+                                    // left a non-idle state with no emote flag.
                                     __previewSkelRef._38("idle", !0, 100, .5);
+                                }
                             } catch (eId) {}
                         }
                     } catch (eLiveSkin) {}
@@ -52306,8 +52645,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                 q.mY < __py - __ph / 2 || q.mY > __py + __ph / 2
                             );
                             if (__outside) {
-                                this.a0 = 1;
-                                try { E.u4(this, 0, 300, 1, .5, 0, 1, 0); } catch (eU2) {}
+                                if (typeof this.__dzTryClose === "function") this.__dzTryClose();
+                                else {
+                                    this.a0 = 1;
+                                    try { E.u4(this, 0, 300, 1, .5, 0, 1, 0); } catch (eU2) {}
+                                }
                                 q.mClicked = !1;
                             }
                         }
@@ -52876,20 +53218,30 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         a.set_local_xScale(a.set_local_yScale(.7));
         this.Z47._9.push(a);
         a = 170;
-        // Menu background cycle
-        var bgNames = ["Default (clear)", "Grey", "Space"];
-        var bgKey = "diggerz.menuBg.v1";
+        // Menu background cycle — all real cg themes (Background 0–9)
+        var bgList = window.DiggerzMenuBgList || [
+            { name: "Mountains", theme: 0 }, { name: "Beta Bknd", theme: 9 }
+        ];
         var bgIdx = 0;
-        try { bgIdx = Math.max(0, Math.min(2, parseInt(localStorage.getItem(bgKey) || "0", 10) || 0)); } catch (eBg) {}
-        var bgLbl = new ob(0, a, "^9Background: ^7" + bgNames[bgIdx], q.MAIN_FONT);
+        try {
+            if (window.DiggerzGetMenuBgIndex) bgIdx = window.DiggerzGetMenuBgIndex();
+            else bgIdx = Math.max(0, Math.min(bgList.length - 1, parseInt(localStorage.getItem("diggerz.menuBg.v1") || "0", 10) || 0));
+        } catch (eBg) {}
+        var bgLbl = new ob(0, a, "^9Background: ^7" + (bgList[bgIdx] ? bgList[bgIdx].name : ("#" + bgIdx)), q.MAIN_FONT);
         bgLbl.D7(this, !0);
         bgLbl.C33 = A(this, function() {
             try {
-                var i = Math.max(0, Math.min(2, parseInt(localStorage.getItem(bgKey) || "0", 10) || 0));
-                i = (i + 1) % 3;
-                localStorage.setItem(bgKey, String(i));
-                try { bgLbl.E37("^9Background: ^7" + bgNames[i]); } catch (eL) {}
-                if (window.DiggerzApplyMenuBackground) window.DiggerzApplyMenuBackground();
+                var i = 0;
+                if (window.DiggerzCycleMenuBackground)
+                    i = window.DiggerzCycleMenuBackground();
+                else {
+                    i = (window.DiggerzGetMenuBgIndex ? window.DiggerzGetMenuBgIndex() : 0);
+                    i = (i + 1) % bgList.length;
+                    localStorage.setItem("diggerz.menuBg.v1", String(i));
+                    if (window.DiggerzApplyMenuBackground) window.DiggerzApplyMenuBackground(i);
+                }
+                var nm = (bgList[i] && bgList[i].name) ? bgList[i].name : ("#" + i);
+                try { bgLbl.E37("^9Background: ^7" + nm); } catch (eL) {}
             } catch (eC) {}
         });
         this._9.push(bgLbl);
@@ -88591,6 +88943,15 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.d34.D7(this);
         this._9.push(this.d34);
         this._1 = "title_screen";
+        // Apply saved menu background (real cg theme)
+        try {
+            setTimeout(function() {
+                try {
+                    if (window.DiggerzApplyMenuBackground)
+                        window.DiggerzApplyMenuBackground();
+                } catch (eBgInit) {}
+            }, 50);
+        } catch (eBgT) {}
         this.C58 = z.I9();
         this.C58.Init(sa.SQLOGO_PNG());
         this.C58.D7(this);
@@ -119962,36 +120323,103 @@ e50: function(a) {
 
 <script id="diggerz-menu-bg-apply">
 (function(){
+  // Real engine backdrop themes (cg constructor index). Same list the
+  // admin "Background N" / in-game bknd blocks use.
   window.DiggerzMenuBgList = [
-    { name: "Default (clear)", key: "title", alpha: 0 },
-    { name: "Grey", key: "grey", alpha: 1 },
-    { name: "Space", key: "space", alpha: 1 }
+    { name: "Mountains", theme: 0 },
+    { name: "Grey", theme: 1 },
+    { name: "Sunset", theme: 2 },
+    { name: "Moon", theme: 3 },
+    { name: "Icy Mountains", theme: 4 },
+    { name: "Clouds", theme: 5 },
+    { name: "Background 6", theme: 6 },
+    { name: "Background 7", theme: 7 },
+    { name: "Green Screen", theme: 8 },
+    { name: "Beta Bknd", theme: 9 }
   ];
-  function bgAsset(key) {
+  window.DiggerzGetMenuBgIndex = function() {
     try {
-      if (key === "grey" && sa.GREY_BKND_PNG) return sa.GREY_BKND_PNG();
-      if (key === "space" && sa.SPACE_BKND_PNG) return sa.SPACE_BKND_PNG();
-      if (sa.TITLE_BKND_PNG) return sa.TITLE_BKND_PNG();
-    } catch (e) {}
-    return null;
-  }
-  window.DiggerzApplyMenuBackground = function() {
+      var n = parseInt(localStorage.getItem("diggerz.menuBg.v1") || "0", 10);
+      if (!isFinite(n) || n < 0) n = 0;
+      var max = (window.DiggerzMenuBgList || []).length - 1;
+      if (n > max) n = 0;
+      return n;
+    } catch (e) { return 0; }
+  };
+  window.DiggerzApplyMenuBackground = function(forceIdx) {
     try {
-      var list = window.DiggerzMenuBgList;
-      var idx = Math.max(0, Math.min(list.length - 1, parseInt(localStorage.getItem("diggerz.menuBg.v1") || "0", 10) || 0));
-      var entry = list[idx];
-      var ov = window.__diggerzMenuBgOverlay;
-      if (!ov) return; // never reload
-      var img = bgAsset(entry.key);
-      if (img) {
-        try { ov.Init(img); } catch (e2) {}
+      // TITLE MENU ONLY — never touch the in-game world backdrop (l.z38.d34).
+      // In-game bknds use packet 102 / Zj blocks / admin-background separately.
+      try {
+        if (typeof l !== "undefined" && l.z38 && l.a42 && l.a42 !== "Lobby") {
+          // Playing a world — skip menu-bg system entirely
+          var __onTitle = false;
+          try { __onTitle = !!q.GetChildByType(Cf); } catch (eOT) {}
+          if (!__onTitle) return;
+        }
+      } catch (eGuard) {}
+      var list = window.DiggerzMenuBgList || [];
+      if (!list.length) return;
+      var idx = (forceIdx != null) ? forceIdx : window.DiggerzGetMenuBgIndex();
+      idx = Math.max(0, Math.min(list.length - 1, idx|0));
+      var theme = list[idx].theme|0;
+      var title = null;
+      try { title = q.GetChildByType(Cf); } catch (eT) {}
+      if (!title) return;
+      // Remove any previous custom cg we attached
+      try {
+        if (window.__diggerzMenuCg && window.__diggerzMenuCg !== title.d34) {
+          var old = window.__diggerzMenuCg;
+          window.__diggerzMenuCg = null;
+          try { old.a0 = 1; } catch (eA) {}
+          try {
+            var ix = title._9.indexOf(old);
+            if (ix >= 0) title._9.splice(ix, 1);
+          } catch (eRm) {}
+        }
+      } catch (eOld) {}
+      // Hide original title cg (mountains built at boot)
+      try {
+        if (title.d34) {
+          if (typeof title.d34.set_alp === "function") title.d34.set_alp(0);
+          else if (typeof title.d34.set_local_alp === "function") title.d34.set_local_alp(0);
+        }
+      } catch (eHide) {}
+      // Theme 0 = restore the original mountains cg
+      if (theme === 0) {
         try {
-          ov.set_local_xScale(2 * q.SCREENWIDTH / ov._5.width);
-          ov.set_local_yScale(2 * q.SCREENHEIGHT / ov._5.height);
-        } catch (e3) {}
+          if (title.d34) {
+            if (typeof title.d34.set_alp === "function") title.d34.set_alp(1);
+            else if (typeof title.d34.set_local_alp === "function") title.d34.set_local_alp(1);
+          }
+        } catch (eShow) {}
+        window.__diggerzMenuCg = title.d34 || null;
+        return;
       }
-      try { ov.set_local_alp(entry.alpha); } catch (e4) { try { ov.set_alp(entry.alpha); } catch (e5) {} }
-    } catch (e) {}
+      // Build the real animated backdrop (stars, icy, green screen, beta, …)
+      var cgNew = new cg(theme);
+      cgNew._1 = "diggerz_menu_bg_cg";
+      cgNew.A7 = q.CENTERX;
+      cgNew.A8 = q.CENTERY;
+      try { cgNew.D7(title, !0); } catch (eD) {}
+      try { title._9.splice(0, 0, cgNew); } catch (eP) {
+        try { title._9.push(cgNew); } catch (eP2) {}
+      }
+      window.__diggerzMenuCg = cgNew;
+    } catch (e) {
+      try { console.warn("[MenuBg]", e); } catch (e2) {}
+    }
+  };
+  window.DiggerzCycleMenuBackground = function() {
+    try {
+      var list = window.DiggerzMenuBgList || [];
+      if (!list.length) return 0;
+      var i = window.DiggerzGetMenuBgIndex();
+      i = (i + 1) % list.length;
+      localStorage.setItem("diggerz.menuBg.v1", String(i));
+      window.DiggerzApplyMenuBackground(i);
+      return i;
+    } catch (e) { return 0; }
   };
 })();
 </script>
