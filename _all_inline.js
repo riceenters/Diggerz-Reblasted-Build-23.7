@@ -5331,33 +5331,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         },
         a36: function(a) {
             null == a && (a = 1);
-            // Base menu background (always default title art)
             var b = z.I9();
             b.Init(sa.TITLE_BKND_PNG());
             b.D7(this);
             b.set_local_xScale(2 * q.SCREENWIDTH / b._5.width);
             b.set_local_yScale(2 * q.SCREENHEIGHT / b._5.height);
-            // Overlay above base — index 0 = transparent (show default), 1 = Grey, 2 = Space
-            try {
-                var __bgI = 0;
-                try { __bgI = Math.max(0, Math.min(2, parseInt(localStorage.getItem("diggerz.menuBg.v1") || "0", 10) || 0)); } catch (e0) {}
-                var __ov = z.I9();
-                if (__bgI === 1) __ov.Init(sa.GREY_BKND_PNG());
-                else if (__bgI === 2) __ov.Init(sa.SPACE_BKND_PNG());
-                else __ov.Init(sa.TITLE_BKND_PNG());
-                __ov.D7(this);
-                __ov.set_local_xScale(2 * q.SCREENWIDTH / __ov._5.width);
-                __ov.set_local_yScale(2 * q.SCREENHEIGHT / __ov._5.height);
-                if (__bgI === 0) {
-                    try { __ov.set_local_alp(0); } catch (eA) { try { __ov.set_alp(0); } catch (eA2) {} }
-                } else {
-                    try { __ov.set_local_alp(1); } catch (eA3) {}
-                }
-                __ov._1 = "diggerz_menu_bg_overlay";
-                this._9.push(__ov);
-                window.__diggerzMenuBgOverlay = __ov;
-                window.__diggerzMenuBgBase = b;
-            } catch (eBg) {}
             b.set_local_r(b.set_local_g(b.set_local_b(a)));
             this._9.push(b);
             b._1 = "gradient";
@@ -120473,22 +120451,26 @@ e50: function(a) {
         title.d34 = null;
       } catch (eOld) {}
 
-      // Real cg in the real d34 slot (client only)
+      // Real cg in the real d34 slot (client only).
+      // D7(title) with ONE arg — same as Cf constructor. D7(title, true)
+      // treats A7/A8 as world offsets and can push the whole bknd off-screen (black).
       var cgNew = new cg(theme);
       cgNew._1 = "diggerz_menu_bg_cg";
-      cgNew.A7 = q.CENTERX;
-      cgNew.A8 = q.CENTERY;
-      try { cgNew.D7(title, !0); } catch (eD) {}
+      try { cgNew.a2 = !0; } catch (eAct) {}
+      try { cgNew.D7(title); } catch (eD) {}
       title.d34 = cgNew;
       try {
         if (!title._9) title._9 = [];
+        // Keep behind UI
         title._9.splice(0, 0, cgNew);
       } catch (eP) {
         try { title._9.push(cgNew); } catch (eP2) {}
       }
-      try { cgNew.set_alp(1); } catch (eAl) {}
-      try { cgNew.set_local_alp(1); } catch (eAl2) {}
+      try { cgNew.set_local_alp(1); } catch (eAl) {}
+      try { cgNew.set_alp(1); } catch (eAl2) {}
       try { cgNew.C2 = !1; } catch (eC) {}
+      // Layout/scale gradients to screen (same as title.h2 → d34.h2)
+      try { if (typeof cgNew.h2 === "function") cgNew.h2(); } catch (eH2) {}
 
       window.__diggerzMenuCg = cgNew;
       window.__dzBgOverlayCg = null;
