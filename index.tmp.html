@@ -50513,23 +50513,32 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
           , b = new xa(0,a,"^9Customize",q.MAIN_FONT_BIG);
         b.D7(this, !0);
         this._9.push(b);
-        // Red X close button — top-right corner of the JA
+        // Red X close button — top-right corner of the JA (small hit area only)
         try {
             var __closeX = z.I9();
             __closeX.D7(this, !0);
             __closeX.Init(f.RED_X_PNG());
-            __closeX.b6 = this.d32 / 2 - 28;
-            __closeX.b7 = -this.d33 / 2 + 28;
+            __closeX.b6 = this.d32 / 2 - 30;
+            __closeX.b7 = -this.d33 / 2 + 30;
             try {
-                __closeX.set_local_xScale(__closeX.set_local_yScale(0.85));
+                __closeX.set_local_xScale(__closeX.set_local_yScale(0.7));
             } catch (eXs) {}
+            // Keep hit box tight so it never covers the rest of the menu
+            try {
+                if (__closeX._5) {
+                    // no-op: texture defines size; scale already shrunk it
+                }
+            } catch (eSz) {}
             this._9.push(__closeX);
             this.__dzCloseX = __closeX;
             var __closeSelf = this;
             __closeX.C33 = function() {
-                try { __closeSelf.C39(); } catch (eClose) {}
+                try {
+                    // Force close (bypass "over panel" guard)
+                    __closeSelf.a0 = 1;
+                    try { E.u4(__closeSelf, 0, 300, 1, .5, 0, 1, 0); } catch (eU) {}
+                } catch (eClose) {}
             };
-            try { __closeX.E7 = function() { return !0; }; } catch (eXe) {}
             try { __closeX.b2 = !0; } catch (eXb) {}
         } catch (eCloseX) {}
         a += 85;
@@ -51558,7 +51567,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 } catch (eShirt) {}
                 try { skel.a2 = 1; } catch (eActive) {}
                 try {
-                    if (typeof skel._38 === "function")
+                    var __busy = skel.__dzEmotingUntil && Date.now() < skel.__dzEmotingUntil;
+                    if (!__busy && typeof skel._38 === "function" && skel.Z28 !== "idle")
                         skel._38("idle", !0, 100, .5);
                 } catch (eIdle2) {}
             }
@@ -51755,36 +51765,45 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                             __skel.Z26 = Fc.M39;
                         if (typeof __skel._38 === "function") {
                             __skel._38("idle", !0, 100, .5);
-                            setTimeout(function() {
-                                try { __skel._38("idle", !0, 100, .5); } catch (e2) {}
-                            }, 200);
-                            setTimeout(function() {
-                                try { __skel._38("idle", !0, 100, .5); } catch (e3) {}
-                            }, 600);
                         }
                         // Occasional random emotes (not too often)
                         try {
                             if (__skel.__dzEmoteTimer) clearInterval(__skel.__dzEmoteTimer);
                             var __emotes = ["pump", "strut", "yeah", "yipee", "dab", "wow"];
                             var __emoteSkel = __skel;
+                            __skel.__dzEmotingUntil = 0;
                             __skel.__dzEmoteTimer = setInterval(function() {
                                 try {
                                     if (!__emoteSkel || __emoteSkel.a0 == 1) return;
-                                    // ~35% chance each tick so it feels occasional
+                                    // Don't stack emotes
+                                    if (__emoteSkel.__dzEmotingUntil && Date.now() < __emoteSkel.__dzEmotingUntil)
+                                        return;
                                     if (Math.random() > 0.35) return;
-                                    var name = __emotes[Math.floor(Math.random() * __emotes.length)];
+                                    var available = [];
+                                    for (var ei = 0; ei < __emotes.length; ei++) {
+                                        try {
+                                            if (typeof __emoteSkel._31 === "function" && __emoteSkel._31(__emotes[ei]))
+                                                available.push(__emotes[ei]);
+                                            else
+                                                available.push(__emotes[ei]); // try anyway
+                                        } catch (eA) { available.push(__emotes[ei]); }
+                                    }
+                                    var name = available[Math.floor(Math.random() * available.length)];
                                     if (typeof __emoteSkel._38 === "function") {
-                                        __emoteSkel._38(name, !1, 0, 1);
-                                        // Return to idle after the emote (~1.8s)
+                                        // Match chat emote call; hold ~3.2s before idle
+                                        __emoteSkel.__dzEmotingUntil = Date.now() + 3200;
+                                        __emoteSkel._38(name, !1, 50);
                                         setTimeout(function() {
                                             try {
-                                                if (__emoteSkel && typeof __emoteSkel._38 === "function")
+                                                if (!__emoteSkel || __emoteSkel.a0 == 1) return;
+                                                __emoteSkel.__dzEmotingUntil = 0;
+                                                if (typeof __emoteSkel._38 === "function")
                                                     __emoteSkel._38("idle", !0, 100, .5);
                                             } catch (eBack) {}
-                                        }, 1800);
+                                        }, 3000);
                                     }
                                 } catch (eEm) {}
-                            }, 7000); // every ~7s consider playing one
+                            }, 7000);
                         } catch (eEmoteSetup) {}
                     } catch (eIdle) {}
                     __previewSkelRef = __skel;
@@ -52068,6 +52087,25 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.__dzInvH = __invH;
             this.__dzInvW = __invW;
             this.__dzInvCells = __dzInvCells;
+            // Initial clip so rows outside the box are hidden before any scroll
+            try {
+                var __iTop = -__invH / 2 + 40;
+                var __iBot = __invH / 2 - 28;
+                for (var __ici = 0; __ici < __dzInvCells.length; __ici++) {
+                    var __icc = __dzInvCells[__ici];
+                    if (!__icc) continue;
+                    var __ivy = Number(__icc.b7);
+                    var __ihide = (__ivy + 40 < __iTop) || (__ivy - 40 > __iBot);
+                    (function hideInit(n, h) {
+                        if (!n) return;
+                        try {
+                            if (typeof n.set_local_alp === "function") n.set_local_alp(h ? 0 : 1);
+                        } catch (e) {}
+                        try { if (n.a0) n.a0 = 0; } catch (e2) {}
+                        if (n._9) for (var ii = 0; ii < n._9.length; ii++) hideInit(n._9[ii], h);
+                    })(__icc, __ihide);
+                }
+            } catch (eInitClip) {}
 
             var __hint = new xa(0, __invH / 2 - 18, "^8mouse wheel / arrows", q.MAIN_FONT);
             __hint.D7(__invBox, !0);
@@ -52194,10 +52232,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                 if (!__hasShirt) __tintPreviewShirt(__previewSkelRef);
                             } catch (eShirtLive) {}
                             try {
-                                // Do NOT call _38 every frame: _38 resets the
-                                // animation timeline to frame 0. Only restart idle
-                                // when another state has actually replaced it.
-                                if (typeof __previewSkelRef._38 === "function" &&
+                                // Never force idle while an emote is playing.
+                                var __emoting = __previewSkelRef.__dzEmotingUntil &&
+                                    Date.now() < __previewSkelRef.__dzEmotingUntil;
+                                if (!__emoting && typeof __previewSkelRef._38 === "function" &&
                                     __previewSkelRef.Z28 !== "idle")
                                     __previewSkelRef._38("idle", !0, 100, .5);
                             } catch (eId) {}
@@ -52226,16 +52264,18 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                 if (q.KeyDown && q.KeyDown(40)) __keyDir = 1;
                             } catch (eK) {}
                             if (__wheel || __keyDir) {
-                                // Wheel up = move content up; wheel down = move content down.
                                 var __delta = __wheel ? -__wheel * 64 : __keyDir * 64;
                                 this.__dzInvScroll = Math.max(0, Math.min(
                                     this.__dzInvMaxScroll || 0,
                                     (this.__dzInvScroll || 0) + __delta
                                 ));
-                                this.__dzInvContent.b7 = -this.__dzInvScroll;
-                                // The engine's scrollRect is not sufficient for these
-                                // transformed item sprites, so also hard-clip each
-                                // inventory cell to the visible inventory viewport.
+                                try { q.mWheel = 0; } catch (eCw) {}
+                            }
+                            // Always keep content scrolled + cells clipped (not only on wheel)
+                            try {
+                                this.__dzInvContent.b7 = -Number(this.__dzInvScroll || 0);
+                            } catch (eSync) {}
+                            if (true) {
                                 try {
                                     // Viewport in invBox local space. Content is
                                     // translated by b7 = -scroll, so cell visual Y
@@ -52271,8 +52311,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                         __hideTree(__cc, __hide);
                                     }
                                 } catch (eCellClip) {}
-                                // Consume the engine's one-frame wheel event only here.
-                                try { q.mWheel = 0; } catch (eConsume) {}
                             }
                             try {
                                 if (this.__dzInvBox && typeof this.__dzInvBox.set_scrollRect === "function")
@@ -52290,16 +52328,18 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     // child (including an inventory slot or the skin handle) sets
                     // q.clickedFunction, so those clicks are left alone.
                     try {
+                        // Only auto-close on a true outside click. Never clear
+                        // mClicked for inside clicks — that breaks child C33.
                         if (q.mClicked && q.clickedFunction == null) {
-                            var __outside = false;
                             var __px = Number(this.A7), __py = Number(this.A8);
-                            var __pw = Number(this.d32), __ph = Number(this.d33);
-                            if (isFinite(__px) && isFinite(__py) && isFinite(__pw) && isFinite(__ph)) {
-                                __outside = q.mX < __px - __pw / 2 || q.mX > __px + __pw / 2 ||
-                                            q.mY < __py - __ph / 2 || q.mY > __py + __ph / 2;
-                            }
+                            var __pw = Number(this.d32) || 1100, __ph = Number(this.d33) || 720;
+                            var __outside = isFinite(__px) && isFinite(__py) && (
+                                q.mX < __px - __pw / 2 || q.mX > __px + __pw / 2 ||
+                                q.mY < __py - __ph / 2 || q.mY > __py + __ph / 2
+                            );
                             if (__outside) {
-                                this.C39();
+                                this.a0 = 1;
+                                try { E.u4(this, 0, 300, 1, .5, 0, 1, 0); } catch (eU2) {}
                                 q.mClicked = !1;
                             }
                         }
