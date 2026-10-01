@@ -51271,6 +51271,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         if (armB) paint(armB.f2 ? armB.f2("arm_back") : null, cLimb);
                         paint(armB, cLimb);
                     }
+                    // Hands (m36 uses front_arm / back_arm)
+                    paint(skel.f2("front_arm"), cLimb);
+                    paint(skel.f2("back_arm"), cLimb);
                 } catch (eA) {}
                 // Lower legs: skin-tint when pants are T48 (shorts) or no pants
                 // This is what makes Black WC Shorts follow the skin slider.
@@ -51426,17 +51429,63 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         try { bf.a2 = !0; } catch (e3) {}
                     }
                 } catch (eF2) {}
+                // Hands
+                try {
+                    var ha = skel.f2("front_arm");
+                    if (ha) {
+                        try { ha.C2 = !1; } catch (e1) {}
+                        try { ha.set_local_r(ha.set_local_g(ha.set_local_b(cWear))); } catch (e2) {}
+                    }
+                } catch (eH1) {}
+                try {
+                    var hb = skel.f2("back_arm");
+                    if (hb) {
+                        try { hb.C2 = !1; } catch (e1) {}
+                        try { hb.set_local_r(hb.set_local_g(hb.set_local_b(cWear))); } catch (e2) {}
+                    }
+                } catch (eH2) {}
             }
 
             function __currentSkinTone() {
                 try {
                     var title = null;
-                    try { title = q.GetChildByType(Cf); } catch (eT) {}
+                    try {
+                        if (typeof q.GetChildByName === "function")
+                            title = q.GetChildByName("title_screen");
+                    } catch (eN) {}
+                    try {
+                        if (!title && typeof v !== "undefined" && v.C55)
+                            title = q.GetChildByType(v.C55);
+                    } catch (eT) {}
+                    try {
+                        if (!title && q.children) {
+                            for (var ti = 0; ti < q.children.length; ti++) {
+                                if (q.children[ti] && q.children[ti]._1 === "title_screen") {
+                                    title = q.children[ti]; break;
+                                }
+                            }
+                        }
+                    } catch (eC) {}
                     if (title && title._9) {
                         for (var i = 0; i < title._9.length; i++) {
                             var n = title._9[i];
                             if (n && n.y42 && n.y42.D43 != null)
                                 return Math.max(0, Math.min(100, Number(n.y42.D43)));
+                        }
+                    }
+                    // Also scan q.children for open Customize panel with slider
+                    if (q.children) {
+                        for (var ci = 0; ci < q.children.length; ci++) {
+                            var p = q.children[ci];
+                            if (p && p.y42 && p.y42.D43 != null)
+                                return Math.max(0, Math.min(100, Number(p.y42.D43)));
+                            if (p && p._9) {
+                                for (var cj = 0; cj < p._9.length; cj++) {
+                                    var cjn = p._9[cj];
+                                    if (cjn && cjn.y42 && cjn.y42.D43 != null)
+                                        return Math.max(0, Math.min(100, Number(cjn.y42.D43)));
+                                }
+                            }
                         }
                     }
                 } catch (e1) {}
@@ -52136,8 +52185,9 @@ function __equipOnPreview(skel, app) {
                             __skel.set_local_xScale(__skel.set_local_yScale(__scaleArg || 1));
                     } catch (eSc2) {}
                     try {
-                        if (__skel && __skel.Z26 && __skel.Z26.length && typeof Fc !== "undefined")
-                            Fc.M39 = __skel.Z26;
+                        // NEVER write the mannequin's Z26 back into Fc.M39 —
+                        // that corrupts global guy anims and crashes on join
+                        // (TypeError: Cannot read properties of undefined (reading 'length')).
                     } catch (eCache) {}
                     // Merge any extra emote names from mannequin_anims.js that the
                     // base table is missing. Does NOT change bones/skins/rig mesh.
@@ -89451,7 +89501,7 @@ function __equipOnPreview(skel, app) {
             this.C57.A8 = this.C57._5.height / 2 + 12;
             this.A7 = q.CENTERX;
             this.A8 = q.CENTERY;
-            this.d34.h2()
+            if (this.d34 && typeof this.d34.h2 === "function") this.d34.h2();
         },
         d56: function() {
             for (var a = 0, b = this._9; a < b.length; ) {
@@ -120330,6 +120380,35 @@ e50: function(a) {
    * Hides the original title.d34 (mountains) and draws the chosen cg theme
    * on a separate host so we never fight the title constructor / e0 path.
    */
+  /**
+   * Client-side only: swap the REAL title backdrop (title.d34 = new cg(theme)).
+   * Same cg system the world uses. No overlay. No network packets.
+   */
+  window.DiggerzFindTitleScreen = function() {
+    try {
+      if (typeof q.GetChildByName === "function") {
+        var t = q.GetChildByName("title_screen");
+        if (t) return t;
+      }
+    } catch (e1) {}
+    try {
+      if (typeof v !== "undefined" && v.C55 && typeof q.GetChildByType === "function") {
+        var t2 = q.GetChildByType(v.C55);
+        if (t2) return t2;
+      }
+    } catch (e2) {}
+    try {
+      if (q.children) {
+        for (var i = 0; i < q.children.length; i++) {
+          var ch = q.children[i];
+          if (!ch) continue;
+          if (ch._1 === "title_screen") return ch;
+          if (ch.d34 && ch.C58) return ch;
+        }
+      }
+    } catch (e3) {}
+    return null;
+  };
   window.DiggerzApplyMenuBackground = function(forceIdx) {
     try {
       var list = window.DiggerzMenuBgList || [];
@@ -120340,111 +120419,80 @@ e50: function(a) {
       window.__diggerzMenuBgIdx = idx;
       var theme = (list[idx] && list[idx].theme != null) ? (list[idx].theme|0) : idx;
 
-      // Never swap the in-game world backdrop
+      // Do not touch a live multiplayer world backdrop for other players.
+      // Title menu only.
       try {
         if (typeof l !== "undefined" && l && l.z38 && l.z39) {
           return true;
         }
       } catch (eInGame) {}
 
-      var title = null;
-      try { title = q.GetChildByType(Cf); } catch (eT) {}
+      var title = window.DiggerzFindTitleScreen();
       if (!title) {
         try {
           setTimeout(function() {
             try { window.DiggerzApplyMenuBackground(idx); } catch (eR) {}
-          }, 250);
+          }, 200);
         } catch (eTO) {}
         return false;
       }
 
-      // --- Hide the original mountain backdrop (keep it alive for restore) ---
+      // Already on this theme?
       try {
-        if (title.d34 && title.d34 !== window.__dzBgOverlayCg) {
-          try { title.d34.set_alp(0); } catch (eA0) {}
-          try { title.d34.set_local_alp(0); } catch (eA1) {}
-          // Also hide parallax children by name
-          try {
-            if (title.d34._9) {
-              for (var pi = 0; pi < title.d34._9.length; pi++) {
-                var pn = title.d34._9[pi];
-                if (!pn) continue;
-                try { pn.set_alp(0); } catch (eP) {}
-                try { pn.set_local_alp(0); } catch (eP2) {}
-              }
-            }
-          } catch (ePara) {}
-        }
-      } catch (eHide) {}
-
-      // Skip rebuild if overlay already shows this theme
-      try {
-        if (window.__dzBgOverlayCg &&
-            window.__diggerzMenuCgTheme === theme &&
-            !window.__dzBgOverlayCg.a0) {
+        if (title.d34 && title.d34._1 === "diggerz_menu_bg_cg" &&
+            window.__diggerzMenuCgTheme === theme && !title.d34.a0) {
           return true;
         }
       } catch (eSkip) {}
 
-      // --- Ensure overlay host exists on the title, behind UI ---
-      var host = window.__dzBgOverlayHost;
-      if (!host || host.a0) {
-        host = z.I9();
-        host._1 = "diggerz_bg_overlay_host";
-        host.A7 = q.CENTERX;
-        host.A8 = q.CENTERY;
-        try { host.B8 = -999; } catch (eZ) {}
-        try { host.D7(title, !0); } catch (eD) {}
-        try {
-          if (!title._9) title._9 = [];
-          // Insert at front so it draws under logo / buttons
-          title._9.splice(0, 0, host);
-        } catch (eP) {
-          try { title._9.push(host); } catch (eP2) {}
-        }
-        window.__dzBgOverlayHost = host;
-      }
-
-      // Clear previous theme cg from the host
+      // Destroy previous real backdrop (same slot the title uses: d34)
       try {
-        if (window.__dzBgOverlayCg) {
-          try { window.__dzBgOverlayCg.a0 = 1; } catch (eK) {}
+        var old = title.d34;
+        if (old) {
+          try { old.a0 = 1; } catch (eA) {}
           try {
-            if (host._9) {
-              var ix = host._9.indexOf(window.__dzBgOverlayCg);
-              if (ix >= 0) host._9.splice(ix, 1);
+            if (title._9) {
+              var ix = title._9.indexOf(old);
+              if (ix >= 0) title._9.splice(ix, 1);
             }
           } catch (eRm) {}
-          window.__dzBgOverlayCg = null;
         }
-        // Also wipe any leftover children on the host
-        if (host._9 && host._9.length) {
-          for (var ci = host._9.length - 1; ci >= 0; ci--) {
-            try { host._9[ci].a0 = 1; } catch (eC) {}
+        // Clean leftover overlay hosts from older builds
+        try {
+          if (title._9) {
+            for (var i = title._9.length - 1; i >= 0; i--) {
+              var n = title._9[i];
+              if (!n) continue;
+              if (n._1 === "diggerz_bg_overlay_host" || n._1 === "diggerz_menu_bg_cg") {
+                try { n.a0 = 1; } catch (eK) {}
+                title._9.splice(i, 1);
+              }
+            }
           }
-          host._9.length = 0;
-        }
-      } catch (eClear) {}
+        } catch (eOldOv) {}
+        title.d34 = null;
+      } catch (eOld) {}
 
-      // Build the chosen theme into the overlay host
+      // Real cg in the real d34 slot (client only)
       var cgNew = new cg(theme);
       cgNew._1 = "diggerz_menu_bg_cg";
       cgNew.A7 = q.CENTERX;
       cgNew.A8 = q.CENTERY;
-      try { cgNew.B8 = -999; } catch (eZ2) {}
-      try { cgNew.D7(host, !0); } catch (eD2) {}
+      try { cgNew.D7(title, !0); } catch (eD) {}
+      title.d34 = cgNew;
       try {
-        if (!host._9) host._9 = [];
-        host._9.push(cgNew);
-      } catch (ePush) {}
-      // Make sure host / cg are fully visible
-      try { host.set_alp(1); } catch (eHa) {}
-      try { host.set_local_alp(1); } catch (eHa2) {}
-      try { cgNew.set_alp(1); } catch (eCa) {}
-      try { cgNew.set_local_alp(1); } catch (eCa2) {}
+        if (!title._9) title._9 = [];
+        title._9.splice(0, 0, cgNew);
+      } catch (eP) {
+        try { title._9.push(cgNew); } catch (eP2) {}
+      }
+      try { cgNew.set_alp(1); } catch (eAl) {}
+      try { cgNew.set_local_alp(1); } catch (eAl2) {}
+      try { cgNew.C2 = !1; } catch (eC) {}
 
-      window.__dzBgOverlayCg = cgNew;
       window.__diggerzMenuCg = cgNew;
+      window.__dzBgOverlayCg = null;
+      window.__dzBgOverlayHost = null;
       window.__diggerzMenuCgTheme = theme;
       return true;
     } catch (e) {
@@ -120459,12 +120507,13 @@ e50: function(a) {
       var i = window.DiggerzGetMenuBgIndex();
       i = (i + 1) % list.length;
       try { localStorage.setItem("diggerz.menuBg.v1", String(i)); } catch (eS) {}
-      // Force rebuild even if theme number matches a cached one
       try { window.__diggerzMenuCgTheme = -1; } catch (eInv) {}
       try { window.DiggerzApplyMenuBackground(i); } catch (eA) {}
       return i;
     } catch (e) { return 0; }
   };
+;
+;
 ;
 })();
 
