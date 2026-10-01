@@ -51223,8 +51223,39 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     if (bf) { bf.set_local_r(.9*yf.b8); bf.set_local_g(.9*yf.b9); bf.set_local_b(.9*yf.B0); bf.c9 = yf.c9; }
                 }
 
+                // Slot 5: copy the real player m38() path exactly, including
+                // A4/A5 placement and the optional cw child.  These fields are
+                // what the real rig uses for back/torso accessories.
                 yf = item(wanted[5], 5);
-                addWear(yf, "torso", null);
+                if (yf) {
+                    try {
+                        var t5 = skel.f2("torso");
+                        var v5 = Yf.W48(yf.h44, wearer);
+                        v5.D7(t5);
+                        yf.D6(v5);
+                        v5.b6 = yf.t44;
+                        v5.b7 = yf.t45;
+                        v5.A4 = yf.A4;
+                        v5.A5 = yf.A5;
+                        v5._1 = "wear";
+                        t5._9.push(v5);
+                        v5.b2 = !0;
+                        v5.set_r(v5.b8);
+                        v5.set_g(v5.b9);
+                        v5.set_b(v5.B0);
+                        yf.T47 && (t5.C3 = !0);
+                        var cw5 = yf.f0("cw");
+                        if (cw5) {
+                            var cwVis = z.I9();
+                            cwVis.D7(v5, !0);
+                            cw5.D6(cwVis);
+                            v5._9.push(cwVis);
+                            cwVis.A4 = cw5.A4;
+                            cwVis.A5 = cw5.A5;
+                            cwVis._1 = "cw";
+                        }
+                    } catch (e5) {}
+                }
 
                 yf = item(wanted[6], 6);
                 if (yf) {
@@ -51397,14 +51428,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     __skel.b6 = 0;
                     __skel.b7 = 50;
                     try { __skel.a0 = 0; } catch (eA0) {}
-                    try {
-                        var __playerRigScale = 1;
-                        if (q.player && q.player.l0 != null && isFinite(Number(q.player.l0)))
-                            __playerRigScale = Number(q.player.l0);
-                        if (__playerRigScale <= 0) __playerRigScale = 1;
-                        if (typeof __skel.set_local_xScale === "function")
-                            __skel.set_local_xScale(__skel.set_local_yScale(__playerRigScale));
-                    } catch (eScale) {}
+                    // IMPORTANT: do not rescale the mannequin here.  G2() above
+                    // already receives q.player.l0, exactly like the real Fc rig.
+                    // Fc's constructor leaves its own scale at 1. Applying l0 a
+                    // second time makes the body and every attached wearable use
+                    // a different effective rig size than the real player.
                     try { __prev._9.push(__skel); } catch (ePush) {}
                     // Force idle (loop)
                     try {
