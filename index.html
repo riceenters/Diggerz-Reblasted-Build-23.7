@@ -53688,18 +53688,21 @@ function __lockSkinBarPos(panel) {
         bgLbl.D7(this, !0);
         bgLbl.C33 = A(this, function() {
             try {
-                var i = 0;
-                if (window.DiggerzCycleMenuBackground)
+                var i;
+                if (window.DiggerzCycleMenuBackground) {
                     i = window.DiggerzCycleMenuBackground();
-                else {
+                } else {
                     i = (window.DiggerzGetMenuBgIndex ? window.DiggerzGetMenuBgIndex() : 0);
                     i = (i + 1) % bgList.length;
-                    localStorage.setItem("diggerz.menuBg.v1", String(i));
-                    if (window.DiggerzApplyMenuBackground) window.DiggerzApplyMenuBackground(i);
+                    try { localStorage.setItem("diggerz.menuBg.v1", String(i)); } catch (eSave) {}
+                    if (window.DiggerzApplyMenuBackground)
+                        window.DiggerzApplyMenuBackground(i);
                 }
                 var nm = (bgList[i] && bgList[i].name) ? bgList[i].name : ("#" + i);
                 try { bgLbl.E37("^9Background: ^7" + nm); } catch (eL) {}
-            } catch (eC) {}
+            } catch (eC) {
+                try { console.warn("[DiggerzMenuBg click]", eC); } catch (eW) {}
+            }
         });
         this._9.push(bgLbl);
         a += 55;
@@ -120780,53 +120783,57 @@ e50: function(a) {
 
 <script id="diggerz-menu-bg-apply">
 (function(){
-  // Real engine backdrop themes (cg constructor index). Same list the
-  // admin "Background N" / in-game bknd blocks use.
+  // Menu background customization uses the exact same native backdrop
+  // constructor used by the admin/in-game background system:
+  //     var b = new cg(theme);
+  //     host._9.splice(0, 0, b);
+  //
+  // This is deliberately client-side. Nothing is sent to the server, so
+  // another player never receives or sees the selected menu background.
+
   window.DiggerzMenuBgList = [
-    { name: "Mountains", theme: 0 },
-    { name: "Grey", theme: 1 },
-    { name: "Sunset", theme: 2 },
-    { name: "Moon", theme: 3 },
-    { name: "Icy Mountains", theme: 4 },
-    { name: "Clouds", theme: 5 },
-    { name: "Background 6", theme: 6 },
-    { name: "Background 7", theme: 7 },
-    { name: "Green Screen", theme: 8 },
-    { name: "Beta Bknd", theme: 9 }
+    { name: "Mountains",      theme: 0 },
+    { name: "Grey",           theme: 1 },
+    { name: "Sunset",         theme: 2 },
+    { name: "Moon",           theme: 3 },
+    { name: "Icy Mountains",  theme: 4 },
+    { name: "Clouds",         theme: 5 },
+    { name: "Background 6",   theme: 6 },
+    { name: "Background 7",   theme: 7 },
+    { name: "Green Screen",   theme: 8 },
+    { name: "Beta Bknd",      theme: 9 }
   ];
-  window.DiggerzGetMenuBgIndex = function() {
+
+  window.DiggerzGetMenuBgIndex = function(){
     try {
+      var list = window.DiggerzMenuBgList || [];
       var n = parseInt(localStorage.getItem("diggerz.menuBg.v1") || "0", 10);
       if (!isFinite(n) || n < 0) n = 0;
-      var max = (window.DiggerzMenuBgList || []).length - 1;
-      if (n > max) n = 0;
+      if (list.length && n >= list.length) n = 0;
       return n;
-    } catch (e) { return 0; }
+    } catch(e) {
+      return 0;
+    }
   };
-  /**
-   * Menu background system — dedicated overlay layer.
-   * Hides the original title.d34 (mountains) and draws the chosen cg theme
-   * on a separate host so we never fight the title constructor / e0 path.
-   */
-  /**
-   * Client-side only: swap the REAL title backdrop (title.d34 = new cg(theme)).
-   * Same cg system the world uses. No overlay. No network packets.
-   */
-  window.DiggerzFindTitleScreen = function() {
+
+  window.DiggerzFindTitleScreen = function(){
     try {
-      if (typeof q.GetChildByName === "function") {
+      if (typeof q !== "undefined" && typeof q.GetChildByName === "function") {
         var t = q.GetChildByName("title_screen");
         if (t) return t;
       }
-    } catch (e1) {}
+    } catch(e1) {}
+
     try {
-      if (typeof v !== "undefined" && v.C55 && typeof q.GetChildByType === "function") {
+      if (typeof q !== "undefined" && typeof q.GetChildByType === "function" &&
+          typeof v !== "undefined" && v.C55) {
         var t2 = q.GetChildByType(v.C55);
         if (t2) return t2;
       }
-    } catch (e2) {}
+    } catch(e2) {}
+
     try {
-      if (q.children) {
+      if (typeof q !== "undefined" && q.children) {
         for (var i = 0; i < q.children.length; i++) {
           var ch = q.children[i];
           if (!ch) continue;
@@ -120834,116 +120841,148 @@ e50: function(a) {
           if (ch.d34 && ch.C58) return ch;
         }
       }
-    } catch (e3) {}
+    } catch(e3) {}
+
     return null;
   };
-  window.DiggerzApplyMenuBackground = function(forceIdx) {
+
+  function removeOldMenuBackdrop(title){
+    if (!title) return;
+
+    // Remove the currently installed menu backdrop.
+    try {
+      var old = title.d34;
+      if (old) {
+        try { old.a0 = 1; } catch(e1) {}
+        try {
+          if (title._9) {
+            var ix = title._9.indexOf(old);
+            if (ix >= 0) title._9.splice(ix, 1);
+          }
+        } catch(e2) {}
+      }
+    } catch(e3) {}
+
+    // Clean only our previous menu background objects.
+    try {
+      if (title._9) {
+        for (var i = title._9.length - 1; i >= 0; i--) {
+          var n = title._9[i];
+          if (!n) continue;
+          if (n._1 === "diggerz_menu_bg_cg") {
+            try { n.a0 = 1; } catch(e4) {}
+            title._9.splice(i, 1);
+          }
+        }
+      }
+    } catch(e5) {}
+
+    try { title.d34 = null; } catch(e6) {}
+  }
+
+  window.DiggerzApplyMenuBackground = function(forceIdx){
     try {
       var list = window.DiggerzMenuBgList || [];
       if (!list.length) return false;
-      var idx = (forceIdx != null && forceIdx !== undefined) ? (forceIdx|0) : window.DiggerzGetMenuBgIndex();
-      idx = Math.max(0, Math.min(list.length - 1, idx));
-      try { localStorage.setItem("diggerz.menuBg.v1", String(idx)); } catch (eS) {}
-      window.__diggerzMenuBgIdx = idx;
-      var theme = (list[idx] && list[idx].theme != null) ? (list[idx].theme|0) : idx;
 
-      // Do not touch a live multiplayer world backdrop for other players.
-      // Title menu only.
-      try {
-        if (typeof l !== "undefined" && l && l.z38 && l.z39) {
-          return true;
-        }
-      } catch (eInGame) {}
+      var idx = forceIdx == null
+        ? window.DiggerzGetMenuBgIndex()
+        : (forceIdx|0);
+
+      if (idx < 0) idx = 0;
+      if (idx >= list.length) idx = 0;
+
+      var entry = list[idx] || list[0];
+      var theme = (entry.theme == null) ? idx : (entry.theme|0);
+
+      try { localStorage.setItem("diggerz.menuBg.v1", String(idx)); } catch(eSave) {}
+      window.__diggerzMenuBgIdx = idx;
 
       var title = window.DiggerzFindTitleScreen();
       if (!title) {
+        // The settings panel can be constructed just before the title object
+        // is attached. Retry briefly rather than silently losing the click.
         try {
-          setTimeout(function() {
-            try { window.DiggerzApplyMenuBackground(idx); } catch (eR) {}
-          }, 200);
-        } catch (eTO) {}
+          setTimeout(function(){
+            try { window.DiggerzApplyMenuBackground(idx); } catch(eRetry) {}
+          }, 100);
+        } catch(eTimeout) {}
         return false;
       }
 
-      // Already on this theme?
+      // Do not use the previous l.z38/l.z39 guard here. Those objects can
+      // exist while the title/settings UI is still active and that guard was
+      // the reason the click appeared to do nothing.
+
       try {
-        if (title.d34 && title.d34._1 === "diggerz_menu_bg_cg" &&
-            window.__diggerzMenuCgTheme === theme && !title.d34.a0) {
+        if (title.d34 &&
+            title.d34._1 === "diggerz_menu_bg_cg" &&
+            window.__diggerzMenuCgTheme === theme &&
+            !title.d34.a0) {
           return true;
         }
-      } catch (eSkip) {}
+      } catch(eSame) {}
 
-      // Destroy previous real backdrop (same slot the title uses: d34)
-      try {
-        var old = title.d34;
-        if (old) {
-          try { old.a0 = 1; } catch (eA) {}
-          try {
-            if (title._9) {
-              var ix = title._9.indexOf(old);
-              if (ix >= 0) title._9.splice(ix, 1);
-            }
-          } catch (eRm) {}
-        }
-        // Clean leftover overlay hosts from older builds
-        try {
-          if (title._9) {
-            for (var i = title._9.length - 1; i >= 0; i--) {
-              var n = title._9[i];
-              if (!n) continue;
-              if (n._1 === "diggerz_bg_overlay_host" || n._1 === "diggerz_menu_bg_cg") {
-                try { n.a0 = 1; } catch (eK) {}
-                title._9.splice(i, 1);
-              }
-            }
-          }
-        } catch (eOldOv) {}
-        title.d34 = null;
-      } catch (eOld) {}
+      removeOldMenuBackdrop(title);
 
-      // Real cg in the real d34 slot (client only).
-      // D7(title) with ONE arg — same as Cf constructor. D7(title, true)
-      // treats A7/A8 as world offsets and can push the whole bknd off-screen (black).
-      var cgNew = new cg(theme);
-      cgNew._1 = "diggerz_menu_bg_cg";
-      try { cgNew.a2 = !0; } catch (eAct) {}
-      try { cgNew.D7(title); } catch (eD) {}
-      title.d34 = cgNew;
+      // EXACT native backdrop path used by the admin Background handler:
+      //     var b = new cg(a);
+      //     host._9.splice(0, 0, b);
+      var bg = new cg(theme);
+      bg._1 = "diggerz_menu_bg_cg";
+
+      // The title is the host, just as l.z38 is the world host for admin
+      // background changes. Do not send a packet or modify room state.
+      try { bg.a2 = !0; } catch(eActive) {}
+      try { bg.D7(title); } catch(eD7) {}
+
+      title.d34 = bg;
+
       try {
         if (!title._9) title._9 = [];
-        title._9.splice(0, 0, cgNew);
-      } catch (eP) {
-        try { title._9.push(cgNew); } catch (eP2) {}
+        title._9.splice(0, 0, bg);
+      } catch(eInsert) {
+        try { title._9.push(bg); } catch(ePush) {}
       }
-      try { cgNew.set_local_alp(1); } catch (eAl) {}
-      try { cgNew.set_alp(1); } catch (eAl2) {}
-      try { cgNew.C2 = !1; } catch (eC) {}
-      try { if (typeof cgNew.h2 === "function") cgNew.h2(); } catch (eH2) {}
 
-      window.__diggerzMenuCg = cgNew;
-      window.__dzBgOverlayCg = null;
-      window.__dzBgOverlayHost = null;
+      try { bg.set_local_alp(1); } catch(eAlpha1) {}
+      try { bg.set_alp(1); } catch(eAlpha2) {}
+      try { bg.C2 = !1; } catch(eC2) {}
+      try { if (typeof bg.h2 === "function") bg.h2(); } catch(eH2) {}
+
+      window.__diggerzMenuCg = bg;
       window.__diggerzMenuCgTheme = theme;
       return true;
-    } catch (e) {
-      try { console.warn("[MenuBg]", e); } catch (e2) {}
+    } catch(e) {
+      try { console.warn("[DiggerzMenuBg]", e); } catch(e2) {}
       return false;
     }
   };
-  window.DiggerzCycleMenuBackground = function() {
+
+  window.DiggerzCycleMenuBackground = function(){
     try {
       var list = window.DiggerzMenuBgList || [];
       if (!list.length) return 0;
+
       var i = window.DiggerzGetMenuBgIndex();
       i = (i + 1) % list.length;
-      try { localStorage.setItem("diggerz.menuBg.v1", String(i)); } catch (eS) {}
-      try { window.__diggerzMenuCgTheme = -1; } catch (eInv) {}
-      try { window.DiggerzApplyMenuBackground(i); } catch (eA) {}
+
+      try { window.__diggerzMenuCgTheme = -1; } catch(e1) {}
+      window.DiggerzApplyMenuBackground(i);
       return i;
-    } catch (e) { return 0; }
+    } catch(e) {
+      return 0;
+    }
   };
-;
-;
+
+  // Make the saved choice appear immediately when the title screen exists.
+  // This does not touch the in-game/world backdrop.
+  try {
+    var initialIdx = window.DiggerzGetMenuBgIndex();
+    setTimeout(function(){
+      try { window.DiggerzApplyMenuBackground(initialIdx); } catch(eInit) {}
+    }, 0);
+  } catch(eStart) {}
 })();
 </script>
 <script src="/build239-client.js"></script><script src="/build240-client.js"></script></body>
