@@ -51637,6 +51637,28 @@ function __normalizeWearableScales(skel) {
                         } catch (eCol2) {}
                         try { e.c9 = f.c9; } catch (eC9) {}
                         scaleWear(e);
+
+                        // Native wings are a two-sprite wearable: the left wing is
+                        // the main item and the right wing is its "cw" child. Recreate
+                        // the native offsets/scale so the preview matches players.
+                        if (slot === 5 && (itemId === 211 || itemId === 212 || itemId === 213)) {
+                            try {
+                                e.A4 = -e._5.width / 2;
+                                e.A5 = -e._5.height / 4;
+                                try { e.set_local_xScale(e.set_local_yScale(.7)); } catch (eWingScale) {}
+                                var rightWing = z.I9();
+                                rightWing.Init(f.BASIC_WING_RIGHT_PNG());
+                                rightWing.D7(e);
+                                rightWing._1 = "cw";
+                                rightWing.A4 = rightWing._5.width / 2;
+                                rightWing.A5 = 0;
+                                rightWing.b6 = -e.A4;
+                                rightWing.b7 = -e.A5;
+                                if (!e._9) e._9 = [];
+                                e._9.push(rightWing);
+                            } catch (eWing) {}
+                        }
+
                         if (!g._9) g._9 = [];
                         if (insertAt != null && insertAt >= 0)
                             g._9.splice(insertAt, 0, e);
@@ -52333,7 +52355,7 @@ function __normalizeWearableScales(skel) {
             } catch (ePrev) {}
 
             var __invW = __L("inventory", "w", 320);
-            var __invH = __L("inventory", "h", 500);
+            var __invH = __L("inventory", "h", 560);
             var __invBox = new ja(__invW, __invH, !0);
             __invBox.b6 = __L("inventory", "x", 350);
             __invBox.b7 = __L("inventory", "y", 10);
@@ -52398,7 +52420,7 @@ function __normalizeWearableScales(skel) {
             var __rowH = 72;
             var __gridW = __cols * __slotSize;
             var __startX = -__gridW / 2 + __slotSize / 2;
-            var __startY = -__invH / 2 + 62;
+            var __startY = -__invH / 2 + 82;
             // Match the in-game 95-slot visual inventory
             var __slotCount = Math.max(95, __rawSlots.length);
             var __rows = Math.ceil(Math.max(__visIndex || __slotCount, 1) / __cols);
@@ -52667,6 +52689,8 @@ function __normalizeWearableScales(skel) {
             // Close with unsaved-outfit warning
             this.__dzTryClose = function() {
                 try {
+                    // Prevent repeated close events from spawning the warning over itself.
+                    if (this.__dzClosePromptOpen) return;
                     var dirty = !!window.__dzCustomizeDirty;
                     var cur = (__equippedNow && __equippedNow.slice) ? __equippedNow.slice() : [];
                     var saved = (this.__dzSavedAppearance && this.__dzSavedAppearance.slice)
@@ -52687,6 +52711,8 @@ function __normalizeWearableScales(skel) {
                     try { q.mClicked = !1; q.clickedFunction = null; } catch (eClr) {}
                     setTimeout(function() {
                         try {
+                            if (self.__dzClosePromptOpen) return;
+                            self.__dzClosePromptOpen = !0;
                             try { q.mClicked = !1; q.clickedFunction = null; } catch (eClr2) {}
                             var dlg = new vb(
                                 self,
@@ -52696,10 +52722,12 @@ function __normalizeWearableScales(skel) {
                                 vb.g30,
                                 function() { // Proceed
                                     try { dlg.a0 = 1; } catch (e1) {}
+                                    self.__dzClosePromptOpen = !1;
                                     try { self.__dzDoClose(); } catch (e2) {}
                                 },
                                 function() { // Cancel
                                     try { dlg.a0 = 1; } catch (e3) {}
+                                    self.__dzClosePromptOpen = !1;
                                 }
                             );
                             try {
@@ -52716,6 +52744,7 @@ function __normalizeWearableScales(skel) {
                                 try { self._9.push(dlg); } catch (eP2) {}
                             }
                         } catch (eDlg) {
+                            self.__dzClosePromptOpen = !1;
                             try { self.__dzDoClose(); } catch (eF) {}
                         }
                     }, 80);
@@ -53006,8 +53035,8 @@ function __normalizeWearableScales(skel) {
                                     // Clip OUTSIDE the box (hide overflow), keep
                                     // cells inside visible. NEVER set a0 — a0=1
                                     // permanently destroys the sprite.
-                                    var __clipTop = -(this.__dzInvH || 500) / 2 + 40;
-                                    var __clipBottom = (this.__dzInvH || 500) / 2 - 28;
+                                    var __clipTop = -(this.__dzInvH || 500) / 2 + 60;
+                                    var __clipBottom = (this.__dzInvH || 500) / 2 - 8;
                                     var __cells = this.__dzInvCells || [];
                                     var __scr = Number(this.__dzInvScroll || 0);
                                     function __hideTree(node, hide) {
@@ -53041,7 +53070,7 @@ function __normalizeWearableScales(skel) {
                                 if (this.__dzInvBox && typeof this.__dzInvBox.set_scrollRect === "function")
                                     this.__dzInvBox.set_scrollRect(new r(
                                         -(this.__dzInvW || 320) / 2,
-                                        -(this.__dzInvH || 500) / 2,
+                                        -(this.__dzInvH || 500) / 2 + 20,
                                         this.__dzInvW || 320,
                                         this.__dzInvH || 500
                                     ));
