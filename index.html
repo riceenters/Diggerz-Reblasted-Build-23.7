@@ -50631,6 +50631,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             try {
                 this.__dzPrevMenuBgIdx = window.DiggerzGetMenuBgIndex
                     ? window.DiggerzGetMenuBgIndex() : 0;
+                try { window.__diggerzMenuCgTheme = -1; } catch (eInvB) {}
                 if (window.DiggerzApplyMenuBackground)
                     window.DiggerzApplyMenuBackground(9); // Beta Bknd
                 this.__dzBetaBknd = window.__diggerzMenuCg || null;
@@ -51221,13 +51222,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
 
             function __skinColor(tone) {
-                // Match the ACTUAL skin-tone slider/head exactly. The slider's
-                // head is never pure black: its darkness floor is .45 and its
-                // brightest value is 1.55. The preview must use that same range.
+                // Slightly darker than the raw slider head so the mannequin
+                // doesn't look washed out under the customize panel lighting.
                 tone = Number(tone);
                 if (!isFinite(tone)) tone = 90;
                 tone = Math.max(0, Math.min(100, tone));
-                return .45 + 1.1 * tone / 100;
+                return .38 + .95 * tone / 100;
             }
 
             // Build 23.7 stores one permanent 0-11 shirt-color index per player.
@@ -51266,27 +51266,29 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 // Mapped brightness (.45-1.55) — same as head/slider.
                 // NEVER paint wear sprites; only body meshes that should show skin.
                 var c = __skinColor(tone);
+                var cLimb = Math.max(0.2, c * 0.88);
                 var flags = skel.__dzSkinFlags || {};
-                function paint(node) {
+                function paint(node, col) {
                     if (!node || typeof node.set_local_r !== "function") return;
-                    try { node.set_local_r(node.set_local_g(node.set_local_b(c))); } catch (eP) {}
+                    var cc = (col != null ? col : c);
+                    try { node.set_local_r(node.set_local_g(node.set_local_b(cc))); } catch (eP) {}
                 }
                 // Head is always skin (unless a T41 hat hid it)
                 try {
                     if (!flags.hideHead) {
                         var head = skel.f2("head");
-                        paint(head);
+                        paint(head, c);
                     }
                 } catch (eH) {}
                 // Arms: only if no shirt, or shirt is T48 (skin-showing)
                 try {
                     if (!flags.shirtCoversArms) {
                         var armF = skel.f2("front_shoulder");
-                        if (armF) paint(armF.f2 ? armF.f2("arm") : null);
-                        paint(armF);
+                        if (armF) paint(armF.f2 ? armF.f2("arm") : null, cLimb);
+                        paint(armF, cLimb);
                         var armB = skel.f2("back_shoulder");
-                        if (armB) paint(armB.f2 ? armB.f2("arm_back") : null);
-                        paint(armB);
+                        if (armB) paint(armB.f2 ? armB.f2("arm_back") : null, cLimb);
+                        paint(armB, cLimb);
                     }
                 } catch (eA) {}
                 // Lower legs: skin-tint when pants are T48 (shorts) or no pants
@@ -51294,18 +51296,18 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 try {
                     if (!flags.pantsCoverLegs) {
                         var fl = skel.f2("front_lowerleg");
-                        if (fl) paint(fl.f2 ? fl.f2("leg") : null);
-                        paint(fl);
+                        if (fl) paint(fl.f2 ? fl.f2("leg") : null, cLimb);
+                        paint(fl, cLimb);
                         var bl = skel.f2("back_lowerleg");
-                        if (bl) paint(bl.f2 ? bl.f2("leg_back") : null);
-                        paint(bl);
+                        if (bl) paint(bl.f2 ? bl.f2("leg_back") : null, cLimb);
+                        paint(bl, cLimb);
                     }
                 } catch (eL) {}
                 // Feet: only if no shoes, or shoes are T48
                 try {
                     if (!flags.shoesCoverFeet) {
-                        paint(skel.f2("front_foot"));
-                        paint(skel.f2("back_foot"));
+                        paint(skel.f2("front_foot"), cLimb);
+                        paint(skel.f2("back_foot"), cLimb);
                     }
                 } catch (eF) {}
             }
@@ -51370,7 +51372,105 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 strip(skel);
             }
 
-            function __normalizeWearableScales(skel) {
+            
+            function __resetBodyMeshes(skel, tone) {
+                if (!skel || typeof skel.f2 !== "function") return;
+                var c = __skinColor(tone);
+                var cWear = Math.max(0.2, c * 0.88);
+                try { skel.__dzSkinFlags = {}; } catch (eF) {}
+                try {
+                    var fl = skel.f2("front_lowerleg");
+                    if (fl) fl = fl.f2("leg");
+                    if (fl) {
+                        try { fl.Init(f.LEG_PNG()); } catch (e1) {}
+                        try { fl.C2 = !1; } catch (e2) {}
+                        try { fl.c9 = !1; } catch (e3) {}
+                        try { fl.set_local_r(fl.set_local_g(fl.set_local_b(cWear))); } catch (e4) {}
+                    }
+                } catch (eL1) {}
+                try {
+                    var bl = skel.f2("back_lowerleg");
+                    if (bl) bl = bl.f2("leg_back");
+                    if (bl) {
+                        try { bl.Init(f.LEG_BACK_PNG()); } catch (e1) {}
+                        try { bl.C2 = !1; } catch (e2) {}
+                        try { bl.c9 = !1; } catch (e3) {}
+                        try { bl.set_local_r(bl.set_local_g(bl.set_local_b(cWear))); } catch (e4) {}
+                    }
+                } catch (eL2) {}
+                try {
+                    var pn = skel.f2("pants");
+                    if (pn) {
+                        try { pn.Init(f.PANTS_PNG()); } catch (e1) {}
+                        try { pn.c9 = !1; } catch (e2) {}
+                        try { pn.set_local_r(pn.set_local_g(pn.set_local_b(1))); } catch (e3) {}
+                    }
+                } catch (ePn) {}
+                try {
+                    var armF = skel.f2("front_shoulder");
+                    if (armF) armF = armF.f2("arm");
+                    if (armF) {
+                        try { armF.Init(f.WHITE_ARM_PNG()); } catch (e1) {}
+                        try { armF.set_local_r(armF.set_local_g(armF.set_local_b(cWear))); } catch (e2) {}
+                    }
+                } catch (eA1) {}
+                try {
+                    var armB = skel.f2("back_shoulder");
+                    if (armB) armB = armB.f2("arm_back");
+                    if (armB) {
+                        try { armB.Init(f.WHITE_ARM_PNG()); } catch (e1) {}
+                        try { armB.set_local_r(armB.set_local_g(armB.set_local_b(cWear))); } catch (e2) {}
+                    }
+                } catch (eA2) {}
+                try {
+                    var torso = skel.f2("torso");
+                    if (torso) {
+                        try { torso.Init(f.WHITE_TORSO_PNG()); } catch (e1) {}
+                        try { torso.set_local_r(torso.set_local_g(torso.set_local_b(cWear))); } catch (e2) {}
+                    }
+                } catch (eTo) {}
+                try {
+                    var ff = skel.f2("front_foot");
+                    if (ff) {
+                        try { if (f.FOOT_WHITE_PNG) ff.Init(f.FOOT_WHITE_PNG()); } catch (e1) {}
+                        try { ff.set_local_r(ff.set_local_g(ff.set_local_b(cWear))); } catch (e2) {}
+                        try { ff.a2 = !0; } catch (e3) {}
+                    }
+                } catch (eF1) {}
+                try {
+                    var bf = skel.f2("back_foot");
+                    if (bf) {
+                        try { if (f.FOOT_WHITE_PNG) bf.Init(f.FOOT_WHITE_PNG()); } catch (e1) {}
+                        try { bf.set_local_r(bf.set_local_g(bf.set_local_b(cWear))); } catch (e2) {}
+                        try { bf.a2 = !0; } catch (e3) {}
+                    }
+                } catch (eF2) {}
+            }
+
+            function __currentSkinTone() {
+                try {
+                    var title = null;
+                    try { title = q.GetChildByType(Cf); } catch (eT) {}
+                    if (title && title._9) {
+                        for (var i = 0; i < title._9.length; i++) {
+                            var n = title._9[i];
+                            if (n && n.y42 && n.y42.D43 != null)
+                                return Math.max(0, Math.min(100, Number(n.y42.D43)));
+                        }
+                    }
+                } catch (e1) {}
+                try {
+                    if (q.player && q.player.l9 != null)
+                        return Math.max(0, Math.min(100, Number(q.player.l9)));
+                } catch (e2) {}
+                try {
+                    if (q.diggerzService && q.diggerzService.state && q.diggerzService.state.skin_tone != null)
+                        return Math.max(0, Math.min(100, Number(q.diggerzService.state.skin_tone)));
+                } catch (e3) {}
+                return 90;
+            }
+
+function __normalizeWearableScales(skel) {
                 if (!skel) return;
                 function walk(node) {
                     if (!node) return;
@@ -51464,6 +51564,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 if (!skel || !(itemId|0) || slot === 8) return;
                 itemId = itemId|0;
                 slot = slot|0;
+                tone = (typeof __currentSkinTone === 'function') ? __currentSkinTone() : (tone || 90);
+                var wearSkin = Math.max(0.2, __skinColor(tone) * 0.88);
                 try {
                     var holder = {
                         a4: 2, i33: skel, l9: tone, J33: [], _9: [],
@@ -51506,8 +51608,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                             // T48 = body part under/around this wear shows skin
                             if (f.T48) {
                                 try {
-                                    var sc = __skinColor(tone);
-                                    g.set_local_r(g.set_local_g(g.set_local_b(sc)));
+                                    g.set_local_r(g.set_local_g(g.set_local_b(wearSkin)));
                                 } catch (eT) {}
                             }
                         } catch (eCol2) {}
@@ -51553,7 +51654,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                 if (f._9[0]._5) armF._5 = f._9[0]._5;
                                 armF.c9 = f._9[0].c9;
                                 if (f.T48)
-                                    armF.set_local_r(armF.set_local_g(armF.set_local_b(__skinColor(tone))));
+                                    armF.set_local_r(armF.set_local_g(armF.set_local_b(wearSkin)));
                                 else {
                                     armF.set_local_r(f.b8);
                                     armF.set_local_g(f.b9);
@@ -51567,7 +51668,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                 if (f._9[0]._5) armB._5 = f._9[0]._5;
                                 armB.c9 = f._9[0].c9;
                                 if (f.T48)
-                                    armB.set_local_r(armB.set_local_g(armB.set_local_b(__skinColor(tone))));
+                                    armB.set_local_r(armB.set_local_g(armB.set_local_b(wearSkin)));
                                 else {
                                     armB.set_local_r(f.b8);
                                     armB.set_local_g(f.b9);
@@ -51599,7 +51700,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                 eF._1 = "wear"; eF.b2 = !0;
                                 eF.c9 = f.c9;
                                 if (f.T48)
-                                    ff.set_local_r(ff.set_local_g(ff.set_local_b(__skinColor(tone))));
+                                    ff.set_local_r(ff.set_local_g(ff.set_local_b(wearSkin)));
                                 else {
                                     try { eF.set_r(eF.b8 != null ? eF.b8 : f.b8); eF.set_g(eF.b9 != null ? eF.b9 : f.b9); eF.set_b(eF.B0 != null ? eF.B0 : f.B0); }
                                     catch (eCf) { eF.set_local_r(f.b8); eF.set_local_g(f.b9); eF.set_local_b(f.B0); }
@@ -51617,7 +51718,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                 eB._1 = "wear"; eB.b2 = !0;
                                 eB.c9 = f.c9;
                                 if (f.T48)
-                                    bf.set_local_r(bf.set_local_g(bf.set_local_b(__skinColor(tone))));
+                                    bf.set_local_r(bf.set_local_g(bf.set_local_b(wearSkin)));
                                 else {
                                     try { eB.set_r(.9 * (eB.b8 != null ? eB.b8 : f.b8)); eB.set_g(.9 * (eB.b9 != null ? eB.b9 : f.b9)); eB.set_b(.9 * (eB.B0 != null ? eB.B0 : f.B0)); }
                                     catch (eCb) { eB.set_local_r(.9 * f.b8); eB.set_local_g(.9 * f.b9); eB.set_local_b(.9 * f.B0); }
@@ -51670,7 +51771,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                     if (f._9[0]._5) fl._5 = f._9[0]._5;
                                     fl.c9 = f.c9;
                                     if (f.T48)
-                                        fl.set_local_r(fl.set_local_g(fl.set_local_b(__skinColor(tone))));
+                                        fl.set_local_r(fl.set_local_g(fl.set_local_b(wearSkin)));
                                     else {
                                         fl.set_local_r(f.b8);
                                         fl.set_local_g(f.b9);
@@ -51686,7 +51787,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                     if (f._9[0]._5) bl._5 = f._9[0]._5;
                                     bl.c9 = f.c9;
                                     if (f.T48)
-                                        bl.set_local_r(bl.set_local_g(bl.set_local_b(__skinColor(tone))));
+                                        bl.set_local_r(bl.set_local_g(bl.set_local_b(wearSkin)));
                                     else {
                                         bl.set_local_r(f.b8);
                                         bl.set_local_g(f.b9);
@@ -51783,9 +51884,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 
 function __equipOnPreview(skel, app) {
                 if (!skel) return;
-                var tone = 90;
-                try { if (q.player && q.player.l9 != null) tone = q.player.l9; } catch (eT) {}
+                var tone = (typeof __currentSkinTone === 'function') ? __currentSkinTone() : 90;
                 try { __clearWearOnSkel(skel); } catch (eClr) {}
+                try { if (typeof __resetBodyMeshes === 'function') __resetBodyMeshes(skel, tone); } catch (eRst) {}
                 try { __ensureHeadAndEyes(skel, tone); } catch (eH) {}
 
                 var wanted = (app && app.slice) ? app.slice(0, 11) : null;
@@ -52805,8 +52906,7 @@ function __equipOnPreview(skel, app) {
                     var __ret = __mpE0.call(this);
                     try {
                         if (__previewSkelRef) {
-                            var __t2 = Math.max(.01, (q.player && q.player.l9) ?
-                                q.player.l9 : (this.y42 ? this.y42.D43 : 90));
+                            var __t2 = (typeof __currentSkinTone === 'function') ? __currentSkinTone() : 90;
                             __tintPreviewSkin(__previewSkelRef, __t2);
                             // Don't recolor torso every frame if a shirt is equipped
                             try {
@@ -120647,6 +120747,11 @@ e50: function(a) {
       return n;
     } catch (e) { return 0; }
   };
+  /**
+   * Menu background system — dedicated overlay layer.
+   * Hides the original title.d34 (mountains) and draws the chosen cg theme
+   * on a separate host so we never fight the title constructor / e0 path.
+   */
   window.DiggerzApplyMenuBackground = function(forceIdx) {
     try {
       var list = window.DiggerzMenuBgList || [];
@@ -120656,72 +120761,111 @@ e50: function(a) {
       try { localStorage.setItem("diggerz.menuBg.v1", String(idx)); } catch (eS) {}
       window.__diggerzMenuBgIdx = idx;
       var theme = (list[idx] && list[idx].theme != null) ? (list[idx].theme|0) : idx;
-      // Never touch in-game world backdrop
+
+      // Never swap the in-game world backdrop
       try {
-        if (l && l.z38 && l.z39) {
+        if (typeof l !== "undefined" && l && l.z38 && l.z39) {
           return true;
         }
       } catch (eInGame) {}
+
       var title = null;
       try { title = q.GetChildByType(Cf); } catch (eT) {}
       if (!title) {
         try {
           setTimeout(function() {
             try { window.DiggerzApplyMenuBackground(idx); } catch (eR) {}
-          }, 200);
+          }, 250);
         } catch (eTO) {}
         return false;
       }
-      // Skip rebuild if already showing this theme
+
+      // --- Hide the original mountain backdrop (keep it alive for restore) ---
       try {
-        if (window.__diggerzMenuCg && window.__diggerzMenuCgTheme === theme &&
-            title.d34 === window.__diggerzMenuCg && !window.__diggerzMenuCg.a0)
-          return true;
-      } catch (eSkip) {}
-      // Remove ANY previous backdrop cg on the title
-      try {
-        var toKill = [];
-        if (title.d34) toKill.push(title.d34);
-        if (window.__diggerzMenuCg) toKill.push(window.__diggerzMenuCg);
-        if (title._9) {
-          for (var i = 0; i < title._9.length; i++) {
-            var n = title._9[i];
-            if (!n) continue;
-            try {
-              if (n === title.d34 || n === window.__diggerzMenuCg) { toKill.push(n); continue; }
-              if (n._1 === "diggerz_menu_bg_cg" || n._1 === "bknd") toKill.push(n);
-              if (typeof n._1 === "string" && n._1.indexOf("para") === 0) toKill.push(n);
-            } catch (eN) {}
-          }
-        }
-        for (var k = 0; k < toKill.length; k++) {
-          var dead = toKill[k];
-          if (!dead) continue;
-          try { dead.a0 = 1; } catch (eA) {}
-          try { if (typeof dead.set_alp === "function") dead.set_alp(0); } catch (eAl) {}
+        if (title.d34 && title.d34 !== window.__dzBgOverlayCg) {
+          try { title.d34.set_alp(0); } catch (eA0) {}
+          try { title.d34.set_local_alp(0); } catch (eA1) {}
+          // Also hide parallax children by name
           try {
-            if (title._9) {
-              var ix = title._9.indexOf(dead);
-              if (ix >= 0) title._9.splice(ix, 1);
+            if (title.d34._9) {
+              for (var pi = 0; pi < title.d34._9.length; pi++) {
+                var pn = title.d34._9[pi];
+                if (!pn) continue;
+                try { pn.set_alp(0); } catch (eP) {}
+                try { pn.set_local_alp(0); } catch (eP2) {}
+              }
+            }
+          } catch (ePara) {}
+        }
+      } catch (eHide) {}
+
+      // Skip rebuild if overlay already shows this theme
+      try {
+        if (window.__dzBgOverlayCg &&
+            window.__diggerzMenuCgTheme === theme &&
+            !window.__dzBgOverlayCg.a0) {
+          return true;
+        }
+      } catch (eSkip) {}
+
+      // --- Ensure overlay host exists on the title, behind UI ---
+      var host = window.__dzBgOverlayHost;
+      if (!host || host.a0) {
+        host = z.I9();
+        host._1 = "diggerz_bg_overlay_host";
+        host.A7 = q.CENTERX;
+        host.A8 = q.CENTERY;
+        try { host.B8 = -999; } catch (eZ) {}
+        try { host.D7(title, !0); } catch (eD) {}
+        try {
+          if (!title._9) title._9 = [];
+          // Insert at front so it draws under logo / buttons
+          title._9.splice(0, 0, host);
+        } catch (eP) {
+          try { title._9.push(host); } catch (eP2) {}
+        }
+        window.__dzBgOverlayHost = host;
+      }
+
+      // Clear previous theme cg from the host
+      try {
+        if (window.__dzBgOverlayCg) {
+          try { window.__dzBgOverlayCg.a0 = 1; } catch (eK) {}
+          try {
+            if (host._9) {
+              var ix = host._9.indexOf(window.__dzBgOverlayCg);
+              if (ix >= 0) host._9.splice(ix, 1);
             }
           } catch (eRm) {}
+          window.__dzBgOverlayCg = null;
         }
-        title.d34 = null;
-        window.__diggerzMenuCg = null;
-      } catch (eOld) {}
-      // Build the chosen theme as the title's real d34
+        // Also wipe any leftover children on the host
+        if (host._9 && host._9.length) {
+          for (var ci = host._9.length - 1; ci >= 0; ci--) {
+            try { host._9[ci].a0 = 1; } catch (eC) {}
+          }
+          host._9.length = 0;
+        }
+      } catch (eClear) {}
+
+      // Build the chosen theme into the overlay host
       var cgNew = new cg(theme);
       cgNew._1 = "diggerz_menu_bg_cg";
       cgNew.A7 = q.CENTERX;
       cgNew.A8 = q.CENTERY;
-      try { cgNew.D7(title, !0); } catch (eD) {}
-      title.d34 = cgNew;
+      try { cgNew.B8 = -999; } catch (eZ2) {}
+      try { cgNew.D7(host, !0); } catch (eD2) {}
       try {
-        if (!title._9) title._9 = [];
-        title._9.splice(0, 0, cgNew);
-      } catch (eP) {
-        try { title._9.push(cgNew); } catch (eP2) {}
-      }
+        if (!host._9) host._9 = [];
+        host._9.push(cgNew);
+      } catch (ePush) {}
+      // Make sure host / cg are fully visible
+      try { host.set_alp(1); } catch (eHa) {}
+      try { host.set_local_alp(1); } catch (eHa2) {}
+      try { cgNew.set_alp(1); } catch (eCa) {}
+      try { cgNew.set_local_alp(1); } catch (eCa2) {}
+
+      window.__dzBgOverlayCg = cgNew;
       window.__diggerzMenuCg = cgNew;
       window.__diggerzMenuCgTheme = theme;
       return true;
@@ -120737,10 +120881,13 @@ e50: function(a) {
       var i = window.DiggerzGetMenuBgIndex();
       i = (i + 1) % list.length;
       try { localStorage.setItem("diggerz.menuBg.v1", String(i)); } catch (eS) {}
+      // Force rebuild even if theme number matches a cached one
+      try { window.__diggerzMenuCgTheme = -1; } catch (eInv) {}
       try { window.DiggerzApplyMenuBackground(i); } catch (eA) {}
       return i;
     } catch (e) { return 0; }
   };
+;
 })();
 </script>
 <script src="/build239-client.js"></script><script src="/build240-client.js"></script></body>
