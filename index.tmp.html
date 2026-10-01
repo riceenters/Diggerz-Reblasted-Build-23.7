@@ -51178,6 +51178,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     // Always strip old wear first so bones are clean before m38
                     __clearWearOnSkel(skel);
                 } catch (eClr) {}
+                // Head texture + eyes MUST run before equip. Calling F5 after
+                // m38 wipes every hat/face wearable we just attached.
+                try { __ensureHeadAndEyes(skel, tone); } catch (eH) {}
                 try {
                     if (q.player && typeof q.player.m38 === "function") {
                         var wearer = __makePreviewWearer(skel, tone);
@@ -51192,10 +51195,15 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 } catch (e) {}
                 // Body-correct size: drop inventory-slot scale from D6
                 try { __normalizeWearableScales(skel); } catch (eNorm) {}
-                try { __ensureHeadAndEyes(skel, tone); } catch (eH) {}
+                // Re-tint only — do NOT F5 the head or wearables disappear again
                 try { __tintPreviewSkin(skel, tone); } catch (eS) {}
                 try { __tintPreviewShirt(skel); } catch (eShirt) {}
                 try { skel.a2 = 1; } catch (eActive) {}
+                // Keep idle running on the menu (title screen has no in-game anim loop)
+                try {
+                    if (typeof skel._38 === "function" && skel.Z28 !== "idle")
+                        skel._38("idle", !0, 100, .5);
+                } catch (eIdle2) {}
             }
 
             function __makeItemIcon(parent, itemId, category, count) {
@@ -51309,10 +51317,23 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             } catch (ePool) {}
             if (!__skel) {
                 try {
+                    // Title-screen Customize runs before GameSpecificInit, so
+                    // Fc.M39 (guy_anims) is often still null. Load it here so
+                    // idle actually has keyframes to play on the mannequin.
+                    try {
+                        if (typeof Fc !== "undefined" && !Fc.M39 && typeof E !== "undefined" && E.u2) {
+                            var __animRaw = E.u2("guy_anims");
+                            if (__animRaw && typeof Mm !== "undefined")
+                                Fc.M39 = (new Mm(__animRaw, !0)).getValue();
+                        }
+                    } catch (eAnimLoad) {}
                     var __maker = new z;
                     var __scaleArg = 1;
                     try { if (q.player && q.player.l0 != null) __scaleArg = q.player.l0; } catch (eSc) {}
-                    __skel = __maker.G2("guy_anims", "guyskin", f, Fc.M39, __scaleArg, !0);
+                    // Pass null (not undefined Fc.M39) so G2 loads anims from JSON
+                    // when the cache is still empty.
+                    var __animArg = (typeof Fc !== "undefined" && Fc.M39) ? Fc.M39 : null;
+                    __skel = __maker.G2("guy_anims", "guyskin", f, __animArg, __scaleArg, !0);
                 } catch (eG2) {
                     try { __skel = (new z).G2("guy_anims", "guyskin", f, null, 1, !0); } catch (eG2b) {}
                 }
@@ -51446,16 +51467,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             __invContent.b6 = 0;
             __invContent.b7 = 0;
             this.__dzInvContent = __invContent;
-            // Clip the scrolling content itself. Clipping the outer JA alone can
-            // be bypassed by transformed child icons in the renderer.
+            // Do NOT put scrollRect on the moving content node — the rect travels
+            // with b7 and effectively clips inward. Outer invBox scrollRect is
+            // the stable viewport; per-cell alp handles overflow hide/show.
             try {
                 if (typeof __invContent.set_scrollRect === "function")
-                    __invContent.set_scrollRect(new r(
-                        -__invW / 2,
-                        -__invH / 2 + 48,
-                        __invW,
-                        __invH - 76
-                    ));
+                    __invContent.set_scrollRect(null);
             } catch (eContentClip) {}
 
             // Pull the authoritative inventory from the live service first, then
@@ -51727,14 +51744,31 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                 // transformed item sprites, so also hard-clip each
                                 // inventory cell to the visible inventory viewport.
                                 try {
-                                    var __clipTop = -(this.__dzInvH || 500) / 2 + 48;
-                                    var __clipBottom = (this.__dzInvH || 500) / 2 - 42;
+                                    // Viewport in invBox local space. Content is
+                                    // translated by b7 = -scroll, so cell visual Y
+                                    // relative to the box is cell.b7 - scroll.
+                                    // Clip OUTSIDE the box (hide overflow), keep
+                                    // cells inside visible. NEVER set a0 — a0=1
+                                    // permanently destroys the sprite.
+                                    var __clipTop = -(this.__dzInvH || 500) / 2 + 40;
+                                    var __clipBottom = (this.__dzInvH || 500) / 2 - 28;
                                     var __cells = this.__dzInvCells || [];
+                                    var __scr = Number(this.__dzInvScroll || 0);
                                     for (var __ci2 = 0; __ci2 < __cells.length; __ci2++) {
                                         var __cc = __cells[__ci2];
                                         if (!__cc) continue;
-                                        var __vy = Number(__cc.b7) - Number(this.__dzInvScroll || 0);
-                                        __cc.a0 = (__vy + 35 < __clipTop || __vy - 35 > __clipBottom) ? 0 : 1;
+                                        var __vy = Number(__cc.b7) - __scr;
+                                        // Fully outside the vertical viewport?
+                                        var __hide = (__vy + 40 < __clipTop) || (__vy - 40 > __clipBottom);
+                                        try {
+                                            if (typeof __cc.set_local_alp === "function")
+                                                __cc.set_local_alp(__hide ? 0 : 1);
+                                            else if (__cc.B1 != null)
+                                                __cc.B1 = __hide ? 0 : 1;
+                                        } catch (eAlp) {}
+                                        try { __cc.C2 = !!__hide; } catch (eC2) {}
+                                        // Keep a0 at 0 so the engine never culls the cell
+                                        try { if (__cc.a0) __cc.a0 = 0; } catch (eA0) {}
                                     }
                                 } catch (eCellClip) {}
                                 // Consume the engine's one-frame wheel event only here.
