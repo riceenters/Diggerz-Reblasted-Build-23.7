@@ -51138,6 +51138,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     wearer.q7 = (l && l.z39 && l.z39.q7)
                         ? l.z39.q7
                         : (q.player && q.player.q7 ? q.player.q7 : null);
+                    // A proxy created from the live character inherits its J33 array.
+                    // Give the proxy its own outfit state so m38() actually rebuilds
+                    // the wearable attachments instead of deciding nothing changed.
+                    wearer.J33 = [];
 
                     var wanted = (app && app.slice) ? app.slice(0, 11) : [];
                     while (wanted.length < 11) wanted.push(0);
@@ -51256,7 +51260,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             // items from inventory variants or from a second cache.
             var __app = [];
             try {
-                if (q.player && Array.isArray(q.player.J33) && q.player.J33.length)
+                if (q.diggerzService && q.diggerzService.state &&
+                    Array.isArray(q.diggerzService.state.appearance) &&
+                    q.diggerzService.state.appearance.length)
+                    __app = q.diggerzService.state.appearance.slice(0, 11);
+            } catch (eSvcApp) {}
+            try {
+                if (!__app.length && q.player && Array.isArray(q.player.J33) && q.player.J33.length)
                     __app = q.player.J33.slice(0, 11);
             } catch (eLive) {}
             if (!__app.length) __app = __appearanceFromSave(__save);
@@ -51281,11 +51291,14 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             if (!__skel) {
                 try {
                     var __maker = new z;
-                    var __scaleArg = 1;
-                    try { if (q.player && q.player.l0 != null) __scaleArg = q.player.l0; } catch (eSc) {}
-                    __skel = __maker.G2("guy_anims", "guyskin", f, Fc.M39, __scaleArg, !0);
+                    // The actual player is constructed as new pa(..., .8, ...).
+                    // G2 itself builds the skeleton at native scale; .8 is the
+                    // character object's scale, so the preview must use the same
+                    // value rather than q.player.l0 (which is not the rig scale).
+                    __skel = __maker.G2("guy_anims", "guyskin", f, Fc.M39, null, !0);
+                    __skel.set_local_xScale(__skel.set_local_yScale(.8));
                 } catch (eG2) {
-                    try { __skel = (new z).G2("guy_anims", "guyskin", f, null, 1, !0); } catch (eG2b) {}
+                    try { __skel = (new z).G2("guy_anims", "guyskin", f, null, null, !0); __skel.set_local_xScale(__skel.set_local_yScale(.8)); } catch (eG2b) {}
                 }
             }
 
@@ -51423,73 +51436,52 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             // Pull the authoritative inventory from the live service first, then
             // fall back to the local saved copy. Empty slots are retained so the
             // customize UI actually looks/behaves like an inventory.
-            var __rawSlots = null;
+            var __rawSlots = [];
             try {
-                var __stNow = q.diggerzService && q.diggerzService.state;
-                if (__stNow && Array.isArray(__stNow.slots)) __rawSlots = __stNow.slots;
-            } catch (eSvcSlots) {}
-            if (!__rawSlots) {
+                // Use the real player's Sc inventory objects when available.
+                // They already contain the authoritative appearance slot (t46),
+                // category (a4), item id (h44), variant (b14), and count (g36).
+                var __liveInv = l && l.z39 && l.z39.n38 && l.z39.n38.B30;
+                if (Array.isArray(__liveInv)) {
+                    for (var __li = 0; __li < __liveInv.length; __li++) {
+                        var __liveItem = __liveInv[__li];
+                        if (__liveItem && (__liveItem.h44|0) && (__liveItem.g36|0))
+                            __rawSlots.push({
+                                id: __liveItem.h44|0,
+                                category: __liveItem.a4|0,
+                                variant: __liveItem.b14|0,
+                                count: __liveItem.g36|0,
+                                b14: __liveItem.b14|0,
+                                g39: __liveItem.g39,
+                                wear: (__liveItem.t46 == null ? -1 : __liveItem.t46|0),
+                                source: __liveItem
+                            });
+                    }
+                }
+            } catch (eLiveInv) {}
+            if (!__rawSlots.length) {
                 try {
                     var __saveNow = __loadDigSave();
-                    if (__saveNow && Array.isArray(__saveNow.slots)) __rawSlots = __saveNow.slots;
-                } catch (eSaveSlots) {}
-            }
-            if (!Array.isArray(__rawSlots)) __rawSlots = [];
-
-            // Customize is a CLOTHING inventory, not the normal item inventory.
-            // These are the mannequin's wearable appearance slots.  Weapon/tool
-            // slot 4, non-clothing slot 10, blocks and other gameplay items are
-            // deliberately excluded.
-            var __clothingWearSlots = {0:1,1:1,2:1,3:1,5:1,6:1,7:1,9:1};
-
-            var __cols = 4;
-            var __slotSize = 70;
-            var __rowH = 72;
-            var __gridW = __cols * __slotSize;
-            var __startX = -__gridW / 2 + __slotSize / 2;
-            var __startY = -__invH / 2 + 62;
-            var __clothingItems = [];
-
-            function __wearSlotForItem(item, slotIndex) {
-                if (!item || !(item.id|0)) return -1;
-                // Prefer the live inventory entry at the exact slot. This keeps
-                // duplicate copies of the same item from equipping the wrong
-                // cosmetic slot.
-                try {
-                    var invExact = l.z39 && l.z39.n38 && l.z39.n38.B30;
-                    var exact = invExact && invExact[slotIndex|0];
-                    if (exact && exact.a4 === 2 && exact.h44 === (item.id|0) &&
-                        exact.t46 >= 0 && exact.t46 <= 10)
-                        return exact.t46|0;
-                } catch (eExactWear) {}
-                // The real item renderer gets the authoritative appearance slot
-                // from h.n7/O27. Use a temporary icon so we don't guess slot 1.
-                try {
-                    var probe = new X(__invContent, item.category|0, item.id|0,
-                        item.variant|0, 0, Math.max(1, item.count|0), item.b14|0, item.g39);
-                    var ws = probe.t46;
-                    if (ws != null && ws >= 0 && ws <= 10) return ws|0;
-                } catch (eProbe) {}
-                // If the item is currently equipped, the live inventory object
-                // remains the most reliable source.
-                try {
-                    var invLive = l.z39 && l.z39.n38 && l.z39.n38.B30;
-                    if (invLive) {
-                        for (var wi = 0; wi < invLive.length; wi++) {
-                            var live = invLive[wi];
-                            if (live && live.h44 === (item.id|0) && live.a4 === 2 &&
-                                live.t46 >= 0 && live.t46 <= 10)
-                                return live.t46|0;
+                    if (__saveNow && Array.isArray(__saveNow.slots)) {
+                        for (var __si = 0; __si < __saveNow.slots.length; __si++) {
+                            var __sv = __saveNow.slots[__si];
+                            if (__sv && (__sv.id|0) && (__sv.count|0)) __rawSlots.push(__sv);
                         }
                     }
-                } catch (eLiveWear) {}
-                return -1;
+                } catch (eSaveSlots) {}
             }
 
+            // Only appearance slots are shown in Customize. Gameplay tools,
+            // blocks, guns and swords never enter this list.
+            var __clothingWearSlots = {0:1,1:1,2:1,3:1,5:1,6:1,7:1,9:1};
+            var __clothingItems = [];
             for (var __ri = 0; __ri < __rawSlots.length; __ri++) {
                 var __riItem = __rawSlots[__ri];
                 if (!__riItem || !(__riItem.id|0) || !(__riItem.count|0)) continue;
-                var __riWear = __wearSlotForItem(__riItem, __ri);
+                var __riWear = (__riItem.wear != null) ? (__riItem.wear|0) : -1;
+                if (__riWear < 0) {
+                    try { __riWear = __wearSlotForItem(__riItem, __ri); } catch (eWearMap) { __riWear = -1; }
+                }
                 if (__clothingWearSlots[__riWear]) {
                     __clothingItems.push({ item: __riItem, wear: __riWear, sourceIndex: __ri });
                 }
