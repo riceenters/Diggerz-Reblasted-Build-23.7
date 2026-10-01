@@ -22477,6 +22477,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 variants: variants,
                 slots: slots,
                 appearance: [0, 247, 0, 0, 326, 0, 0, 0, 0, 0, 0],
+                skin_tone: 90,
                 appearanceText: "",
                 x: 12,
                 y: surfaceAt[12] - 2,
@@ -22500,6 +22501,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             // Expand older saves up to the full 95-slot visual grid
             while (this.state.slots.length < 95) this.state.slots.push(this.emptyItem());
             if (this.state.slots.length > 95) this.state.slots = this.state.slots.slice(0, 95);
+            if (this.state.skin_tone == null || !isFinite(Number(this.state.skin_tone)))
+                this.state.skin_tone = 90;
+            try {
+                if (q.player) q.player.l9 = Number(this.state.skin_tone);
+            } catch (eSkL) {}
             this.state.appearance = (saved.appearance || []).slice(0, 11);
             this.state.appearanceText = saved.appearanceText || "";
             this.state.coins = saved.coins || 0;
@@ -50569,9 +50575,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     if (!__hc) continue;
                     var __n = "";
                     try { __n = String(__hc._1 || ""); } catch (eN) {}
-                    // Leave the parallax host + gradient; fade UI buttons/logo chrome
-                    if (__n.indexOf("para") === 0 || __n === "gradient") continue;
-                    // d34 is the cg backdrop host — handle below
+                    if (__n.indexOf("para") === 0 || __n === "gradient" || __n === "diggerz_menu_bg_cg" || __n === "diggerz_customize_beta_bknd") continue;
                     if (__hc === __title.d34) continue;
                     try {
                         var __prevAlp = (__hc.a7 != null) ? __hc.a7 : 1;
@@ -50580,6 +50584,29 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         else if (typeof __hc.set_local_alp === "function") __hc.set_local_alp(0);
                     } catch (eH) {}
                 }
+                // Explicitly hide logo + reblasted extension (nested under C58)
+                try {
+                    var __logos = [__title.C58, __title.C60];
+                    for (var __li = 0; __li < __logos.length; __li++) {
+                        var __lg = __logos[__li];
+                        if (!__lg) continue;
+                        var __la = (__lg.a7 != null) ? __lg.a7 : 1;
+                        this.__dzHiddenGui.push({ node: __lg, alp: __la });
+                        if (typeof __lg.set_alp === "function") __lg.set_alp(0);
+                        else if (typeof __lg.set_local_alp === "function") __lg.set_local_alp(0);
+                    }
+                    // Walk C58 children for reblasted_logo_extension
+                    if (__title.C58 && __title.C58._9) {
+                        for (var __ri = 0; __ri < __title.C58._9.length; __ri++) {
+                            var __rc = __title.C58._9[__ri];
+                            if (!__rc) continue;
+                            var __ra = (__rc.a7 != null) ? __rc.a7 : 1;
+                            this.__dzHiddenGui.push({ node: __rc, alp: __ra });
+                            if (typeof __rc.set_alp === "function") __rc.set_alp(0);
+                            else if (typeof __rc.set_local_alp === "function") __rc.set_local_alp(0);
+                        }
+                    }
+                } catch (eLogo) {}
             }
             // Force Beta Bknd (theme 9) while Customize is open
             try {
@@ -50628,8 +50655,16 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         this.y42 = new vl(this,0,a,280,50,2,f.HEAD_PNG(),Th.n7(),null,q.player.l9);
         // Place track at layout center; handle offset reflects current skin tone
         try {
-            var __initTone = (q.player && q.player.l9 != null) ? Number(q.player.l9) : 90;
+            var __initTone = 90;
+            try {
+                if (q.diggerzService && q.diggerzService.state && q.diggerzService.state.skin_tone != null)
+                    __initTone = Number(q.diggerzService.state.skin_tone);
+                else if (q.player && q.player.l9 != null)
+                    __initTone = Number(q.player.l9);
+            } catch (eTone) {}
             if (!isFinite(__initTone)) __initTone = 90;
+            __initTone = Math.max(0, Math.min(100, __initTone));
+            try { if (q.player) q.player.l9 = __initTone; } catch (ePl) {}
             this.y42.D43 = __initTone;
             var __initW = this.y42.D40 || 280;
             var __initOff = __initTone * __initW / 100 - __initW / 2;
@@ -51209,14 +51244,39 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
             function __tintPreviewSkin(skel, tone) {
                 if (!skel || typeof skel.f2 !== "function") return;
-                var c = __skinColor(tone);
-                var slots = ["head", "front_arm", "back_arm"];
-                for (var i = 0; i < slots.length; i++) {
+                tone = Number(tone);
+                if (!isFinite(tone)) tone = 90;
+                tone = Math.max(0, Math.min(100, tone));
+                // Head uses the slider-mapped brightness (matches handle head)
+                var headC = __skinColor(tone);
+                // Limbs use RAW l9 like player.m38 T48 paths
+                var limbC = tone;
+                try {
+                    var head = skel.f2("head");
+                    if (head && typeof head.set_local_r === "function")
+                        head.set_local_r(head.set_local_g(head.set_local_b(headC)));
+                } catch (eH) {}
+                var limbBones = [
+                    "front_arm", "back_arm",
+                    "front_foot", "back_foot",
+                    "front_shoulder", "back_shoulder"
+                ];
+                for (var i = 0; i < limbBones.length; i++) {
                     try {
-                        var part = skel.f2(slots[i]);
+                        var part = skel.f2(limbBones[i]);
                         if (!part) continue;
                         if (typeof part.set_local_r === "function")
-                            part.set_local_r(part.set_local_g(part.set_local_b(c)));
+                            part.set_local_r(part.set_local_g(part.set_local_b(limbC)));
+                        // Nested arm meshes under shoulders
+                        try {
+                            var nested = ["arm", "arm_front", "arm_back"];
+                            for (var ni = 0; ni < nested.length; ni++) {
+                                if (typeof part.f2 !== "function") break;
+                                var sub = part.f2(nested[ni]);
+                                if (sub && typeof sub.set_local_r === "function")
+                                    sub.set_local_r(sub.set_local_g(sub.set_local_b(limbC)));
+                            }
+                        } catch (eN) {}
                     } catch (eSlot) {}
                 }
             }
@@ -51401,14 +51461,28 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         e._1 = "wear";
                         e.b2 = !0;
                         try {
-                            if (dimBack) {
+                            // Match player.m38: T48 means the BODY PART shows skin
+                            // (tint the bone with raw l9); the wear sprite keeps item color.
+                            if (f.T48) {
+                                try {
+                                    g.set_local_r(g.set_local_g(g.set_local_b(tone)));
+                                } catch (eT) {}
+                                // Wear overlay still gets its palette
+                                try {
+                                    e.set_local_r(f.b8); e.set_local_g(f.b9); e.set_local_b(f.B0);
+                                } catch (eW) {}
+                            } else if (dimBack) {
                                 e.set_local_r(.9 * f.b8);
                                 e.set_local_g(.9 * f.b9);
                                 e.set_local_b(.9 * f.B0);
                             } else {
-                                e.set_r(e.b8); e.set_g(e.b9); e.set_b(e.B0);
+                                try {
+                                    e.set_local_r(f.b8); e.set_local_g(f.b9); e.set_local_b(f.B0);
+                                } catch (eCol) {
+                                    try { e.set_r(f.b8); e.set_g(f.b9); e.set_b(f.B0); } catch (e2) {}
+                                }
                             }
-                        } catch (eCol) {}
+                        } catch (eCol2) {}
                         try { e.c9 = f.c9; } catch (eC9) {}
                         scaleWear(e);
                         if (!g._9) g._9 = [];
@@ -51607,7 +51681,72 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 } catch (eAtt) {}
             }
 
-            function __equipOnPreview(skel, app) {
+            
+            function __clearPreviewPet(prev) {
+                try {
+                    if (!prev || !prev._9) return;
+                    for (var i = prev._9.length - 1; i >= 0; i--) {
+                        var n = prev._9[i];
+                        if (n && n.__dzPetPreview) {
+                            try { n.a0 = 1; } catch (eA) {}
+                            prev._9.splice(i, 1);
+                        }
+                    }
+                } catch (e) {}
+            }
+            function __equipPetPreview(prev, petId) {
+                __clearPreviewPet(prev);
+                petId = petId|0;
+                if (!prev || !petId) return;
+                try {
+                    // Map cosmetic id → pet skin key (pet_1, pet_2, …)
+                    var skin = "pet_1";
+                    try {
+                        // Common pet item ids from shop / digtrade
+                        if (petId === 120) skin = "pet_1"; // cat-ish
+                        else if (petId === 94) skin = "pet_2";
+                        else if (petId === 126) skin = "pet_3";
+                        else skin = "pet_" + Math.max(1, Math.min(20, petId % 20 || 1));
+                    } catch (eSk) {}
+                    var maker = new z;
+                    // Load pet_anims if needed
+                    try {
+                        if (typeof Td !== "undefined" && !Td.M39 && typeof E !== "undefined" && E.u2) {
+                            var raw = E.u2("pet_anims");
+                            if (raw && typeof Mm !== "undefined")
+                                Td.M39 = (new Mm(raw, !0)).getValue();
+                        }
+                    } catch (eLoad) {}
+                    var pet = maker.G2("pet_anims", skin, f, null, null, !0);
+                    if (!pet) {
+                        try { pet = maker.G2("pet_anims", "pet_1", f, null, null, !0); } catch (eP2) {}
+                    }
+                    if (!pet) return;
+                    pet.__dzPetPreview = !0;
+                    pet.D7(prev, !0);
+                    // Beside the player, slightly forward, drawn behind the guy
+                    pet.b6 = 55;
+                    pet.b7 = 70;
+                    try { pet.B8 = -2; } catch (eZ) {}
+                    try {
+                        if (typeof pet.set_local_xScale === "function")
+                            pet.set_local_xScale(pet.set_local_yScale(1.6));
+                    } catch (eSc) {}
+                    try { prev._9.unshift(pet); } catch (eU) {
+                        try { prev._9.push(pet); } catch (eP) {}
+                    }
+                    try {
+                        if (typeof pet._38 === "function")
+                            pet._38("idle", !0, 100, .5);
+                    } catch (eId) {}
+                    // Keep a ref for e0 idle maintenance
+                    try { window.__dzPreviewPet = pet; } catch (eR) {}
+                } catch (ePet) {
+                    try { console.warn("[PetPreview]", ePet); } catch (eW) {}
+                }
+            }
+
+function __equipOnPreview(skel, app) {
                 if (!skel) return;
                 var tone = 90;
                 try { if (q.player && q.player.l9 != null) tone = q.player.l9; } catch (eT) {}
@@ -51656,6 +51795,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 }
 
                 try { __normalizeWearableScales(skel); } catch (eNorm) {}
+                // Tint AFTER wear so skin-showing clothes (T48) get correct limb color
                 try { __tintPreviewSkin(skel, tone); } catch (eS) {}
                 // Only force the stored shirt palette when no shirt cosmetic is equipped.
                 // Otherwise it overwrites the real shirt/torso textures we just applied.
@@ -51668,6 +51808,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     if (!__busy && typeof skel._38 === "function" && skel.Z28 !== "idle")
                         skel._38("idle", !0, 100, .5);
                 } catch (eIdle2) {}
+                // Pet lives in appearance slot 8
+                try {
+                    var __petId = (wanted && wanted[8]) ? (wanted[8]|0) : 0;
+                    var __prevBox = skel._2;
+                    if (__prevBox) __equipPetPreview(__prevBox, __petId);
+                } catch (ePetEq) {}
             }
 
             function __makeItemIcon(parent, itemId, category, count) {
@@ -51727,6 +51873,62 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
 
             var __save = __loadDigSave();
             var __slots = (__save && __save.slots) ? __save.slots : [];
+
+            function __ownedCosmeticIds() {
+                var owned = {};
+                try {
+                    if (q.diggerzService && q.diggerzService.state && Array.isArray(q.diggerzService.state.slots)) {
+                        var slots = q.diggerzService.state.slots;
+                        for (var i = 0; i < slots.length; i++) {
+                            var it = slots[i];
+                            if (it && (it.id|0) && (it.count|0) > 0) owned[it.id|0] = true;
+                        }
+                    }
+                } catch (e1) {}
+                try {
+                    if (l.z39 && l.z39.n38 && l.z39.n38.B30) {
+                        for (var j = 0; j < l.z39.n38.B30.length; j++) {
+                            var x = l.z39.n38.B30[j];
+                            if (x && (x.h44|0)) owned[x.h44|0] = true;
+                        }
+                    }
+                } catch (e2) {}
+                return owned;
+            }
+            function __sanitizeAppearance(app) {
+                if (!app || !app.slice) return app;
+                app = app.slice();
+                while (app.length < 11) app.push(0);
+                var owned = __ownedCosmeticIds();
+                var changed = false;
+                // Only strip when we actually have an inventory source to check
+                var hasInv = false;
+                for (var k in owned) { hasInv = true; break; }
+                if (!hasInv) return app;
+                for (var s = 0; s < 11; s++) {
+                    var id = app[s]|0;
+                    if (id && !owned[id]) {
+                        app[s] = 0;
+                        changed = true;
+                    }
+                }
+                if (changed) {
+                    try {
+                        // Apply strip to live player so the glitch cannot stick
+                        if (q.player && typeof q.player.m38 === "function" && q.player.i33 && q.player.i33.Z28 != null)
+                            q.player.m38(app.slice(), "");
+                    } catch (eM) {}
+                    try {
+                        if (q.diggerzService && q.diggerzService.state) {
+                            q.diggerzService.state.appearance = app.slice();
+                            if (typeof q.diggerzService.markDirty === "function") q.diggerzService.markDirty();
+                            if (typeof q.diggerzService.save === "function") q.diggerzService.save(true);
+                        }
+                    } catch (eS) {}
+                }
+                return app;
+            }
+
             var __app = __appearanceFromSave(__save);
             // Prefer live service appearance (most accurate when available)
             try {
@@ -51742,6 +51944,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             } catch (eLive) {}
             // Pad appearance to 11
             while (__app.length < 11) __app.push(0);
+            // Strip equipped cosmetics the player no longer owns
+            try { __app = __sanitizeAppearance(__app); } catch (eSan) {}
 
             // The inventory cache marks the last worn copy with variant === 1.
             // Reconstruct those slots too, because the cached appearance array
@@ -52035,7 +52239,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var __startY = -__invH / 2 + 62;
             // Match the in-game 95-slot visual inventory
             var __slotCount = Math.max(95, __rawSlots.length);
-            var __rows = Math.ceil(__slotCount / __cols);
+            var __rows = Math.ceil(Math.max(__visIndex || __slotCount, 1) / __cols);
 
             function __wearSlotForItem(item, slotIndex) {
                 if (!item || !(item.id|0)) return -1;
@@ -52109,15 +52313,22 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             var __equippedNow = (__app && __app.slice) ? __app.slice() : [];
             while (__equippedNow.length < 11) __equippedNow.push(0);
 
+            var __visIndex = 0;
             for (var __slotIndex = 0; __slotIndex < __slotCount; __slotIndex++) {
-                var __row = Math.floor(__slotIndex / __cols);
-                var __col = __slotIndex % __cols;
+                var __item = __rawSlots[__slotIndex] || null;
+                if (!__item || !(__item.id|0) || !(__item.count|0)) continue;
+                // Only show wearable cosmetics (skip blocks/tools/etc.)
+                var __preWear = -1;
+                try { __preWear = __wearSlotForItem(__item, __slotIndex); } catch (ePW) {}
+                // Allow pet slot 8 for pet preview; skip pure non-wearables
+                if (__preWear < 0) continue;
+                var __row = Math.floor(__visIndex / __cols);
+                var __col = __visIndex % __cols;
+                __visIndex++;
                 var __sx = __startX + __col * __slotSize;
                 var __sy = __startY + __row * __rowH;
                 var __cell = __makeRealSlot(__invContent, __sx, __sy);
                 __dzInvCells.push(__cell);
-                var __item = __rawSlots[__slotIndex] || null;
-                if (!__item) __item = {category:0,id:0,variant:0,count:0,text:""};
 
                 var __icon = __putInventoryIcon(__cell, __item);
                 var __wear = __wearSlotForItem(__item, __slotIndex);
@@ -52140,7 +52351,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                                 var ws = wearSlot;
                                 if (ws < 0 || ws > 10)
                                     try { ws = __wearSlotForItem(item, -1); } catch (eWs) {}
-                                if (ws < 0 || ws > 10 || ws === 8) return;
+                                if (ws < 0 || ws > 10) return;
                                 var next = __equippedNow.slice();
                                 while (next.length < 11) next.push(0);
                                 next[ws] = ((next[ws]|0) === (item.id|0)) ? 0 : (item.id|0);
@@ -52180,8 +52391,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
 
             this.__dzInvScroll = 0;
+            var __visRows = Math.ceil(Math.max(__dzInvCells.length, 1) / __cols);
             this.__dzInvMaxScroll = Math.max(0,
-                (__rows * __rowH) - (__invH - 82));
+                (__visRows * __rowH) - (__invH - 82));
             this.__dzInvH = __invH;
             this.__dzInvW = __invW;
             this.__dzInvCells = __dzInvCells;
@@ -52233,9 +52445,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             }
             try { __refreshInvEQ(); } catch (eInitEQ) {}
 
-            // Save Player button — bottom-right of the Customize JA
+            // Save Player — real text button (ob), no black hit-box sprite
             try {
-                var __saveBtn = new xa(this.d32 / 2 - 90, this.d33 / 2 - 28, "^2Save Player", q.MAIN_FONT);
+                var __saveBtn = new ob(this.d32 / 2 - 100, this.d33 / 2 - 30, "^2Save Player", q.MAIN_FONT);
                 __saveBtn.D7(this, !0);
                 this._9.push(__saveBtn);
                 this.__dzSaveBtn = __saveBtn;
@@ -52244,34 +52456,27 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     try {
                         var app = (__equippedNow && __equippedNow.slice) ? __equippedNow.slice() : [];
                         while (app.length < 11) app.push(0);
+                        // Persist skin tone with the outfit
+                        try {
+                            var tone = (__saveSelf.y42 && __saveSelf.y42.D43 != null)
+                                ? Number(__saveSelf.y42.D43) : 90;
+                            if (!isFinite(tone)) tone = 90;
+                            tone = Math.max(0, Math.min(100, tone));
+                            if (q.player) q.player.l9 = tone;
+                            if (q.diggerzService && q.diggerzService.state) {
+                                q.diggerzService.state.skin_tone = tone;
+                                if (typeof q.diggerzService.markDirty === "function")
+                                    q.diggerzService.markDirty();
+                            }
+                        } catch (eToneS) {}
+                        // Strip any items no longer owned before saving
+                        try { app = __sanitizeAppearance(app); __equippedNow = app.slice(); } catch (eSan2) {}
                         __applyLive(app, "");
                         __saveSelf.__dzSavedAppearance = app.slice();
                         window.__dzCustomizeDirty = !1;
                         try { E.v2 && E.v2(Pj.n7()); } catch (eSfx) {}
                     } catch (eSave) {}
                 };
-                // ra-like click: wrap in a small hit box
-                try {
-                    var __saveHit = new ra;
-                    __saveHit.D7(this, !0);
-                    // invisible hit target over the text
-                    __saveHit.b6 = this.d32 / 2 - 90;
-                    __saveHit.b7 = this.d33 / 2 - 28;
-                    try {
-                        // give it a reasonable hit area via a tiny texture scale
-                        if (f.INVENTORYGRID_PNG) {
-                            __saveHit.X6(f.INVENTORYGRID_PNG());
-                            __saveHit.set_local_xScale(__saveHit.set_local_yScale(1.6));
-                            __saveHit.set_alp(0.01);
-                        }
-                    } catch (eTx) {}
-                    this._9.push(__saveHit);
-                    __saveHit.C33 = __saveBtn.C33;
-                    __saveHit.C39 = function() {
-                        try { if (this.C33) this.C33(); } catch (eC) {}
-                        try { q.canBeHot = !1; } catch (eH) {}
-                    };
-                } catch (eHit) {}
             } catch (eSaveBtn) {}
 
             // Close with unsaved-outfit warning
@@ -52291,35 +52496,44 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         this.__dzDoClose();
                         return;
                     }
-                    // Diggerz JA prompt: Cancel stays, Proceed closes
+                    // Delay one frame + clear click so the same mouse-up
+                    // does not instantly dismiss the prompt.
                     var self = this;
-                    try {
-                        var dlg = new vb(
-                            self,
-                            "^1Warning",
-                            "^1Warning, unsaved outfit detected",
-                            null,
-                            vb.g30,
-                            function() { // Yes / Proceed
-                                try { dlg.a0 = 1; } catch (e1) {}
-                                try { self.__dzDoClose(); } catch (e2) {}
-                            },
-                            function() { // No / Cancel
-                                try { dlg.a0 = 1; } catch (e3) {}
-                            }
-                        );
-                        // Relabel buttons if possible
+                    try { q.mClicked = !1; q.clickedFunction = null; } catch (eClr) {}
+                    setTimeout(function() {
                         try {
-                            if (dlg.F32 && dlg.F32.E37) dlg.F32.E37("Proceed");
-                            if (dlg.F33 && dlg.F33.E37) dlg.F33.E37("Cancel");
-                        } catch (eLbl) {}
-                        try { q.children.push(dlg); } catch (ePush) {
-                            try { self._9.push(dlg); } catch (eP2) {}
+                            try { q.mClicked = !1; q.clickedFunction = null; } catch (eClr2) {}
+                            var dlg = new vb(
+                                self,
+                                "^1Warning",
+                                "^1Warning, unsaved outfit detected",
+                                null,
+                                vb.g30,
+                                function() { // Proceed
+                                    try { dlg.a0 = 1; } catch (e1) {}
+                                    try { self.__dzDoClose(); } catch (e2) {}
+                                },
+                                function() { // Cancel
+                                    try { dlg.a0 = 1; } catch (e3) {}
+                                }
+                            );
+                            try {
+                                if (dlg.F32) {
+                                    if (dlg.F32.E37) dlg.F32.E37("Proceed");
+                                    else if (dlg.F32.E32 != null) dlg.F32.E32 = "Proceed";
+                                }
+                                if (dlg.F33) {
+                                    if (dlg.F33.E37) dlg.F33.E37("Cancel");
+                                    else if (dlg.F33.E32 != null) dlg.F33.E32 = "Cancel";
+                                }
+                            } catch (eLbl) {}
+                            try { q.children.push(dlg); } catch (ePush) {
+                                try { self._9.push(dlg); } catch (eP2) {}
+                            }
+                        } catch (eDlg) {
+                            try { self.__dzDoClose(); } catch (eF) {}
                         }
-                    } catch (eDlg) {
-                        // Fallback: just close
-                        this.__dzDoClose();
-                    }
+                    }, 80);
                 } catch (eTry) {
                     try { this.__dzDoClose(); } catch (eF) {}
                 }
@@ -52728,6 +52942,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         e0: function() {
             this.y42.set_local_r(this.y42.set_local_g(this.y42.set_local_b(.45 + 1.1 * this.y42.D43 / 100)));
             q.player.l9 = Math.max(0, Math.min(100, this.y42.D43));
+            try {
+                if (q.diggerzService && q.diggerzService.state) {
+                    q.diggerzService.state.skin_tone = q.player.l9;
+                    if (typeof q.diggerzService.markDirty === "function")
+                        q.diggerzService.markDirty();
+                }
+            } catch (eSkinSave) {}
             return ja.prototype.e0.call(this)
         },
         C39: function() {
@@ -119965,25 +120186,16 @@ e50: function(a) {
   };
   window.DiggerzApplyMenuBackground = function(forceIdx) {
     try {
-      // TITLE MENU ONLY — never touch the in-game world backdrop (l.z38.d34).
-      // In-game bknds use packet 102 / Zj blocks / admin-background separately.
-      try {
-        if (typeof l !== "undefined" && l.z38 && l.a42 && l.a42 !== "Lobby") {
-          // Playing a world — skip menu-bg system entirely
-          var __onTitle = false;
-          try { __onTitle = !!q.GetChildByType(Cf); } catch (eOT) {}
-          if (!__onTitle) return;
-        }
-      } catch (eGuard) {}
       var list = window.DiggerzMenuBgList || [];
-      if (!list.length) return;
-      var idx = (forceIdx != null) ? forceIdx : window.DiggerzGetMenuBgIndex();
-      idx = Math.max(0, Math.min(list.length - 1, idx|0));
-      var theme = list[idx].theme|0;
+      if (!list.length) return false;
+      var idx = (forceIdx != null && forceIdx !== undefined) ? (forceIdx|0) : window.DiggerzGetMenuBgIndex();
+      idx = Math.max(0, Math.min(list.length - 1, idx));
+      try { localStorage.setItem("diggerz.menuBg.v1", String(idx)); } catch (eS) {}
+      var theme = (list[idx] && list[idx].theme != null) ? (list[idx].theme|0) : idx;
       var title = null;
       try { title = q.GetChildByType(Cf); } catch (eT) {}
-      if (!title) return;
-      // Remove any previous custom cg we attached
+      if (!title || !title._9) return false;
+      // Strip previous custom menu cgs
       try {
         if (window.__diggerzMenuCg && window.__diggerzMenuCg !== title.d34) {
           var old = window.__diggerzMenuCg;
@@ -119994,26 +120206,32 @@ e50: function(a) {
             if (ix >= 0) title._9.splice(ix, 1);
           } catch (eRm) {}
         }
+        for (var si = title._9.length - 1; si >= 0; si--) {
+          try {
+            if (title._9[si] && title._9[si]._1 === "diggerz_menu_bg_cg") {
+              try { title._9[si].a0 = 1; } catch (eA2) {}
+              title._9.splice(si, 1);
+            }
+          } catch (eS2) {}
+        }
       } catch (eOld) {}
-      // Hide original title cg (mountains built at boot)
+      if (theme === 0) {
+        try {
+          if (title.d34) {
+            if (typeof title.d34.set_alp === "function") title.d34.set_alp(1);
+            else if (typeof title.d34.set_local_alp === "function") title.d34.set_local_alp(1);
+            try { title.d34.a2 = !0; } catch (eA3) {}
+          }
+        } catch (eShow) {}
+        window.__diggerzMenuCg = title.d34 || null;
+        return true;
+      }
       try {
         if (title.d34) {
           if (typeof title.d34.set_alp === "function") title.d34.set_alp(0);
           else if (typeof title.d34.set_local_alp === "function") title.d34.set_local_alp(0);
         }
       } catch (eHide) {}
-      // Theme 0 = restore the original mountains cg
-      if (theme === 0) {
-        try {
-          if (title.d34) {
-            if (typeof title.d34.set_alp === "function") title.d34.set_alp(1);
-            else if (typeof title.d34.set_local_alp === "function") title.d34.set_local_alp(1);
-          }
-        } catch (eShow) {}
-        window.__diggerzMenuCg = title.d34 || null;
-        return;
-      }
-      // Build the real animated backdrop (stars, icy, green screen, beta, …)
       var cgNew = new cg(theme);
       cgNew._1 = "diggerz_menu_bg_cg";
       cgNew.A7 = q.CENTERX;
@@ -120023,8 +120241,10 @@ e50: function(a) {
         try { title._9.push(cgNew); } catch (eP2) {}
       }
       window.__diggerzMenuCg = cgNew;
+      return true;
     } catch (e) {
       try { console.warn("[MenuBg]", e); } catch (e2) {}
+      return false;
     }
   };
   window.DiggerzCycleMenuBackground = function() {
@@ -120033,8 +120253,8 @@ e50: function(a) {
       if (!list.length) return 0;
       var i = window.DiggerzGetMenuBgIndex();
       i = (i + 1) % list.length;
-      localStorage.setItem("diggerz.menuBg.v1", String(i));
-      window.DiggerzApplyMenuBackground(i);
+      try { localStorage.setItem("diggerz.menuBg.v1", String(i)); } catch (eS) {}
+      try { window.DiggerzApplyMenuBackground(i); } catch (eA) {}
       return i;
     } catch (e) { return 0; }
   };
