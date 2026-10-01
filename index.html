@@ -51222,6 +51222,19 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 tone = Math.max(0, Math.min(100, tone));
                 return .38 + .95 * tone / 100;
             }
+            // Exact Build 24 item colors used by h3/h4 for WC shirts.
+            function __wcShirtColor(itemId) {
+                switch (itemId|0) {
+                    case 187: return [1, .3, .3];   // red
+                    case 188: return [.3, 1, .3];   // green
+                    case 189: return [.3, .3, 1];   // blue
+                    case 190: return [1, .5, .1];   // orange
+                    case 191: return [.2, .2, .2];   // black
+                    case 192: return [.3, 1, 1];     // cyan
+                    case 193: return [1, .85, .15];  // yellow
+                }
+                return null;
+            }
 
             // Build 23.7 stores one permanent 0-11 shirt-color index per player.
             // The recovered client had the persistence half implemented but never
@@ -51654,30 +51667,35 @@ function __normalizeWearableScales(skel) {
                         try { e.c9 = f.c9; } catch (eC9) {}
                         scaleWear(e);
 
-                        // Native wings are a two-sprite wearable: the left wing is
-                        // the main item and the right wing is its "cw" child. Recreate
-                        // the native offsets/scale so the preview matches players.
-                        if (slot === 5 && (itemId === 211 || itemId === 212 || itemId === 213)) {
+                        // Native back/wing wearables (m38 case 5): preserve the
+                        // item's authored anchor and its real "cw" child instead of
+                        // rebuilding the right wing from sprite dimensions.
+                        var __isWing = (slot === 5 && (itemId === 211 || itemId === 212 || itemId === 213));
+                        if (__isWing) {
                             try {
-                                e.A4 = -e._5.width / 2;
-                                e.A5 = -e._5.height / 4;
-                                try { e.set_local_xScale(e.set_local_yScale(.7)); } catch (eWingScale) {}
-                                var rightWing = z.I9();
-                                rightWing.Init(f.BASIC_WING_RIGHT_PNG());
-                                rightWing.D7(e);
-                                rightWing._1 = "cw";
-                                rightWing.A4 = rightWing._5.width / 2;
-                                rightWing.A5 = 0;
-                                rightWing.b6 = -e.A4;
-                                rightWing.b7 = -e.A5;
-                                if (!e._9) e._9 = [];
-                                e._9.push(rightWing);
+                                e.A4 = f.A4;
+                                e.A5 = f.A5;
+                                var __nativeCW = f.f0 && f.f0("cw");
+                                if (__nativeCW) {
+                                    var rightWing = z.I9();
+                                    rightWing.D7(e, !0);
+                                    __nativeCW.D6(rightWing);
+                                    if (!e._9) e._9 = [];
+                                    e._9.push(rightWing);
+                                    rightWing.A4 = __nativeCW.A4;
+                                    rightWing.A5 = __nativeCW.A5;
+                                    rightWing._1 = "cw";
+                                }
                             } catch (eWing) {}
                         }
 
                         if (!g._9) g._9 = [];
                         if (insertAt != null && insertAt >= 0)
                             g._9.splice(insertAt, 0, e);
+                        else if (__isWing)
+                            // Back wearables go first in the torso child list so they
+                            // sit behind other torso overlays in the mannequin preview.
+                            g._9.splice(0, 0, e);
                         else
                             g._9.push(e);
                         return e;
@@ -51745,6 +51763,18 @@ function __normalizeWearableScales(skel) {
                                 torso.set_local_r(f.b8);
                                 torso.set_local_g(f.b9);
                                 torso.set_local_b(f.B0);
+                            }
+                            // WC shirts are authored with h3/h4 palette indices.
+                            // Apply those exact palette values to torso and both arms
+                            // instead of relying on the reconstructed item's inherited tint.
+                            var __wcCol = __wcShirtColor(itemId);
+                            if (__wcCol) {
+                                skel.__dzSkinFlags.shirtCoversArms = true;
+                                try {
+                                    if (armF) { armF.set_local_r(__wcCol[0]); armF.set_local_g(__wcCol[1]); armF.set_local_b(__wcCol[2]); }
+                                    if (armB) { armB.set_local_r(__wcCol[0]); armB.set_local_g(__wcCol[1]); armB.set_local_b(__wcCol[2]); }
+                                    if (torso) { torso.set_local_r(__wcCol[0]); torso.set_local_g(__wcCol[1]); torso.set_local_b(__wcCol[2]); }
+                                } catch (eWCCol) {}
                             }
                         } catch (eSh) {}
                         break;
@@ -52613,6 +52643,10 @@ function __normalizeWearableScales(skel) {
             }
 
             this.__dzInvScroll = 0;
+            this.__dzInvTargetScroll = 0;
+            this.__dzInvSmoothScroll = 0;
+            this.__dzInvDragging = false;
+            this.__dzInvDragCandidate = false;
             var __visRows = Math.ceil(Math.max(__dzInvCells.length, 1) / __cols);
             this.__dzInvMaxScroll = Math.max(0,
                 (__visRows * __rowH) - (__invH - 82));
@@ -52840,37 +52874,7 @@ function __normalizeWearableScales(skel) {
                         this.y42.b7 = __forceL.skin.y;
                     }
                 }
-                var __selfForce = this;
-                setTimeout(function() {
-                    try {
-                        if (__selfForce.__dzPrevBox) {
-                            __selfForce.__dzPrevBox.b6 = __forceL.preview.x;
-                            __selfForce.__dzPrevBox.b7 = __forceL.preview.y;
-                        }
-                        if (__selfForce.__dzInvBox) {
-                            __selfForce.__dzInvBox.b6 = __forceL.inventory.x;
-                            __selfForce.__dzInvBox.b7 = __forceL.inventory.y;
-                        }
-                        if (__selfForce.y42) {
-                            try {
-                                var __t2 = (__selfForce.y42.D43 != null) ? Number(__selfForce.y42.D43) :
-                                    ((q.player && q.player.l9 != null) ? Number(q.player.l9) : 90);
-                                if (!isFinite(__t2)) __t2 = 90;
-                                __selfForce.y42.D43 = __t2;
-                                var __tw2 = __selfForce.y42.D40 || 280;
-                                var __off2 = __t2 * __tw2 / 100 - __tw2 / 2;
-                                __selfForce.y42.b6 = __forceL.skin.x + __off2;
-                                __selfForce.y42.b7 = __forceL.skin.y;
-                                if (__selfForce.y42.d49) __selfForce.y42.d49.b6 = -__off2;
-                            } catch (eST) {
-                                __selfForce.y42.b6 = __forceL.skin.x;
-                                __selfForce.y42.b7 = __forceL.skin.y;
-                            }
-                        }
-                        if (window.DiggerzCustomizeLayout && window.DiggerzCustomizeLayout.apply)
-                            window.DiggerzCustomizeLayout.apply(__forceL);
-                    } catch (eT) {}
-                }, 50);
+                // No recurring skin-bar position lock: native slider remains fully free after initialization.
             } catch (eForce) {}
 
             // Only the little head/handle may start a skin-tone drag. Clicking the
@@ -53013,83 +53017,94 @@ function __normalizeWearableScales(skel) {
 
                     try {
                         if (this.__dzInvContent) {
-                            var __wheel = 0;
+                            var __invBox2 = this.__dzInvBox;
+                            var __invW2 = this.__dzInvW || 320;
+                            var __invH2 = this.__dzInvH || 500;
+                            var __max2 = this.__dzInvMaxScroll || 0;
+
+                            if (this.__dzInvTargetScroll == null)
+                                this.__dzInvTargetScroll = Number(this.__dzInvScroll || 0);
+                            if (this.__dzInvSmoothScroll == null)
+                                this.__dzInvSmoothScroll = Number(this.__dzInvScroll || 0);
+
+                            // Wheel still works, but it feeds the same smooth target
+                            // used by dragging so both input methods feel identical.
+                            var __wheel2 = 0;
                             try {
-                                __wheel = q.mWheel|0;
-                                // Only steal wheel input when the pointer is over the
-                                // inventory. Arrow keys still work anywhere in Customize.
-                                if (__wheel && this.__dzInvBox) {
-                                    var __mx = Number(q.mX), __my = Number(q.mY);
-                                    var __cx = Number(this.__dzInvBox.A7), __cy = Number(this.__dzInvBox.A8);
-                                    if (!isFinite(__mx) || !isFinite(__my) ||
-                                        Math.abs(__mx - __cx) > (this.__dzInvW || 320) / 2 ||
-                                        Math.abs(__my - __cy) > (this.__dzInvH || 500) / 2)
-                                        __wheel = 0;
+                                __wheel2 = q.mWheel|0;
+                                if (__wheel2 && __invBox2) {
+                                    var __mx2 = Number(q.mX), __my2 = Number(q.mY);
+                                    var __cx2 = Number(__invBox2.A7), __cy2 = Number(__invBox2.A8);
+                                    if (!isFinite(__mx2) || !isFinite(__my2) ||
+                                        Math.abs(__mx2 - __cx2) > __invW2 / 2 ||
+                                        Math.abs(__my2 - __cy2) > __invH2 / 2)
+                                        __wheel2 = 0;
                                 }
-                            } catch (eW) {} 
-                            var __keyDir = 0;
+                            } catch (eW2) {}
+                            if (__wheel2)
+                                this.__dzInvTargetScroll += -__wheel2 * 64;
+
+                            // Shop-style click/drag scrolling, but vertical. A small
+                            // movement threshold preserves normal item clicks. Once the
+                            // pointer moves far enough, the pending slot click is cancelled.
                             try {
-                                if (q.KeyDown && q.KeyDown(38)) __keyDir = -1;
-                                if (q.KeyDown && q.KeyDown(40)) __keyDir = 1;
-                            } catch (eK) {}
-                            if (__wheel || __keyDir) {
-                                // Wheel up = move content up; wheel down = move content down.
-                                var __delta = __wheel ? -__wheel * 64 : __keyDir * 64;
-                                this.__dzInvScroll = Math.max(0, Math.min(
-                                    this.__dzInvMaxScroll || 0,
-                                    (this.__dzInvScroll || 0) + __delta
-                                ));
-                                this.__dzInvContent.b7 = -this.__dzInvScroll;
-                                // The engine's scrollRect is not sufficient for these
-                                // transformed item sprites, so also hard-clip each
-                                // inventory cell to the visible inventory viewport.
-                                try {
-                                    // Viewport in invBox local space. Content is
-                                    // translated by b7 = -scroll, so cell visual Y
-                                    // relative to the box is cell.b7 - scroll.
-                                    // Clip OUTSIDE the box (hide overflow), keep
-                                    // cells inside visible. NEVER set a0 — a0=1
-                                    // permanently destroys the sprite.
-                                    var __clipTop = -(this.__dzInvH || 500) / 2 + 60;
-                                    var __clipBottom = (this.__dzInvH || 500) / 2 - 8;
-                                    var __cells = this.__dzInvCells || [];
-                                    var __scr = Number(this.__dzInvScroll || 0);
-                                    function __hideTree(node, hide) {
-                                        if (!node) return;
-                                        try {
-                                            if (typeof node.set_local_alp === "function")
-                                                node.set_local_alp(hide ? 0 : 1);
-                                            else if (node.B1 != null)
-                                                node.B1 = hide ? 0 : 1;
-                                        } catch (eAlp) {}
-                                        try { node.C2 = !!hide; } catch (eC2) {}
-                                        try { if (node.a0) node.a0 = 0; } catch (eA0) {}
-                                        var kids = node._9;
-                                        if (kids && kids.length) {
-                                            for (var ki = 0; ki < kids.length; ki++)
-                                                __hideTree(kids[ki], hide);
+                                var __inside2 = false;
+                                if (__invBox2) {
+                                    var __ix = Number(q.mX), __iy = Number(q.mY);
+                                    var __icx = Number(__invBox2.A7), __icy = Number(__invBox2.A8);
+                                    __inside2 = isFinite(__ix) && isFinite(__iy) &&
+                                        Math.abs(__ix - __icx) <= __invW2 / 2 &&
+                                        Math.abs(__iy - __icy) <= __invH2 / 2;
+                                }
+                                if (q.mState === 1 && __inside2) {
+                                    if (!this.__dzInvDragging && !this.__dzInvDragCandidate) {
+                                        this.__dzInvDragCandidate = true;
+                                        this.__dzInvDragStartX = Number(q.mX);
+                                        this.__dzInvDragStartY = Number(q.mY);
+                                        this.__dzInvDragStartScroll = Number(this.__dzInvTargetScroll || 0);
+                                    }
+                                    if (this.__dzInvDragCandidate) {
+                                        var __dxD = Number(q.mX) - Number(this.__dzInvDragStartX || 0);
+                                        var __dyD = Number(q.mY) - Number(this.__dzInvDragStartY || 0);
+                                        if (!this.__dzInvDragging && Math.abs(__dyD) > 5) {
+                                            this.__dzInvDragging = true;
+                                            try { q.clickedFunction = null; q.mClicked = !1; } catch (eCancelClick) {}
                                         }
+                                        if (this.__dzInvDragging)
+                                            this.__dzInvTargetScroll = Number(this.__dzInvDragStartScroll || 0) - __dyD;
                                     }
-                                    for (var __ci2 = 0; __ci2 < __cells.length; __ci2++) {
-                                        var __cc = __cells[__ci2];
-                                        if (!__cc) continue;
-                                        var __vy = Number(__cc.b7) - __scr;
-                                        var __hide = (__vy + 40 < __clipTop) || (__vy - 40 > __clipBottom);
-                                        __hideTree(__cc, __hide);
-                                    }
-                                } catch (eCellClip) {}
-                                // Consume the engine's one-frame wheel event only here.
-                                try { q.mWheel = 0; } catch (eConsume) {}
-                            }
+                                } else if (q.mState === 0) {
+                                    this.__dzInvDragging = false;
+                                    this.__dzInvDragCandidate = false;
+                                }
+                            } catch (eDrag) {}
+
+                            this.__dzInvTargetScroll = Math.max(0, Math.min(__max2, Number(this.__dzInvTargetScroll || 0)));
+                            var __cur2 = Number(this.__dzInvSmoothScroll || 0);
+                            var __tar2 = Number(this.__dzInvTargetScroll || 0);
+                            __cur2 += (__tar2 - __cur2) * .28;
+                            if (Math.abs(__tar2 - __cur2) < .15) __cur2 = __tar2;
+                            this.__dzInvSmoothScroll = __cur2;
+                            this.__dzInvScroll = __cur2;
+                            this.__dzInvContent.b7 = -__cur2;
+
+                            // Stable render mask: the viewport follows the inventory box,
+                            // not the moving content. The X bounds are tightened to the
+                            // actual four-column grid so sprites clip at the item area.
                             try {
-                                if (this.__dzInvBox && typeof this.__dzInvBox.set_scrollRect === "function")
-                                    this.__dzInvBox.set_scrollRect(new r(
-                                        -(this.__dzInvW || 320) / 2,
-                                        -(this.__dzInvH || 500) / 2 + 20,
-                                        this.__dzInvW || 320,
-                                        this.__dzInvH || 500
+                                if (__invBox2 && typeof __invBox2.set_scrollRect === "function")
+                                    __invBox2.set_scrollRect(new r(
+                                        -((__invW2 - 40) / 2),
+                                        -__invH2 / 2 + 64,
+                                        __invW2 - 40,
+                                        __invH2 - 82
                                     ));
-                            } catch (eClip2) {}
+                            } catch (eClip3) {}
+
+                            // IMPORTANT: no per-cell alpha/C2 hiding. The stable scrollRect
+                            // now performs true partial clipping, so an item can cross the
+                            // boundary without its entire 70px square disappearing.
+                            try { q.mWheel = 0; } catch (eConsume2) {}
                         }
                     } catch (eScroll) {}
 
