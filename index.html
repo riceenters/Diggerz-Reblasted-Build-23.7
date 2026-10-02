@@ -54028,8 +54028,16 @@ function __normalizeWearableScales(skel) {
                 q.mClicked = !1; q.clickedFunction = null;
             };
             panel._9.push(close);
-            q.children.push(panel);
-            try { if (typeof panel.e0 === "function") panel.e0(); } catch (eLayout) {}
+            // The picker is a screen-space modal, so it must live in the title
+            // display-object tree. Putting it directly in q.children does not
+            // make its JA children participate in the title's normal render/input
+            // traversal, which is why the picker could silently fail to open.
+            var pickerHost = window.__diggerzTitleRef || (q.GetChildByType ? q.GetChildByType(Cf) : null);
+            if (pickerHost && pickerHost._9) {
+                pickerHost._9.push(panel);
+            } else {
+                q.children.push(panel);
+            }
             try { if (typeof E !== "undefined" && E.u4) E.u4(panel, 200); } catch (eShow) {}
             window.__diggerzBkndPicker = panel;
             q.mClicked = !1; q.clickedFunction = null;
