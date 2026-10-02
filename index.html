@@ -53945,12 +53945,10 @@ function __normalizeWearableScales(skel) {
         bgButtonText.b7 = 2;
         bgButtonText.C33 = A(this, function() {
             try {
-                if (window.DiggerzOpenMenuBkndPicker) window.DiggerzOpenMenuBkndPicker();
+                this._dzOpenBkndPicker();
             } catch (eBgOpen) {}
         });
         bgButton._9.push(bgButtonText);
-        // Let the button itself carry the same click callback too, matching native JA buttons.
-        bgButton.C33 = bgButtonText.C33;
         a += 65;
         a += 55;
         var saveBtn = new ob(0, a, "^2Save to Account", q.MAIN_FONT);
@@ -54003,22 +54001,14 @@ function __normalizeWearableScales(skel) {
                 }
             } catch (eOld) {}
 
+            // Match the working Donate JA pattern exactly: create the JA here,
+            // center it, then attach it directly to this Settings JA's _9 tree.
             var panel = new ja(560, 470, !0);
             panel._1 = "diggerz_bknd_picker";
             panel.c0 = !0;
             panel.A7 = q.CENTERX;
             panel.A8 = q.CENTERY;
-            panel.B8 = 8;
             try { E.u4(panel, 0, 300, 0, .5, 1, 0, 1); } catch (eShow) {}
-            panel.E7 = function() { return !0; };
-            panel.C39 = function() {
-                try {
-                    if (null == this._8 || null == this._8[3]) {
-                        this.a0 = 1;
-                        try { E.u4(this, 0, 300, 1, .5, 0, 1, 0); } catch (eClose) {}
-                    }
-                } catch (eClose2) {}
-            };
 
             var title = new xa(0, -185, "^9MENU BACKGROUND", q.MAIN_FONT_BIG);
             title.D7(panel, !0);
@@ -54036,31 +54026,28 @@ function __normalizeWearableScales(skel) {
                 { name: "Background 6", theme: 6 }, { name: "Background 7", theme: 7 },
                 { name: "Green Screen", theme: 8 }, { name: "Beta Bknd", theme: 9 }
             ];
-            var self = panel;
+
             for (var i = 0; i < list.length; i++) (function(item, index) {
                 var col = index % 2;
                 var row = Math.floor(index / 2);
                 var x = col ? 140 : -140;
                 var y = -92 + row * 48;
                 var choice = new ob(x, y, "^7" + item.name, q.MAIN_FONT);
-                choice.D7(self, !0);
+                choice.D7(panel, !0);
                 choice.C33 = A(host, function() {
                     try {
                         if (window.DiggerzApplyMenuBackground) {
                             window.DiggerzApplyMenuBackground(index, true);
-                        } else {
-                            var titleRef = window.__diggerzTitleRef || (q.GetChildByType ? q.GetChildByType(Cf) : null);
-                            if (titleRef && typeof titleRef.DiggerzSetMenuBknd === "function")
-                                titleRef.DiggerzSetMenuBknd(item.theme);
+                        } else if (host.u40 && typeof host.u40.DiggerzSetMenuBknd === "function") {
+                            host.u40.DiggerzSetMenuBknd(item.theme);
                         }
-                        window.__diggerzMenuBgIdx = index;
                     } catch (eApply) {}
-                    try { self.a0 = 1; } catch (eHide) {}
+                    try { panel.a0 = 1; } catch (eHide) {}
                     window.__diggerzBkndPicker = null;
                     q.mClicked = !1;
                     q.clickedFunction = null;
                 });
-                self._9.push(choice);
+                panel._9.push(choice);
             })(list[i], i);
 
             var close = new ob(0, 175, "^1Close", q.MAIN_FONT);
@@ -54073,14 +54060,10 @@ function __normalizeWearableScales(skel) {
             };
             panel._9.push(close);
 
-            // The panel is a child of the Settings JA, exactly like the nested JA
-            // dialogs used elsewhere in the client. Force its initial input layout
-            // once so the first click is live immediately.
+            // This is the important part: the picker is nested INSIDE the
+            // existing Settings JA, just like Donate nests its JA on its host.
             host._9.push(panel);
-            try { panel.e0(); } catch (eLayout) {}
             window.__diggerzBkndPicker = panel;
-            q.mClicked = !1;
-            q.clickedFunction = null;
             return panel;
         },
         E7: function(a) {
