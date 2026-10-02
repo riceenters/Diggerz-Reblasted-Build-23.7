@@ -88938,8 +88938,10 @@ function __normalizeWearableScales(skel) {
         },
         __class__: rj
     });
-    // Remote Mortar projectile: derived directly from the existing Homing
-    // Mortar (Eo). Only the steering target is changed to WASD.
+    // Remote Mortar projectile: use the existing Homing Mortar projectile
+    // physics/steering shape, but replace its target with WASD.  The important
+    // difference is that we rotate the velocity at a fixed magnitude instead
+    // of applying an impulse every frame, so the missile never accelerates.
     var Ro = function(a, b, c, d, e, g, p) {
         rj.call(this, a, b, c, d, e, g, p);
         this.set_local_r(.25);
@@ -88948,6 +88950,9 @@ function __normalizeWearableScales(skel) {
         this.c9 = !0;
         this._remoteAlive = true;
         this._remoteOwner = p || null;
+        this._remoteSpeed = 300;
+        this._remoteAngle = 0;
+
         try {
             var body = this.b33;
             body.tBJ.immutable_midstep("Body::gravMass");
@@ -88955,7 +88960,56 @@ function __normalizeWearableScales(skel) {
             body.tBJ.gravMass = 0;
             body.tBJ.invalidate_gravMass();
             body.tBJ.validate_gravMass();
+
+            body.setupVelocity();
+            var vv = body.wrap_vel && body.wrap_vel.tBJ ? body.wrap_vel.tBJ : null;
+            if (vv) {
+                var vx0 = Number(vv.x) || 0, vy0 = Number(vv.y) || 0;
+                var s0 = Math.sqrt(vx0 * vx0 + vy0 * vy0);
+                if (s0 > 0.001) {
+                    this._remoteSpeed = s0;
+                    this._remoteAngle = Math.atan2(vy0, vx0);
+                }
+            }
         } catch (_) {}
+
+        // Use the game's own keyboard state, but also bridge browser key events
+        // into that same state. This makes WASD reliable even when the canvas
+        // temporarily doesn't have keyboard focus.
+        if (typeof window !== "undefined" && !window.__diggerzRemoteMortarKeys) {
+            window.__diggerzRemoteMortarKeys = true;
+            window.__diggerzRemoteKeyDown = function(ev) {
+                try {
+                    var code = ev.which || ev.keyCode || 0;
+                    var k = String(ev.key || "").toLowerCase();
+                    if (code === 65 || k === "a") { q.mKeyDown[65] = true; q.mKeyDown[97] = true; }
+                    if (code === 68 || k === "d") { q.mKeyDown[68] = true; q.mKeyDown[100] = true; }
+                    if (code === 87 || k === "w") { q.mKeyDown[87] = true; q.mKeyDown[119] = true; }
+                    if (code === 83 || k === "s") { q.mKeyDown[83] = true; q.mKeyDown[115] = true; }
+                } catch (_) {}
+            };
+            window.__diggerzRemoteKeyUp = function(ev) {
+                try {
+                    var code = ev.which || ev.keyCode || 0;
+                    var k = String(ev.key || "").toLowerCase();
+                    if (code === 65 || k === "a") { q.mKeyDown[65] = false; q.mKeyDown[97] = false; }
+                    if (code === 68 || k === "d") { q.mKeyDown[68] = false; q.mKeyDown[100] = false; }
+                    if (code === 87 || k === "w") { q.mKeyDown[87] = false; q.mKeyDown[119] = false; }
+                    if (code === 83 || k === "s") { q.mKeyDown[83] = false; q.mKeyDown[115] = false; }
+                } catch (_) {}
+            };
+            window.addEventListener("keydown", window.__diggerzRemoteKeyDown, true);
+            window.addEventListener("keyup", window.__diggerzRemoteKeyUp, true);
+            window.addEventListener("blur", function() {
+                try {
+                    q.mKeyDown[65]=q.mKeyDown[97]=false;
+                    q.mKeyDown[68]=q.mKeyDown[100]=false;
+                    q.mKeyDown[87]=q.mKeyDown[119]=false;
+                    q.mKeyDown[83]=q.mKeyDown[115]=false;
+                } catch (_) {}
+            }, true);
+        }
+
         if (typeof window !== "undefined") {
             window.__diggerzRemoteMortarActive = true;
             window.__diggerzRemoteMortarProjectile = this;
@@ -88975,7 +89029,7 @@ function __normalizeWearableScales(skel) {
             this.A58(a)
         },
         e0: function() {
-            // Freeze the firing player while this projectile is active.
+            // Freeze the firing player while the missile is airborne.
             try {
                 var owner = this._remoteOwner || l.z39;
                 var ob = owner && owner.b33 && owner.b33.tBJ;
@@ -88988,55 +89042,55 @@ function __normalizeWearableScales(skel) {
                 }
             } catch (_) {}
 
-            // Let the normal projectile update happen first.
+            // Let the normal projectile physics/collision lifecycle run first.
             var a = rj.prototype.e0.call(this);
-            if (this._remoteAlive && this.b33) {
-                var ix = 0, iy = 0;
-                try {
-                    if (q.KeyDown(65)) ix -= 1; // A
-                    if (q.KeyDown(68)) ix += 1; // D
-                    if (q.KeyDown(87)) iy -= 1; // W
-                    if (q.KeyDown(83)) iy += 1; // S
-                } catch (_) {}
+            if (!this._remoteAlive || !this.b33) return a;
 
-                // Match the game's movement coordinate system and avoid
-                // diagonal speed boosts.  We rotate the EXISTING velocity
-                // instead of applying an impulse every frame; this keeps the
-                // missile at its original speed.
-                try {
-                    var body = this.b33.tBJ;
-                    body.setupVelocity();
-                    var vel = body.wrap_vel.tBJ;
-                    var vx = Number(vel.x) || 0;
-                    var vy = Number(vel.y) || 0;
-                    var speed = Math.sqrt(vx * vx + vy * vy);
+            try {
+                var left = !!(q.KeyDown(65) || q.KeyDown(97) || q.mKeyDown[65] || q.mKeyDown[97]);
+                var right = !!(q.KeyDown(68) || q.KeyDown(100) || q.mKeyDown[68] || q.mKeyDown[100]);
+                var up = !!(q.KeyDown(87) || q.KeyDown(119) || q.mKeyDown[87] || q.mKeyDown[119]);
+                var down = !!(q.KeyDown(83) || q.KeyDown(115) || q.mKeyDown[83] || q.mKeyDown[115]);
 
-                    // If physics has not populated velocity yet, preserve a
-                    // sensible mortar launch speed rather than accelerating.
-                    if (speed < 0.001) speed = 300;
+                var ix = (right ? 1 : 0) - (left ? 1 : 0);
+                var iy = (down ? 1 : 0) - (up ? 1 : 0);
 
-                    if (ix || iy) {
-                        var inputLen = Math.sqrt(ix * ix + iy * iy) || 1;
-                        ix /= inputLen;
-                        iy /= inputLen;
+                var body = this.b33.tBJ;
+                body.setupVelocity();
+                var vel = body.wrap_vel.tBJ;
 
-                        var current = Math.atan2(vy, vx);
-                        var desired = Math.atan2(iy, ix);
-                        var delta = desired - current;
-                        while (delta > Math.PI) delta -= Math.PI * 2;
-                        while (delta < -Math.PI) delta += Math.PI * 2;
+                // The launch speed is captured once in the constructor. Never
+                // derive speed from an accumulated impulse and never add speed.
+                var speed = Number(this._remoteSpeed) || 300;
+                var angle = Number(this._remoteAngle);
+                if (!isFinite(angle)) angle = 0;
 
-                        // Slow, smooth steering.
-                        var maxTurn = 0.035;
-                        if (delta > maxTurn) delta = maxTurn;
-                        if (delta < -maxTurn) delta = -maxTurn;
-                        var angle = current + delta;
+                if (ix || iy) {
+                    var inputLen = Math.sqrt(ix * ix + iy * iy) || 1;
+                    ix /= inputLen;
+                    iy /= inputLen;
 
-                        vel.x = Math.cos(angle) * speed;
-                        vel.y = Math.sin(angle) * speed;
-                    }
-                } catch (_) {}
-            }
+                    var desired = Math.atan2(iy, ix);
+                    var delta = desired - angle;
+
+                    // Same wrapped-angle approach used by Homing Mortar.
+                    while (delta > Math.PI) delta -= Math.PI * 2;
+                    while (delta < -Math.PI) delta += Math.PI * 2;
+
+                    // Deliberately slow steering.
+                    var maxTurn = 0.035;
+                    if (delta > maxTurn) delta = maxTurn;
+                    if (delta < -maxTurn) delta = -maxTurn;
+                    angle += delta;
+                    this._remoteAngle = angle;
+                }
+
+                // Rebuild velocity at exactly the original launch magnitude.
+                vel.x = Math.cos(this._remoteAngle) * speed;
+                vel.y = Math.sin(this._remoteAngle) * speed;
+                body.tBJ.component.woken = true;
+            } catch (_) {}
+
             return a
         },
         __class__: Ro
@@ -121138,23 +121192,23 @@ e50: function(a) {
 
 <script id="diggerz-menu-bg-apply">
 (function(){
-  // MENU-ONLY BKND SELECTOR
-  // The title screen's own Cf class owns the real backdrop as title.d34.
-  // We replace that exact native object instead of creating a second overlay.
-  // This keeps T31()/h2()/render ordering using the game's normal BKND path.
+  // MENU BKND SELECTOR — uses the same native cg(theme) background constructor
+  // that the game's real BKND-changing block (Zj/K42) uses.
+  // It targets title.d34 because the menu has no world l.z38 backdrop container.
+  // The world/server BKND is never touched here.
   window.DiggerzLocalBkndData = {
     atlas: "assets/bknd.png",
-    version: 1,
+    version: 2,
     themes: [
-      {id:0,name:"Mountains"},
-      {id:1,name:"Grey"},
-      {id:2,name:"Sunset"},
-      {id:3,name:"Moon"},
-      {id:4,name:"Icy Mountains"},
-      {id:5,name:"Clouds"},
-      {id:6,name:"Background 6"},
-      {id:7,name:"Background 7"},
-      {id:8,name:"Green Screen"},
+      {id:0,name:"Default Mountains"},
+      {id:1,name:"Mountain Backdrop"},
+      {id:2,name:"City Bknd"},
+      {id:3,name:"Night Bknd"},
+      {id:4,name:"Snowy Bknd"},
+      {id:5,name:"Red Clouds"},
+      {id:6,name:"Moon Bknd"},
+      {id:7,name:"Industry Bknd"},
+      {id:8,name:"Green Screen Bknd"},
       {id:9,name:"Beta Bknd"}
     ]
   };
@@ -121164,7 +121218,7 @@ e50: function(a) {
 
   window.DiggerzGetMenuBgIndex=function(){
     try{
-      var n=parseInt(localStorage.getItem("diggerz.menuBg.v1")||"0",10);
+      var n=parseInt(localStorage.getItem("diggerz.menuBg.v2")||"0",10);
       if(!isFinite(n)||n<0||n>=window.DiggerzMenuBgList.length)n=0;
       return n;
     }catch(e){return 0;}
@@ -121185,15 +121239,42 @@ e50: function(a) {
     return null;
   }
 
-  function ensureBkndAtlas(){
-    // The game already preloads this atlas. The local file is also shipped as
-    // a fallback so this customization never depends on a server request.
-    try{
-      if(typeof $c!=="undefined" && $c.getBitmapData){
-        var bmp=$c.getBitmapData(window.DiggerzLocalBkndData.atlas,false);
-        if(bmp && typeof sa!=="undefined") sa.bmd=bmp;
-      }
-    }catch(e){}
+  // This is the menu equivalent of the native Zj.K42 block code:
+  //   var old = l.z38.f4(cg); old.a0 = 1;
+  //   var b = new cg(theme);
+  //   l.z38._9.splice(0,0,b)
+  // The menu stores its native backdrop in title.d34 instead.
+  function applyNativeMenuBknd(theme){
+    var title=findTitle();
+    if(!title || typeof cg!=="function") return false;
+
+    var old=title.d34;
+    if(old && old._diggerzMenuTheme===theme && !old.a0) return true;
+
+    if(old){
+      try{old.a0=1;}catch(e1){}
+      try{
+        var oi=title._9.indexOf(old);
+        if(oi>=0) title._9.splice(oi,1);
+      }catch(e2){}
+    }
+
+    // EXACT native BKND renderer used by Zj.K42.
+    var fresh=new cg(theme);
+    fresh._diggerzMenuTheme=theme;
+    fresh._1="diggerz_menu_bknd";
+    fresh.D7(title);
+    fresh.A7=q.CENTERX;
+    fresh.A8=q.CENTERY;
+    fresh.a0=0;
+
+    title.d34=fresh;
+    if(title._9) title._9.unshift(fresh);
+    try{if(typeof fresh.h2==="function")fresh.h2();}catch(e3){}
+
+    window.__diggerzMenuCg=fresh;
+    window.__diggerzMenuCgTheme=theme;
+    return true;
   }
 
   window.DiggerzApplyMenuBackground=function(forceIdx){
@@ -121202,52 +121283,16 @@ e50: function(a) {
       if(!list.length)return false;
       var idx=forceIdx==null?window.DiggerzGetMenuBgIndex():forceIdx|0;
       idx=Math.max(0,Math.min(list.length-1,idx));
-      localStorage.setItem("diggerz.menuBg.v1",String(idx));
+      localStorage.setItem("diggerz.menuBg.v2",String(idx));
       window.__diggerzMenuBgIdx=idx;
 
-      // Never touch the multiplayer/world BKND.
-      try{if(typeof l!=="undefined"&&l&&l.z38)return false;}catch(eWorld){}
-
-      var title=findTitle();
-      if(!title||typeof cg!=="function"){
-        setTimeout(function(){window.DiggerzApplyMenuBackground(idx)},200);
+      // If the title screen has not been constructed yet, retry after startup.
+      if(!findTitle()){
+        setTimeout(function(){window.DiggerzApplyMenuBackground(idx);},200);
         return false;
       }
 
-      ensureBkndAtlas();
-
-      // If this exact native d34 is already selected, leave it alone.
-      if(title.d34 && title.d34._diggerzMenuTheme===idx && !title.d34.a0){
-        return true;
-      }
-
-      // IMPORTANT: Cf/T31 uses title.d34 and f4(cg). Replace that exact field.
-      // Do not create a parallel overlay; the old v40 approach could leave the
-      // original cg(0) as the backdrop T31() continued to find.
-      var old=title.d34;
-      if(old){
-        try{old.a0=1;}catch(e1){}
-        try{var oi=title._9.indexOf(old);if(oi>=0)title._9.splice(oi,1);}catch(e2){}
-      }
-
-      var fresh=new cg(idx);
-      fresh._diggerzMenuTheme=idx;
-      fresh._1="diggerz_menu_bknd";
-      fresh.D7(title);
-      fresh.A7=q.CENTERX;
-      fresh.A8=q.CENTERY;
-      fresh.a0=0;
-
-      title.d34=fresh;
-      if(title._9){
-        title._9.unshift(fresh);
-      }
-
-      // Match the native title resize/layout path.
-      try{if(typeof fresh.h2==="function")fresh.h2();}catch(e3){}
-      window.__diggerzMenuCg=fresh;
-      window.__diggerzMenuCgTheme=idx;
-      return true;
+      return applyNativeMenuBknd(list[idx].theme);
     }catch(e){
       try{console.warn("[Menu BKND]",e);}catch(x){}
       return false;
@@ -121262,7 +121307,6 @@ e50: function(a) {
     return n;
   };
 
-  // Initial selection. The retry is only for startup ordering.
   [150,700,1500,3000].forEach(function(ms){
     setTimeout(function(){window.DiggerzApplyMenuBackground();},ms);
   });

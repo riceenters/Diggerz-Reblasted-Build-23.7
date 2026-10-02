@@ -1055,42 +1055,30 @@ function readNativeFixedLE(buf, offset) {
 }
 
 function nativePlacementBlocked(client, payload) {
-  // Coaster Town's actual K.X8() packet layout:
-  //   R2(11)             opcode
-  //   r8(player.b6)      8 bytes
-  //   r8(0)              8 bytes
-  //   r8(player.b7)      8 bytes
-  //   r8(0)              8 bytes
-  //   R2(tileId)         2 bytes
-  //   R0(tileX)          4 bytes
-  //   R0(tileLayer)      4 bytes
-  //   R0(tileY)          4 bytes
-  //   R2(tileCatalog)    2 bytes
-  //   R2(blockData)      2 bytes
-  //   s0(flag)           1 byte
-  // The tb/DataView implementation uses the default big-endian order.
-  if (!client || !client.room || !payload || payload.length < 53) return true;
+  // Native tile packets are produced by sendTile():
+  //   R2(opcode=11), R2(1), R0(x), R0(layer), R0(y), R2(id|variant<<11)
+  // The previous multiplayer patch decoded this as the much longer K.X8()
+  // packet layout, so it rejected/ignored valid map updates.
+  if (!client || !client.room || !payload || payload.length < 18) return true;
   try {
     const opcode = payload.readUInt16BE(0);
     if (opcode !== 11) return false;
 
-    const actorX = readNativeFixedBE(payload, 2);
-    const actorY = readNativeFixedBE(payload, 18);
-    const id = payload.readUInt16BE(34);
-    const tileX = payload.readInt32BE(36);
-    const layer = payload.readInt32BE(40);
-    const tileY = payload.readInt32BE(44);
+    const tileX = payload.readInt32BE(4);
+    const layer = payload.readInt32BE(8);
+    const tileY = payload.readInt32BE(12);
+    const packed = payload.readUInt16BE(16);
+    const id = packed & 2047;
 
-    if (![actorX, actorY].every(Number.isFinite) ||
-        !Number.isFinite(tileX) || !Number.isFinite(tileY)) return true;
-    if (id === 0) return false;
+    if (![tileX, tileY].every(Number.isFinite)) return true;
+    if (tileX < 0 || tileX >= 128 || tileY < 0 || tileY >= 80) return true;
     if (layer < 0 || layer > 2) return true;
+    if (id === 0) return false;
 
-    // Use the exact native actor position from K.X8 rather than the last
-    // JSON movement update. The native engine rounds the clicked location to
-    // the same grid before constructing this packet.
+    // Keep the existing placement shield, but use the server's latest
+    // position because this packet itself does not carry actor coordinates.
     const actor = {
-      position: {x: actorX, y: actorY},
+      position: client.position,
       alive: client.alive,
       eliminated: client.eliminated
     };
@@ -1107,57 +1095,59 @@ function nativePlacementBlocked(client, payload) {
 }
 
 function applyNativeTileToRoom(client, payload) {
-  // Mirror native opcode-11 place/mine into the authoritative room tile maps
-  // and broadcast a JSON tile so every client (and late joiners) see the change.
-  if (!client || !client.room || !payload || payload.length < 53) return;
+  // Keep an authoritative room overlay for late joiners, while the original
+  // native packet is still relayed to existing peers by relayBinary().
+  if (!client || !client.room || !payload || payload.length < 18) return false;
   try {
-    const id = payload.readUInt16BE(34);
-    const tileX = payload.readInt32BE(36);
-    let layer = payload.readInt32BE(40);
-    const tileY = payload.readInt32BE(44);
-    if (!Number.isFinite(tileX) || !Number.isFinite(tileY)) return;
-    if (tileX < 0 || tileX >= 128 || tileY < 0 || tileY >= 80) return;
-    if (layer < 0 || layer > 2) layer = 0;
+    const opcode = payload.readUInt16BE(0);
+    if (opcode !== 11) return false;
+
+    const tileX = payload.readInt32BE(4);
+    const layerRaw = payload.readInt32BE(8);
+    const tileY = payload.readInt32BE(12);
+    const packed = payload.readUInt16BE(16);
+    const id = packed & 2047;
+    const variant = (packed >>> 11) & 31;
+
+    if (!Number.isFinite(tileX) || !Number.isFinite(tileY)) return false;
+    if (tileX < 0 || tileX >= 128 || tileY < 0 || tileY >= 80) return false;
+    const layer = layerRaw === 2 ? 2 : 0;
+
     const room = client.room;
     ensureRoomState(room);
     const key = `${tileX},${tileY}`;
-    const variant = 0;
+
     if (id === 0) {
-      // Keep a tombstone so a later room snapshot does not resurrect a
-      // mined block from the original map.
-      const actualLayer = layer === 2 ? 2 : 0;
-      const store = actualLayer === 2 ? room.backgroundTiles : room.tiles;
-      const other = actualLayer === 2 ? room.tiles : room.backgroundTiles;
+      const store = layer === 2 ? room.backgroundTiles : room.tiles;
+      const other = layer === 2 ? room.tiles : room.backgroundTiles;
       other.delete(key);
-      store.set(key,{x:tileX,y:tileY,id:0,variant:0,layer:actualLayer,ownerConnectionId:client.connectionId,_serverTombstone:true});
+      // Tombstone the exact layer so the immutable base map does not resurrect
+      // the mined block for a later joiner.
+      store.set(key, {
+        x:tileX, y:tileY, id:0, variant:0, layer,
+        ownerConnectionId:client.connectionId, _serverTombstone:true
+      });
       room.cottonMachines.delete(key);
       room.turretCooldowns.delete(key);
       if (room.speaker && room.speaker.x === tileX && room.speaker.y === tileY) room.speaker = null;
-      broadcastRoom(room, {
-        t: 'tile', x: tileX, y: tileY, id: 0, variant: 0, layer: actualLayer,
-        _serverFrom: client.connectionId, _serverName: client.name, replace:true
-      });
-      return;
+      return true;
     }
-    // Place — prefer catalog layer (backdrop ids go to layer 2).
+
     const BACKDROP = new Set([118,119,143,158,159,160,161,162,189,191,213,214,272,273]);
-    const desiredLayer = BACKDROP.has(id) ? 2 : (layer === 2 ? 2 : 0);
+    const desiredLayer = BACKDROP.has(id) ? 2 : layer;
     const store = desiredLayer === 2 ? room.backgroundTiles : room.tiles;
     const other = desiredLayer === 2 ? room.tiles : room.backgroundTiles;
     other.delete(key);
-    const tile = {
-      x: tileX, y: tileY, id: id | 0, variant, layer: desiredLayer,
-      ownerConnectionId: client.connectionId
-    };
-    store.set(key, tile);
-    broadcastRoom(room, Object.assign({
-      t: 'tile',
-      _serverFrom: client.connectionId,
-      _serverName: client.name,
-      replace: true
-    }, tile));
+    store.set(key, {
+      x:tileX, y:tileY, id, variant, layer:desiredLayer,
+      ownerConnectionId:client.connectionId
+    });
+    room.cottonMachines.delete(key);
+    room.turretCooldowns.delete(key);
+    return true;
   } catch (e) {
     console.warn('[Diggerz] native tile room apply failed:', e.message);
+    return false;
   }
 }
 
@@ -1166,15 +1156,16 @@ function relayBinary(client, payload) {
   let opcode = 0;
   try { if (payload.length >= 2) opcode = payload.readUInt16BE(0); } catch {}
 
-  // Native placement bypasses the JSON t:'tile' handler entirely. Gate the
-  // actual binary opcode before it is broadcast so the server enforces the
-  // same no-place-on-player rule for the real game input path.
-  if (opcode === 11 && nativePlacementBlocked(client, payload)) return;
-  // Persist + JSON-broadcast so peers and late joiners always see the change.
-  // Do not relay the raw native placement packet after translating it to JSON;
-  // replaying opcode 11 on a peer can apply it against a different local map.
+  // Native tile packets are the working multiplayer map path from the supplied
+  // main build. Keep relaying the exact packet to existing peers. Separately
+  // mirror it into room state so a player who joins later receives the edits.
   if (opcode === 11) {
+    if (nativePlacementBlocked(client, payload)) return;
     applyNativeTileToRoom(client, payload);
+    try {
+      const frame = encodeFrame(payload, 0x2);
+      for (const peer of client.room.clients) if (peer !== client) writeFrame(peer, frame, false);
+    } catch {}
     return;
   }
 
