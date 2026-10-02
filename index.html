@@ -53921,27 +53921,37 @@ function __normalizeWearableScales(skel) {
         a.set_local_xScale(a.set_local_yScale(.7));
         this.Z47._9.push(a);
         a = 170;
-        // Menu background cycle — all real cg themes (Background 0–9)
+        // Menu background selector — real native-looking button which opens a JA.
+        // This follows the same pattern as the Donate UI: z sprite button + ob text,
+        // then a centered ja panel containing the selectable backgrounds.
         var bgList = window.DiggerzMenuBgList || [
-            { name: "Mountains", theme: 0 }, { name: "Beta Bknd", theme: 9 }
+            { name: "Mountains", theme: 0 }, { name: "Grey", theme: 1 },
+            { name: "Sunset", theme: 2 }, { name: "Moon", theme: 3 },
+            { name: "Icy Mountains", theme: 4 }, { name: "Clouds", theme: 5 },
+            { name: "Background 6", theme: 6 }, { name: "Background 7", theme: 7 },
+            { name: "Green Screen", theme: 8 }, { name: "Beta Bknd", theme: 9 }
         ];
-        var bgIdx = 0;
-        try {
-            if (window.DiggerzGetMenuBgIndex) bgIdx = window.DiggerzGetMenuBgIndex();
-            else bgIdx = Math.max(0, Math.min(bgList.length - 1, parseInt(localStorage.getItem("diggerz.menuBg.v1") || "0", 10) || 0));
-        } catch (eBg) {}
-        var bgLbl = new ob(0, a, "^9Background: ^7" + (bgList[bgIdx] ? bgList[bgIdx].name : ("#" + bgIdx)), q.MAIN_FONT);
-        bgLbl.D7(this, !0);
-        bgLbl.C33 = A(this, function() {
+        var bgButton = new z;
+        bgButton.Init(u.YELLOWBUTTON_PNG());
+        bgButton.D7(this);
+        bgButton.b7 = a;
+        bgButton.b6 = q.SCREENWIDTH / 2 - 150;
+        bgButton.set_local_xScale(bgButton.set_local_yScale(.5));
+        bgButton._1 = "menu background selector";
+        bgButton.F6(5, 0, 1, 500);
+        this._9.push(bgButton);
+        var bgButtonText = new ob(0, 0, "Background", q.MAIN_FONT_BIG);
+        bgButtonText.D7(bgButton, !0);
+        bgButtonText.b7 = 2;
+        bgButtonText.C33 = A(this, function() {
             try {
-                if (window.DiggerzOpenMenuBkndPicker) {
-                    window.DiggerzOpenMenuBkndPicker();
-                    return;
-                }
-                if (window.DiggerzCycleMenuBackground) window.DiggerzCycleMenuBackground();
-            } catch (eC) {}
+                if (window.DiggerzOpenMenuBkndPicker) window.DiggerzOpenMenuBkndPicker();
+            } catch (eBgOpen) {}
         });
-        this._9.push(bgLbl);
+        bgButton._9.push(bgButtonText);
+        // Let the button itself carry the same click callback too, matching native JA buttons.
+        bgButton.C33 = bgButtonText.C33;
+        a += 65;
         a += 55;
         var saveBtn = new ob(0, a, "^2Save to Account", q.MAIN_FONT);
         saveBtn.D7(this, !0);
@@ -53985,62 +53995,92 @@ function __normalizeWearableScales(skel) {
         Z47: null,
         u40: null,
         _dzOpenBkndPicker: function() {
-            if (window.__diggerzBkndPicker) {
-                try { window.__diggerzBkndPicker.a0 = 1; } catch (e0) {}
-                window.__diggerzBkndPicker = null;
-            }
-            var panel = new ja(650, 520, !0);
+            var host = this;
+            try {
+                if (window.__diggerzBkndPicker) {
+                    window.__diggerzBkndPicker.a0 = 1;
+                    window.__diggerzBkndPicker = null;
+                }
+            } catch (eOld) {}
+
+            var panel = new ja(560, 470, !0);
             panel._1 = "diggerz_bknd_picker";
+            panel.c0 = !0;
             panel.A7 = q.CENTERX;
             panel.A8 = q.CENTERY;
-            panel.c0 = !0;
-            var head = new xa(0, -215, "^9Menu Background", q.MAIN_FONT_BIG);
-            head.D7(panel, !0); panel._9.push(head);
-            var list = window.DiggerzMenuBgList || [];
+            panel.B8 = 8;
+            try { E.u4(panel, 0, 300, 0, .5, 1, 0, 1); } catch (eShow) {}
+            panel.E7 = function() { return !0; };
+            panel.C39 = function() {
+                try {
+                    if (null == this._8 || null == this._8[3]) {
+                        this.a0 = 1;
+                        try { E.u4(this, 0, 300, 1, .5, 0, 1, 0); } catch (eClose) {}
+                    }
+                } catch (eClose2) {}
+            };
+
+            var title = new xa(0, -185, "^9MENU BACKGROUND", q.MAIN_FONT_BIG);
+            title.D7(panel, !0);
+            panel._9.push(title);
+
+            var sub = new xa(0, -145, "Choose a background", q.MAIN_FONT);
+            sub.D7(panel, !0);
+            try { sub.set_local_xScale(sub.set_local_yScale(.8)); } catch (eScale) {}
+            panel._9.push(sub);
+
+            var list = window.DiggerzMenuBgList || [
+                { name: "Mountains", theme: 0 }, { name: "Grey", theme: 1 },
+                { name: "Sunset", theme: 2 }, { name: "Moon", theme: 3 },
+                { name: "Icy Mountains", theme: 4 }, { name: "Clouds", theme: 5 },
+                { name: "Background 6", theme: 6 }, { name: "Background 7", theme: 7 },
+                { name: "Green Screen", theme: 8 }, { name: "Beta Bknd", theme: 9 }
+            ];
             var self = panel;
             for (var i = 0; i < list.length; i++) (function(item, index) {
-                var col = index % 2, row = Math.floor(index / 2);
-                var btn = new ob(col ? 165 : -165, -140 + row * 58, "^7" + item.name, q.MAIN_FONT);
-                btn.D7(self, !0);
-                btn.C33 = function() {
+                var col = index % 2;
+                var row = Math.floor(index / 2);
+                var x = col ? 140 : -140;
+                var y = -92 + row * 48;
+                var choice = new ob(x, y, "^7" + item.name, q.MAIN_FONT);
+                choice.D7(self, !0);
+                choice.C33 = A(host, function() {
                     try {
-                        var title = window.__diggerzTitleRef || (q.GetChildByType ? q.GetChildByType(Cf) : null);
                         if (window.DiggerzApplyMenuBackground) {
                             window.DiggerzApplyMenuBackground(index, true);
-                        } else if (title && typeof title.DiggerzSetMenuBknd === "function") {
-                            title.DiggerzSetMenuBknd(item.theme);
-                            try { localStorage.setItem("diggerz.menuBg.native.v2", String(index)); } catch (eSave0) {}
+                        } else {
+                            var titleRef = window.__diggerzTitleRef || (q.GetChildByType ? q.GetChildByType(Cf) : null);
+                            if (titleRef && typeof titleRef.DiggerzSetMenuBknd === "function")
+                                titleRef.DiggerzSetMenuBknd(item.theme);
                         }
-                        try { localStorage.setItem("diggerz.menuBg.native.v2", String(index)); } catch (eSave) {}
                         window.__diggerzMenuBgIdx = index;
-                        self.a0 = 1;
-                        window.__diggerzBkndPicker = null;
-                        q.mClicked = !1; q.clickedFunction = null;
-                    } catch (ePick) {}
-                };
-                self._9.push(btn);
+                    } catch (eApply) {}
+                    try { self.a0 = 1; } catch (eHide) {}
+                    window.__diggerzBkndPicker = null;
+                    q.mClicked = !1;
+                    q.clickedFunction = null;
+                });
+                self._9.push(choice);
             })(list[i], i);
-            var close = new ob(0, 190, "^1Close", q.MAIN_FONT);
+
+            var close = new ob(0, 175, "^1Close", q.MAIN_FONT);
             close.D7(panel, !0);
             close.C33 = function() {
-                try { panel.a0 = 1; } catch (eClose) {}
+                try { panel.a0 = 1; } catch (eX) {}
                 window.__diggerzBkndPicker = null;
-                q.mClicked = !1; q.clickedFunction = null;
+                q.mClicked = !1;
+                q.clickedFunction = null;
             };
             panel._9.push(close);
-            // The picker is a screen-space modal, so it must live in the title
-            // display-object tree. Putting it directly in q.children does not
-            // make its JA children participate in the title's normal render/input
-            // traversal, which is why the picker could silently fail to open.
-            var pickerHost = window.__diggerzTitleRef || (q.GetChildByType ? q.GetChildByType(Cf) : null);
-            if (pickerHost && pickerHost._9) {
-                pickerHost._9.push(panel);
-            } else {
-                q.children.push(panel);
-            }
-            try { if (typeof E !== "undefined" && E.u4) E.u4(panel, 200); } catch (eShow) {}
+
+            // The panel is a child of the Settings JA, exactly like the nested JA
+            // dialogs used elsewhere in the client. Force its initial input layout
+            // once so the first click is live immediately.
+            host._9.push(panel);
+            try { panel.e0(); } catch (eLayout) {}
             window.__diggerzBkndPicker = panel;
-            q.mClicked = !1; q.clickedFunction = null;
+            q.mClicked = !1;
+            q.clickedFunction = null;
             return panel;
         },
         E7: function(a) {
