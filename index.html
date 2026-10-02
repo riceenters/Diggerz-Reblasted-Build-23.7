@@ -23530,7 +23530,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         adminFakeLeave:function(name){var mp=window.DiggerzPvp22;if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!mp||!mp.joined)return {ok:false,message:'Multiplayer server required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};this.pvpSend({t:'admin-fake-leave',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid});return {ok:true,message:'Fake leave sent for '+String(name||'player')+'.'}},
         adminFakeReturn:function(name){var mp=window.DiggerzPvp22;if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!mp||!mp.joined)return {ok:false,message:'Multiplayer server required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};this.pvpSend({t:'admin-fake-return',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid});return {ok:true,message:'Fake return sent for '+String(name||'player')+'.'}},
         adminViewInventory:function(name){var mp=window.DiggerzPvp22;if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!mp||!mp.joined)return {ok:false,message:'Multiplayer server required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};this.pvpSend({t:'admin-inventory-request',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid});return {ok:true,message:'Requesting inventory…'}},
-        adminInventoryAction:function(name,action,slot,count){if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};this.pvpSend({t:'admin-inventory-action',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid,action:String(action),slot:slot|0,count:Math.max(1,count|0)});return {ok:true,message:'Inventory action requested.'}},
+        adminInventoryAction:function(name,action,slot,count,extra){if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};var cid=this.adminTargetConnection(name);if(!cid)return {ok:false,message:'Player not found.'};var m={t:'admin-inventory-action',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:cid,action:String(action),slot:slot|0,count:Math.max(1,count|0)};extra=extra||{};if(extra.toSlot!=null)m.toSlot=extra.toSlot|0;if(extra.sortMode)m.sortMode=String(extra.sortMode);this.pvpSend(m);return {ok:true,message:'Inventory action requested.'}},
         adminApplyBackground:function(background){var mp=window.DiggerzPvp22;if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};if(!mp||!mp.joined)return {ok:false,message:'Multiplayer server required.'};background=Math.max(0,Math.min(9,background|0));this.pvpSend({t:'admin-background',adminToken:window.DiggerzAdminSessionToken,background:background});this.adminApplyBackgroundLocal(background);return {ok:true,message:'Background '+background+' applied to everyone.'}},
         adminApplyBackgroundLocal:function(background){background=Math.max(0,Math.min(9,background|0));this.adminBackground=background;try{this.enqueue(102,1,function(packet){packet.R2(background)})}catch(e){}
           // Also apply immediately on the live world so hosts/peers see it without waiting for packet drain
@@ -118177,6 +118177,8 @@ e50: function(a) {
 #diggerz-admin-panel label{display:block;margin:6px 0 3px}#diggerz-admin-panel input,#diggerz-admin-panel select{width:100%;box-sizing:border-box;padding:7px;border:1px solid #697b8d;border-radius:5px;background:#0b121a;color:#fff}
 #diggerz-admin-panel .row{display:grid;grid-template-columns:1fr 1fr;gap:7px}#diggerz-admin-panel button{margin-top:7px;padding:8px 10px;border:0;border-radius:5px;background:#31465b;color:#fff;font-weight:700;cursor:pointer}#diggerz-admin-panel button:hover{background:#405c77}
 #diggerz-admin-status{min-height:36px;margin-top:10px;padding:7px;background:#081018;border-radius:5px;color:#b9d7f3;white-space:pre-wrap}#admin-ban-list{display:grid;gap:6px;margin-top:7px}#admin-ban-list button{width:100%;text-align:left;background:#32171b;border:1px solid #7d343d}#diggerz-admin-modal{display:none;position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.72);align-items:center;justify-content:center}#diggerz-admin-modal .box{width:min(520px,calc(100vw - 28px));max-height:90vh;overflow:auto;box-sizing:border-box;padding:18px;background:#101923;border:2px solid #f5cf63;border-radius:8px;color:#fff;font:13px/1.35 Arial,sans-serif}#diggerz-admin-modal .times{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}#diggerz-admin-modal input,#diggerz-admin-modal textarea{width:100%;box-sizing:border-box;padding:7px;background:#070c12;color:#fff;border:1px solid #697b8d;border-radius:5px}#diggerz-admin-modal textarea{min-height:82px;resize:vertical}#diggerz-admin-modal .row{display:flex;gap:8px}#diggerz-admin-modal button{padding:9px 12px;border:0;border-radius:5px;background:#31465b;color:#fff;font-weight:700;cursor:pointer}#diggerz-admin-modal .danger{background:#7d1f2a}#diggerz-admin-modal .permanent.active{background:#a20b18}
+
+.admin-inv-grid{margin-top:8px;background:#0b111a;border:1px solid #40506a;border-radius:7px;padding:8px}.admin-inv-title{font-weight:800;margin-bottom:8px}.admin-inv-cells{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;max-height:430px;overflow:auto;padding:4px}.admin-inv-cell{min-height:52px;background:#162131;border:1px solid #33465f;border-radius:5px;padding:3px;position:relative;display:flex;flex-direction:column;justify-content:center;align-items:center;cursor:grab;user-select:none}.admin-inv-cell.over{outline:2px solid #71d7ff}.admin-inv-cell.dragging{opacity:.45}.admin-inv-index{position:absolute;left:3px;top:2px;font-size:8px;color:#7487a2}.admin-inv-name{font-size:9px;text-align:center;line-height:1.05;max-width:100%;overflow:hidden;text-overflow:ellipsis}.admin-inv-qty{font-size:9px;color:#f5cf63}.admin-inv-actions{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}.admin-inv-actions button{font-size:10px;padding:5px 7px}
 </style>
 <button id="diggerz-admin-toggle" type="button">ADMIN</button>
 <div id="diggerz-admin-panel" aria-label="Admin panel">
@@ -118197,7 +118199,7 @@ e50: function(a) {
   <div class="row"><button id="admin-kick" type="button">Kick Player</button><button id="admin-ban" type="button">Ban Player</button></div>
   <label>Custom New Name</label><input id="admin-new-name" type="text" maxlength="24" autocomplete="off" placeholder="Enter the new live name…">
   <div class="row"><button id="admin-rename" type="button">Rename Live</button><button id="admin-bring" type="button">Bring To Me</button></div>
-  <div class="row"><button id="admin-inventory-view" type="button">View Inventory</button><button id="admin-inventory-refresh" type="button">Refresh Inventory</button></div>
+  <div class="row"><button id="admin-inventory-view" type="button">View Inventory</button><button id="admin-inventory-refresh" type="button">Refresh Inventory</button><button id="admin-open-rig-editor" type="button">Rig Editor</button></div>
   <div class="row"><button id="admin-god" type="button">Toggle God</button><button id="admin-fly" type="button">Toggle Fly</button></div>
   <div class="row"><button id="admin-noclip" type="button">Toggle Noclip</button><button id="admin-invis" type="button">Toggle Invis</button></div>
   <div class="row"><button id="admin-fake-leave" type="button">Fake Leave</button><button id="admin-fake-return" type="button">Fake Return</button></div>
@@ -118387,6 +118389,7 @@ e50: function(a) {
   document.getElementById('admin-god').onclick=function(){toggleEffect('god')};document.getElementById('admin-fly').onclick=function(){toggleEffect('fly')};document.getElementById('admin-noclip').onclick=function(){toggleEffect('noclip')};document.getElementById('admin-invis').onclick=function(){toggleEffect('invis')};
   document.getElementById('admin-inventory-view').onclick=function(){var s=ownerService();if(!s)return say('Admin authentication required.');var box=document.getElementById('admin-inventory');if(box)box.innerHTML='Requesting inventory…';say(s.adminViewInventory(selectedAdminName()))};
   document.getElementById('admin-inventory-refresh').onclick=function(){var s=ownerService();if(!s)return say('Admin authentication required.');var box=document.getElementById('admin-inventory');if(box)box.innerHTML='Refreshing inventory…';say(s.adminViewInventory(selectedAdminName()))};
+  document.getElementById('admin-open-rig-editor').onclick=function(){window.open('Diggerz-Rig-Item-Editor.html','_blank','noopener')};
   document.getElementById('admin-bring').onclick=function(){var s=ownerService();if(!s)return say('Admin authentication required.');say(s.adminBringToMe(selectedAdminName()))};
   document.getElementById('admin-fake-leave').onclick=function(){var s=ownerService();if(!s)return say('Admin authentication required.');say(s.adminFakeLeave(selectedAdminName()))};
   document.getElementById('admin-fake-return').onclick=function(){var s=ownerService();if(!s)return say('Admin authentication required.');say(s.adminFakeReturn(selectedAdminName()))};
@@ -118828,8 +118831,36 @@ e50: function(a) {
       if(m.t==='admin-fake-leave'){var fp=this.pvpPeerForConnection(m.connectionId);if(fp){fp._adminHidden=true;var fe=this.pvpEntityForPeer(fp);if(fe){try{fe.a2=false}catch(_e){}try{if(fe.J30)fe.J30.a2=false}catch(_e){}try{fe.set_local_alp(0)}catch(_e){}}}else if(String(m.connectionId||'')===String(P.connectionId||'')&&l.z39){try{l.z39.a2=false;if(l.z39.J30)l.z39.J30.a2=false;l.z39.set_local_alp(0)}catch(_e){}}chat('^1'+String(m.name||'Player')+' has exited this area.');return}
       if(m.t==='admin-fake-return'){var fp2=this.pvpPeerForConnection(m.connectionId);if(fp2){fp2._adminHidden=false;var fe2=this.pvpEntityForPeer(fp2);if(fe2){try{fe2.a2=true}catch(_e){}try{if(fe2.J30)fe2.J30.a2=true}catch(_e){}try{fe2.set_local_alp(1)}catch(_e){}}}else if(String(m.connectionId||'')===String(P.connectionId||'')&&l.z39){try{l.z39.a2=true;if(l.z39.J30)l.z39.J30.a2=true;l.z39.set_local_alp(1)}catch(_e){}}chat('^2'+String(m.name||'Player')+'^7 is now here.');return}
       if(m.t==='admin-inventory-request'){this.pvpSend({t:'admin-inventory-data',requestId:String(m.requestId||''),slots:(this.state&&Array.isArray(this.state.slots)?this.state.slots:[]).slice(0,127).map(itemCopy)});return}
-      if(m.t==='admin-inventory-action'){var act=String(m.action||''),slot=Math.max(0,Math.min(126,m.slot|0)),qty=Math.max(1,m.count|0),removed=[];if(this.state&&Array.isArray(this.state.slots)){if(act==='clear'){for(var ai=0;ai<this.state.slots.length;ai++){var old=this.state.slots[ai];if(old&&old.category&&old.count>0)removed.push(itemCopy(old));this.state.slots[ai]=emptyItem()}}else if(slot<this.state.slots.length){var cur=this.state.slots[slot];if(cur&&cur.category&&cur.count>0){var take=Math.min(qty,cur.count),part=itemCopy(cur);part.count=take;removed.push(part);if(cur.count<=take)this.state.slots[slot]=emptyItem();else cur.count-=take}}this.sendInventory();this.markDirty();this.save(true)}this.pvpSend({t:'admin-inventory-action-result',requestId:String(m.requestId||''),items:removed});return}
-      if(m.t==='admin-inventory-data'){var rows=Array.isArray(m.slots)?m.slots:[],box=document.getElementById('admin-inventory');if(box){box.innerHTML='';for(var ri=0;ri<rows.length;ri++){var it=rows[ri];if(!it||!it.category||!it.count)continue;var row=document.createElement('div');row.style.cssText='padding:4px 0;border-bottom:1px solid rgba(255,255,255,.12)';row.textContent=(ri+1)+'. '+this.itemName(it.category|0,it.id|0)+' × '+(it.count|0);var rem=document.createElement('button');rem.textContent='Remove';rem.style.marginLeft='6px';(function(i,c,self){rem.onclick=function(){var n=prompt('How many?',String(c));if(n)self.adminInventoryAction(document.getElementById('admin-player').value,'remove',i,Math.max(1,parseInt(n,10)||1))}})(ri,it.count|0,this);row.appendChild(rem);var take=document.createElement('button');take.textContent='Take';take.style.marginLeft='4px';(function(i,c,self){take.onclick=function(){var n=prompt('How many?',String(c));if(n)self.adminInventoryAction(document.getElementById('admin-player').value,'take',i,Math.max(1,parseInt(n,10)||1))}})(ri,it.count|0,this);row.appendChild(take);box.appendChild(row)}var clear=document.createElement('button');clear.textContent='Clear Inventory';var self=this;clear.onclick=function(){if(confirm('Clear this inventory?'))self.adminInventoryAction(document.getElementById('admin-player').value,'clear',0,1)};box.appendChild(clear)}return}
+      if(m.t==='admin-inventory-action'){var act=String(m.action||''),slot=Math.max(0,Math.min(126,m.slot|0)),toSlot=Math.max(0,Math.min(126,m.toSlot|0)),qty=Math.max(1,m.count|0),removed=[];if(this.state&&Array.isArray(this.state.slots)){var slots=this.state.slots;while(slots.length<127)slots.push(emptyItem());if(act==='clear'){for(var ai=0;ai<slots.length;ai++){var old=slots[ai];if(old&&old.category&&old.count>0)removed.push(itemCopy(old));slots[ai]=emptyItem()}}else if(act==='move'){if(slot!==toSlot){var tmp=slots[slot];slots[slot]=slots[toSlot];slots[toSlot]=tmp}}else if(act==='sort'){var filled=slots.filter(function(x){return x&&x.category&&x.count>0});var mode=String(m.sortMode||'slot');filled.sort(function(a,b){if(mode==='count')return (b.count|0)-(a.count|0);if(mode==='category')return (a.category|0)-(b.category|0);if(mode==='name'){var an=String(a.id|0),bn=String(b.id|0);return an.localeCompare(bn)}return (a.id|0)-(b.id|0)});for(var si=0;si<127;si++)slots[si]=si<filled.length?filled[si]:emptyItem()}else if(slot<slots.length){var cur=slots[slot];if(cur&&cur.category&&cur.count>0){var take=Math.min(qty,cur.count),part=itemCopy(cur);part.count=take;removed.push(part);if(cur.count<=take)slots[slot]=emptyItem();else cur.count-=take}}this.sendInventory();this.markDirty();this.save(true)}this.pvpSend({t:'admin-inventory-action-result',requestId:String(m.requestId||''),action:act,items:removed});return}
+      if(m.t==='admin-inventory-data'){
+        var rows=Array.isArray(m.slots)?m.slots:[],box=document.getElementById('admin-inventory');
+        if(box){
+          box.innerHTML='';
+          box.className='admin-inv-grid';
+          box.setAttribute('data-target',String(m.targetName||document.getElementById('admin-player').value||''));
+          var title=document.createElement('div');title.className='admin-inv-title';title.textContent='Inventory: '+String(m.targetName||'Player');box.appendChild(title);
+          var grid=document.createElement('div');grid.className='admin-inv-cells';box.appendChild(grid);
+          for(var ri=0;ri<127;ri++){
+            (function(i){
+              var it=rows[i]||null,cell=document.createElement('div');cell.className='admin-inv-cell';cell.draggable=!!(it&&it.category&&it.count);cell.dataset.slot=String(i);
+              var idx=document.createElement('span');idx.className='admin-inv-index';idx.textContent=String(i+1);cell.appendChild(idx);
+              if(it&&it.category&&it.count){
+                var name=document.createElement('span');name.className='admin-inv-name';name.textContent=selfSafeItemName(it.category|0,it.id|0);cell.appendChild(name);
+                var qty=document.createElement('span');qty.className='admin-inv-qty';qty.textContent='×'+(it.count|0);cell.appendChild(qty);
+                cell.addEventListener('dragstart',function(ev){window.__dzAdminInvDragSlot=i;ev.dataTransfer.setData('text/plain',String(i));cell.classList.add('dragging')});
+                cell.addEventListener('dragend',function(){cell.classList.remove('dragging');setTimeout(function(){if(window.__dzAdminInvDragSlot==null)return;var s=ownerService();if(s&&window.__dzAdminInvDragDropped!==true){s.adminInventoryAction(document.getElementById('admin-player').value,'remove',window.__dzAdminInvDragSlot,65535)}window.__dzAdminInvDragSlot=null;window.__dzAdminInvDragDropped=false},0)});
+              }
+              cell.addEventListener('dragover',function(ev){ev.preventDefault();cell.classList.add('over')});
+              cell.addEventListener('dragleave',function(){cell.classList.remove('over')});
+              cell.addEventListener('drop',function(ev){ev.preventDefault();window.__dzAdminInvDragDropped=true;cell.classList.remove('over');var from=+(ev.dataTransfer.getData('text/plain')||-1);if(from<0||from===i)return;var s=ownerService();if(!s)return;s.adminInventoryAction(document.getElementById('admin-player').value,'move',from,1,{toSlot:i});say('Moving item…')});
+              grid.appendChild(cell);
+            })(ri);
+          }
+          var trash=document.createElement('div');trash.textContent='Drag an item here to delete';trash.style.cssText='margin-top:6px;padding:9px;text-align:center;border:1px dashed #b95f5f;border-radius:5px;color:#ffaaaa';trash.addEventListener('dragover',function(ev){ev.preventDefault()});trash.addEventListener('drop',function(ev){ev.preventDefault();window.__dzAdminInvDragDropped=true;var from=+(ev.dataTransfer.getData('text/plain')||-1);if(from<0)return;var s=ownerService();if(s)s.adminInventoryAction(document.getElementById('admin-player').value,'remove',from,65535)});box.appendChild(trash);var actions=document.createElement('div');actions.className='admin-inv-actions';
+          ['name','count','category','slot'].forEach(function(mode){var b=document.createElement('button');b.textContent='Sort '+mode;b.onclick=function(){var s=ownerService();if(s)s.adminInventoryAction(document.getElementById('admin-player').value,'sort',0,1,{sortMode:mode})};actions.appendChild(b)});
+          var clear=document.createElement('button');clear.textContent='Clear Inventory';clear.onclick=function(){if(confirm('Clear this inventory?')){var s=ownerService();if(s)s.adminInventoryAction(document.getElementById('admin-player').value,'clear',0,1)}};actions.appendChild(clear);box.appendChild(actions);
+          function selfSafeItemName(cat,id){try{var s=ownerService();if(s&&typeof s.itemName==='function')return s.itemName(cat,id)}catch(e){}return 'Item '+id}
+        }return}
       if(m.t==='admin-inventory-action-result'){if(m.action==='take'&&Array.isArray(m.items))for(var ti=0;ti<m.items.length;ti++){var got=m.items[ti];if(got&&got.category&&got.count)this.addItem(got.category|0,got.id|0,got.variant|0,got.count|0,got.extra|0,String(got.text||''));}this.sendInventory();this.markDirty();this.save(true);this.message('^2Inventory action completed.');return}
       if(m.t==='peer-left'){this.pvpRemovePeer(m.connectionId);return}
       if(m.t==='room-state'){
@@ -121109,7 +121140,131 @@ e50: function(a) {
   });
 })();
 </script>
-<script src="/build239-client.js"></script><script src="/build240-client.js"></script></body>
+<script src="/build239-client.js"></script><script src="/build240-client.js"></script><script id="diggerz-admin-remote-backpack">
+(function(){
+  // Admin Remote Backpack: this is a duplicate of the game's native hb/Q44
+  // backpack inventory, populated from the selected player's authoritative slots.
+  function boot(){
+    try{
+      if(!window.DiggerzService||!window.q||typeof hb==='undefined'||typeof X==='undefined'||typeof gd==='undefined') return false;
+      var proto=window.DiggerzService.prototype;
+      if(proto.__dzRemoteBackpackInstalled) return true;
+      proto.__dzRemoteBackpackInstalled=true;
+
+      function closeRemote(){
+        try{var s=window.__dzRemoteBackpack;if(s){s.a0=1; if(s._9) s._9.length=0; if(window.l&&l.z38)T.remove(l.z38._9,s);}}
+        catch(e){}
+        window.__dzRemoteBackpack=null;
+        window.__dzRemoteBackpackTarget='';
+      }
+      window.DiggerzCloseRemoteBackpack=closeRemote;
+
+      function openRemote(service,name,rows){
+        closeRemote();
+        if(!window.l||!l.z38) return;
+        var inv=new hb();
+        window.__dzRemoteBackpack=inv;
+        window.__dzRemoteBackpackTarget=String(name||'');
+        inv.__dzRemote=true; inv.__dzRemoteService=service; inv.__dzRemoteRows=rows||[];
+        // Native constructor already created the exact inventory background,
+        // slot grid and Sort/drag instructions. Build item visuals from the
+        // selected player's slot array instead of local l.z39.n38.B30.
+        var fake={B30:[] ,q43:-1,q7:(l.z39&&l.z39.n38)?l.z39.n38.q7:null};
+        var originals=l.z39&&l.z39.n38;
+        try{
+          if(l.z39) l.z39.n38=fake;
+          // Native s42 creates the exact 95-slot layout and gd item renderers.
+          // We temporarily supply remote X objects as the source inventory.
+          fake.B30=[];
+          var list=Array.isArray(rows)?rows:[];
+          for(var i=0;i<Math.min(127,list.length);i++){
+            var it=list[i]; if(!it||!(it.category|0)||!(it.count|0)) continue;
+            try{
+              var src=new X(inv,it.category|0,it.id|0,i,it.count|0,it.variant|0,0,0,it.extra|0);
+              src.a2=false; src.__dzRemoteSource=true;
+              src.h44=i; src.b39=i; src.g36=it.count|0; src.S43=it.variant|0;
+              fake.B30[i]=src;
+            }catch(eItem){}
+          }
+          // Compact fake array exactly as native inventory expects.
+          fake.B30=fake.B30.filter(function(x){return !!x;});
+          inv.s42();
+        }catch(eBuild){console.warn('[Admin Remote Inventory]',eBuild);}
+        finally{try{if(l.z39)l.z39.n38=originals;}catch(eRestore){}}
+
+        // Re-number the visual items with their authoritative remote slot index.
+        var remoteBySlot={};
+        (rows||[]).forEach(function(it,i){if(it&&it.category&&it.count)remoteBySlot[i]=it});
+        if(inv.B30){
+          for(var j=0;j<inv.B30.length;j++){
+            var cell=inv.B30[j], slot=cell&&cell.S44?cell.S44.b39:j;
+            cell.__dzRemoteSlot=slot;
+          }
+        }
+
+        // Replace native local inventory mutations with admin actions.
+        inv.s40=function(){
+          if(!this.r49){return;}
+          var src=this.r49.__dzRemoteSlot;
+          if(src==null && this.r49.S44) src=this.r49.S44.b39|0;
+          src=src|0;
+          var outside=this.s43();
+          var dst=outside?src:(this.s44()|0);
+          var svc=this.__dzRemoteService;
+          var target=window.__dzRemoteBackpackTarget;
+          if(outside){
+            if(svc) svc.adminInventoryAction(target,'remove',src,1);
+          }else if(dst!==src){
+            if(svc) svc.adminInventoryAction(target,'move',src,1,{toSlot:dst});
+          }
+          this.r49=null; this.R40=false; this.R41=false; q.mClicked=false;
+          var self=this;
+          setTimeout(function(){try{if(svc)svc.adminViewInventory(target);}catch(e){}} ,180);
+        };
+        inv.R46=function(){
+          var svc=this.__dzRemoteService,target=window.__dzRemoteBackpackTarget;
+          if(svc) svc.adminInventoryAction(target,'sort',0,1,{sortMode:'slot'});
+          setTimeout(function(){try{if(svc)svc.adminViewInventory(target);}catch(e){}} ,180);
+        };
+        if(inv.r48) inv.r48.C33=function(){inv.R46();q.mClicked=false;};
+
+        // Native title/close affordance.
+        try{
+          var close=new ob(0,0,'Close',q.MAIN_FONT); close.D7(inv,!0); close.b6=inv.r41-55; close.b7=inv.r42+18; close.C33=function(){closeRemote();q.mClicked=false;}; inv._9.push(close);
+          var title=new xa(0,0,'^9Viewing '+String(name||'Player')+'\'s Inventory',q.MAIN_FONT_SMALL); title.D7(inv,!0); title.b6=q.SCREENWIDTH/2; title.b7=inv.r40-34; inv._9.push(title);
+        }catch(eTitle){}
+        if(l.z38._9.indexOf(inv)<0)l.z38._9.push(inv);
+        inv.a2=true;
+        try{l.z38.R35.d40();}catch(eDim){}
+        inv.q46(l.z38,!1);
+        return inv;
+      }
+
+      var oldReceive=proto.pvpReceive;
+      proto.pvpReceive=function(m){
+        if(m&&m.t==='admin-inventory-data'){
+          openRemote(this,String(m.targetName||''),Array.isArray(m.slots)?m.slots:[]);
+          var box=document.getElementById('admin-inventory'); if(box)box.innerHTML='Remote backpack open — '+String(m.targetName||'Player');
+          return;
+        }
+        if(m&&m.t==='admin-inventory-action-result'){
+          var target=window.__dzRemoteBackpackTarget||String(m.targetName||'');
+          if(target){setTimeout(function(){try{this.adminViewInventory(target)}catch(e){}}.bind(this),120);}
+          return;
+        }
+        return oldReceive.apply(this,arguments);
+      };
+
+      // Keep the existing View Inventory button as the opener; it now opens the
+      // real native-style backpack above the admin panel.
+      return true;
+    }catch(e){console.warn('[Admin Remote Inventory boot]',e);return false;}
+  }
+  function retry(){if(!boot())setTimeout(retry,250)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',retry);else retry();
+})();
+</script>
+</body>
 </html>
 <!-- Other original content may be protected by copyright. -->
 

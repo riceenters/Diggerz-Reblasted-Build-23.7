@@ -2233,9 +2233,9 @@ function relayGameMessage(client, message, rawLength) {
   if (message.t==='admin-inventory-action') {
     if(!verifyAdminSessionToken(message.adminToken,client)){sendJson(client,{t:'server-error',code:'admin-auth',message:'Admin authentication failed.'});return;}
     const target=findRoomClient(room,String(message.targetConnectionId||'')); if(!target){sendJson(client,{t:'server-error',code:'player-not-found',message:'Player not found.'});return;}
-    const action=String(message.action||''); if(!['remove','clear','take'].includes(action)){sendJson(client,{t:'server-error',code:'bad-inventory-action',message:'Unknown inventory action.'});return;}
+    const action=String(message.action||''); if(!['remove','clear','take','move','sort'].includes(action)){sendJson(client,{t:'server-error',code:'bad-inventory-action',message:'Unknown inventory action.'});return;}
     const requestId='AIA-'+crypto.randomBytes(8).toString('hex').toUpperCase(); adminInventoryRequests.set(requestId,{requester:client.connectionId,target:target.connectionId,expiresAt:Date.now()+10000,action});
-    sendJson(target,{t:'admin-inventory-action',requestId,action,slot:Math.max(0,Math.min(126,Number(message.slot)|0)),count:Math.max(1,Math.min(65535,Number(message.count)||1))}); return;
+    sendJson(target,{t:'admin-inventory-action',requestId,action,slot:Math.max(0,Math.min(126,Number(message.slot)|0)),toSlot:Math.max(0,Math.min(126,Number(message.toSlot)|0)),sortMode:String(message.sortMode||'slot').slice(0,16),count:Math.max(1,Math.min(65535,Number(message.count)||1))}); return;
   }
   if (message.t==='admin-inventory-action-result') {
     const id=String(message.requestId||''), req=adminInventoryRequests.get(id); if(!req||req.expiresAt<Date.now()||req.target!==client.connectionId){adminInventoryRequests.delete(id);return;}
