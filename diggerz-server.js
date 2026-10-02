@@ -1099,13 +1099,13 @@ function applyNativeTileToRoom(client, payload) {
   // native packet is still relayed to existing peers by relayBinary().
   if (!client || !client.room || !payload || payload.length < 18) return false;
   try {
-    const opcode = payload.readUInt16LE(0);
+    const opcode = payload.readUInt16BE(0);
     if (opcode !== 11) return false;
 
-    const tileX = payload.readInt32LE(4);
-    const layerRaw = payload.readInt32LE(8);
-    const tileY = payload.readInt32LE(12);
-    const packed = payload.readUInt16LE(16);
+    const tileX = payload.readInt32BE(4);
+    const layerRaw = payload.readInt32BE(8);
+    const tileY = payload.readInt32BE(12);
+    const packed = payload.readUInt16BE(16);
     const id = packed & 2047;
     const variant = (packed >>> 11) & 31;
 
@@ -1154,7 +1154,7 @@ function applyNativeTileToRoom(client, payload) {
 function relayBinary(client, payload) {
   if (!client.room) return;
   let opcode = 0;
-  try { if (payload.length >= 2) opcode = payload.readUInt16LE(0); } catch {}
+  try { if (payload.length >= 2) opcode = payload.readUInt16BE(0); } catch {}
 
   // Native tile packets are the working multiplayer map path from the supplied
   // main build. Keep relaying the exact packet to existing peers. Separately
