@@ -170,6 +170,7 @@ canvas#main, canvas#atlas { image-rendering:pixelated; border:1px solid var(--bo
     </div>
   </div>
 </div>
+<script src="player_rig_draw.js"></script>
 <script>
 (function () {
   const SLOT_LABEL = {0:"hair",1:"hat",2:"shirt",3:"shoes",4:"weapon",5:"back",6:"face",7:"pants",9:"face2",10:"misc"};
@@ -191,6 +192,10 @@ canvas#main, canvas#atlas { image-rendering:pixelated; border:1px solid var(--bo
     cropDrag: null,
     zoom: 3,
     draftPoly: [],
+    playerRig: null,
+    playerRegions: null,
+    rigTime: 0,
+    showBones: false,
   };
 
   function activeObj() {
@@ -261,19 +266,29 @@ canvas#main, canvas#atlas { image-rendering:pixelated; border:1px solid var(--bo
     new Promise((res, rej) => {
       const img = new Image();
       img.onload = () => res(img);
-      img.onerror = () => rej(new Error("tiles.png missing — place next to editor or use /tiles.png"));
+      img.onerror = () => rej(new Error("tiles.png missing"));
       img.src = "/tiles.png";
     }),
     fetch("/custom_clothes/wearable_atlas_catalog.json").then(r => r.json()),
-  ]).then(([img, cat]) => {
+    fetch("player_rig.json").then(r => r.json()),
+    fetch("player_regions.json").then(r => r.json()),
+  ]).then(([img, cat, rig, regions]) => {
     S.sheet = img;
     S.catalog = cat.items || [];
-    document.getElementById("catStat").textContent = S.catalog.length + " atlas frames loaded";
-    status("Ready — pick stock items, crop pieces, stack parts, export data.");
+    S.playerRig = rig;
+    S.playerRegions = regions;
+    document.getElementById("catStat").textContent = S.catalog.length + " atlas frames · player rig ready";
+    status("Ready — real player rig preview. Stack atlas pieces, preview on the diggerz guy.");
     renderList();
     draw();
+    // idle tick
+    (function tick(now) {
+      S.rigTime = (S.rigTime + 0.016) % 2;
+      if (S.mode !== "crop") draw();
+      requestAnimationFrame(tick);
+    })();
   }).catch((e) => {
-    status("Load failed: " + e.message + " — ensure tiles.png and wearable_atlas_catalog.json are available.");
+    status("Load failed: " + e.message);
   });
 
   function renderList() {
@@ -672,57 +687,62 @@ canvas#main, canvas#atlas { image-rendering:pixelated; border:1px solid var(--bo
     mctx.fillStyle = "#121820";
     mctx.fillRect(0, 0, main.width, main.height);
     const z = S.zoom;
-    // rig
+    const W = main.width, H = main.height;
     mctx.save();
-    mctx.translate(main.width/2, 40);
-    mctx.scale(z, z);
-    mctx.strokeStyle = "rgba(91,159,212,0.45)";
-    mctx.lineWidth = 1/z;
-    mctx.beginPath();
-    mctx.arc(0, 16, 14, 0, Math.PI*2);
-    mctx.moveTo(0, 30); mctx.lineTo(0, 80);
-    mctx.lineTo(-12, 130); mctx.lineTo(-14, 155);
-    mctx.moveTo(0, 80); mctx.lineTo(12, 130); mctx.lineTo(14, 155);
-    mctx.moveTo(0, 50); mctx.lineTo(-28, 75);
-    mctx.moveTo(0, 50); mctx.lineTo(28, 75);
-    mctx.stroke();
-    const sprite = composite();
-    if (sprite) {
-      mctx.drawImage(sprite, -sprite.width/2, 20);
-    }
-    // polygon overlays for selected part (part-local → compose space)
-    const sp = S.parts[S.selPart];
-    if (sp) {
-      const baseX = - (composite() ? composite().width / 2 : 0) + sp.x;
-      const baseY = 20 + sp.y;
-      (sp.polys || []).forEach((poly) => {
-        if (!poly.points || poly.points.length < 2) return;
-        mctx.beginPath();
-        mctx.strokeStyle = "rgba(230,179,92,0.95)";
-        mctx.lineWidth = 1 / z;
-        poly.points.forEach((pt, i) => {
-          const px = baseX + pt.x, py = baseY + pt.y;
-          if (i === 0) mctx.moveTo(px, py); else mctx.lineTo(px, py);
-        });
-        mctx.closePath();
-        mctx.stroke();
+    mctx.translate(W / 2, H * 0.72);
+    mctx.scale(z * 1.4, -z * 1.4); // spine Y-up
+    if (S.playerRig && S.sheet && S.playerRegions && typeof DiggerzDrawPlayerRig === "function") {
+      const o = activeObj();
+      const slot = o ? o.slot : (+document.getElementById("outSlot").value || 1);
+      const ox = o ? o.ox : (+document.getElementById("ox").value || 0);
+      const oy = o ? o.oy : (+document.getElementById("oy").value || 0);
+      DiggerzDrawPlayerRig(mctx, {
+        rig: S.playerRig,
+        regions: S.playerRegions,
+        sheet: S.sheet,
+        time: S.rigTime || 0,
+        animName: "idle",
+        wearCanvas: composite(),
+        wearSlot: slot,
+        wearOx: ox,
+        wearOy: oy,
+        showBones: S.showBones,
       });
+    } else {
+      // fallback stick if rig not loaded
+      mctx.strokeStyle = "rgba(91,159,212,0.45)";
+      mctx.beginPath();
+      mctx.arc(0, 40, 14, 0, Math.PI * 2);
+      mctx.moveTo(0, 26); mctx.lineTo(0, -20);
+      mctx.stroke();
+      const sprite = composite();
+      if (sprite) mctx.drawImage(sprite, -sprite.width / 2, 20);
+    }
+    // polygon overlays in screen-ish space after restore — skip complex transform for now
+    mctx.restore();
+
+    // Draft poly UI: draw in 2d overlay using approximate positions
+    const sp = S.parts[S.selPart];
+    if (sp && S.mode === "poly") {
+      mctx.save();
+      mctx.strokeStyle = "#5b9fd4";
+      mctx.fillStyle = "#5b9fd4";
+      const sprite = composite();
+      const baseX = W / 2 + (sp.x - (sprite ? sprite.width / 2 : 0)) * z;
+      const baseY = H * 0.35 + sp.y * z;
       if (S.draftPoly.length) {
         mctx.beginPath();
-        mctx.strokeStyle = "#5b9fd4";
-        mctx.lineWidth = 1.5 / z;
         S.draftPoly.forEach((pt, i) => {
-          const px = baseX + pt.x, py = baseY + pt.y;
+          const px = baseX + pt.x * z, py = baseY + pt.y * z;
           if (i === 0) mctx.moveTo(px, py); else mctx.lineTo(px, py);
         });
         mctx.stroke();
         S.draftPoly.forEach((pt) => {
-          mctx.fillStyle = "#5b9fd4";
-          mctx.fillRect(baseX + pt.x - 1.5/z, baseY + pt.y - 1.5/z, 3/z, 3/z);
+          mctx.fillRect(baseX + pt.x * z - 2, baseY + pt.y * z - 2, 4, 4);
         });
       }
+      mctx.restore();
     }
-    mctx.restore();
   }
 
   function nudge(dx, dy) {

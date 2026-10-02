@@ -3281,7 +3281,24 @@ const server = http.createServer(async (req, res) => {
     }
     return;
   }
+  if (urlPath.startsWith('/clothing-editor/') && urlPath !== '/clothing-editor/') {
+    try {
+      const rel = decodeURIComponent(urlPath.slice('/clothing-editor/'.length)).replace(/\\/g, '/');
+      if (!rel || rel.includes('..')) { res.writeHead(400); res.end('bad'); return; }
+      const full = path.join(__dirname, 'clothing-editor', rel);
+      if (!full.startsWith(path.join(__dirname, 'clothing-editor')) || !fs.existsSync(full)) {
+        res.writeHead(404); res.end('not found'); return;
+      }
+      const ext = path.extname(full).toLowerCase();
+      const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.css': 'text/css' };
+      const body = fs.readFileSync(full);
+      res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream', 'Content-Length': body.length, 'Cache-Control': 'no-store' });
+      res.end(body);
+    } catch (e) { res.writeHead(500); res.end('error'); }
+    return;
+  }
   if (urlPath === '/clothing-editor' || urlPath === '/clothing-editor/') {
+
     try {
       const editorPath = path.join(__dirname, 'clothing-editor', 'index.html');
       const body = fs.readFileSync(editorPath);
