@@ -53895,33 +53895,16 @@ function __normalizeWearableScales(skel) {
         a.set_local_xScale(a.set_local_yScale(.7));
         this.Z47._9.push(a);
         a = 170;
-        // Menu background cycle — all real cg themes (Background 0–9)
-        var bgList = window.DiggerzMenuBgList || [
-            { name: "Mountains", theme: 0 }, { name: "Beta Bknd", theme: 9 }
-        ];
+        // Menu background picker — uses the native title U33(Q9()) path.
+        var bgList = window.DiggerzMenuBgList || [];
         var bgIdx = 0;
-        try {
-            if (window.DiggerzGetMenuBgIndex) bgIdx = window.DiggerzGetMenuBgIndex();
-            else bgIdx = Math.max(0, Math.min(bgList.length - 1, parseInt(localStorage.getItem("diggerz.menuBg.v1") || "0", 10) || 0));
-        } catch (eBg) {}
-        var bgLbl = new ob(0, a, "^9Background: ^7" + (bgList[bgIdx] ? bgList[bgIdx].name : ("#" + bgIdx)), q.MAIN_FONT);
-        bgLbl.D7(this, !0);
-        bgLbl.C33 = A(this, function() {
-            try {
-                var i = 0;
-                if (window.DiggerzCycleMenuBackground)
-                    i = window.DiggerzCycleMenuBackground();
-                else {
-                    i = (window.DiggerzGetMenuBgIndex ? window.DiggerzGetMenuBgIndex() : 0);
-                    i = (i + 1) % bgList.length;
-                    localStorage.setItem("diggerz.menuBg.v1", String(i));
-                    if (window.DiggerzApplyMenuBackground) window.DiggerzApplyMenuBackground(i);
-                }
-                var nm = (bgList[i] && bgList[i].name) ? bgList[i].name : ("#" + i);
-                try { bgLbl.E37("^9Background: ^7" + nm); } catch (eL) {}
-            } catch (eC) {}
+        try { bgIdx = window.DiggerzGetMenuBgIndex ? window.DiggerzGetMenuBgIndex() : 0; } catch (eBg) {}
+        var bgBtn = new ob(0, a, "^9Background: ^7" + (bgList[bgIdx] ? bgList[bgIdx].name : "Default Mountains"), q.MAIN_FONT);
+        bgBtn.D7(this, !0);
+        bgBtn.C33 = A(this, function() {
+            if (window.DiggerzOpenMenuBkndPicker) window.DiggerzOpenMenuBkndPicker();
         });
-        this._9.push(bgLbl);
+        this._9.push(bgBtn);
         a += 55;
         var saveBtn = new ob(0, a, "^2Save to Account", q.MAIN_FONT);
         saveBtn.D7(this, !0);
@@ -89774,10 +89757,7 @@ function __normalizeWearableScales(skel) {
         z.call(this);
         this.A7 = q.CENTERX;
         this.A8 = q.CENTERY;
-        // TEST: force the title screen's existing BKND to Beta Bknd (theme 9).
-        // No selector or replacement logic; this uses the exact same cg(theme)
-        // construction as the native BKND block system.
-        this.d34 = new cg(9);
+        this.d34 = new cg(0);
         this.d34.D7(this);
         this._9.push(this.d34);
         this._1 = "title_screen";
@@ -121195,134 +121175,108 @@ e50: function(a) {
 
 <script id="diggerz-menu-bg-apply">
 (function(){
-  // MENU-ONLY BKND SELECTOR
-  // The title screen's own Cf class owns the real backdrop as title.d34.
-  // We replace that exact native object instead of creating a second overlay.
-  // This keeps T31()/h2()/render ordering using the game's normal BKND path.
-  window.DiggerzLocalBkndData = {
-    atlas: "assets/bknd.png",
-    version: 1,
-    themes: [
-      {id:0,name:"Mountains"},
-      {id:1,name:"Grey"},
-      {id:2,name:"Sunset"},
-      {id:3,name:"Moon"},
-      {id:4,name:"Icy Mountains"},
-      {id:5,name:"Clouds"},
-      {id:6,name:"Background 6"},
-      {id:7,name:"Background 7"},
-      {id:8,name:"Green Screen"},
+  // Native title BKND test/selector.  Cf.U33() expects a packet reader,
+  // not a raw integer, so we give it the same tiny Q9() interface that
+  // the real network/block path supplies.
+  window.DiggerzLocalBkndData={
+    atlas:"assets/bknd.png", version:3,
+    themes:[
+      {id:0,name:"Default Mountains"},
+      {id:1,name:"Mountain Backdrop"},
+      {id:2,name:"City Bknd"},
+      {id:3,name:"Night Bknd"},
+      {id:4,name:"Snowy Bknd"},
+      {id:5,name:"Red Clouds"},
+      {id:6,name:"Moon Bknd"},
+      {id:7,name:"Industry Bknd"},
+      {id:8,name:"Green Screen Bknd"},
       {id:9,name:"Beta Bknd"}
     ]
   };
-  window.DiggerzMenuBgList = window.DiggerzLocalBkndData.themes.map(function(x){
-    return {name:x.name,theme:x.id};
-  });
+  window.DiggerzMenuBgList=window.DiggerzLocalBkndData.themes.map(function(x){return {name:x.name,theme:x.id};});
 
   window.DiggerzGetMenuBgIndex=function(){
     try{
-      var n=parseInt(localStorage.getItem("diggerz.menuBg.v1")||"0",10);
+      var n=parseInt(localStorage.getItem("diggerz.menuBg.native.v1")||"0",10);
       if(!isFinite(n)||n<0||n>=window.DiggerzMenuBgList.length)n=0;
       return n;
     }catch(e){return 0;}
   };
 
-  function findTitle(){
-    try{
-      if(window.q&&q.GetChildByType&&window.v&&v.C55){
-        var a=q.GetChildByType(v.C55); if(a)return a;
-      }
-    }catch(e){}
-    try{
-      if(window.q&&q.children)for(var i=0;i<q.children.length;i++){
-        var c=q.children[i];
-        if(c&&c._1==="title_screen")return c;
-      }
-    }catch(e){}
-    return null;
+  function title(){
+    try{return q.GetChildByType(Cf)||null;}catch(e){return null;}
   }
 
-  function ensureBkndAtlas(){
-    // The game already preloads this atlas. The local file is also shipped as
-    // a fallback so this customization never depends on a server request.
-    try{
-      if(typeof $c!=="undefined" && $c.getBitmapData){
-        var bmp=$c.getBitmapData(window.DiggerzLocalBkndData.atlas,false);
-        if(bmp && typeof sa!=="undefined") sa.bmd=bmp;
-      }
-    }catch(e){}
+  function nativeTitleBknd(theme){
+    var t=title();
+    if(!t || typeof t.U33!=="function") return false;
+    theme=theme|0;
+    // U33 reads its argument through Q9(), exactly like the native packet.
+    t.U33({Q9:function(){return theme;}});
+    try{t.d34._1="diggerz_menu_bknd";}catch(e){}
+    return true;
   }
 
-  window.DiggerzApplyMenuBackground=function(forceIdx){
-    try{
-      var list=window.DiggerzMenuBgList||[];
-      if(!list.length)return false;
-      var idx=forceIdx==null?window.DiggerzGetMenuBgIndex():forceIdx|0;
-      idx=Math.max(0,Math.min(list.length-1,idx));
-      localStorage.setItem("diggerz.menuBg.v1",String(idx));
-      window.__diggerzMenuBgIdx=idx;
-
-      // Never touch the multiplayer/world BKND.
-      try{if(typeof l!=="undefined"&&l&&l.z38)return false;}catch(eWorld){}
-
-      var title=findTitle();
-      if(!title||typeof cg!=="function"){
-        setTimeout(function(){window.DiggerzApplyMenuBackground(idx)},200);
-        return false;
-      }
-
-      ensureBkndAtlas();
-
-      // If this exact native d34 is already selected, leave it alone.
-      if(title.d34 && title.d34._diggerzMenuTheme===idx && !title.d34.a0){
-        return true;
-      }
-
-      // IMPORTANT: Cf/T31 uses title.d34 and f4(cg). Replace that exact field.
-      // Do not create a parallel overlay; the old v40 approach could leave the
-      // original cg(0) as the backdrop T31() continued to find.
-      var old=title.d34;
-      if(old){
-        try{old.a0=1;}catch(e1){}
-        try{var oi=title._9.indexOf(old);if(oi>=0)title._9.splice(oi,1);}catch(e2){}
-      }
-
-      var fresh=new cg(idx);
-      fresh._diggerzMenuTheme=idx;
-      fresh._1="diggerz_menu_bknd";
-      fresh.D7(title);
-      fresh.A7=q.CENTERX;
-      fresh.A8=q.CENTERY;
-      fresh.a0=0;
-
-      title.d34=fresh;
-      if(title._9){
-        title._9.unshift(fresh);
-      }
-
-      // Match the native title resize/layout path.
-      try{if(typeof fresh.h2==="function")fresh.h2();}catch(e3){}
-      window.__diggerzMenuCg=fresh;
-      window.__diggerzMenuCgTheme=idx;
-      return true;
-    }catch(e){
-      try{console.warn("[Menu BKND]",e);}catch(x){}
-      return false;
-    }
-  };
-
-  window.DiggerzCycleMenuBackground=function(){
+  window.DiggerzApplyMenuBackground=function(idx,save){
     var list=window.DiggerzMenuBgList||[];
-    if(!list.length)return 0;
-    var n=(window.DiggerzGetMenuBgIndex()+1)%list.length;
-    window.DiggerzApplyMenuBackground(n);
-    return n;
+    if(!list.length)return false;
+    idx=idx==null?window.DiggerzGetMenuBgIndex():idx|0;
+    idx=Math.max(0,Math.min(list.length-1,idx));
+    if(save!==false){try{localStorage.setItem("diggerz.menuBg.native.v1",String(idx));}catch(e){}}
+    window.__diggerzMenuBgIdx=idx;
+    var ok=nativeTitleBknd(list[idx].theme);
+    if(ok){window.__diggerzMenuCgTheme=list[idx].theme;window.__diggerzMenuCg=title().d34;}
+    return ok;
   };
 
-  // Initial selection. The retry is only for startup ordering.
-  [150,700,1500,3000].forEach(function(ms){
-    setTimeout(function(){window.DiggerzApplyMenuBackground();},ms);
-  });
+  // Kept for compatibility; settings now opens the button menu instead.
+  window.DiggerzCycleMenuBackground=function(){
+    var n=(window.DiggerzGetMenuBgIndex()+1)%window.DiggerzMenuBgList.length;
+    window.DiggerzApplyMenuBackground(n,true); return n;
+  };
+
+  window.DiggerzOpenMenuBkndPicker=function(){
+    if(window.__diggerzBkndPicker){
+      try{window.__diggerzBkndPicker.a0=1;}catch(e0){}
+      window.__diggerzBkndPicker=null;
+    }
+    var panel=new ja(620,500,true);
+    panel._1="diggerz_bknd_picker";
+    panel.A7=q.CENTERX; panel.A8=q.CENTERY; panel.c0=true;
+    var head=new xa(0,-205,"^9Menu Background",q.MAIN_FONT_BIG);
+    head.D7(panel,true); panel._9.push(head);
+    var list=window.DiggerzMenuBgList||[];
+    var self=panel;
+    for(var i=0;i<list.length;i++){
+      (function(item,index){
+        var col=index%2, row=Math.floor(index/2);
+        var btn=new ob(col?155:-155,-130+row*58,"^7"+item.name,q.MAIN_FONT);
+        btn.D7(self,true);
+        btn.C33=function(){
+          try{
+            window.DiggerzApplyMenuBackground(index,true);
+            self.a0=1;
+            window.__diggerzBkndPicker=null;
+            q.mClicked=false; q.clickedFunction=null;
+          }catch(e){}
+        };
+        self._9.push(btn);
+      })(list[i],i);
+    }
+    var close=new ob(0,185,"^1Close",q.MAIN_FONT);
+    close.D7(panel,true);
+    close.C33=function(){try{panel.a0=1;}catch(e){} window.__diggerzBkndPicker=null; q.mClicked=false; q.clickedFunction=null;};
+    panel._9.push(close);
+    q.children.push(panel);
+    window.__diggerzBkndPicker=panel;
+    q.mClicked=false; q.clickedFunction=null;
+    return panel;
+  };
+
+  // Apply the saved selection once the title exists.
+  [150,700,1500].forEach(function(ms){setTimeout(function(){
+    try{window.DiggerzApplyMenuBackground(window.DiggerzGetMenuBgIndex(),false);}catch(e){}
+  },ms);});
 })();
 </script>
 <script src="/build239-client.js"></script><script src="/build240-client.js"></script><script id="diggerz-admin-remote-backpack">
