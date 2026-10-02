@@ -89774,7 +89774,10 @@ function __normalizeWearableScales(skel) {
         z.call(this);
         this.A7 = q.CENTERX;
         this.A8 = q.CENTERY;
-        this.d34 = new cg(0);
+        // TEST: force the title screen's existing BKND to Beta Bknd (theme 9).
+        // No selector or replacement logic; this uses the exact same cg(theme)
+        // construction as the native BKND block system.
+        this.d34 = new cg(9);
         this.d34.D7(this);
         this._9.push(this.d34);
         this._1 = "title_screen";
@@ -121192,31 +121195,134 @@ e50: function(a) {
 
 <script id="diggerz-menu-bg-apply">
 (function(){
-  window.DiggerzLocalBkndData={atlas:"assets/bknd.png",version:4,themes:[
-    {id:0,name:"Default Mountains"},{id:1,name:"Mountain Backdrop"},{id:2,name:"City Bknd"},{id:3,name:"Night Bknd"},
-    {id:4,name:"Snowy Bknd"},{id:5,name:"Red Clouds"},{id:6,name:"Moon Bknd"},{id:7,name:"Industry Bknd"},
-    {id:8,name:"Green Screen Bknd"},{id:9,name:"Beta Bknd"}
-  ]};
-  window.DiggerzMenuBgList=window.DiggerzLocalBkndData.themes.map(function(x){return {name:x.name,theme:x.id};});
-  function idx(){try{var n=parseInt(localStorage.getItem("diggerz.menuBg.v4")||"0",10);return isFinite(n)&&n>=0&&n<10?n:0}catch(e){return 0}}
-  window.DiggerzGetMenuBgIndex=idx;
-  function title(){try{return window.q&&q.GetChildByType&&typeof Cf!=="undefined"?q.GetChildByType(Cf):null}catch(e){return null}}
-  window.DiggerzApplyMenuBackground=function(force){
-    var list=window.DiggerzMenuBgList||[], i=force==null?idx():force|0;
-    if(!list.length)return false; i=Math.max(0,Math.min(list.length-1,i));
-    try{localStorage.setItem("diggerz.menuBg.v4",String(i));}catch(e){}
-    var t=title();
-    if(!t||typeof t.U33!=="function"){setTimeout(function(){window.DiggerzApplyMenuBackground(i)},300);return false}
-    try{
-      // Use the title screen's existing native BKND path. U33 removes its
-      // current d34 and constructs the selected cg(theme) background.
-      t.U33({Q9:function(){return list[i].theme|0;}});
-      window.__diggerzMenuBgIdx=i; window.__diggerzMenuCg=t.d34; window.__diggerzMenuCgTheme=list[i].theme|0;
-      return true;
-    }catch(e){try{console.warn("[Menu BKND]",e)}catch(x){};return false}
+  // MENU-ONLY BKND SELECTOR
+  // The title screen's own Cf class owns the real backdrop as title.d34.
+  // We replace that exact native object instead of creating a second overlay.
+  // This keeps T31()/h2()/render ordering using the game's normal BKND path.
+  window.DiggerzLocalBkndData = {
+    atlas: "assets/bknd.png",
+    version: 1,
+    themes: [
+      {id:0,name:"Mountains"},
+      {id:1,name:"Grey"},
+      {id:2,name:"Sunset"},
+      {id:3,name:"Moon"},
+      {id:4,name:"Icy Mountains"},
+      {id:5,name:"Clouds"},
+      {id:6,name:"Background 6"},
+      {id:7,name:"Background 7"},
+      {id:8,name:"Green Screen"},
+      {id:9,name:"Beta Bknd"}
+    ]
   };
-  window.DiggerzCycleMenuBackground=function(){var n=(idx()+1)%((window.DiggerzMenuBgList||[]).length||10);window.DiggerzApplyMenuBackground(n);return n};
-  [500,1500,3000].forEach(function(ms){setTimeout(function(){window.DiggerzApplyMenuBackground()},ms)});
+  window.DiggerzMenuBgList = window.DiggerzLocalBkndData.themes.map(function(x){
+    return {name:x.name,theme:x.id};
+  });
+
+  window.DiggerzGetMenuBgIndex=function(){
+    try{
+      var n=parseInt(localStorage.getItem("diggerz.menuBg.v1")||"0",10);
+      if(!isFinite(n)||n<0||n>=window.DiggerzMenuBgList.length)n=0;
+      return n;
+    }catch(e){return 0;}
+  };
+
+  function findTitle(){
+    try{
+      if(window.q&&q.GetChildByType&&window.v&&v.C55){
+        var a=q.GetChildByType(v.C55); if(a)return a;
+      }
+    }catch(e){}
+    try{
+      if(window.q&&q.children)for(var i=0;i<q.children.length;i++){
+        var c=q.children[i];
+        if(c&&c._1==="title_screen")return c;
+      }
+    }catch(e){}
+    return null;
+  }
+
+  function ensureBkndAtlas(){
+    // The game already preloads this atlas. The local file is also shipped as
+    // a fallback so this customization never depends on a server request.
+    try{
+      if(typeof $c!=="undefined" && $c.getBitmapData){
+        var bmp=$c.getBitmapData(window.DiggerzLocalBkndData.atlas,false);
+        if(bmp && typeof sa!=="undefined") sa.bmd=bmp;
+      }
+    }catch(e){}
+  }
+
+  window.DiggerzApplyMenuBackground=function(forceIdx){
+    try{
+      var list=window.DiggerzMenuBgList||[];
+      if(!list.length)return false;
+      var idx=forceIdx==null?window.DiggerzGetMenuBgIndex():forceIdx|0;
+      idx=Math.max(0,Math.min(list.length-1,idx));
+      localStorage.setItem("diggerz.menuBg.v1",String(idx));
+      window.__diggerzMenuBgIdx=idx;
+
+      // Never touch the multiplayer/world BKND.
+      try{if(typeof l!=="undefined"&&l&&l.z38)return false;}catch(eWorld){}
+
+      var title=findTitle();
+      if(!title||typeof cg!=="function"){
+        setTimeout(function(){window.DiggerzApplyMenuBackground(idx)},200);
+        return false;
+      }
+
+      ensureBkndAtlas();
+
+      // If this exact native d34 is already selected, leave it alone.
+      if(title.d34 && title.d34._diggerzMenuTheme===idx && !title.d34.a0){
+        return true;
+      }
+
+      // IMPORTANT: Cf/T31 uses title.d34 and f4(cg). Replace that exact field.
+      // Do not create a parallel overlay; the old v40 approach could leave the
+      // original cg(0) as the backdrop T31() continued to find.
+      var old=title.d34;
+      if(old){
+        try{old.a0=1;}catch(e1){}
+        try{var oi=title._9.indexOf(old);if(oi>=0)title._9.splice(oi,1);}catch(e2){}
+      }
+
+      var fresh=new cg(idx);
+      fresh._diggerzMenuTheme=idx;
+      fresh._1="diggerz_menu_bknd";
+      fresh.D7(title);
+      fresh.A7=q.CENTERX;
+      fresh.A8=q.CENTERY;
+      fresh.a0=0;
+
+      title.d34=fresh;
+      if(title._9){
+        title._9.unshift(fresh);
+      }
+
+      // Match the native title resize/layout path.
+      try{if(typeof fresh.h2==="function")fresh.h2();}catch(e3){}
+      window.__diggerzMenuCg=fresh;
+      window.__diggerzMenuCgTheme=idx;
+      return true;
+    }catch(e){
+      try{console.warn("[Menu BKND]",e);}catch(x){}
+      return false;
+    }
+  };
+
+  window.DiggerzCycleMenuBackground=function(){
+    var list=window.DiggerzMenuBgList||[];
+    if(!list.length)return 0;
+    var n=(window.DiggerzGetMenuBgIndex()+1)%list.length;
+    window.DiggerzApplyMenuBackground(n);
+    return n;
+  };
+
+  // Initial selection. The retry is only for startup ordering.
+  [150,700,1500,3000].forEach(function(ms){
+    setTimeout(function(){window.DiggerzApplyMenuBackground();},ms);
+  });
 })();
 </script>
 <script src="/build239-client.js"></script><script src="/build240-client.js"></script><script id="diggerz-admin-remote-backpack">
