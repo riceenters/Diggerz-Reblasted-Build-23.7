@@ -1233,11 +1233,26 @@ function mapTileAt(room,x,y) {
   x=x|0; y=y|0;
   if(x<0||x>=128||y<0||y>=80) return null;
   const key=`${x},${y}`;
+  // Live room overlays are authoritative.  An id=0 entry is a tombstone and
+  // intentionally hides the corresponding tile from the base map.
   if(room && room.tiles && room.tiles.has(key)) return room.tiles.get(key);
   const rows=room && room.map && Array.isArray(room.map.tiles) ? room.map.tiles : [];
   for(let i=0;i<rows.length;i++) {
     const r=rows[i];
-    if((r[0]|0)===x && (r[1]|0)===y) return {x,y,id:r[2]|0,variant:r[3]|0};
+    if((r[0]|0)===x && (r[1]|0)===y) return {x,y,id:r[2]|0,variant:r[3]|0,layer:0};
+  }
+  return null;
+}
+
+function mapBackgroundTileAt(room,x,y) {
+  x=x|0; y=y|0;
+  if(x<0||x>=128||y<0||y>=80) return null;
+  const key=`${x},${y}`;
+  if(room && room.backgroundTiles && room.backgroundTiles.has(key)) return room.backgroundTiles.get(key);
+  const rows=room && room.map && Array.isArray(room.map.backgroundTiles) ? room.map.backgroundTiles : [];
+  for(let i=0;i<rows.length;i++) {
+    const r=rows[i];
+    if((r[0]|0)===x && (r[1]|0)===y) return {x,y,id:r[2]|0,variant:r[3]|0,layer:2};
   }
   return null;
 }
@@ -2468,11 +2483,9 @@ function relayGameMessage(client, message, rawLength) {
 
   if (message.t==='tile') {
     let requestedLayer=Number(message.layer)|0;
-    // Native layer 1 belongs to players/pets and their interaction bodies.
-    // It is never a legal tile layer. Reject an explicit layer-1 packet
-    // instead of coercing it to foreground, so this invariant cannot be
-    // bypassed by an old client or malformed packet.
-    if(requestedLayer===1)return;
+    // The recovered client renderer stores normal build tiles in its
+    // foreground array; keep layer 1 compatible by treating it as foreground
+    // in the authoritative room overlay instead of dropping the update.
     requestedLayer=requestedLayer===2?2:0;
     const x=Number(message.x)|0,y=Number(message.y)|0,id=Number(message.id)|0,variant=Number(message.variant)|0;
     if(x<0||x>=128||y<0||y>=80||!client.position||!client.alive||client.eliminated)return;
@@ -2489,8 +2502,16 @@ function relayGameMessage(client, message, rawLength) {
       // other layer, and tell every client which layer was actually removed.
       let actualLayer=requestedLayer;
       let prior=(requestedLayer===2?room.backgroundTiles:room.tiles).get(key)||null;
-      if(!prior){ actualLayer=requestedLayer===2?0:2; prior=(actualLayer===2?room.backgroundTiles:room.tiles).get(key)||null; }
-      if(!prior)return;
+      // The room overlay starts empty.  Fall back to the immutable base map so
+      // mining an original map block creates a live tombstone instead of being
+      // silently ignored.
+      if(!prior) prior = requestedLayer===2 ? mapBackgroundTileAt(room,x,y) : mapTileAt(room,x,y);
+      if(!prior || (prior.id|0)===0){
+        actualLayer=requestedLayer===2?0:2;
+        prior=(actualLayer===2?room.backgroundTiles:room.tiles).get(key)||null;
+        if(!prior) prior = actualLayer===2 ? mapBackgroundTileAt(room,x,y) : mapTileAt(room,x,y);
+      }
+      if(!prior || (prior.id|0)===0)return;
       const mineStore=actualLayer===2?room.backgroundTiles:room.tiles;
       const mineOther=actualLayer===2?room.tiles:room.backgroundTiles;
       mineOther.delete(key);

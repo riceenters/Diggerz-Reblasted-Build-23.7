@@ -88975,7 +88975,7 @@ function __normalizeWearableScales(skel) {
             this.A58(a)
         },
         e0: function() {
-            // Freeze the firing player's native body while this projectile lives.
+            // Freeze the firing player while this projectile is active.
             try {
                 var owner = this._remoteOwner || l.z39;
                 var ob = owner && owner.b33 && owner.b33.tBJ;
@@ -88988,7 +88988,7 @@ function __normalizeWearableScales(skel) {
                 }
             } catch (_) {}
 
-            // Run the normal Mortar physics first, exactly as Homing Mortar does.
+            // Let the normal projectile update happen first.
             var a = rj.prototype.e0.call(this);
             if (this._remoteAlive && this.b33) {
                 var ix = 0, iy = 0;
@@ -88999,38 +88999,43 @@ function __normalizeWearableScales(skel) {
                     if (q.KeyDown(83)) iy += 1; // S
                 } catch (_) {}
 
-                if (ix || iy) {
-                    var il = Math.sqrt(ix * ix + iy * iy) || 1;
-                    ix /= il; iy /= il;
+                // Match the game's movement coordinate system and avoid
+                // diagonal speed boosts.  We rotate the EXISTING velocity
+                // instead of applying an impulse every frame; this keeps the
+                // missile at its original speed.
+                try {
+                    var body = this.b33.tBJ;
+                    body.setupVelocity();
+                    var vel = body.wrap_vel.tBJ;
+                    var vx = Number(vel.x) || 0;
+                    var vy = Number(vel.y) || 0;
+                    var speed = Math.sqrt(vx * vx + vy * vy);
 
-                    // Same target-angle convention as Homing Mortar.
-                    var desired = Math.atan2(iy, ix);
-                    var current = desired;
-                    try {
-                        var vel = this.b33.tBJ.wrap_vel.tBJ;
-                        if (vel && (Math.abs(vel.x) > .01 || Math.abs(vel.y) > .01))
-                            current = Math.atan2(-vel.y, vel.x);
-                    } catch (_) {}
+                    // If physics has not populated velocity yet, preserve a
+                    // sensible mortar launch speed rather than accelerating.
+                    if (speed < 0.001) speed = 300;
 
-                    var delta = desired - current;
-                    while (delta > Math.PI) delta -= Math.PI * 2;
-                    while (delta < -Math.PI) delta += Math.PI * 2;
-                    var maxTurn = .035; // intentionally slow steering
-                    if (delta > maxTurn) delta = maxTurn;
-                    if (delta < -maxTurn) delta = -maxTurn;
-                    var steerAngle = current + delta;
+                    if (ix || iy) {
+                        var inputLen = Math.sqrt(ix * ix + iy * iy) || 1;
+                        ix /= inputLen;
+                        iy /= inputLen;
 
-                    // Exact Homing Mortar impulse construction, with the
-                    // player-controlled steerAngle replacing its target angle.
-                    var b = steerAngle + 1.57079632;
-                    while (b > Math.PI) b -= Math.PI * 2;
-                    while (b < -Math.PI) b += Math.PI * 2;
-                    var imp = new Z(
-                        300 * (0 > b ? 1.27323954 * b + .405284735 * b * b : 1.27323954 * b - .405284735 * b * b),
-                        300 * (0 > steerAngle ? 1.27323954 * steerAngle + .405284735 * steerAngle * steerAngle : 1.27323954 * steerAngle - .405284735 * steerAngle * steerAngle)
-                    );
-                    try { this.b33.applyImpulse(imp) } catch (_) {}
-                }
+                        var current = Math.atan2(vy, vx);
+                        var desired = Math.atan2(iy, ix);
+                        var delta = desired - current;
+                        while (delta > Math.PI) delta -= Math.PI * 2;
+                        while (delta < -Math.PI) delta += Math.PI * 2;
+
+                        // Slow, smooth steering.
+                        var maxTurn = 0.035;
+                        if (delta > maxTurn) delta = maxTurn;
+                        if (delta < -maxTurn) delta = -maxTurn;
+                        var angle = current + delta;
+
+                        vel.x = Math.cos(angle) * speed;
+                        vel.y = Math.sin(angle) * speed;
+                    }
+                } catch (_) {}
             }
             return a
         },
