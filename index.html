@@ -88938,17 +88938,16 @@ function __normalizeWearableScales(skel) {
         },
         __class__: rj
     });
-    // Remote Mortar projectile: normal Mortar missile base, but with zero gravity
-    // and an independently tracked WASD steering input.
+    // Remote Mortar projectile: derived directly from the existing Homing
+    // Mortar (Eo). Only the steering target is changed to WASD.
     var Ro = function(a, b, c, d, e, g, p) {
         rj.call(this, a, b, c, d, e, g, p);
         this.set_local_r(.25);
         this.set_local_g(1);
         this.set_local_b(.25);
         this.c9 = !0;
-        this._remoteSteerReady = true;
         this._remoteAlive = true;
-        // Unlike the normal mortar, Remote Mortar travels on a straight line.
+        this._remoteOwner = p || null;
         try {
             var body = this.b33;
             body.tBJ.immutable_midstep("Body::gravMass");
@@ -88967,7 +88966,6 @@ function __normalizeWearableScales(skel) {
     Ro.__super__ = rj;
     Ro.prototype = D(rj.prototype, {
         b51: function(a) {
-            // Normal Mortar collision/destruction behavior remains intact.
             rj.prototype.b51.call(this, a);
             this._remoteAlive = false;
             if (typeof window !== "undefined" && window.__diggerzRemoteMortarProjectile === this) {
@@ -88977,77 +88975,67 @@ function __normalizeWearableScales(skel) {
             this.A58(a)
         },
         e0: function() {
-            if (this._remoteSteerReady && this._remoteAlive && this.b33) {
+            // Freeze the firing player's native body while this projectile lives.
+            try {
+                var owner = this._remoteOwner || l.z39;
+                var ob = owner && owner.b33 && owner.b33.tBJ;
+                if (ob) {
+                    ob.setupVelocity();
+                    if (ob.wrap_vel && ob.wrap_vel.tBJ) {
+                        ob.wrap_vel.tBJ.x = 0;
+                        ob.wrap_vel.tBJ.y = 0;
+                    }
+                }
+            } catch (_) {}
+
+            // Run the normal Mortar physics first, exactly as Homing Mortar does.
+            var a = rj.prototype.e0.call(this);
+            if (this._remoteAlive && this.b33) {
                 var ix = 0, iy = 0;
-                // Use our own key state. The game's movement system can consume
-                // keyboard events, so q.KeyDown() is deliberately not used here.
                 try {
-                    var keys = (typeof window !== "undefined" && window.__diggerzRemoteMortarKeys) || {};
-                    if (keys.a) ix -= 1;
-                    if (keys.d) ix += 1;
-                    if (keys.w) iy -= 1;
-                    if (keys.s) iy += 1;
+                    if (q.KeyDown(65)) ix -= 1; // A
+                    if (q.KeyDown(68)) ix += 1; // D
+                    if (q.KeyDown(87)) iy -= 1; // W
+                    if (q.KeyDown(83)) iy += 1; // S
                 } catch (_) {}
 
                 if (ix || iy) {
                     var il = Math.sqrt(ix * ix + iy * iy) || 1;
-                    ix /= il;
-                    iy /= il;
+                    ix /= il; iy /= il;
 
+                    // Same target-angle convention as Homing Mortar.
+                    var desired = Math.atan2(iy, ix);
+                    var current = desired;
                     try {
                         var vel = this.b33.tBJ.wrap_vel.tBJ;
-                        var speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
-                        if (speed < 0.5) speed = 0.5;
-
-                        var desired = Math.atan2(iy, ix);
-                        var current = Math.atan2(vel.y, vel.x);
-                        var delta = desired - current;
-                        while (delta > Math.PI) delta -= Math.PI * 2;
-                        while (delta < -Math.PI) delta += Math.PI * 2;
-
-                        // Intentionally slow, smooth steering.
-                        var maxTurn = 0.035;
-                        if (delta > maxTurn) delta = maxTurn;
-                        if (delta < -maxTurn) delta = -maxTurn;
-
-                        var angle = current + delta;
-                        vel.x = Math.cos(angle) * speed;
-                        vel.y = Math.sin(angle) * speed;
+                        if (vel && (Math.abs(vel.x) > .01 || Math.abs(vel.y) > .01))
+                            current = Math.atan2(-vel.y, vel.x);
                     } catch (_) {}
+
+                    var delta = desired - current;
+                    while (delta > Math.PI) delta -= Math.PI * 2;
+                    while (delta < -Math.PI) delta += Math.PI * 2;
+                    var maxTurn = .035; // intentionally slow steering
+                    if (delta > maxTurn) delta = maxTurn;
+                    if (delta < -maxTurn) delta = -maxTurn;
+                    var steerAngle = current + delta;
+
+                    // Exact Homing Mortar impulse construction, with the
+                    // player-controlled steerAngle replacing its target angle.
+                    var b = steerAngle + 1.57079632;
+                    while (b > Math.PI) b -= Math.PI * 2;
+                    while (b < -Math.PI) b += Math.PI * 2;
+                    var imp = new Z(
+                        300 * (0 > b ? 1.27323954 * b + .405284735 * b * b : 1.27323954 * b - .405284735 * b * b),
+                        300 * (0 > steerAngle ? 1.27323954 * steerAngle + .405284735 * steerAngle * steerAngle : 1.27323954 * steerAngle - .405284735 * steerAngle * steerAngle)
+                    );
+                    try { this.b33.applyImpulse(imp) } catch (_) {}
                 }
             }
-            return rj.prototype.e0.call(this)
+            return a
         },
         __class__: Ro
     });
-
-    // Independent WASD state for Remote Mortar. Capture phase keeps the controls
-    // working even when the game's normal keyboard handler consumes the event.
-    if (typeof window !== "undefined" && !window.__diggerzRemoteMortarKeysInstalled) {
-        window.__diggerzRemoteMortarKeysInstalled = true;
-        window.__diggerzRemoteMortarKeys = {};
-        window.addEventListener("keydown", function(ev) {
-            if (!window.__diggerzRemoteMortarActive) return;
-            var k = String(ev.key || "").toLowerCase();
-            if (k === "w" || k === "a" || k === "s" || k === "d") {
-                window.__diggerzRemoteMortarKeys[k] = true;
-                ev.preventDefault();
-            }
-        }, true);
-        window.addEventListener("keyup", function(ev) {
-            var k = String(ev.key || "").toLowerCase();
-            if (k === "w" || k === "a" || k === "s" || k === "d") {
-                window.__diggerzRemoteMortarKeys[k] = false;
-                if (window.__diggerzRemoteMortarActive) ev.preventDefault();
-            }
-        }, true);
-        window.addEventListener("blur", function() {
-            window.__diggerzRemoteMortarKeys.w = false;
-            window.__diggerzRemoteMortarKeys.a = false;
-            window.__diggerzRemoteMortarKeys.s = false;
-            window.__diggerzRemoteMortarKeys.d = false;
-        });
-    }
 
     var Eo = function(a, b, c, d, e, g, f) {
         rj.call(this, a, b, c, d, e, g, f);
@@ -119832,6 +119820,9 @@ e50: function(a) {
           }else{
             this.state.tiles[ci]=m.id|0;this.state.variants[ci]=m.variant|0;
           }
+          // Corrections are authoritative too; update the visible world
+          // while the _pvpApplyingTile guard prevents a resend.
+          try{this.setTile(cx,cy,m.id|0,m.variant|0,cl)}catch(_visual){}
           if((m.id|0)===0){
             // A removal is authoritative for the specified layer only. Do not
             // erase a legitimate block that occupies the other layer.

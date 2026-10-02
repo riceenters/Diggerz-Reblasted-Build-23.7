@@ -1123,15 +1123,19 @@ function applyNativeTileToRoom(client, payload) {
     const key = `${tileX},${tileY}`;
     const variant = 0;
     if (id === 0) {
-      // Mine / clear — remove from both stores if present.
-      room.tiles.delete(key);
-      room.backgroundTiles.delete(key);
+      // Keep a tombstone so a later room snapshot does not resurrect a
+      // mined block from the original map.
+      const actualLayer = layer === 2 ? 2 : 0;
+      const store = actualLayer === 2 ? room.backgroundTiles : room.tiles;
+      const other = actualLayer === 2 ? room.tiles : room.backgroundTiles;
+      other.delete(key);
+      store.set(key,{x:tileX,y:tileY,id:0,variant:0,layer:actualLayer,ownerConnectionId:client.connectionId,_serverTombstone:true});
       room.cottonMachines.delete(key);
       room.turretCooldowns.delete(key);
       if (room.speaker && room.speaker.x === tileX && room.speaker.y === tileY) room.speaker = null;
       broadcastRoom(room, {
-        t: 'tile', x: tileX, y: tileY, id: 0, variant: 0, layer,
-        _serverFrom: client.connectionId, _serverName: client.name
+        t: 'tile', x: tileX, y: tileY, id: 0, variant: 0, layer: actualLayer,
+        _serverFrom: client.connectionId, _serverName: client.name, replace:true
       });
       return;
     }
@@ -1167,7 +1171,12 @@ function relayBinary(client, payload) {
   // same no-place-on-player rule for the real game input path.
   if (opcode === 11 && nativePlacementBlocked(client, payload)) return;
   // Persist + JSON-broadcast so peers and late joiners always see the change.
-  if (opcode === 11) applyNativeTileToRoom(client, payload);
+  // Do not relay the raw native placement packet after translating it to JSON;
+  // replaying opcode 11 on a peer can apply it against a different local map.
+  if (opcode === 11) {
+    applyNativeTileToRoom(client, payload);
+    return;
+  }
 
   // Native movement packets also carry the player's position. Keep the
   // canonical position fresh even when the JSON fallback is throttled.
@@ -2368,7 +2377,10 @@ function relayGameMessage(client, message, rawLength) {
 
   function normalizeRoomTileAt(room,x,y){
     const key=`${x},${y}`;
-    const fg=room.tiles.get(key)||null, bg=room.backgroundTiles.get(key)||null;
+    const fg0=room.tiles.get(key)||null, bg0=room.backgroundTiles.get(key)||null;
+    // id 0 is an authoritative map-removal tombstone, not a catalog tile.
+    const fg=fg0 && (fg0.id|0)!==0 ? fg0 : null;
+    const bg=bg0 && (bg0.id|0)!==0 ? bg0 : null;
     const repairs=[];
     if(fg && expectedBlockLayer(fg.id)===2){
       room.tiles.delete(key);
@@ -2479,10 +2491,13 @@ function relayGameMessage(client, message, rawLength) {
       let prior=(requestedLayer===2?room.backgroundTiles:room.tiles).get(key)||null;
       if(!prior){ actualLayer=requestedLayer===2?0:2; prior=(actualLayer===2?room.backgroundTiles:room.tiles).get(key)||null; }
       if(!prior)return;
-      (actualLayer===2?room.backgroundTiles:room.tiles).delete(key);
+      const mineStore=actualLayer===2?room.backgroundTiles:room.tiles;
+      const mineOther=actualLayer===2?room.tiles:room.backgroundTiles;
+      mineOther.delete(key);
+      mineStore.set(key,{x,y,id:0,variant:0,layer:actualLayer,ownerConnectionId:client.connectionId,_serverTombstone:true});
       if(prior.id===122&&room.speaker&&room.speaker.x===x&&room.speaker.y===y) room.speaker=null;
       room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
-      broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:actualLayer,_serverCorrection:actualLayer!==requestedLayer,_serverFrom:client.connectionId,_serverName:client.name});
+      broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:actualLayer,_serverCorrection:actualLayer!==requestedLayer,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
       if(prior.id===122)syncSpeaker(room);
       return;
     }
