@@ -19281,10 +19281,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 l.z39.p39(l.z39.N34, l.z39.N34)
         },
         U33: function(a) {
-            a = a.Q9();
-            null != this.d34 && T.remove(this._9, this.d34);
-            this.d34 = new cg(a);
-            this._9.splice(0, 0, this.d34)
+            this.DiggerzSetMenuBknd(a.Q9())
         },
         e1: function() {
             this.R34.tBJ.wrap_listeners.clear();
@@ -50631,9 +50628,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 this.__dzPrevMenuBgIdx = window.DiggerzGetMenuBgIndex
                     ? window.DiggerzGetMenuBgIndex() : 0;
                 try { window.__diggerzMenuCgTheme = -1; } catch (eInvB) {}
-                if (window.DiggerzApplyMenuBackground)
-                    window.DiggerzApplyMenuBackground(9,false); // Beta Bknd, do not save it
-                this.__dzBetaBknd = window.__diggerzMenuCg || null;
+                if (this.u40 && typeof this.u40.DiggerzSetMenuBknd === "function")
+                    this.__dzBetaBknd = this.u40.DiggerzSetMenuBknd(9); // Beta Bknd
             } catch (eBeta) {}
         } catch (eHideGui) {}
         var a = -320
@@ -52972,37 +52968,14 @@ function __normalizeWearableScales(skel) {
                         }
                         this.__dzHiddenGui = null;
                     }
-                    // Explicitly restore the title logo and the Reblasted extension.
-                    // Customize hides these through the normal GUI alpha path, but
-                    // the title logo also has its own animation/lifecycle flags.
-                    try {
-                        var __restoreTitleLogo = q.GetChildByType(Cf);
-                        if (__restoreTitleLogo) {
-                            var __logoMain = __restoreTitleLogo.C58;
-                            var __logoRe = __restoreTitleLogo.C60;
-                            if (__logoMain) {
-                                try { __logoMain.a0 = 0; } catch (eLogoA0) {}
-                                try { __logoMain.set_alp(1); } catch (eLogoAlp) {}
-                            }
-                            if (__logoRe) {
-                                try { __logoRe.a0 = 0; } catch (eReA0) {}
-                                try { __logoRe.set_alp(1); } catch (eReAlp) {}
-                            }
-                            try {
-                                if (__logoMain && __logoMain._9 && __logoRe &&
-                                    __logoMain._9.indexOf(__logoRe) < 0)
-                                    __logoMain._9.push(__logoRe);
-                            } catch (eReAttach) {}
-                        }
-                    } catch (eLogoRestore) {}
                     // Restore the player's saved menu background
                     try {
                         this.__dzBetaBknd = null;
                         var __restoreIdx = (this.__dzPrevMenuBgIdx != null)
                             ? this.__dzPrevMenuBgIdx
                             : (window.DiggerzGetMenuBgIndex ? window.DiggerzGetMenuBgIndex() : 0);
-                        if (window.DiggerzApplyMenuBackground)
-                            window.DiggerzApplyMenuBackground(__restoreIdx,false);
+                        if (this.u40 && typeof this.u40.DiggerzSetMenuBknd === "function")
+                            this.u40.DiggerzSetMenuBknd(__restoreIdx);
                     } catch (eBgR) {}
                 } catch (eRest) {}
                 this.a0 = 1;
@@ -53123,19 +53096,6 @@ function __normalizeWearableScales(skel) {
                                         }
                                         this.__dzHiddenGui = null;
                                     }
-                                    try {
-                                        var __restoreTitleLogo2 = q.GetChildByType(Cf);
-                                        if (__restoreTitleLogo2) {
-                                            if (__restoreTitleLogo2.C58) {
-                                                try { __restoreTitleLogo2.C58.a0 = 0; } catch (eLA02) {}
-                                                try { __restoreTitleLogo2.C58.set_alp(1); } catch (eLA03) {}
-                                            }
-                                            if (__restoreTitleLogo2.C60) {
-                                                try { __restoreTitleLogo2.C60.a0 = 0; } catch (eLR02) {}
-                                                try { __restoreTitleLogo2.C60.set_alp(1); } catch (eLR03) {}
-                                            }
-                                        }
-                                    } catch (eLogoRest2) {}
                                     try {
                                         if (this.__dzBetaBknd) {
                                             var __bb2 = this.__dzBetaBknd;
@@ -53931,16 +53891,33 @@ function __normalizeWearableScales(skel) {
         a.set_local_xScale(a.set_local_yScale(.7));
         this.Z47._9.push(a);
         a = 170;
-        // Menu background picker — uses the native title U33(Q9()) path.
-        var bgList = window.DiggerzMenuBgList || [];
+        // Menu background cycle — all real cg themes (Background 0–9)
+        var bgList = window.DiggerzMenuBgList || [
+            { name: "Mountains", theme: 0 }, { name: "Beta Bknd", theme: 9 }
+        ];
         var bgIdx = 0;
-        try { bgIdx = window.DiggerzGetMenuBgIndex ? window.DiggerzGetMenuBgIndex() : 0; } catch (eBg) {}
-        var bgBtn = new ob(0, a, "^9Background: ^7" + (bgList[bgIdx] ? bgList[bgIdx].name : "Default Mountains"), q.MAIN_FONT);
-        bgBtn.D7(this, !0);
-        bgBtn.C33 = A(this, function() {
-            if (window.DiggerzOpenMenuBkndPicker) window.DiggerzOpenMenuBkndPicker(this);
+        try {
+            if (window.DiggerzGetMenuBgIndex) bgIdx = window.DiggerzGetMenuBgIndex();
+            else bgIdx = Math.max(0, Math.min(bgList.length - 1, parseInt(localStorage.getItem("diggerz.menuBg.v1") || "0", 10) || 0));
+        } catch (eBg) {}
+        var bgLbl = new ob(0, a, "^9Background: ^7" + (bgList[bgIdx] ? bgList[bgIdx].name : ("#" + bgIdx)), q.MAIN_FONT);
+        bgLbl.D7(this, !0);
+        bgLbl.C33 = A(this, function() {
+            try {
+                var i = 0;
+                if (window.DiggerzCycleMenuBackground)
+                    i = window.DiggerzCycleMenuBackground();
+                else {
+                    i = (window.DiggerzGetMenuBgIndex ? window.DiggerzGetMenuBgIndex() : 0);
+                    i = (i + 1) % bgList.length;
+                    localStorage.setItem("diggerz.menuBg.v1", String(i));
+                    if (window.DiggerzApplyMenuBackground) window.DiggerzApplyMenuBackground(i);
+                }
+                var nm = (bgList[i] && bgList[i].name) ? bgList[i].name : ("#" + i);
+                try { bgLbl.E37("^9Background: ^7" + nm); } catch (eL) {}
+            } catch (eC) {}
         });
-        this._9.push(bgBtn);
+        this._9.push(bgLbl);
         a += 55;
         var saveBtn = new ob(0, a, "^2Save to Account", q.MAIN_FONT);
         saveBtn.D7(this, !0);
@@ -53969,12 +53946,64 @@ function __normalizeWearableScales(skel) {
         this._9.push(loadBtn);
         this.e0()
     };
+    window.DiggerzOpenMenuBkndPicker = function() {
+        try {
+            var settings = q.GetChildByType(Op);
+            if (settings && typeof settings._dzOpenBkndPicker === "function")
+                return settings._dzOpenBkndPicker();
+        } catch (e) {}
+        return null;
+    };
     v.Z45 = Op;
     Op.__name__ = "Z45";
     Op.__super__ = ja;
     Op.prototype = D(ja.prototype, {
         Z47: null,
         u40: null,
+        _dzOpenBkndPicker: function() {
+            if (window.__diggerzBkndPicker) {
+                try { window.__diggerzBkndPicker.a0 = 1; } catch (e0) {}
+                window.__diggerzBkndPicker = null;
+            }
+            var panel = new ja(650, 520, !0);
+            panel._1 = "diggerz_bknd_picker";
+            panel.A7 = q.CENTERX;
+            panel.A8 = q.CENTERY;
+            panel.c0 = !0;
+            var head = new xa(0, -215, "^9Menu Background", q.MAIN_FONT_BIG);
+            head.D7(panel, !0); panel._9.push(head);
+            var list = window.DiggerzMenuBgList || [];
+            var self = panel;
+            for (var i = 0; i < list.length; i++) (function(item, index) {
+                var col = index % 2, row = Math.floor(index / 2);
+                var btn = new ob(col ? 165 : -165, -140 + row * 58, "^7" + item.name, q.MAIN_FONT);
+                btn.D7(self, !0);
+                btn.C33 = function() {
+                    try {
+                        var title = q.GetChildByType(Cf);
+                        if (title) title.DiggerzSetMenuBknd(item.theme);
+                        try { localStorage.setItem("diggerz.menuBg.native.v2", String(index)); } catch (eSave) {}
+                        window.__diggerzMenuBgIdx = index;
+                        self.a0 = 1;
+                        window.__diggerzBkndPicker = null;
+                        q.mClicked = !1; q.clickedFunction = null;
+                    } catch (ePick) {}
+                };
+                self._9.push(btn);
+            })(list[i], i);
+            var close = new ob(0, 190, "^1Close", q.MAIN_FONT);
+            close.D7(panel, !0);
+            close.C33 = function() {
+                try { panel.a0 = 1; } catch (eClose) {}
+                window.__diggerzBkndPicker = null;
+                q.mClicked = !1; q.clickedFunction = null;
+            };
+            panel._9.push(close);
+            q.children.push(panel);
+            window.__diggerzBkndPicker = panel;
+            q.mClicked = !1; q.clickedFunction = null;
+            return panel;
+        },
         E7: function(a) {
             return !0
         },
@@ -89793,9 +89822,7 @@ function __normalizeWearableScales(skel) {
         z.call(this);
         this.A7 = q.CENTERX;
         this.A8 = q.CENTERY;
-        this.d34 = new cg(0);
-        this.d34.D7(this);
-        this._9.push(this.d34);
+        this.DiggerzSetMenuBknd(0);
         this._1 = "title_screen";
         // Apply saved menu background (real cg theme)
         try {
@@ -89913,6 +89940,21 @@ function __normalizeWearableScales(skel) {
         d51: null,
         d52: null,
         d53: null,
+        DiggerzSetMenuBknd: function(theme) {
+            theme = theme | 0;
+            if (theme < 0 || 9 < theme) theme = 0;
+            if (null != this.d34) {
+                try { this.d34.a0 = 1; } catch (eOldA0) {}
+                try { T.remove(this._9, this.d34); } catch (eOldRm) {}
+            }
+            this.d34 = new cg(theme);
+            this.d34.D7(this);
+            this.d34._1 = "diggerz_menu_bknd";
+            this._9.splice(0, 0, this.d34);
+            try { if (typeof this.d34.h2 === "function") this.d34.h2(); } catch (eH2) {}
+            this.__diggerzMenuTheme = theme;
+            return this.d34;
+        },
         e1: function() {
             z.prototype.e1.call(this);
             q.thisMain.removeChild(this.C59);
@@ -121211,127 +121253,38 @@ e50: function(a) {
 
 <script id="diggerz-menu-bg-apply">
 (function(){
-  // Native title BKND test/selector.  Cf.U33() expects a packet reader,
-  // not a raw integer, so we give it the same tiny Q9() interface that
-  // the real network/block path supplies.
-  window.DiggerzLocalBkndData={
-    atlas:"assets/bknd.png", version:3,
-    themes:[
-      {id:0,name:"Default Mountains"},
-      {id:1,name:"Mountain Backdrop"},
-      {id:2,name:"City Bknd"},
-      {id:3,name:"Night Bknd"},
-      {id:4,name:"Snowy Bknd"},
-      {id:5,name:"Red Clouds"},
-      {id:6,name:"Moon Bknd"},
-      {id:7,name:"Industry Bknd"},
-      {id:8,name:"Green Screen Bknd"},
-      {id:9,name:"Beta Bknd"}
-    ]
-  };
+  window.DiggerzLocalBkndData={atlas:"assets/bknd.png",version:4,themes:[
+    {id:0,name:"Default Mountains"},{id:1,name:"Mountain Backdrop"},{id:2,name:"City Bknd"},
+    {id:3,name:"Night Bknd"},{id:4,name:"Snowy Bknd"},{id:5,name:"Red Clouds"},
+    {id:6,name:"Moon Bknd"},{id:7,name:"Industry Bknd"},{id:8,name:"Green Screen Bknd"},{id:9,name:"Beta Bknd"}
+  ]};
   window.DiggerzMenuBgList=window.DiggerzLocalBkndData.themes.map(function(x){return {name:x.name,theme:x.id};});
-
   window.DiggerzGetMenuBgIndex=function(){
     try{
-      var n=parseInt(localStorage.getItem("diggerz.menuBg.native.v1")||"0",10);
+      var n=parseInt(localStorage.getItem("diggerz.menuBg.native.v2")||"0",10);
       if(!isFinite(n)||n<0||n>=window.DiggerzMenuBgList.length)n=0;
       return n;
     }catch(e){return 0;}
   };
-
-  function title(){
-    try{return q.GetChildByType(Cf)||null;}catch(e){return null;}
-  }
-
-  function nativeTitleBknd(theme){
-    var t=title();
-    if(!t || typeof t.U33!=="function") return false;
-    theme=theme|0;
-    // U33 reads its argument through Q9(), exactly like the native packet.
-    t.U33({Q9:function(){return theme;}});
-    try{t.d34._1="diggerz_menu_bknd";}catch(e){}
-    return true;
-  }
-
   window.DiggerzApplyMenuBackground=function(idx,save){
-    var list=window.DiggerzMenuBgList||[];
-    if(!list.length)return false;
+    var list=window.DiggerzMenuBgList||[]; if(!list.length)return false;
     idx=idx==null?window.DiggerzGetMenuBgIndex():idx|0;
     idx=Math.max(0,Math.min(list.length-1,idx));
-    if(save!==false){try{localStorage.setItem("diggerz.menuBg.native.v1",String(idx));}catch(e){}}
-    window.__diggerzMenuBgIdx=idx;
-    var ok=nativeTitleBknd(list[idx].theme);
-    if(ok){window.__diggerzMenuCgTheme=list[idx].theme;window.__diggerzMenuCg=title().d34;}
-    return ok;
+    try{
+      var title=q&&q.GetChildByType? q.GetChildByType(Cf):null;
+      if(!title || typeof title.DiggerzSetMenuBknd!=="function") return false;
+      title.DiggerzSetMenuBknd(list[idx].theme);
+      if(save!==false)localStorage.setItem("diggerz.menuBg.native.v2",String(idx));
+      window.__diggerzMenuBgIdx=idx;
+      window.__diggerzMenuCg=title.d34; window.__diggerzMenuCgTheme=list[idx].theme;
+      return true;
+    }catch(e){try{console.warn("[Menu BKND]",e);}catch(x){} return false;}
   };
-
-  // Kept for compatibility; settings now opens the button menu instead.
   window.DiggerzCycleMenuBackground=function(){
     var n=(window.DiggerzGetMenuBgIndex()+1)%window.DiggerzMenuBgList.length;
     window.DiggerzApplyMenuBackground(n,true); return n;
   };
-
-  window.DiggerzOpenMenuBkndPicker=function(parent){
-    try{
-      if(!parent || !parent._9) return false;
-      if(window.__diggerzBkndPicker){
-        try{window.__diggerzBkndPicker.a0=1;}catch(e0){}
-        window.__diggerzBkndPicker=null;
-      }
-      // The compiled base menu/JA class is exposed through the engine namespace
-      // as v.d31. Do not reference the local minified `ja` variable from this
-      // later script; that variable is scoped to the original generated script.
-      if(!window.v || typeof v.d31 !== "function") return false;
-      var panel=new v.d31(520,500,true);
-      panel._1="diggerz_bknd_picker";
-      panel.A7=0; panel.A8=0; panel.c0=true;
-      try{panel.B8=8;}catch(eB8){}
-      try{E.u4(panel,0,300,0,.5,1,0,1);}catch(eAnim){}
-      panel.E7=function(){return !0;};
-      var head=new xa(0,-205,"^9Menu Background",q.MAIN_FONT_BIG);
-      head.D7(panel,true); panel._9.push(head);
-      var list=window.DiggerzMenuBgList||[];
-      for(var i=0;i<list.length;i++){
-        (function(item,index){
-          var col=index%2, row=Math.floor(index/2);
-          var btn=new ob(col?130:-130,-125+row*58,"^7"+item.name,q.MAIN_FONT);
-          btn.D7(panel,true);
-          btn.C33=function(){
-            try{
-              window.DiggerzApplyMenuBackground(index,true);
-              panel.a0=1;
-              window.__diggerzBkndPicker=null;
-              q.mClicked=false; q.clickedFunction=null;
-            }catch(ePick){try{console.warn("[BKND picker]",ePick);}catch(eW){}}
-          };
-          panel._9.push(btn);
-        })(list[i],i);
-      }
-      var close=new ob(0,175,"^1Close",q.MAIN_FONT);
-      close.D7(panel,true);
-      close.C33=function(){
-        try{panel.a0=1;}catch(eClose){}
-        window.__diggerzBkndPicker=null;
-        q.mClicked=false; q.clickedFunction=null;
-      };
-      panel._9.push(close);
-      // Attach it exactly like the game's native JA submenus: D7 first,
-      // then add it to the parent's child list. Without D7 the panel exists
-      // but is not properly positioned/registered for rendering and input.
-      panel.D7(parent, true);
-      parent._9.push(panel);
-      try{panel.e0();}catch(eFinalize){}
-      window.__diggerzBkndPicker=panel;
-      q.mClicked=false; q.clickedFunction=null;
-      return true;
-    }catch(e){
-      try{console.warn("[BKND picker]",e);}catch(x){}
-      return false;
-    }
-  };
-
-  // Apply the saved selection once the title exists.
-  [150,700,1500].forEach(function(ms){setTimeout(function(){
+  [250,800,1500].forEach(function(ms){setTimeout(function(){
     try{window.DiggerzApplyMenuBackground(window.DiggerzGetMenuBgIndex(),false);}catch(e){}
   },ms);});
 })();
