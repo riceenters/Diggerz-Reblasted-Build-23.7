@@ -2303,17 +2303,6 @@ function relayGameMessage(client, message, rawLength) {
     return;
   }
 
-  if (message.t==='remote-steer') {
-    if ((room.mode!=='pvp' && !(room.mode==='digtrade'&&room.adminPvpOverride)) ||
-        (room.mode==='pvp' && (!room.battle || (room.battle.phase!=='fight'&&room.battle.phase!=='elimination'))) ||
-        !client.alive || client.eliminated) return;
-    const angle=Number(message.angle);
-    if (!Number.isFinite(angle)) return;
-    // Limit steering updates to a sane range and relay only the heading.
-    broadcastRoom(room,{t:'remote-steer',angle:Math.max(-Math.PI,Math.min(Math.PI,angle)),_serverFrom:client.connectionId,_serverName:client.name},client,true);
-    return;
-  }
-
   if (message.t==='impact') {
     if ((room.mode!=='pvp' && !(room.mode==='digtrade'&&room.adminPvpOverride)) || (room.mode==='pvp' && (!room.battle || (room.battle.phase!=='fight'&&room.battle.phase!=='elimination'))) || !client.alive || client.eliminated) return;
     const x=Number(message.x),y=Number(message.y),impactType=Number(message.impactType)|0;

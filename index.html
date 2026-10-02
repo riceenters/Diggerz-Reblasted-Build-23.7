@@ -16653,7 +16653,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         o34: null,
         k38: function() {
             var a = 0;
-            if (l.b41 || null != q.GetChildByType(Qh))
+            if ((typeof window !== "undefined" && window.__diggerzRemoteMortarActive) || l.b41 || null != q.GetChildByType(Qh))
                 return 0;
             if (null != this.n37) {
                 a = 3.4 * this.n37.h32.b6 / this.n37.h36;
@@ -16687,7 +16687,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         },
         o35: null,
         k39: function() {
-            if (l.b41 || null != q.GetChildByType(Qh))
+            if ((typeof window !== "undefined" && window.__diggerzRemoteMortarActive) || l.b41 || null != q.GetChildByType(Qh))
                 return 0;
             var a = 0;
             if (null == this.n37 || q.isWindows || q.isMac || q.isLinux) {
@@ -19123,7 +19123,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 case 35:
                 case 37:
                 case 39:
-                case 41:
                     a = l.z39.j35.F54();
                     b = l.z39.j35.F57(this.u33, this.u34, a.x, a.y);
                     var c = l.z38.R34
@@ -20294,6 +20293,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 null != a && (a.M37(d, e),
                 a.e0());
                 break;
+            case 41:
+                this._9.indexOf(this.R39[l._46]);
+                this._9.push(new Ro(this,b,c,d,e,30,a));
+                null != a && (a.M37(d, e),
+                a.e0());
+                break;
             case 35:
                 this._9.indexOf(this.R39[l._46]);
                 this._9.push(new Fo(this,b,c,d,e,36,a));
@@ -20309,12 +20314,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             case 39:
                 this._9.indexOf(this.R39[l._46]);
                 this._9.push(new Ho(this,b,c,d,e,40,a));
-                null != a && (a.M37(d, e),
-                a.e0());
-                break;
-            case 41:
-                this._9.indexOf(this.R39[l._46]);
-                this._9.push(new RemoteMortarProjectile(this,b,c,d,e,42,a));
                 null != a && (a.M37(d, e),
                 a.e0());
                 break;
@@ -23761,7 +23760,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     this.pvpSend({t:"attack",fromX:attackX,fromY:attackY,toX:toX,toY:toY,attackType:attackType});
                 var physicsProjectile = attackType === 20 || attackType === 22 || attackType === 23 ||
                     attackType === 29 || attackType === 31 || attackType === 33 ||
-                    attackType === 35 || attackType === 37 || attackType === 39;
+                    attackType === 35 || attackType === 37 || attackType === 39 ||
+                    attackType === 41;
 
                 if (attackType === 31) {
                     // Triple Mortar now launches three genuinely separate rj
@@ -24116,6 +24116,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             if (Math.sqrt(dx * dx + dy * dy) <= .9) this.hurtTestNpc(1)
         },
         weaponImpactDamage: function(x, y, impactType) {
+            if (impactType === 30 && typeof window !== "undefined" && window.__diggerzRemoteMortarActive)
+                window.__diggerzRemoteMortarActive = false;
             var npc = this.testNpc;
             function inBlast(px, py) {
                 var dx = px - x, dy = py - y;
@@ -24208,7 +24210,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             // Mortar / launcher family
             if (attackType === 20 || attackType === 22 || attackType === 23 ||
                 attackType === 29 || attackType === 31 || attackType === 33 ||
-                attackType === 35 || attackType === 37 || attackType === 39)
+                attackType === 35 || attackType === 37 || attackType === 39 ||
+                attackType === 41)
                 range = 12;
             var broken = 0;
             var steps = Math.max(4, Math.ceil(range * 2));
@@ -36582,16 +36585,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 h.P29(b, -8, 28, 33);
                 b.c9 = !0;
                 break;
-            case 395:
-                b.Init(f.BAZOOKA_PNG());
-                b.a4 = 2;
-                b._1 = "Remote Mortar";
-                h.p23(b);
-                h.O27(b, -8, 0, 4);
-                b.h3("green");
-                h.P29(b, -8, 28, 42);
-                b.c9 = !0;
-                break;
             case 329:
                 b.Init(f.B112_0_PNG());
                 b.a4 = 2;
@@ -36662,6 +36655,16 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 h.p23(b);
                 h.O27(b, 0, 10, 4);
                 h.P29(b, 0, 50, 39);
+                break;
+            case 395:
+                b.Init(f.BAZOOKA_PNG());
+                b.a4 = 2;
+                b._1 = "Remote Mortar";
+                h.p23(b);
+                h.O27(b, -8, 0, 4);
+                b.h3("green");
+                h.P29(b, -8, 28, 41);
+                b.c9 = !0;
                 break;
             case 379:
                 b.Init(f.LIGHTSABRE_PNG());
@@ -88934,6 +88937,58 @@ function __normalizeWearableScales(skel) {
         },
         __class__: rj
     });
+    // Remote Mortar projectile: intentionally based on the normal rj/Mortar
+    // missile so it gets the same spawn, physics, collision and impact behavior.
+    // The only difference is slow WASD steering while it is airborne.
+    var Ro = function(a, b, c, d, e, g, p) {
+        rj.call(this, a, b, c, d, e, g, p);
+        this.set_local_r(.25);
+        this.set_local_g(1);
+        this.set_local_b(.25);
+        this.c9 = !0;
+        this._remoteSteerReady = true;
+        if (typeof window !== "undefined") window.__diggerzRemoteMortarActive = true;
+    };
+    v.RemoteMortarProjectile = Ro;
+    Ro.__name__ = "RemoteMortarProjectile";
+    Ro.__super__ = rj;
+    Ro.prototype = D(rj.prototype, {
+        b51: function(a) {
+            rj.prototype.b51.call(this, a);
+            this.A58(a)
+        },
+        e0: function() {
+            if (this._remoteSteerReady && this.b33 && typeof q !== "undefined") {
+                var ax = 0, ay = 0;
+                if (q.KeyDown(65)) ax -= 1;
+                if (q.KeyDown(68)) ax += 1;
+                if (q.KeyDown(87)) ay -= 1;
+                if (q.KeyDown(83)) ay += 1;
+                if (ax || ay) {
+                    var len = Math.sqrt(ax * ax + ay * ay) || 1;
+                    ax /= len; ay /= len;
+                    // Small impulse = deliberately sluggish turning.
+                    var steer = 0.34;
+                    this.b33.applyImpulse(new Z(ax * steer, ay * steer));
+                }
+                // Keep the missile from becoming absurdly fast after steering.
+                try {
+                    var vel = this.b33.tBJ.wrap_vel;
+                    var vx = vel.tBJ.x, vy = vel.tBJ.y;
+                    var speed = Math.sqrt(vx * vx + vy * vy);
+                    var maxSpeed = 11;
+                    if (speed > maxSpeed) {
+                        var scale = maxSpeed / speed;
+                        vel.tBJ.x *= scale;
+                        vel.tBJ.y *= scale;
+                    }
+                } catch (_) {}
+            }
+            return rj.prototype.e0.call(this)
+        },
+        __class__: Ro
+    });
+
     var Eo = function(a, b, c, d, e, g, f) {
         rj.call(this, a, b, c, d, e, g, f);
         this.set_local_r(this.set_local_g(.3));
@@ -88971,99 +89026,6 @@ function __normalizeWearableScales(skel) {
         },
         __class__: Eo
     });
-    var RemoteMortarProjectile = function(a, b, c, d, e, g, p) {
-        rj.call(this, a, b, c, d, e, g, p);
-        this.set_local_r(this.set_local_g(.3));
-        this.set_local_b(.3);
-        this.c9 = !0;
-        this._isRemoteMortar = !0;
-        this._remoteAngle = Math.atan2(e, d);
-        this._remoteOwnerLocal = !!(l.z39 && p && p.q7 === l.z39.q7);
-        if (this._remoteOwnerLocal) window.__diggerzRemoteMortar = this;
-    };
-    v.RemoteMortarProjectile = RemoteMortarProjectile;
-    RemoteMortarProjectile.__name__ = "RemoteMortarProjectile";
-    RemoteMortarProjectile.__super__ = rj;
-    RemoteMortarProjectile.prototype = D(rj.prototype, {
-        _remoteAngle: null,
-        _remoteOwnerLocal: !1,
-        _isRemoteMortar: !0,
-        releaseRemoteControl: function() {
-            if (this._remoteOwnerLocal && window.__diggerzRemoteMortar === this)
-                window.__diggerzRemoteMortar = null;
-        },
-        b51: function(a) {
-            rj.prototype.b51.call(this, a);
-            this.releaseRemoteControl()
-        },
-        e0: function() {
-            if (this.a0) {
-                if (this._remoteOwnerLocal) this.releaseRemoteControl();
-                return rj.prototype.e0.call(this);
-            }
-
-            var ix = 0, iy = 0;
-            if (this._remoteOwnerLocal) {
-                // Lock the firing player in place while the remote missile is airborne.
-                if (l.z39 && l.z39.b33) {
-                    var pb = l.z39.b33;
-                    null == pb.tBJ.wrap_vel && pb.tBJ.setupVelocity();
-                    var pv = pb.tBJ.wrap_vel.tBJ;
-                    null != pv._validate && pv._validate();
-                    pv.x = 0;
-                    pv.y = 0;
-                    null != pv._invalidate && pv._invalidate(pv);
-                }
-                try {
-                    if (q.KeyDown(65)) ix -= 1;
-                    if (q.KeyDown(68)) ix += 1;
-                    if (q.KeyDown(87)) iy -= 1;
-                    if (q.KeyDown(83)) iy += 1;
-                } catch (_inputErr) {}
-                if (ix || iy) {
-                    var il = Math.hypot(ix, iy) || 1;
-                    ix /= il; iy /= il;
-                    var desired = Math.atan2(iy, ix);
-                    var diff = desired - this._remoteAngle;
-                    while (diff > Math.PI) diff -= Math.PI * 2;
-                    while (diff < -Math.PI) diff += Math.PI * 2;
-                    this._remoteAngle += Math.max(-0.045, Math.min(0.045, diff));
-                }
-            }
-
-            // Apply the same kind of gradual impulse steering used by Homing Mortar.
-            // The low turn rate keeps Remote Mortar controllable without making it instant.
-            var cur = this.b33;
-            null == cur.tBJ.wrap_vel && cur.tBJ.setupVelocity();
-            var cv = cur.tBJ.wrap_vel.tBJ;
-            null != cv._validate && cv._validate();
-            var tx = Math.cos(this._remoteAngle) * 600;
-            var ty = Math.sin(this._remoteAngle) * 600;
-            var ax = (tx - cv.x) * .11;
-            var ay = (ty - cv.y) * .11;
-            if (ax || ay) {
-                var impulse = new Z;
-                impulse.x = ax;
-                impulse.y = ay;
-                this.b33.applyImpulse(impulse);
-            }
-
-            if (this._remoteOwnerLocal && (ix || iy) &&
-                window.DiggerzIsMultiplayer && l.z38 && l.z38.pvpSend &&
-                Date.now() - (this._remoteSteerAt || 0) > 70) {
-                this._remoteSteerAt = Date.now();
-                this._remoteSteerLast = this._remoteAngle;
-                try { l.z38.pvpSend({t:"remote-steer", angle:this._remoteAngle}); } catch (_sendErr) {}
-            }
-
-            var r = rj.prototype.e0.call(this);
-            if (this._remoteOwnerLocal && this.a0) this.releaseRemoteControl();
-            return r
-        },
-
-        __class__: RemoteMortarProjectile
-    });
-
     var Do = function(a, b, c, d, e, g, p) {
         Jb.call(this, a, b, c, d, e, g, p);
         this.Init(f.MISSILE_PNG());
@@ -119060,16 +119022,6 @@ e50: function(a) {
       if(m.t==='death'){var dp=this.pvpPeerForConnection(m._serverFrom);if(dp&&dp.id){var did=dp.id,dx=+m.x||0,dy=+m.y||0;this.enqueue(46,1,function(p){p.R8(did);p.r8(dx);p.r8(0);p.r8(dy);p.R4(0)})}return}
       if(m.t==='respawn'){var rp=this.pvpPeerForConnection(m._serverFrom);if(rp&&rp.id){var rid=rp.id,rx=+m.x||12,ry=+m.y||16;this.enqueue(47,1,function(p){p.R8(rid);p.r8(rx);p.r8(0);p.r8(ry);p.s0(false)})}return}
       if(m.t==='attack'){this.pvpEchoPeerAttack(m);return}
-      if(m.t==='remote-steer'){
-        var steerPeer=this.pvpPeerForConnection(m._serverFrom),steerAngle=Number(m.angle);
-        if(steerPeer&&Number.isFinite(steerAngle)&&this.game&&this.game._9){
-          for(var rs=0;rs<this.game._9.length;rs++){
-            var rpj=this.game._9[rs];
-            if(rpj&&rpj._isRemoteMortar&&rpj.A53===steerPeer.id) rpj._remoteAngle=steerAngle;
-          }
-        }
-        return
-      }
       if(m.t==='trade-start'){this.pvpStartTrade(m);return}
       if(m.t==='trade-offer'&&this.pvpTrade&&m.tradeId===this.pvpTrade.id){this.pvpTrade.remoteSlots=(Array.isArray(m.offer)?m.offer:[]).slice(0,3).map(itemCopy);while(this.pvpTrade.remoteSlots.length<3)this.pvpTrade.remoteSlots.push(emptyItem());this.pvpWriteContainer(this.pvpTrade.remoteGuid,this.pvpTrade.remoteSlots);return}
       if(m.t==='trade-partner-accepted'&&this.pvpTrade&&m.tradeId===this.pvpTrade.id){this.pvpTrade.partnerAccepted=true;this.pvpTrade.locked=true;var sid=this.pvpTrade.sessionGuid;this.enqueue(169,1,function(p){p.R8(sid)});return}
