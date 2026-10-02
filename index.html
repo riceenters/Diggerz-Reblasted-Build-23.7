@@ -121315,9 +121315,12 @@ e50: function(a) {
         q.mClicked=false; q.clickedFunction=null;
       };
       panel._9.push(close);
-      // Make the picker a real child of the existing Settings JA so its input
-      // and lifetime follow the native menu hierarchy.
+      // Attach it exactly like the game's native JA submenus: D7 first,
+      // then add it to the parent's child list. Without D7 the panel exists
+      // but is not properly positioned/registered for rendering and input.
+      panel.D7(parent, true);
       parent._9.push(panel);
+      try{panel.e0();}catch(eFinalize){}
       window.__diggerzBkndPicker=panel;
       q.mClicked=false; q.clickedFunction=null;
       return true;
