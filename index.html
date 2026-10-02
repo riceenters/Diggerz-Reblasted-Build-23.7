@@ -53904,24 +53904,29 @@ function __normalizeWearableScales(skel) {
             if (window.DiggerzGetMenuBgIndex) bgIdx = window.DiggerzGetMenuBgIndex();
             else bgIdx = Math.max(0, Math.min(bgList.length - 1, parseInt(localStorage.getItem("diggerz.menuBg.v1") || "0", 10) || 0));
         } catch (eBg) {}
-        var bgLbl = new ob(0, a, "^9Background: ^7" + (bgList[bgIdx] ? bgList[bgIdx].name : ("#" + bgIdx)), q.MAIN_FONT);
-        bgLbl.D7(this, !0);
-        bgLbl.C33 = A(this, function() {
+        // Menu BKND changer: use a real button hitbox instead of a bare text label.
+        // Clicking anywhere on the row advances through all native cg() themes.
+        var bgBtn = new ja(420, 54, !0);
+        bgBtn.D7(this, !0);
+        bgBtn.b7 = a;
+        bgBtn.c0 = !0;
+        var bgLbl = new ob(0, 0, "", q.MAIN_FONT);
+        bgLbl.D7(bgBtn, !0);
+        bgLbl.E37("^9Background: ^7" + (bgList[bgIdx] ? bgList[bgIdx].name : ("#" + bgIdx)));
+        bgLbl.b7 = 2;
+        bgBtn._9.push(bgLbl);
+        var cycleMenuBg = A(this, function() {
             try {
-                var i = 0;
-                if (window.DiggerzCycleMenuBackground)
-                    i = window.DiggerzCycleMenuBackground();
-                else {
-                    i = (window.DiggerzGetMenuBgIndex ? window.DiggerzGetMenuBgIndex() : 0);
-                    i = (i + 1) % bgList.length;
-                    localStorage.setItem("diggerz.menuBg.v1", String(i));
-                    if (window.DiggerzApplyMenuBackground) window.DiggerzApplyMenuBackground(i);
-                }
+                var i = window.DiggerzCycleMenuBackground ? window.DiggerzCycleMenuBackground() : 0;
                 var nm = (bgList[i] && bgList[i].name) ? bgList[i].name : ("#" + i);
-                try { bgLbl.E37("^9Background: ^7" + nm); } catch (eL) {}
-            } catch (eC) {}
+                bgLbl.E37("^9Background: ^7" + nm);
+            } catch (eC) {
+                try { console.warn("[Menu BKND] settings click failed", eC); } catch (eW) {}
+            }
         });
-        this._9.push(bgLbl);
+        bgBtn.C33 = cycleMenuBg;
+        bgLbl.C33 = cycleMenuBg;
+        this._9.push(bgBtn);
         a += 55;
         var saveBtn = new ob(0, a, "^2Save to Account", q.MAIN_FONT);
         saveBtn.D7(this, !0);
@@ -121263,6 +121268,7 @@ e50: function(a) {
     var fresh=new cg(theme);
     fresh._diggerzMenuTheme=theme;
     fresh._1="diggerz_menu_bknd";
+    // Match the title screen's normal backdrop placement.
     fresh.D7(title);
     fresh.A7=q.CENTERX;
     fresh.A8=q.CENTERY;
@@ -121270,7 +121276,8 @@ e50: function(a) {
 
     title.d34=fresh;
     if(title._9) title._9.unshift(fresh);
-    try{if(typeof fresh.h2==="function")fresh.h2();}catch(e3){}
+    try{if(typeof title.h2==="function")title.h2();}catch(e3){}
+    try{if(typeof fresh.h2==="function")fresh.h2();}catch(e4){}
 
     window.__diggerzMenuCg=fresh;
     window.__diggerzMenuCgTheme=theme;
