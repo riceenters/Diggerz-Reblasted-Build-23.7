@@ -50604,7 +50604,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 }
                 // Explicitly hide logo + reblasted extension (nested under C58)
                 try {
-                    var __logos = [__title.C58, __title.C60];
+                    var __logos = [__title.C60];
                     for (var __li = 0; __li < __logos.length; __li++) {
                         var __lg = __logos[__li];
                         if (!__lg) continue;
@@ -50613,19 +50613,37 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         if (typeof __lg.set_alp === "function") __lg.set_alp(0);
                         else if (typeof __lg.set_local_alp === "function") __lg.set_local_alp(0);
                     }
-                    // Walk C58 children for reblasted_logo_extension
-                    if (__title.C58 && __title.C58._9) {
-                        for (var __ri = 0; __ri < __title.C58._9.length; __ri++) {
-                            var __rc = __title.C58._9[__ri];
-                            if (!__rc) continue;
-                            var __ra = (__rc.a7 != null) ? __rc.a7 : 1;
-                            this.__dzHiddenGui.push({ node: __rc, alp: __ra });
-                            if (typeof __rc.set_alp === "function") __rc.set_alp(0);
-                            else if (typeof __rc.set_local_alp === "function") __rc.set_local_alp(0);
-                        }
-                    }
                 } catch (eLogo) {}
             }
+            // Hide only the Battle Royale subtitle and the name-box frame while Customize is open.
+            try {
+                var __battleText = null;
+                for (var __bi = 0; __bi < __title._9.length; __bi++) {
+                    var __bc = __title._9[__bi];
+                    if (__bc && __bc._1 === "customize_hide_battle_royale") { __battleText = __bc; break; }
+                }
+                if (__battleText) {
+                    var __ba = (__battleText.a7 != null) ? __battleText.a7 : 1;
+                    this.__dzHiddenGui.push({ node: __battleText, alp: __ba });
+                    __battleText.set_alp(0);
+                }
+            } catch (eBattleHide) {}
+            try {
+                var __nameInput = __title.d52;
+                var __nameFrame = __nameInput && __nameInput._2;
+                if (__nameFrame && __nameFrame._9) {
+                    this.__dzNameFrameHidden = [];
+                    var __frameNames = ["top", "bottom", "left", "right"];
+                    for (var __fi = 0; __fi < __frameNames.length; __fi++) {
+                        var __fc = __nameFrame.f0(__frameNames[__fi]);
+                        if (__fc) {
+                            var __fa = (__fc.a7 != null) ? __fc.a7 : 1;
+                            this.__dzNameFrameHidden.push({ node: __fc, alp: __fa });
+                            __fc.set_alp(0);
+                        }
+                    }
+                }
+            } catch (eFrameHide) {}
             // Force Beta Bknd (theme 9) while Customize is open
             try {
                 this.__dzPrevMenuBgIdx = window.DiggerzGetMenuBgIndex
@@ -52971,6 +52989,15 @@ function __normalizeWearableScales(skel) {
                         }
                         this.__dzHiddenGui = null;
                     }
+                    try {
+                        if (this.__dzNameFrameHidden) {
+                            for (var __fri = 0; __fri < this.__dzNameFrameHidden.length; __fri++) {
+                                var __fh = this.__dzNameFrameHidden[__fri];
+                                if (__fh && __fh.node) __fh.node.set_alp(__fh.alp);
+                            }
+                            this.__dzNameFrameHidden = null;
+                        }
+                    } catch (eFrameRestore) {}
                     // Restore the player's saved menu background
                     try {
                         this.__dzBetaBknd = null;
@@ -53977,9 +54004,12 @@ function __normalizeWearableScales(skel) {
                 btn.D7(self, !0);
                 btn.C33 = function() {
                     try {
-                        var title = q.GetChildByType(Cf);
-                        if (title && typeof title.DiggerzSetMenuBknd === "function") {
+                        var title = window.__diggerzTitleRef || (q.GetChildByType ? q.GetChildByType(Cf) : null);
+                        if (window.DiggerzApplyMenuBackground) {
+                            window.DiggerzApplyMenuBackground(index, true);
+                        } else if (title && typeof title.DiggerzSetMenuBknd === "function") {
                             title.DiggerzSetMenuBknd(item.theme);
+                            try { localStorage.setItem("diggerz.menuBg.native.v2", String(index)); } catch (eSave0) {}
                         }
                         try { localStorage.setItem("diggerz.menuBg.native.v2", String(index)); } catch (eSave) {}
                         window.__diggerzMenuBgIdx = index;
@@ -89824,6 +89854,7 @@ function __normalizeWearableScales(skel) {
         this.A7 = q.CENTERX;
         this.A8 = q.CENTERY;
         this.DiggerzSetMenuBknd(0);
+        try { window.__diggerzTitleRef = this; } catch (eTitleRef) {}
         this._1 = "title_screen";
         // Apply saved menu background (real cg theme)
         try {
@@ -89942,6 +89973,7 @@ function __normalizeWearableScales(skel) {
         d52: null,
         d53: null,
         DiggerzSetMenuBknd: function(theme) {
+            try { window.__diggerzTitleRef = this; } catch (eTitleRef2) {}
             theme = theme | 0;
             if (theme < 0 || 9 < theme) theme = 0;
             if (null != this.d34) {
@@ -90015,6 +90047,7 @@ function __normalizeWearableScales(skel) {
             this.d51._1 = "welcome message";
             this._9.push(this.d51);
             c = new xa(0,70,"Battle Royale Match");
+            c._1 = "customize_hide_battle_royale";
             c.D7(b, !0);
             this.d51._9.push(c);
             b = new z;
@@ -121272,7 +121305,7 @@ e50: function(a) {
     idx=idx==null?window.DiggerzGetMenuBgIndex():idx|0;
     idx=Math.max(0,Math.min(list.length-1,idx));
     try{
-      var title=q&&q.GetChildByType? q.GetChildByType(Cf):null;
+      var title=window.__diggerzTitleRef || (q&&q.GetChildByType? q.GetChildByType(Cf):null);
       if(!title || typeof title.DiggerzSetMenuBknd!=="function") return false;
       title.DiggerzSetMenuBknd(list[idx].theme);
       if(save!==false)localStorage.setItem("diggerz.menuBg.native.v2",String(idx));
