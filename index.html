@@ -121197,14 +121197,13 @@ e50: function(a) {
 
 <script id="diggerz-menu-bg-apply">
 (function(){
-  // MENU BKND SELECTOR — uses the same native cg(theme) background constructor
-  // that the game's real BKND-changing block (Zj/K42) uses.
-  // It targets title.d34 because the menu has no world l.z38 backdrop container.
-  // The world/server BKND is never touched here.
-  window.DiggerzLocalBkndData = {
-    atlas: "assets/bknd.png",
-    version: 2,
-    themes: [
+  // MENU BKND SELECTOR — use the title screen's own native U33() path.
+  // U33() is the code the game itself uses when it receives a BKND change:
+  //   a = a.Q9(); remove current title.d34; this.d34 = new cg(a)
+  // We feed it a tiny native-style value object whose Q9() returns the theme ID.
+  window.DiggerzLocalBkndData={
+    atlas:"assets/bknd.png", version:3,
+    themes:[
       {id:0,name:"Default Mountains"},
       {id:1,name:"Mountain Backdrop"},
       {id:2,name:"City Bknd"},
@@ -121217,13 +121216,11 @@ e50: function(a) {
       {id:9,name:"Beta Bknd"}
     ]
   };
-  window.DiggerzMenuBgList = window.DiggerzLocalBkndData.themes.map(function(x){
-    return {name:x.name,theme:x.id};
-  });
+  window.DiggerzMenuBgList=window.DiggerzLocalBkndData.themes.map(function(x){return {name:x.name,theme:x.id};});
 
   window.DiggerzGetMenuBgIndex=function(){
     try{
-      var n=parseInt(localStorage.getItem("diggerz.menuBg.v2")||"0",10);
+      var n=parseInt(localStorage.getItem("diggerz.menuBg.v3")||"0",10);
       if(!isFinite(n)||n<0||n>=window.DiggerzMenuBgList.length)n=0;
       return n;
     }catch(e){return 0;}
@@ -121244,44 +121241,20 @@ e50: function(a) {
     return null;
   }
 
-  // This is the menu equivalent of the native Zj.K42 block code:
-  //   var old = l.z38.f4(cg); old.a0 = 1;
-  //   var b = new cg(theme);
-  //   l.z38._9.splice(0,0,b)
-  // The menu stores its native backdrop in title.d34 instead.
-  function applyNativeMenuBknd(theme){
+  function applyNativeTitleBknd(theme){
     var title=findTitle();
-    if(!title || typeof cg!=="function") return false;
-
-    var old=title.d34;
-    if(old && old._diggerzMenuTheme===theme && !old.a0) return true;
-
-    if(old){
-      try{old.a0=1;}catch(e1){}
-      try{
-        var oi=title._9.indexOf(old);
-        if(oi>=0) title._9.splice(oi,1);
-      }catch(e2){}
+    if(!title || typeof title.U33!=="function") return false;
+    try{
+      // Exact native title-screen method. U33 calls new cg(theme) itself.
+      title.U33({Q9:function(){return theme;}});
+      try{ title.d34._diggerzMenuTheme=theme; }catch(e1){}
+      window.__diggerzMenuCg=title.d34;
+      window.__diggerzMenuCgTheme=theme;
+      return true;
+    }catch(e){
+      try{console.warn("[Menu BKND U33]",e);}catch(x){}
+      return false;
     }
-
-    // EXACT native BKND renderer used by Zj.K42.
-    var fresh=new cg(theme);
-    fresh._diggerzMenuTheme=theme;
-    fresh._1="diggerz_menu_bknd";
-    // Match the title screen's normal backdrop placement.
-    fresh.D7(title);
-    fresh.A7=q.CENTERX;
-    fresh.A8=q.CENTERY;
-    fresh.a0=0;
-
-    title.d34=fresh;
-    if(title._9) title._9.unshift(fresh);
-    try{if(typeof title.h2==="function")title.h2();}catch(e3){}
-    try{if(typeof fresh.h2==="function")fresh.h2();}catch(e4){}
-
-    window.__diggerzMenuCg=fresh;
-    window.__diggerzMenuCgTheme=theme;
-    return true;
   }
 
   window.DiggerzApplyMenuBackground=function(forceIdx){
@@ -121290,16 +121263,11 @@ e50: function(a) {
       if(!list.length)return false;
       var idx=forceIdx==null?window.DiggerzGetMenuBgIndex():forceIdx|0;
       idx=Math.max(0,Math.min(list.length-1,idx));
-      localStorage.setItem("diggerz.menuBg.v2",String(idx));
+      localStorage.setItem("diggerz.menuBg.v3",String(idx));
       window.__diggerzMenuBgIdx=idx;
-
-      // If the title screen has not been constructed yet, retry after startup.
-      if(!findTitle()){
-        setTimeout(function(){window.DiggerzApplyMenuBackground(idx);},200);
-        return false;
-      }
-
-      return applyNativeMenuBknd(list[idx].theme);
+      var ok=applyNativeTitleBknd(list[idx].theme);
+      if(!ok)setTimeout(function(){window.DiggerzApplyMenuBackground(idx);},250);
+      return ok;
     }catch(e){
       try{console.warn("[Menu BKND]",e);}catch(x){}
       return false;
@@ -121314,7 +121282,7 @@ e50: function(a) {
     return n;
   };
 
-  [150,700,1500,3000].forEach(function(ms){
+  [250,750,1500,3000].forEach(function(ms){
     setTimeout(function(){window.DiggerzApplyMenuBackground();},ms);
   });
 })();
