@@ -1,0 +1,2903 @@
+{
+  "version": 2,
+  "slotBones": {
+    "0": {
+      "bone": "head_bone",
+      "attach": "head",
+      "mode": "overlay"
+    },
+    "1": {
+      "bone": "head_bone",
+      "attach": "head",
+      "mode": "overlay"
+    },
+    "2": {
+      "bone": "chest",
+      "attach": "torso",
+      "mode": "replace_shirt"
+    },
+    "3": {
+      "bone": "front_foot_bone",
+      "attach": "front_foot",
+      "mode": "overlay"
+    },
+    "5": {
+      "bone": "chest",
+      "attach": "torso",
+      "mode": "overlay"
+    },
+    "6": {
+      "bone": "head_bone",
+      "attach": "head",
+      "mode": "overlay"
+    },
+    "7": {
+      "bone": "chest",
+      "attach": "pants",
+      "mode": "replace_pants"
+    },
+    "9": {
+      "bone": "head_bone",
+      "attach": "head",
+      "mode": "overlay"
+    }
+  },
+  "attachments": {
+    "back_arm": {
+      "slot": "back_arm_bone",
+      "x": 2.75,
+      "y": -1.19,
+      "rotation": 91.53,
+      "scaleX": -1,
+      "scaleY": 1,
+      "width": 20,
+      "height": 16,
+      "name": "hand_back"
+    },
+    "back_foot": {
+      "slot": "back_foot_bone",
+      "x": 1.63,
+      "y": 1.01,
+      "rotation": 95.5,
+      "scaleX": -1,
+      "scaleY": 1,
+      "width": 32,
+      "height": 16,
+      "name": "foot"
+    },
+    "leg_back": {
+      "slot": "back_lowerleg",
+      "x": 6.71,
+      "y": -0.06,
+      "rotation": 89.89,
+      "scaleX": -1,
+      "scaleY": 1,
+      "width": 24,
+      "height": 15,
+      "name": "leg_back"
+    },
+    "arm_back": {
+      "slot": "back_shoulder",
+      "x": 7.65,
+      "y": 0.23,
+      "rotation": 84.65,
+      "scaleX": -1,
+      "scaleY": 1,
+      "width": 17,
+      "height": 14,
+      "name": "arm_back"
+    },
+    "torso": {
+      "slot": "chest",
+      "x": -7.16,
+      "y": -2.03,
+      "rotation": -88.18,
+      "scaleX": -1,
+      "scaleY": 1,
+      "width": 34,
+      "height": 27,
+      "name": "torso"
+    },
+    "front_arm": {
+      "slot": "front_arm_bone",
+      "x": 3.61,
+      "y": 0.07,
+      "rotation": 88.75,
+      "scaleX": -1,
+      "scaleY": 1,
+      "width": 20,
+      "height": 16,
+      "name": "hand"
+    },
+    "front_foot": {
+      "slot": "front_foot_bone",
+      "x": 1.05,
+      "y": -1.59,
+      "rotation": 90.64,
+      "scaleX": -1,
+      "scaleY": 1,
+      "width": 32,
+      "height": 16,
+      "name": "foot"
+    },
+    "leg": {
+      "slot": "front_lowerleg",
+      "x": 2.57,
+      "y": -0.07,
+      "rotation": 95.36,
+      "scaleX": -1,
+      "scaleY": 1,
+      "width": 24,
+      "height": 17,
+      "name": "leg"
+    },
+    "arm": {
+      "slot": "front_shoulder",
+      "x": 3.62,
+      "y": -0.16,
+      "rotation": 87.17,
+      "scaleX": -1,
+      "scaleY": 1,
+      "width": 17,
+      "height": 14,
+      "name": "arm"
+    },
+    "head": {
+      "slot": "head_bone",
+      "x": 14.15,
+      "y": 0.66,
+      "rotation": -91.2,
+      "scaleX": -1,
+      "scaleY": 1,
+      "width": 56,
+      "height": 50,
+      "name": "head"
+    },
+    "pants": {
+      "slot": "pants",
+      "x": -20.96,
+      "y": -2.18,
+      "rotation": -88.18,
+      "scaleX": -1,
+      "scaleY": 1,
+      "width": 34,
+      "height": 8,
+      "name": "pants"
+    }
+  },
+  "regions": {
+    "arm_back": [
+      0,
+      536,
+      17,
+      14
+    ],
+    "arm": [
+      0,
+      536,
+      17,
+      14
+    ],
+    "hand_back": [
+      183,
+      386,
+      20,
+      16
+    ],
+    "hand": [
+      2027,
+      4,
+      20,
+      16
+    ],
+    "foot": [
+      138,
+      44,
+      32,
+      16
+    ],
+    "leg_back": [
+      593,
+      45,
+      24,
+      15
+    ],
+    "leg": [
+      179,
+      1660,
+      24,
+      17
+    ],
+    "torso": [
+      1268,
+      733,
+      34,
+      27
+    ],
+    "pants": [
+      208,
+      46,
+      34,
+      8
+    ],
+    "head": [
+      1769,
+      352,
+      56,
+      50
+    ]
+  },
+  "notes": "ox/oy = O27 t44/t45 as local x/y on parent. size.displayW/H = on-rig draw size (attachment box for replace_tex, atlas pixels for overlay). scaleWear in diggerz sets local scale to 1 \u2014 no extra scale.",
+  "sizing": {
+    "byAttach": {
+      "back_arm": {
+        "w": 20,
+        "h": 16,
+        "x": 2.75,
+        "y": -1.19,
+        "rotation": 91.53,
+        "scaleX": -1,
+        "scaleY": 1
+      },
+      "back_foot": {
+        "w": 32,
+        "h": 16,
+        "x": 1.63,
+        "y": 1.01,
+        "rotation": 95.5,
+        "scaleX": -1,
+        "scaleY": 1
+      },
+      "leg_back": {
+        "w": 24,
+        "h": 15,
+        "x": 6.71,
+        "y": -0.06,
+        "rotation": 89.89,
+        "scaleX": -1,
+        "scaleY": 1
+      },
+      "arm_back": {
+        "w": 17,
+        "h": 14,
+        "x": 7.65,
+        "y": 0.23,
+        "rotation": 84.65,
+        "scaleX": -1,
+        "scaleY": 1
+      },
+      "torso": {
+        "w": 34,
+        "h": 27,
+        "x": -7.16,
+        "y": -2.03,
+        "rotation": -88.18,
+        "scaleX": -1,
+        "scaleY": 1
+      },
+      "front_arm": {
+        "w": 20,
+        "h": 16,
+        "x": 3.61,
+        "y": 0.07,
+        "rotation": 88.75,
+        "scaleX": -1,
+        "scaleY": 1
+      },
+      "front_foot": {
+        "w": 32,
+        "h": 16,
+        "x": 1.05,
+        "y": -1.59,
+        "rotation": 90.64,
+        "scaleX": -1,
+        "scaleY": 1
+      },
+      "leg": {
+        "w": 24,
+        "h": 17,
+        "x": 2.57,
+        "y": -0.07,
+        "rotation": 95.36,
+        "scaleX": -1,
+        "scaleY": 1
+      },
+      "arm": {
+        "w": 17,
+        "h": 14,
+        "x": 3.62,
+        "y": -0.16,
+        "rotation": 87.17,
+        "scaleX": -1,
+        "scaleY": 1
+      },
+      "head": {
+        "w": 56,
+        "h": 50,
+        "x": 14.15,
+        "y": 0.66,
+        "rotation": -91.2,
+        "scaleX": -1,
+        "scaleY": 1
+      },
+      "pants": {
+        "w": 34,
+        "h": 8,
+        "x": -20.96,
+        "y": -2.18,
+        "rotation": -88.18,
+        "scaleX": -1,
+        "scaleY": 1
+      }
+    },
+    "byPng": {
+      "COWBOYHAT_PNG": {
+        "srcW": 87,
+        "srcH": 51,
+        "displayW": 87,
+        "displayH": 51,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1354,
+          "y": 644,
+          "w": 87,
+          "h": 51
+        }
+      },
+      "ROADCONE_PNG": {
+        "srcW": 76,
+        "srcH": 77,
+        "displayW": 76,
+        "displayH": 77,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1899,
+          "y": 761,
+          "w": 76,
+          "h": 77
+        }
+      },
+      "SAILORHAT_PNG": {
+        "srcW": 68,
+        "srcH": 42,
+        "displayW": 68,
+        "displayH": 42,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1145,
+          "y": 880,
+          "w": 68,
+          "h": 42
+        }
+      },
+      "WELDERMASK_PNG": {
+        "srcW": 58,
+        "srcH": 64,
+        "displayW": 58,
+        "displayH": 64,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1018,
+          "y": 1638,
+          "w": 58,
+          "h": 64
+        }
+      },
+      "PARTYHAT_PNG": {
+        "srcW": 65,
+        "srcH": 72,
+        "displayW": 65,
+        "displayH": 72,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1487,
+          "y": 761,
+          "w": 65,
+          "h": 72
+        }
+      },
+      "LUCKYHAT_PNG": {
+        "srcW": 83,
+        "srcH": 74,
+        "displayW": 83,
+        "displayH": 74,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1297,
+          "y": 761,
+          "w": 83,
+          "h": 74
+        }
+      },
+      "HARDHAT_PNG": {
+        "srcW": 73,
+        "srcH": 49,
+        "displayW": 73,
+        "displayH": 49,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 633,
+          "y": 1834,
+          "w": 73,
+          "h": 49
+        }
+      },
+      "WINTERHAT_PNG": {
+        "srcW": 60,
+        "srcH": 76,
+        "displayW": 60,
+        "displayH": 76,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 825,
+          "y": 1968,
+          "w": 60,
+          "h": 76
+        }
+      },
+      "BOB_PNG": {
+        "srcW": 72,
+        "srcH": 70,
+        "displayW": 72,
+        "displayH": 70,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 633,
+          "y": 757,
+          "w": 72,
+          "h": 70
+        }
+      },
+      "KICKS_PNG": {
+        "srcW": 32,
+        "srcH": 16,
+        "displayW": 32,
+        "displayH": 16,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 90.64,
+        "atlas": {
+          "x": 167,
+          "y": 717,
+          "w": 32,
+          "h": 16
+        }
+      },
+      "PLAIDBUTT_PNG": {
+        "srcW": 34,
+        "srcH": 8,
+        "displayW": 34,
+        "displayH": 8,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 627,
+          "y": 49,
+          "w": 34,
+          "h": 8
+        }
+      },
+      "PLAIDLEG_PNG": {
+        "srcW": 24,
+        "srcH": 17,
+        "displayW": 24,
+        "displayH": 15,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 89.89,
+        "atlas": {
+          "x": 791,
+          "y": 264,
+          "w": 24,
+          "h": 17
+        }
+      },
+      "PLAIDTORSO_PNG": {
+        "srcW": 34,
+        "srcH": 27,
+        "displayW": 34,
+        "displayH": 27,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 436,
+          "y": 1072,
+          "w": 34,
+          "h": 27
+        }
+      },
+      "PLAIDARM_PNG": {
+        "srcW": 17,
+        "srcH": 14,
+        "displayW": 17,
+        "displayH": 14,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 87.17,
+        "atlas": {
+          "x": 0,
+          "y": 441,
+          "w": 17,
+          "h": 14
+        }
+      },
+      "SPORTYLEG_PNG": {
+        "srcW": 34,
+        "srcH": 8,
+        "displayW": 24,
+        "displayH": 15,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 89.89,
+        "atlas": {
+          "x": 662,
+          "y": 49,
+          "w": 34,
+          "h": 8
+        }
+      },
+      "STRIPETORSO_PNG": {
+        "srcW": 34,
+        "srcH": 27,
+        "displayW": 34,
+        "displayH": 27,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 436,
+          "y": 1845,
+          "w": 34,
+          "h": 27
+        }
+      },
+      "STRIPEARM_PNG": {
+        "srcW": 17,
+        "srcH": 14,
+        "displayW": 17,
+        "displayH": 14,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 87.17,
+        "atlas": {
+          "x": 0,
+          "y": 506,
+          "w": 17,
+          "h": 14
+        }
+      },
+      "PANTS_WHITE_PNG": {
+        "srcW": 34,
+        "srcH": 8,
+        "displayW": 34,
+        "displayH": 8,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 520,
+          "y": 52,
+          "w": 34,
+          "h": 8
+        }
+      },
+      "LEG_SKIN_PNG": {
+        "srcW": 24,
+        "srcH": 17,
+        "displayW": 24,
+        "displayH": 15,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 89.89,
+        "atlas": {
+          "x": 179,
+          "y": 1794,
+          "w": 24,
+          "h": 17
+        }
+      },
+      "GREYTORSO_PNG": {
+        "srcW": 34,
+        "srcH": 27,
+        "displayW": 34,
+        "displayH": 27,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 1568,
+          "y": 352,
+          "w": 34,
+          "h": 27
+        }
+      },
+      "GREYARM_PNG": {
+        "srcW": 17,
+        "srcH": 14,
+        "displayW": 17,
+        "displayH": 14,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 87.17,
+        "atlas": {
+          "x": 0,
+          "y": 396,
+          "w": 17,
+          "h": 14
+        }
+      },
+      "LEG_WHITE_PNG": {
+        "srcW": 24,
+        "srcH": 17,
+        "displayW": 24,
+        "displayH": 15,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 89.89,
+        "atlas": {
+          "x": 176,
+          "y": 1877,
+          "w": 24,
+          "h": 17
+        }
+      },
+      "SNOWSHOE_PNG": {
+        "srcW": 50,
+        "srcH": 16,
+        "displayW": 50,
+        "displayH": 16,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 90.64,
+        "atlas": {
+          "x": 425,
+          "y": 268,
+          "w": 50,
+          "h": 16
+        }
+      },
+      "PANTS_SANTA_PNG": {
+        "srcW": 34,
+        "srcH": 8,
+        "displayW": 34,
+        "displayH": 8,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 472,
+          "y": 52,
+          "w": 34,
+          "h": 8
+        }
+      },
+      "LEG_SANTA_PNG": {
+        "srcW": 24,
+        "srcH": 17,
+        "displayW": 24,
+        "displayH": 15,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 89.89,
+        "atlas": {
+          "x": 179,
+          "y": 1761,
+          "w": 24,
+          "h": 17
+        }
+      },
+      "SANTATORSO_PNG": {
+        "srcW": 34,
+        "srcH": 27,
+        "displayW": 34,
+        "displayH": 27,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 436,
+          "y": 1640,
+          "w": 34,
+          "h": 27
+        }
+      },
+      "SANTAARM_PNG": {
+        "srcW": 17,
+        "srcH": 14,
+        "displayW": 17,
+        "displayH": 14,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 87.17,
+        "atlas": {
+          "x": 0,
+          "y": 482,
+          "w": 17,
+          "h": 14
+        }
+      },
+      "CROCHAT_PNG": {
+        "srcW": 84,
+        "srcH": 46,
+        "displayW": 84,
+        "displayH": 46,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1166,
+          "y": 712,
+          "w": 84,
+          "h": 46
+        }
+      },
+      "PILOTHAT_PNG": {
+        "srcW": 72,
+        "srcH": 47,
+        "displayW": 72,
+        "displayH": 47,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1717,
+          "y": 835,
+          "w": 72,
+          "h": 47
+        }
+      },
+      "EMOHAIR_PNG": {
+        "srcW": 70,
+        "srcH": 74,
+        "displayW": 70,
+        "displayH": 74,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 633,
+          "y": 1466,
+          "w": 70,
+          "h": 74
+        }
+      },
+      "UNICORNHORN_PNG": {
+        "srcW": 39,
+        "srcH": 64,
+        "displayW": 39,
+        "displayH": 64,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 774,
+          "y": 1055,
+          "w": 39,
+          "h": 64
+        }
+      },
+      "WHITEUNIHORN_PNG": {
+        "srcW": 39,
+        "srcH": 64,
+        "displayW": 39,
+        "displayH": 64,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 774,
+          "y": 1121,
+          "w": 39,
+          "h": 64
+        }
+      },
+      "HORSEHEAD_PNG": {
+        "srcW": 60,
+        "srcH": 76,
+        "displayW": 60,
+        "displayH": 76,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 633,
+          "y": 1884,
+          "w": 60,
+          "h": 76
+        }
+      },
+      "PUMPKINHEAD_PNG": {
+        "srcW": 63,
+        "srcH": 65,
+        "displayW": 63,
+        "displayH": 65,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1487,
+          "y": 834,
+          "w": 63,
+          "h": 65
+        }
+      },
+      "ALIENHEAD_PNG": {
+        "srcW": 60,
+        "srcH": 65,
+        "displayW": 60,
+        "displayH": 65,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 18,
+          "y": 61,
+          "w": 60,
+          "h": 65
+        }
+      },
+      "CATMASK_PNG": {
+        "srcW": 57,
+        "srcH": 65,
+        "displayW": 57,
+        "displayH": 65,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 146,
+          "y": 1292,
+          "w": 57,
+          "h": 65
+        }
+      },
+      "BOXINGGLOVE_PNG": {
+        "srcW": 29,
+        "srcH": 28,
+        "displayW": 29,
+        "displayH": 28,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1997,
+          "y": 4,
+          "w": 29,
+          "h": 28
+        }
+      },
+      "HAMMER_PNG": {
+        "srcW": 57,
+        "srcH": 34,
+        "displayW": 57,
+        "displayH": 34,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1702,
+          "y": 352,
+          "w": 57,
+          "h": 34
+        }
+      },
+      "WHITESKIRT_PNG": {
+        "srcW": 59,
+        "srcH": 21,
+        "displayW": 34,
+        "displayH": 8,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 436,
+          "y": 1786,
+          "w": 59,
+          "h": 21
+        }
+      },
+      "SWORD_PNG": {
+        "srcW": 70,
+        "srcH": 38,
+        "displayW": 70,
+        "displayH": 38,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1442,
+          "y": 720,
+          "w": 70,
+          "h": 38
+        }
+      },
+      "KPOPSHOE_PNG": {
+        "srcW": 32,
+        "srcH": 16,
+        "displayW": 32,
+        "displayH": 16,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 90.64,
+        "atlas": {
+          "x": 79,
+          "y": 2029,
+          "w": 32,
+          "h": 16
+        }
+      },
+      "KPOPPANTS_PNG": {
+        "srcW": 34,
+        "srcH": 8,
+        "displayW": 34,
+        "displayH": 8,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 173,
+          "y": 46,
+          "w": 34,
+          "h": 8
+        }
+      },
+      "KPOPLEG_PNG": {
+        "srcW": 24,
+        "srcH": 17,
+        "displayW": 24,
+        "displayH": 15,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 89.89,
+        "atlas": {
+          "x": 179,
+          "y": 1525,
+          "w": 24,
+          "h": 17
+        }
+      },
+      "SHORTHAIR_PNG": {
+        "srcW": 61,
+        "srcH": 34,
+        "displayW": 61,
+        "displayH": 34,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 436,
+          "y": 1877,
+          "w": 61,
+          "h": 34
+        }
+      },
+      "TRIGGERED_PNG": {
+        "srcW": 56,
+        "srcH": 50,
+        "displayW": 56,
+        "displayH": 50,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 908,
+          "y": 1521,
+          "w": 56,
+          "h": 50
+        }
+      },
+      "NERDGLASSES_PNG": {
+        "srcW": 55,
+        "srcH": 38,
+        "displayW": 55,
+        "displayH": 38,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 436,
+          "y": 1005,
+          "w": 55,
+          "h": 38
+        }
+      },
+      "FUTURESHADES_PNG": {
+        "srcW": 52,
+        "srcH": 25,
+        "displayW": 52,
+        "displayH": 25,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1367,
+          "y": 383,
+          "w": 52,
+          "h": 25
+        }
+      },
+      "GOLDJETPACK_PNG": {
+        "srcW": 32,
+        "srcH": 39,
+        "displayW": 32,
+        "displayH": 39,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 864,
+          "y": 352,
+          "w": 32,
+          "h": 39
+        }
+      },
+      "GREYHAND_PNG": {
+        "srcW": 20,
+        "srcH": 16,
+        "displayW": 20,
+        "displayH": 16,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1188,
+          "y": 43,
+          "w": 20,
+          "h": 16
+        }
+      },
+      "KPOPTORSO_PNG": {
+        "srcW": 34,
+        "srcH": 27,
+        "displayW": 34,
+        "displayH": 27,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 1903,
+          "y": 352,
+          "w": 34,
+          "h": 27
+        }
+      },
+      "KPOPARM_PNG": {
+        "srcW": 17,
+        "srcH": 14,
+        "displayW": 17,
+        "displayH": 14,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 87.17,
+        "atlas": {
+          "x": 0,
+          "y": 411,
+          "w": 17,
+          "h": 14
+        }
+      },
+      "PLATFORMSHOE_WHITE_PNG": {
+        "srcW": 32,
+        "srcH": 17,
+        "displayW": 32,
+        "displayH": 17,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 90.64,
+        "atlas": {
+          "x": 866,
+          "y": 264,
+          "w": 32,
+          "h": 17
+        }
+      },
+      "WHITEYTORSO_PNG": {
+        "srcW": 34,
+        "srcH": 27,
+        "displayW": 34,
+        "displayH": 27,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 875,
+          "y": 725,
+          "w": 34,
+          "h": 27
+        }
+      },
+      "MUSCLE_ARM_PNG": {
+        "srcW": 20,
+        "srcH": 18,
+        "displayW": 17,
+        "displayH": 14,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 87.17,
+        "atlas": {
+          "x": 732,
+          "y": 264,
+          "w": 20,
+          "h": 18
+        }
+      },
+      "SANTAHAT_PNG": {
+        "srcW": 66,
+        "srcH": 51,
+        "displayW": 66,
+        "displayH": 51,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1976,
+          "y": 761,
+          "w": 66,
+          "h": 51
+        }
+      },
+      "SANTABEARD_PNG": {
+        "srcW": 58,
+        "srcH": 52,
+        "displayW": 58,
+        "displayH": 52,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 436,
+          "y": 1676,
+          "w": 58,
+          "h": 52
+        }
+      },
+      "DOGEARS_PNG": {
+        "srcW": 76,
+        "srcH": 49,
+        "displayW": 76,
+        "displayH": 49,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1604,
+          "y": 644,
+          "w": 76,
+          "h": 49
+        }
+      },
+      "RAILGUN_PNG": {
+        "srcW": 29,
+        "srcH": 50,
+        "displayW": 29,
+        "displayH": 50,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 437,
+          "y": 1207,
+          "w": 29,
+          "h": 50
+        }
+      },
+      "GOLDRAYGUN_PNG": {
+        "srcW": 31,
+        "srcH": 48,
+        "displayW": 31,
+        "displayH": 48,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1501,
+          "y": 352,
+          "w": 31,
+          "h": 48
+        }
+      },
+      "PURPLERAY_PNG": {
+        "srcW": 21,
+        "srcH": 34,
+        "displayW": 21,
+        "displayH": 34,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 275,
+          "y": 402,
+          "w": 21,
+          "h": 34
+        }
+      },
+      "EYES_BLANK_PNG": {
+        "srcW": 39,
+        "srcH": 25,
+        "displayW": 39,
+        "displayH": 25,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1300,
+          "y": 352,
+          "w": 39,
+          "h": 25
+        }
+      },
+      "GRENADELAUNCHER_PNG": {
+        "srcW": 29,
+        "srcH": 60,
+        "displayW": 29,
+        "displayH": 60,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1533,
+          "y": 352,
+          "w": 29,
+          "h": 60
+        }
+      },
+      "BLANK_PNG": {
+        "srcW": 64,
+        "srcH": 64,
+        "displayW": 64,
+        "displayH": 64,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1966,
+          "y": 564,
+          "w": 64,
+          "h": 64
+        }
+      },
+      "PRISONPANTS_FRONT_PNG": {
+        "srcW": 24,
+        "srcH": 17,
+        "displayW": 24,
+        "displayH": 15,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 89.89,
+        "atlas": {
+          "x": 900,
+          "y": 266,
+          "w": 24,
+          "h": 17
+        }
+      },
+      "PRISONTORSO_PNG": {
+        "srcW": 34,
+        "srcH": 27,
+        "displayW": 34,
+        "displayH": 27,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 436,
+          "y": 1100,
+          "w": 34,
+          "h": 27
+        }
+      },
+      "PRISONARM_PNG": {
+        "srcW": 17,
+        "srcH": 14,
+        "displayW": 17,
+        "displayH": 14,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 87.17,
+        "atlas": {
+          "x": 0,
+          "y": 456,
+          "w": 17,
+          "h": 14
+        }
+      },
+      "KUNGFUTORSO_PNG": {
+        "srcW": 32,
+        "srcH": 35,
+        "displayW": 34,
+        "displayH": 27,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 436,
+          "y": 688,
+          "w": 32,
+          "h": 35
+        }
+      },
+      "WHITE_ARM_PNG": {
+        "srcW": 17,
+        "srcH": 14,
+        "displayW": 17,
+        "displayH": 14,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 87.17,
+        "atlas": {
+          "x": 0,
+          "y": 536,
+          "w": 17,
+          "h": 14
+        }
+      },
+      "KUNGFUPANTS_FRONT_PNG": {
+        "srcW": 24,
+        "srcH": 17,
+        "displayW": 24,
+        "displayH": 15,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 89.89,
+        "atlas": {
+          "x": 179,
+          "y": 1627,
+          "w": 24,
+          "h": 17
+        }
+      },
+      "PENGUINHAT_PNG": {
+        "srcW": 94,
+        "srcH": 58,
+        "displayW": 94,
+        "displayH": 58,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1622,
+          "y": 761,
+          "w": 94,
+          "h": 58
+        }
+      },
+      "STETSONHAT_PNG": {
+        "srcW": 82,
+        "srcH": 51,
+        "displayW": 82,
+        "displayH": 51,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 825,
+          "y": 1521,
+          "w": 82,
+          "h": 51
+        }
+      },
+      "PAPERHAT_PNG": {
+        "srcW": 78,
+        "srcH": 61,
+        "displayW": 78,
+        "displayH": 61,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1381,
+          "y": 855,
+          "w": 78,
+          "h": 61
+        }
+      },
+      "CUPIDBOW_PNG": {
+        "srcW": 64,
+        "srcH": 29,
+        "displayW": 64,
+        "displayH": 29,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 563,
+          "y": 352,
+          "w": 64,
+          "h": 29
+        }
+      },
+      "PIRATEHAT_PNG": {
+        "srcW": 91,
+        "srcH": 68,
+        "displayW": 91,
+        "displayH": 68,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1797,
+          "y": 825,
+          "w": 91,
+          "h": 68
+        }
+      },
+      "BASEBALL_HAT_PNG": {
+        "srcW": 72,
+        "srcH": 40,
+        "displayW": 72,
+        "displayH": 40,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1862,
+          "y": 4,
+          "w": 72,
+          "h": 40
+        }
+      },
+      "JETPACK_PNG": {
+        "srcW": 32,
+        "srcH": 39,
+        "displayW": 32,
+        "displayH": 39,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 1868,
+          "y": 352,
+          "w": 32,
+          "h": 39
+        }
+      },
+      "SHARKFIN_PNG": {
+        "srcW": 49,
+        "srcH": 32,
+        "displayW": 49,
+        "displayH": 32,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 302,
+          "y": 2011,
+          "w": 49,
+          "h": 32
+        }
+      },
+      "KUNGFUFOOT_PNG": {
+        "srcW": 32,
+        "srcH": 16,
+        "displayW": 32,
+        "displayH": 16,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 90.64,
+        "atlas": {
+          "x": 112,
+          "y": 2029,
+          "w": 32,
+          "h": 16
+        }
+      },
+      "EYEPATCH_PNG": {
+        "srcW": 56,
+        "srcH": 50,
+        "displayW": 56,
+        "displayH": 50,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1233,
+          "y": 352,
+          "w": 56,
+          "h": 50
+        }
+      },
+      "MOHAWK_PNG": {
+        "srcW": 40,
+        "srcH": 28,
+        "displayW": 40,
+        "displayH": 28,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 436,
+          "y": 871,
+          "w": 40,
+          "h": 28
+        }
+      },
+      "HEARTPACK_PNG": {
+        "srcW": 31,
+        "srcH": 44,
+        "displayW": 31,
+        "displayH": 44,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 1836,
+          "y": 352,
+          "w": 31,
+          "h": 44
+        }
+      },
+      "WOODCUBEHAT_PNG": {
+        "srcW": 66,
+        "srcH": 61,
+        "displayW": 66,
+        "displayH": 61,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 960,
+          "y": 1828,
+          "w": 66,
+          "h": 61
+        }
+      },
+      "OCTOHAT_PNG": {
+        "srcW": 105,
+        "srcH": 93,
+        "displayW": 105,
+        "displayH": 93,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1381,
+          "y": 761,
+          "w": 105,
+          "h": 93
+        }
+      },
+      "CHEFHAT_PNG": {
+        "srcW": 101,
+        "srcH": 67,
+        "displayW": 101,
+        "displayH": 67,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1166,
+          "y": 644,
+          "w": 101,
+          "h": 67
+        }
+      },
+      "BAZOOKA_PNG": {
+        "srcW": 29,
+        "srcH": 60,
+        "displayW": 29,
+        "displayH": 60,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 146,
+          "y": 604,
+          "w": 29,
+          "h": 60
+        }
+      },
+      "SHAMHAT_PNG": {
+        "srcW": 75,
+        "srcH": 53,
+        "displayW": 75,
+        "displayH": 53,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 967,
+          "y": 1181,
+          "w": 75,
+          "h": 53
+        }
+      },
+      "EGGHAT_PNG": {
+        "srcW": 77,
+        "srcH": 88,
+        "displayW": 77,
+        "displayH": 88,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1833,
+          "y": 644,
+          "w": 77,
+          "h": 88
+        }
+      },
+      "SMARTPHONE_PNG": {
+        "srcW": 30,
+        "srcH": 18,
+        "displayW": 30,
+        "displayH": 18,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 925,
+          "y": 266,
+          "w": 30,
+          "h": 18
+        }
+      },
+      "TUXTORSO_PNG": {
+        "srcW": 34,
+        "srcH": 27,
+        "displayW": 34,
+        "displayH": 27,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 436,
+          "y": 2019,
+          "w": 34,
+          "h": 27
+        }
+      },
+      "ARM_PNG": {
+        "srcW": 17,
+        "srcH": 14,
+        "displayW": 17,
+        "displayH": 14,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 87.17,
+        "atlas": {
+          "x": 0,
+          "y": 19,
+          "w": 17,
+          "h": 14
+        }
+      },
+      "DARKBUNNY_PNG": {
+        "srcW": 85,
+        "srcH": 100,
+        "displayW": 85,
+        "displayH": 100,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1518,
+          "y": 644,
+          "w": 85,
+          "h": 100
+        }
+      },
+      "ADVHAT_PNG": {
+        "srcW": 86,
+        "srcH": 56,
+        "displayW": 86,
+        "displayH": 56,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 18,
+          "y": 4,
+          "w": 86,
+          "h": 56
+        }
+      },
+      "ADVTORSO_PNG": {
+        "srcW": 34,
+        "srcH": 39,
+        "displayW": 34,
+        "displayH": 27,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 138,
+          "y": 4,
+          "w": 34,
+          "h": 39
+        }
+      },
+      "ADVARM_PNG": {
+        "srcW": 17,
+        "srcH": 14,
+        "displayW": 17,
+        "displayH": 14,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 87.17,
+        "atlas": {
+          "x": 0,
+          "y": 4,
+          "w": 17,
+          "h": 14
+        }
+      },
+      "ADVSHOES_PNG": {
+        "srcW": 32,
+        "srcH": 16,
+        "displayW": 32,
+        "displayH": 16,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 90.64,
+        "atlas": {
+          "x": 105,
+          "y": 4,
+          "w": 32,
+          "h": 16
+        }
+      },
+      "WHIP_HANDLE_PNG": {
+        "srcW": 23,
+        "srcH": 6,
+        "displayW": 23,
+        "displayH": 6,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 839,
+          "y": 54,
+          "w": 23,
+          "h": 6
+        }
+      },
+      "LEG_REDSTRIPE_PNG": {
+        "srcW": 24,
+        "srcH": 17,
+        "displayW": 24,
+        "displayH": 15,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 89.89,
+        "atlas": {
+          "x": 179,
+          "y": 1727,
+          "w": 24,
+          "h": 17
+        }
+      },
+      "GASMASK_PNG": {
+        "srcW": 72,
+        "srcH": 82,
+        "displayW": 72,
+        "displayH": 82,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 633,
+          "y": 1670,
+          "w": 72,
+          "h": 82
+        }
+      },
+      "BAREFOOT_PNG": {
+        "srcW": 32,
+        "srcH": 16,
+        "displayW": 32,
+        "displayH": 16,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 90.64,
+        "atlas": {
+          "x": 105,
+          "y": 21,
+          "w": 32,
+          "h": 16
+        }
+      },
+      "BLACKBALLET_PNG": {
+        "srcW": 32,
+        "srcH": 16,
+        "displayW": 32,
+        "displayH": 16,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 90.64,
+        "atlas": {
+          "x": 105,
+          "y": 38,
+          "w": 32,
+          "h": 16
+        }
+      },
+      "ROBOTSHOES_PNG": {
+        "srcW": 32,
+        "srcH": 16,
+        "displayW": 32,
+        "displayH": 16,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 90.64,
+        "atlas": {
+          "x": 356,
+          "y": 268,
+          "w": 32,
+          "h": 16
+        }
+      },
+      "MULLET_PNG": {
+        "srcW": 60,
+        "srcH": 62,
+        "displayW": 60,
+        "displayH": 62,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 436,
+          "y": 938,
+          "w": 60,
+          "h": 62
+        }
+      },
+      "COFFEECUP_PNG": {
+        "srcW": 28,
+        "srcH": 21,
+        "displayW": 28,
+        "displayH": 21,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 797,
+          "y": 39,
+          "w": 28,
+          "h": 21
+        }
+      },
+      "SPIKYHAIR_PNG": {
+        "srcW": 76,
+        "srcH": 67,
+        "displayW": 76,
+        "displayH": 67,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 930,
+          "y": 1287,
+          "w": 76,
+          "h": 67
+        }
+      },
+      "HANGGLIDER_PNG": {
+        "srcW": 156,
+        "srcH": 121,
+        "displayW": 156,
+        "displayH": 121,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 988,
+          "y": 761,
+          "w": 156,
+          "h": 121
+        }
+      },
+      "SODACAN_PNG": {
+        "srcW": 30,
+        "srcH": 19,
+        "displayW": 30,
+        "displayH": 19,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 969,
+          "y": 264,
+          "w": 30,
+          "h": 19
+        }
+      },
+      "BUBBLEPACK_PNG": {
+        "srcW": 29,
+        "srcH": 40,
+        "displayW": 29,
+        "displayH": 40,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 176,
+          "y": 604,
+          "w": 29,
+          "h": 40
+        }
+      },
+      "WC_TORSO_PNG": {
+        "srcW": 34,
+        "srcH": 27,
+        "displayW": 34,
+        "displayH": 27,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 875,
+          "y": 697,
+          "w": 34,
+          "h": 27
+        }
+      },
+      "WC_ARM_PNG": {
+        "srcW": 17,
+        "srcH": 14,
+        "displayW": 17,
+        "displayH": 14,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 87.17,
+        "atlas": {
+          "x": 0,
+          "y": 521,
+          "w": 17,
+          "h": 14
+        }
+      },
+      "PANTS_BLACK_PNG": {
+        "srcW": 34,
+        "srcH": 8,
+        "displayW": 34,
+        "displayH": 8,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 250,
+          "y": 47,
+          "w": 34,
+          "h": 8
+        }
+      },
+      "LEG_WC_PNG": {
+        "srcW": 24,
+        "srcH": 17,
+        "displayW": 24,
+        "displayH": 15,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 89.89,
+        "atlas": {
+          "x": 176,
+          "y": 1859,
+          "w": 24,
+          "h": 17
+        }
+      },
+      "WCHAT_PNG": {
+        "srcW": 73,
+        "srcH": 59,
+        "displayW": 73,
+        "displayH": 59,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 891,
+          "y": 1703,
+          "w": 73,
+          "h": 59
+        }
+      },
+      "SHARKEATER_PNG": {
+        "srcW": 104,
+        "srcH": 104,
+        "displayW": 104,
+        "displayH": 104,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 825,
+          "y": 1287,
+          "w": 104,
+          "h": 104
+        }
+      },
+      "KANGO_PNG": {
+        "srcW": 71,
+        "srcH": 50,
+        "displayW": 71,
+        "displayH": 50,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 708,
+          "y": 1850,
+          "w": 71,
+          "h": 50
+        }
+      },
+      "GUYFAWKES_PNG": {
+        "srcW": 58,
+        "srcH": 53,
+        "displayW": 58,
+        "displayH": 53,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1635,
+          "y": 352,
+          "w": 58,
+          "h": 53
+        }
+      },
+      "BASIC_WING_LEFT_PNG": {
+        "srcW": 70,
+        "srcH": 54,
+        "displayW": 70,
+        "displayH": 54,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 1739,
+          "y": 564,
+          "w": 70,
+          "h": 54
+        }
+      },
+      "ROOSHOES_PNG": {
+        "srcW": 31,
+        "srcH": 16,
+        "displayW": 31,
+        "displayH": 16,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 90.64,
+        "atlas": {
+          "x": 389,
+          "y": 268,
+          "w": 31,
+          "h": 16
+        }
+      },
+      "CREEPYCLOWN_PNG": {
+        "srcW": 62,
+        "srcH": 51,
+        "displayW": 62,
+        "displayH": 51,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 496,
+          "y": 352,
+          "w": 62,
+          "h": 51
+        }
+      },
+      "CATEYEGLASSES_PNG": {
+        "srcW": 61,
+        "srcH": 37,
+        "displayW": 61,
+        "displayH": 37,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 146,
+          "y": 1225,
+          "w": 61,
+          "h": 37
+        }
+      },
+      "FIREHAT_PNG": {
+        "srcW": 76,
+        "srcH": 58,
+        "displayW": 76,
+        "displayH": 58,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1604,
+          "y": 694,
+          "w": 76,
+          "h": 58
+        }
+      },
+      "O2MASK_PNG": {
+        "srcW": 63,
+        "srcH": 66,
+        "displayW": 63,
+        "displayH": 66,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1297,
+          "y": 836,
+          "w": 63,
+          "h": 66
+        }
+      },
+      "PANTS_FIRE_PNG": {
+        "srcW": 34,
+        "srcH": 8,
+        "displayW": 34,
+        "displayH": 8,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 285,
+          "y": 47,
+          "w": 34,
+          "h": 8
+        }
+      },
+      "LEG_FIRE_PNG": {
+        "srcW": 24,
+        "srcH": 17,
+        "displayW": 24,
+        "displayH": 15,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 89.89,
+        "atlas": {
+          "x": 179,
+          "y": 1694,
+          "w": 24,
+          "h": 17
+        }
+      },
+      "AXE_PNG": {
+        "srcW": 82,
+        "srcH": 42,
+        "displayW": 82,
+        "displayH": 42,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 250,
+          "y": 4,
+          "w": 82,
+          "h": 42
+        }
+      },
+      "EXTINGUISHER_PNG": {
+        "srcW": 28,
+        "srcH": 45,
+        "displayW": 28,
+        "displayH": 45,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 2019,
+          "y": 197,
+          "w": 28,
+          "h": 45
+        }
+      },
+      "FLASHLIGHT_PNG": {
+        "srcW": 42,
+        "srcH": 30,
+        "displayW": 42,
+        "displayH": 30,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1367,
+          "y": 352,
+          "w": 42,
+          "h": 30
+        }
+      },
+      "FIRE_TORSO_PNG": {
+        "srcW": 34,
+        "srcH": 27,
+        "displayW": 34,
+        "displayH": 27,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 1300,
+          "y": 378,
+          "w": 34,
+          "h": 27
+        }
+      },
+      "FIRE_ARM_PNG": {
+        "srcW": 17,
+        "srcH": 14,
+        "displayW": 17,
+        "displayH": 14,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 87.17,
+        "atlas": {
+          "x": 0,
+          "y": 381,
+          "w": 17,
+          "h": 14
+        }
+      },
+      "MINERHAT_PNG": {
+        "srcW": 67,
+        "srcH": 48,
+        "displayW": 67,
+        "displayH": 48,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1224,
+          "y": 854,
+          "w": 67,
+          "h": 48
+        }
+      },
+      "SPARKLE_GLOVE_PNG": {
+        "srcW": 20,
+        "srcH": 16,
+        "displayW": 20,
+        "displayH": 16,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 494,
+          "y": 268,
+          "w": 20,
+          "h": 16
+        }
+      },
+      "SPARKLE_SHOE_PNG": {
+        "srcW": 32,
+        "srcH": 16,
+        "displayW": 32,
+        "displayH": 16,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 90.64,
+        "atlas": {
+          "x": 515,
+          "y": 268,
+          "w": 32,
+          "h": 16
+        }
+      },
+      "LIGHTGUN_PNG": {
+        "srcW": 35,
+        "srcH": 52,
+        "displayW": 35,
+        "displayH": 52,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 436,
+          "y": 740,
+          "w": 35,
+          "h": 52
+        }
+      },
+      "RETROSHADES_PNG": {
+        "srcW": 61,
+        "srcH": 30,
+        "displayW": 61,
+        "displayH": 30,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 436,
+          "y": 1609,
+          "w": 61,
+          "h": 30
+        }
+      },
+      "EXCALIBUR_PNG": {
+        "srcW": 87,
+        "srcH": 40,
+        "displayW": 87,
+        "displayH": 40,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1911,
+          "y": 644,
+          "w": 87,
+          "h": 40
+        }
+      },
+      "PICKAXE_PNG": {
+        "srcW": 73,
+        "srcH": 57,
+        "displayW": 73,
+        "displayH": 57,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1622,
+          "y": 820,
+          "w": 73,
+          "h": 57
+        }
+      },
+      "ROCK_PNG": {
+        "srcW": 30,
+        "srcH": 24,
+        "displayW": 30,
+        "displayH": 24,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 630,
+          "y": 385,
+          "w": 30,
+          "h": 24
+        }
+      },
+      "PIRATESWORD_PNG": {
+        "srcW": 91,
+        "srcH": 38,
+        "displayW": 91,
+        "displayH": 38,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 988,
+          "y": 883,
+          "w": 91,
+          "h": 38
+        }
+      },
+      "CROWBAR_PNG": {
+        "srcW": 76,
+        "srcH": 32,
+        "displayW": 76,
+        "displayH": 32,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1354,
+          "y": 696,
+          "w": 76,
+          "h": 32
+        }
+      },
+      "PIPEWRENCH_PNG": {
+        "srcW": 74,
+        "srcH": 35,
+        "displayW": 74,
+        "displayH": 35,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 917,
+          "y": 720,
+          "w": 74,
+          "h": 35
+        }
+      },
+      "CLEAVER_PNG": {
+        "srcW": 82,
+        "srcH": 40,
+        "displayW": 82,
+        "displayH": 40,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 792,
+          "y": 697,
+          "w": 82,
+          "h": 40
+        }
+      },
+      "SHOVEL_PNG": {
+        "srcW": 96,
+        "srcH": 39,
+        "displayW": 96,
+        "displayH": 39,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 967,
+          "y": 1235,
+          "w": 96,
+          "h": 39
+        }
+      },
+      "ARMYHAT_PNG": {
+        "srcW": 76,
+        "srcH": 41,
+        "displayW": 17,
+        "displayH": 14,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 87.17,
+        "atlas": {
+          "x": 173,
+          "y": 4,
+          "w": 76,
+          "h": 41
+        }
+      },
+      "SHOTGUN_PNG": {
+        "srcW": 28,
+        "srcH": 63,
+        "displayW": 28,
+        "displayH": 63,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 468,
+          "y": 1206,
+          "w": 28,
+          "h": 63
+        }
+      },
+      "ROOSTER_PNG": {
+        "srcW": 61,
+        "srcH": 105,
+        "displayW": 61,
+        "displayH": 105,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 825,
+          "y": 1181,
+          "w": 61,
+          "h": 105
+        }
+      },
+      "PIG_PNG": {
+        "srcW": 79,
+        "srcH": 73,
+        "displayW": 79,
+        "displayH": 73,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1717,
+          "y": 761,
+          "w": 79,
+          "h": 73
+        }
+      },
+      "DONKEY_PNG": {
+        "srcW": 71,
+        "srcH": 113,
+        "displayW": 71,
+        "displayH": 113,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 633,
+          "y": 1222,
+          "w": 71,
+          "h": 113
+        }
+      },
+      "TURTLESHELL_PNG": {
+        "srcW": 30,
+        "srcH": 37,
+        "displayW": 30,
+        "displayH": 37,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 468,
+          "y": 1526,
+          "w": 30,
+          "h": 37
+        }
+      },
+      "GORILLA_PNG": {
+        "srcW": 65,
+        "srcH": 80,
+        "displayW": 65,
+        "displayH": 80,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 633,
+          "y": 1753,
+          "w": 65,
+          "h": 80
+        }
+      },
+      "TURTLE_PNG": {
+        "srcW": 65,
+        "srcH": 71,
+        "displayW": 65,
+        "displayH": 71,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 825,
+          "y": 1703,
+          "w": 65,
+          "h": 71
+        }
+      },
+      "EAGLE_PNG": {
+        "srcW": 58,
+        "srcH": 53,
+        "displayW": 58,
+        "displayH": 53,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1166,
+          "y": 352,
+          "w": 58,
+          "h": 53
+        }
+      },
+      "RACCOON_PNG": {
+        "srcW": 61,
+        "srcH": 64,
+        "displayW": 61,
+        "displayH": 64,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 436,
+          "y": 1139,
+          "w": 61,
+          "h": 64
+        }
+      },
+      "FOXMASK_PNG": {
+        "srcW": 54,
+        "srcH": 61,
+        "displayW": 54,
+        "displayH": 61,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1434,
+          "y": 352,
+          "w": 54,
+          "h": 61
+        }
+      },
+      "WOLFMASK_PNG": {
+        "srcW": 59,
+        "srcH": 72,
+        "displayW": 59,
+        "displayH": 72,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 900,
+          "y": 1828,
+          "w": 59,
+          "h": 72
+        }
+      },
+      "TURKEYHEAD_PNG": {
+        "srcW": 62,
+        "srcH": 64,
+        "displayW": 62,
+        "displayH": 64,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 890,
+          "y": 1638,
+          "w": 62,
+          "h": 64
+        }
+      },
+      "MUSKET_PNG": {
+        "srcW": 38,
+        "srcH": 84,
+        "displayW": 38,
+        "displayH": 84,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 784,
+          "y": 936,
+          "w": 38,
+          "h": 84
+        }
+      },
+      "PILGRIMHAT_PNG": {
+        "srcW": 101,
+        "srcH": 63,
+        "displayW": 101,
+        "displayH": 63,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1797,
+          "y": 761,
+          "w": 101,
+          "h": 63
+        }
+      },
+      "PILGRIMSKIRT_PNG": {
+        "srcW": 55,
+        "srcH": 33,
+        "displayW": 34,
+        "displayH": 8,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 436,
+          "y": 900,
+          "w": 55,
+          "h": 33
+        }
+      },
+      "PILGRIMLEG_PNG": {
+        "srcW": 24,
+        "srcH": 17,
+        "displayW": 24,
+        "displayH": 15,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 89.89,
+        "atlas": {
+          "x": 766,
+          "y": 264,
+          "w": 24,
+          "h": 17
+        }
+      },
+      "PILGRIMTORSO_PNG": {
+        "srcW": 34,
+        "srcH": 27,
+        "displayW": 34,
+        "displayH": 27,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18,
+        "atlas": {
+          "x": 436,
+          "y": 1044,
+          "w": 34,
+          "h": 27
+        }
+      },
+      "PILGRIMARM_PNG": {
+        "srcW": 17,
+        "srcH": 14,
+        "displayW": 17,
+        "displayH": 14,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 87.17,
+        "atlas": {
+          "x": 0,
+          "y": 426,
+          "w": 17,
+          "h": 14
+        }
+      },
+      "TRIPLE_PNG": {
+        "srcW": 59,
+        "srcH": 60,
+        "displayW": 59,
+        "displayH": 60,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1020,
+          "y": 1573,
+          "w": 59,
+          "h": 60
+        }
+      },
+      "B112_0_PNG": {
+        "srcW": 66,
+        "srcH": 66,
+        "displayW": 66,
+        "displayH": 66,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1828,
+          "y": 62,
+          "w": 66,
+          "h": 66
+        }
+      },
+      "DEPTHCHARGE_PNG": {
+        "srcW": 52,
+        "srcH": 59,
+        "displayW": 52,
+        "displayH": 59,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 146,
+          "y": 1895,
+          "w": 52,
+          "h": 59
+        }
+      },
+      "LIGHTSABRE_PNG": {
+        "srcW": 32,
+        "srcH": 17,
+        "displayW": 32,
+        "displayH": 17,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 699,
+          "y": 264,
+          "w": 32,
+          "h": 17
+        }
+      },
+      "DUALLIGHTSABRE_PNG": {
+        "srcW": 40,
+        "srcH": 17,
+        "displayW": 40,
+        "displayH": 17,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2,
+        "atlas": {
+          "x": 1021,
+          "y": 39,
+          "w": 40,
+          "h": 17
+        }
+      }
+    },
+    "byBodyPart": {
+      "head": {
+        "srcW": 87,
+        "srcH": 51,
+        "displayW": 87,
+        "displayH": 51,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2
+      },
+      "feet": {
+        "srcW": 32,
+        "srcH": 16,
+        "displayW": 32,
+        "displayH": 16,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 90.64
+      },
+      "pants": {
+        "srcW": 34,
+        "srcH": 8,
+        "displayW": 34,
+        "displayH": 8,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18
+      },
+      "legs": {
+        "srcW": 24,
+        "srcH": 17,
+        "displayW": 24,
+        "displayH": 15,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 89.89
+      },
+      "torso": {
+        "srcW": 34,
+        "srcH": 27,
+        "displayW": 34,
+        "displayH": 27,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18
+      },
+      "arms": {
+        "srcW": 17,
+        "srcH": 14,
+        "displayW": 17,
+        "displayH": 14,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": 87.17
+      },
+      "weapon": {
+        "srcW": 29,
+        "srcH": 28,
+        "displayW": 29,
+        "displayH": 28,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2
+      },
+      "face": {
+        "srcW": 56,
+        "srcH": 50,
+        "displayW": 56,
+        "displayH": 50,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2
+      },
+      "back": {
+        "srcW": 32,
+        "srcH": 39,
+        "displayW": 32,
+        "displayH": 39,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -88.18
+      },
+      "other": {
+        "srcW": 64,
+        "srcH": 64,
+        "displayW": 64,
+        "displayH": 64,
+        "scaleX": -1,
+        "scaleY": 1,
+        "rotation": -91.2
+      }
+    }
+  }
+}
