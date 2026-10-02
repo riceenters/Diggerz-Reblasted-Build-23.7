@@ -32,15 +32,18 @@
 <h2>Stock pieces (atlas)</h2>
 <label>Filter</label>
 <select id="cwFilter">
-<option value="all">All wearables</option>
-<option value="1">Hats</option>
-<option value="7">Pants</option>
-<option value="2">Shirts</option>
-<option value="0">Hair</option>
-<option value="3">Shoes</option>
-<option value="5">Back</option>
-<option value="6">Face</option>
-<option value="4">Weapons</option>
+<option value="all">All body parts</option>
+<option value="head">Head / Hats</option>
+<option value="hair">Hair</option>
+<option value="face">Face</option>
+<option value="torso">Torso / Shirts</option>
+<option value="arms">Arms / Sleeves</option>
+<option value="pants">Pants / Butt / Skirts</option>
+<option value="legs">Legs</option>
+<option value="feet">Feet / Shoes</option>
+<option value="back">Back</option>
+<option value="weapon">Weapons</option>
+<option value="other">Other</option>
 </select>
 <label>Search</label><input id="cwSearch" placeholder="name or id" />
 <div id="cwItemList" style="max-height:220px;overflow:auto;margin-top:6px"></div>
@@ -221,8 +224,13 @@ function cwAddPart(full){
   const crop=full?{x:0,y:0,w:it.atlas.w,h:it.atlas.h}:(CW.crop||{x:0,y:0,w:it.atlas.w,h:it.atlas.h});
   o.layers.push({
     sourceId:it.id, sourceName:it.name, atlas:Object.assign({},it.atlas), crop:Object.assign({},crop),
-    x:0, y:0, hue:0, sat:100, bri:100, opacity:100, visible:true, polys:[], canvas:cwExtract(it,crop)
+    bodyPart: it.bodyPart||'other', piece: it.piece||null, slot: it.slot,
+    attachOx: it.attachOx||0, attachOy: it.attachOy||0,
+    x: it.attachOx||0, y: it.attachOy||0,
+    hue:0, sat:100, bri:100, opacity:100, visible:true, polys:[], canvas:cwExtract(it,crop)
   });
+  // auto-set object slot from first layer
+  if(o.layers.length===1 && it.slot!=null){ o.slot=it.slot; document.getElementById('cwSlot').value=String(it.slot); }
   CW.selLayer=o.layers.length-1; cwRenderObjs(); cwRenderLayers(); cwStatus('Added layer from '+it.name);
 }
 function cwRasterizePoly(points,w,h){
@@ -267,18 +275,70 @@ function cwComposite(){
   layers.forEach(L=>{ const t=cwRecolor(L.canvas,L.hue,L.sat,L.bri,L.polys); ox.globalAlpha=(L.opacity!=null?L.opacity:100)/100; ox.drawImage(t,L.x,L.y); ox.globalAlpha=1; });
   return out;
 }
+function cwAttachLocal(bodyPart, attOx, attOy, objOx, objOy){
+  // Match diggerz guyskin attachment orientation (Y-up spine, scaleX -1, ~90° rotations)
+  // Returns local matrix relative to bone: {a,b,c,d,x,y} and optional flip
+  const ox=(attOx||0)+(objOx||0), oy=(attOy||0)+(objOy||0);
+  switch(bodyPart){
+    case 'head': case 'hair': case 'face':
+      // head attachment: rot -91.2, scaleX -1, x 14.15, y 0.66
+      { const r=(-91.2)*Math.PI/180,c=Math.cos(r),s=Math.sin(r);
+        return {a:c*(-1),b:s*(-1),c:s,d:-c,x:14.15+ox,y:0.66+oy}; }
+    case 'torso':
+      // torso: rot -88.18, scaleX -1, x -7.16, y -2.03
+      { const r=(-88.18)*Math.PI/180,c=Math.cos(r),s=Math.sin(r);
+        return {a:c*(-1),b:s*(-1),c:s,d:-c,x:-7.16+ox,y:-2.03+oy}; }
+    case 'pants':
+      // pants on chest: similar to torso
+      { const r=(-88.18)*Math.PI/180,c=Math.cos(r),s=Math.sin(r);
+        return {a:c*(-1),b:s*(-1),c:s,d:-c,x:-20.96+ox,y:-2.18+oy}; }
+    case 'arms':
+      // arm on shoulder: rot ~87, scaleX -1
+      { const r=(87.17)*Math.PI/180,c=Math.cos(r),s=Math.sin(r);
+        return {a:c*(-1),b:s*(-1),c:s,d:-c,x:3.62+ox,y:-0.16+oy}; }
+    case 'legs':
+      { const r=(95.36)*Math.PI/180,c=Math.cos(r),s=Math.sin(r);
+        return {a:c*(-1),b:s*(-1),c:s,d:-c,x:2.57+ox,y:-0.07+oy}; }
+    case 'feet':
+      { const r=(90.64)*Math.PI/180,c=Math.cos(r),s=Math.sin(r);
+        return {a:c*(-1),b:s*(-1),c:s,d:-c,x:1.05+ox,y:-1.59+oy}; }
+    case 'back':
+      { const r=(-88.18)*Math.PI/180,c=Math.cos(r),s=Math.sin(r);
+        return {a:c*(-1),b:s*(-1),c:s,d:-c,x:-7+ox,y:5+oy}; }
+    default:
+      return {a:1,b:0,c:0,d:-1,x:ox,y:oy};
+  }
+}
+function cwBoneFor(bodyPart, attachOx){
+  switch(bodyPart){
+    case 'head': case 'hair': case 'face': return 'head_bone';
+    case 'torso': case 'pants': case 'back': return 'chest';
+    case 'arms': return (attachOx||0)<0 ? 'back_shoulder' : 'front_shoulder';
+    case 'legs': return (attachOx||0)<0 ? 'back_lowerleg' : 'front_lowerleg';
+    case 'feet': return (attachOx||0)<0 ? 'back_foot_bone' : 'front_foot_bone';
+    default: return 'chest';
+  }
+}
 function cwDrawWear(ctx, worldP){
-  const wear=cwComposite(); if(!wear) return;
   const o=cwActive(); if(!o) return;
-  const boneMap={0:'head_bone',1:'head_bone',2:'chest',3:'front_foot_bone',5:'chest',6:'head_bone',7:'hips',9:'head_bone'};
-  const bone=boneMap[o.slot]||'head_bone';
-  const wm=worldP[bone]; if(!wm) return;
-  // match head attachment orientation roughly for hats
-  const local={a:1,b:0,c:0,d:-1,x:o.ox,y:o.oy+(o.slot===1||o.slot===0||o.slot===6?14:0)};
-  const F=mul(wm,local);
-  ctx.save(); ctx.transform(F.a,F.b,F.c,F.d,F.x,F.y);
-  ctx.drawImage(wear,-wear.width/2,-wear.height/2);
-  ctx.restore();
+  const layers=o.layers.filter(L=>L.visible!==false); if(!layers.length) return;
+  layers.forEach(L=>{
+    const bp=L.bodyPart||'other';
+    const bone=cwBoneFor(bp, L.attachOx);
+    const wm=worldP[bone]; if(!wm) return;
+    const tinted=cwRecolor(L.canvas,L.hue,L.sat,L.bri,L.polys);
+    const local=cwAttachLocal(bp, L.attachOx, L.attachOy, o.ox, o.oy);
+    // layer x/y are extra editor nudges in layer pixel space after attach
+    const F=mul(wm, local);
+    ctx.save();
+    ctx.transform(F.a,F.b,F.c,F.d,F.x,F.y);
+    ctx.globalAlpha=(L.opacity!=null?L.opacity:100)/100;
+    // native pixel size (no extra scale) — matches atlas proportions
+    const w=tinted.width, h=tinted.height;
+    ctx.drawImage(tinted, L.x - w/2, L.y - h/2, w, h);
+    ctx.globalAlpha=1;
+    ctx.restore();
+  });
 }
 function cwBuildItem(){
   cwReadFields(); const o=cwActive(); if(!o){ cwStatus('Create an object'); return null; }
@@ -295,24 +355,35 @@ function cwBuildItem(){
 }
 function cwRenderItemList(){
   const box=document.getElementById('cwItemList'); if(!box) return;
-  const slot=document.getElementById('cwFilter').value;
+  const filt=document.getElementById('cwFilter').value;
   const q=(document.getElementById('cwSearch').value||'').toLowerCase();
   box.innerHTML='';
+  const groups={};
   CW.catalog.forEach(it=>{
-    if(slot!=='all'&&String(it.slot)!==slot) return;
+    const bp=it.bodyPart||'other';
+    if(filt!=='all'&&bp!==filt) return;
     if(q&&!(it.name||'').toLowerCase().includes(q)&&String(it.id).indexOf(q)<0) return;
-    const div=document.createElement('div'); div.className='layer'+(CW.selectedItem&&CW.selectedItem.id===it.id?' sel':'');
-    const c=document.createElement('canvas'); c.className='thumb'; c.width=40; c.height=40;
-    const cx=c.getContext('2d'); cx.imageSmoothingEnabled=false;
-    const sheet=CW.sheet||img; const a=it.atlas; const sc=Math.min(40/a.w,40/a.h);
-    if(sheet&&sheet.complete) cx.drawImage(sheet,a.x,a.y,a.w,a.h,0,0,a.w*sc,a.h*sc);
-    div.appendChild(c);
-    div.appendChild(document.createTextNode(it.name+' ('+it.id+')'));
-    div.onclick=()=>{ CW.selectedItem=it; CW.crop={x:0,y:0,w:it.atlas.w,h:it.atlas.h}; cwRenderItemList(); cwDrawCrop(); };
-    box.appendChild(div);
+    (groups[bp]=groups[bp]||[]).push(it);
+  });
+  const order=['head','hair','face','torso','arms','pants','legs','feet','back','weapon','other'];
+  order.forEach(bp=>{
+    const arr=groups[bp]; if(!arr||!arr.length) return;
+    const h=document.createElement('div'); h.className='small'; h.style.cssText='margin:8px 0 4px;color:#8ab;font-weight:600';
+    h.textContent=bp.toUpperCase()+' ('+arr.length+')'; box.appendChild(h);
+    arr.forEach(it=>{
+      const div=document.createElement('div'); div.className='layer'+(CW.selectedItem&&CW.selectedItem.id===it.id&&CW.selectedItem.png===it.png&&CW.selectedItem.piece===it.piece?' sel':'');
+      const c=document.createElement('canvas'); c.className='thumb'; c.width=40; c.height=40;
+      const cx=c.getContext('2d'); cx.imageSmoothingEnabled=false;
+      const sheet=CW.sheet||img; const a=it.atlas; const sc=Math.min(40/a.w,40/a.h);
+      if(sheet&&sheet.complete) cx.drawImage(sheet,a.x,a.y,a.w,a.h,(40-a.w*sc)/2,(40-a.h*sc)/2,a.w*sc,a.h*sc);
+      div.appendChild(c);
+      div.appendChild(document.createTextNode(it.name));
+      div.onclick=()=>{ CW.selectedItem=it; CW.crop={x:0,y:0,w:it.atlas.w,h:it.atlas.h}; cwRenderItemList(); cwDrawCrop(); };
+      box.appendChild(div);
+    });
   });
 }
-function cwDrawCrop(){
+function cwDrawCropfunction cwDrawCrop(){
   const cv=document.getElementById('cropCv'); if(!cv||!CW.selectedItem) return;
   const cx=cv.getContext('2d'); const it=CW.selectedItem; const a=it.atlas; const sheet=CW.sheet||img;
   cx.fillStyle='#0a0a0a'; cx.fillRect(0,0,cv.width,cv.height);
