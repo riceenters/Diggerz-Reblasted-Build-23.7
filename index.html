@@ -19123,6 +19123,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 case 35:
                 case 37:
                 case 39:
+                case 41:
                     a = l.z39.j35.F54();
                     b = l.z39.j35.F57(this.u33, this.u34, a.x, a.y);
                     var c = l.z38.R34
@@ -88937,9 +88938,9 @@ function __normalizeWearableScales(skel) {
         },
         __class__: rj
     });
-    // Remote Mortar projectile: intentionally based on the normal rj/Mortar
-    // missile so it gets the same spawn, physics, collision and impact behavior.
-    // The only difference is slow WASD steering while it is airborne.
+    // Remote Mortar projectile: based directly on the normal rj/Mortar missile.
+    // WASD selects a desired travel direction and the missile turns toward it
+    // gradually, using the same smooth steering idea as the Homing Mortar.
     var Ro = function(a, b, c, d, e, g, p) {
         rj.call(this, a, b, c, d, e, g, p);
         this.set_local_r(.25);
@@ -88959,30 +88960,40 @@ function __normalizeWearableScales(skel) {
         },
         e0: function() {
             if (this._remoteSteerReady && this.b33 && typeof q !== "undefined") {
-                var ax = 0, ay = 0;
-                if (q.KeyDown(65)) ax -= 1;
-                if (q.KeyDown(68)) ax += 1;
-                if (q.KeyDown(87)) ay -= 1;
-                if (q.KeyDown(83)) ay += 1;
-                if (ax || ay) {
-                    var len = Math.sqrt(ax * ax + ay * ay) || 1;
-                    ax /= len; ay /= len;
-                    // Small impulse = deliberately sluggish turning.
-                    var steer = 0.34;
-                    this.b33.applyImpulse(new Z(ax * steer, ay * steer));
+                var ix = 0, iy = 0;
+                if (q.KeyDown(65)) ix -= 1;
+                if (q.KeyDown(68)) ix += 1;
+                if (q.KeyDown(87)) iy -= 1;
+                if (q.KeyDown(83)) iy += 1;
+
+                if (ix || iy) {
+                    var il = Math.sqrt(ix * ix + iy * iy) || 1;
+                    ix /= il;
+                    iy /= il;
+
+                    try {
+                        var vel = this.b33.tBJ.wrap_vel.tBJ;
+                        var speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+                        if (speed < 0.25) speed = 0.25;
+
+                        // Same basic angular steering idea as the Homing Mortar,
+                        // but the target is the WASD direction instead of a player.
+                        var desired = Math.atan2(iy, ix);
+                        var current = Math.atan2(vel.y, vel.x);
+                        var delta = desired - current;
+                        while (delta > Math.PI) delta -= Math.PI * 2;
+                        while (delta < -Math.PI) delta += Math.PI * 2;
+
+                        // Slow turn rate keeps Remote Mortar controllable but not OP.
+                        var maxTurn = 0.055;
+                        if (delta > maxTurn) delta = maxTurn;
+                        if (delta < -maxTurn) delta = -maxTurn;
+
+                        var angle = current + delta;
+                        vel.x = Math.cos(angle) * speed;
+                        vel.y = Math.sin(angle) * speed;
+                    } catch (_) {}
                 }
-                // Keep the missile from becoming absurdly fast after steering.
-                try {
-                    var vel = this.b33.tBJ.wrap_vel;
-                    var vx = vel.tBJ.x, vy = vel.tBJ.y;
-                    var speed = Math.sqrt(vx * vx + vy * vy);
-                    var maxSpeed = 11;
-                    if (speed > maxSpeed) {
-                        var scale = maxSpeed / speed;
-                        vel.tBJ.x *= scale;
-                        vel.tBJ.y *= scale;
-                    }
-                } catch (_) {}
             }
             return rj.prototype.e0.call(this)
         },
