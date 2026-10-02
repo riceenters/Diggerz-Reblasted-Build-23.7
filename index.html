@@ -19281,7 +19281,10 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 l.z39.p39(l.z39.N34, l.z39.N34)
         },
         U33: function(a) {
-            this.DiggerzSetMenuBknd(a.Q9())
+            a = a.Q9();
+            null != this.d34 && T.remove(this._9, this.d34);
+            this.d34 = new cg(a);
+            this._9.splice(0, 0, this.d34)
         },
         e1: function() {
             this.R34.tBJ.wrap_listeners.clear();
@@ -53904,17 +53907,11 @@ function __normalizeWearableScales(skel) {
         bgLbl.D7(this, !0);
         bgLbl.C33 = A(this, function() {
             try {
-                var i = 0;
-                if (window.DiggerzCycleMenuBackground)
-                    i = window.DiggerzCycleMenuBackground();
-                else {
-                    i = (window.DiggerzGetMenuBgIndex ? window.DiggerzGetMenuBgIndex() : 0);
-                    i = (i + 1) % bgList.length;
-                    localStorage.setItem("diggerz.menuBg.v1", String(i));
-                    if (window.DiggerzApplyMenuBackground) window.DiggerzApplyMenuBackground(i);
+                if (window.DiggerzOpenMenuBkndPicker) {
+                    window.DiggerzOpenMenuBkndPicker();
+                    return;
                 }
-                var nm = (bgList[i] && bgList[i].name) ? bgList[i].name : ("#" + i);
-                try { bgLbl.E37("^9Background: ^7" + nm); } catch (eL) {}
+                if (window.DiggerzCycleMenuBackground) window.DiggerzCycleMenuBackground();
             } catch (eC) {}
         });
         this._9.push(bgLbl);
@@ -53981,7 +53978,9 @@ function __normalizeWearableScales(skel) {
                 btn.C33 = function() {
                     try {
                         var title = q.GetChildByType(Cf);
-                        if (title) title.DiggerzSetMenuBknd(item.theme);
+                        if (title && typeof title.DiggerzSetMenuBknd === "function") {
+                            title.DiggerzSetMenuBknd(item.theme);
+                        }
                         try { localStorage.setItem("diggerz.menuBg.native.v2", String(index)); } catch (eSave) {}
                         window.__diggerzMenuBgIdx = index;
                         self.a0 = 1;
@@ -54000,6 +53999,8 @@ function __normalizeWearableScales(skel) {
             };
             panel._9.push(close);
             q.children.push(panel);
+            try { if (typeof panel.e0 === "function") panel.e0(); } catch (eLayout) {}
+            try { if (typeof E !== "undefined" && E.u4) E.u4(panel, 200); } catch (eShow) {}
             window.__diggerzBkndPicker = panel;
             q.mClicked = !1; q.clickedFunction = null;
             return panel;
