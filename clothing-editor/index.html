@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Diggerz Atlas Wearable Studio</title>
+<style>
+:root { --bg:#0c1018; --panel:#151c28; --border:#2c3b52; --text:#e7eef8; --muted:#8b9bb4; --accent:#5b9fd4; --good:#4caf7a; }
+* { box-sizing:border-box; }
+body { margin:0; font:13px system-ui,sans-serif; background:var(--bg); color:var(--text); height:100vh; overflow:hidden; }
+header { display:flex; gap:10px; align-items:center; padding:8px 12px; background:var(--panel); border-bottom:1px solid var(--border); }
+header h1 { margin:0; font-size:14px; }
+header span { color:var(--muted); font-size:11px; }
+.layout { display:grid; grid-template-columns:300px 1fr 280px; height:calc(100vh - 40px); }
+.col { background:var(--panel); border-right:1px solid var(--border); overflow:auto; display:flex; flex-direction:column; }
+.col:last-child { border-right:0; }
+h2 { margin:0; padding:7px 10px; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); background:#1a2433; border-bottom:1px solid var(--border); }
+.sec { padding:8px 10px; border-bottom:1px solid var(--border); }
+label { display:block; font-size:10px; color:var(--muted); margin:5px 0 2px; }
+input, select, button { width:100%; background:#0c1018; border:1px solid var(--border); color:var(--text); border-radius:5px; padding:6px 7px; font-size:12px; }
+button { cursor:pointer; }
+button:hover { border-color:var(--accent); }
+button.primary { background:#1e3a5f; border-color:var(--accent); }
+button.good { background:#1a3d2c; border-color:var(--good); }
+button.active { outline:2px solid var(--accent); }
+.row { display:flex; gap:5px; }
+.row > * { flex:1; }
+.list { flex:1; overflow:auto; padding:6px; }
+.item { padding:5px 6px; border:1px solid var(--border); border-radius:5px; margin-bottom:4px; cursor:pointer; display:flex; gap:6px; align-items:center; }
+.item:hover, .item.sel { border-color:var(--accent); }
+.item canvas { width:36px; height:36px; image-rendering:pixelated; background:#000; flex-shrink:0; }
+.item .meta { font-size:11px; }
+.item .meta b { display:block; }
+.item .meta span { color:var(--muted); font-size:10px; }
+.stage { display:flex; flex-direction:column; background:#0a0e14; }
+.toolbar { display:flex; flex-wrap:wrap; gap:5px; padding:6px; background:var(--panel); border-bottom:1px solid var(--border); }
+.toolbar button, .toolbar input, .toolbar select { width:auto; }
+.canvas-wrap { flex:1; display:flex; align-items:center; justify-content:center; position:relative; }
+canvas#main, canvas#atlas { image-rendering:pixelated; border:1px solid var(--border); border-radius:6px; }
+.status { padding:5px 8px; font-size:11px; color:var(--muted); border-top:1px solid var(--border); }
+.tiny { font-size:10px; color:var(--muted); line-height:1.35; }
+.part { border:1px solid var(--border); border-radius:5px; padding:5px; margin-bottom:4px; font-size:11px; }
+.part.sel { border-color:var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Atlas Wearable Studio</h1>
+  <span>No external PNGs — only stock dig item frames from <code>tiles.png</code>. Crop legs/sleeves, stack parts, export data.</span>
+</header>
+<div class="layout">
+  <!-- LEFT: stock items -->
+  <div class="col">
+    <h2>Stock items (atlas)</h2>
+    <div class="sec">
+      <label>Filter slot</label>
+      <select id="filterSlot">
+        <option value="all">All wearables</option>
+        <option value="0">0 Hair</option>
+        <option value="1">1 Hat</option>
+        <option value="2">2 Shirt</option>
+        <option value="3">3 Shoes</option>
+        <option value="5">5 Back</option>
+        <option value="6">6 Face</option>
+        <option value="7">7 Pants</option>
+        <option value="4">4 Weapon</option>
+        <option value="9">9 Face2</option>
+        <option value="10">10 Other</option>
+      </select>
+      <label>Search</label>
+      <input id="search" placeholder="name or id…" />
+      <p class="tiny" id="catStat">Loading catalog…</p>
+    </div>
+    <div class="list" id="itemList"></div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="stage">
+    <div class="toolbar">
+      <button type="button" data-mode="compose" class="active mode">Compose</button>
+      <button type="button" data-mode="crop" class="mode">Crop source</button>
+      <button type="button" data-mode="poly" class="mode">Polygon recolor</button>
+      <button type="button" id="btnAddFull">Add full item as part</button>
+      <button type="button" id="btnAddCrop">Add crop as part</button>
+      <button type="button" id="btnClosePoly">Close polygon</button>
+      <button type="button" id="btnClearDraft">Clear draft</button>
+      <span style="flex:1"></span>
+      <button type="button" id="nL">←</button>
+      <button type="button" id="nR">→</button>
+      <button type="button" id="nU">↑</button>
+      <button type="button" id="nD">↓</button>
+      <input type="number" id="step" value="1" min="1" max="16" style="width:44px" />
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="main" width="440" height="520"></canvas>
+      <canvas id="atlas" width="440" height="520" style="display:none"></canvas>
+    </div>
+    <div class="status" id="status">Loading tiles.png + wearable catalog…</div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="col">
+    <h2>Objects (wearables in this project)</h2>
+    <div class="sec">
+      <div class="row">
+        <button type="button" id="btnNewObj" class="good">+ New object</button>
+        <button type="button" id="btnDupObj">Dup object</button>
+        <button type="button" id="btnDelObj">Del</button>
+      </div>
+      <div id="objList" class="tiny" style="margin-top:6px;max-height:100px;overflow:auto"></div>
+      <p class="tiny">Build several items at once — e.g. a stacked hat + a back accessory — then publish each.</p>
+    </div>
+    <h2>Active object</h2>
+    <div class="sec">
+      <label>Name</label>
+      <input id="name" value="Custom Hat" />
+      <label>Custom ID (9000–9999)</label>
+      <input type="number" id="id" value="9001" min="9000" max="9999" />
+      <label>Output slot</label>
+      <select id="outSlot">
+        <option value="1" selected>1 Hat</option>
+        <option value="5">5 Back</option>
+        <option value="0">0 Hair</option>
+        <option value="2">2 Shirt</option>
+        <option value="7">7 Pants</option>
+        <option value="3">3 Shoes</option>
+        <option value="6">6 Face</option>
+        <option value="9">9 Face2</option>
+      </select>
+      <label><input type="checkbox" id="t48" /> T48 shows skin</label>
+      <label>Wear offset X / Y</label>
+      <div class="row">
+        <input type="number" id="ox" value="0" />
+        <input type="number" id="oy" value="-20" />
+      </div>
+    </div>
+    <h2>Layers (stack pieces)</h2>
+    <div class="sec">
+      <div class="row">
+        <button type="button" id="btnLayerUp">↑</button>
+        <button type="button" id="btnLayerDown">↓</button>
+        <button type="button" id="btnLayerVis">Hide</button>
+      </div>
+      <p class="tiny">Bottom = drawn first. Stack many head/hat/back pieces.</p>
+    </div>
+    <div class="sec" style="flex:1;overflow:auto;max-height:180px" id="parts"></div>
+    <h2>Selected part</h2>
+    <div class="sec">
+      <label>Hue (whole part)</label><input type="range" id="hue" min="-180" max="180" value="0" />
+      <label>Sat</label><input type="range" id="sat" min="0" max="200" value="100" />
+      <label>Bright</label><input type="range" id="bri" min="0" max="200" value="100" />
+      <p class="tiny" style="margin-top:6px"><b>Polygon regions</b> — switch to Polygon recolor, click vertices on the part, Close polygon. Inside can be protected from the main recolor and/or get its own tint.</p>
+      <div id="polyList" class="tiny"></div>
+      <label>Poly tint</label><input type="color" id="polyColor" value="#ff8844" />
+      <label>Poly opacity</label><input type="range" id="polyAlpha" min="0" max="100" value="100" />
+      <label><input type="checkbox" id="polyProtect" checked /> Protect inside from main recolor</label>
+      <label><input type="checkbox" id="polyRecolor" /> Apply poly tint inside</label>
+      <div class="row" style="margin-top:6px">
+        <button id="btnDup">Dup</button>
+        <button id="btnDel">Del</button>
+      </div>
+    </div>
+    <h2>Export data</h2>
+    <div class="sec">
+      <label>Server URL</label>
+      <input id="server" placeholder="(same origin)" />
+      <button class="good" id="btnPublish" style="margin-top:6px">Publish to server</button>
+      <button class="primary" id="btnJson" style="margin-top:5px">Download item JSON</button>
+      <p class="tiny" style="margin-top:6px">JSON stores atlas part refs + baked sprite so the game can equip without external art.</p>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  const SLOT_LABEL = {0:"hair",1:"hat",2:"shirt",3:"shoes",4:"weapon",5:"back",6:"face",7:"pants",9:"face2",10:"misc"};
+  const S = {
+    sheet: null,
+    catalog: [],
+    selectedItem: null,
+    mode: "compose",
+    // Multi-object project: each object is a wearable being built
+    objects: [],
+    selObj: -1,
+    // parts of the active object (layers)
+    get parts() {
+      const o = this.objects[this.selObj];
+      return o ? o.parts : [];
+    },
+    selPart: -1,
+    crop: null,
+    cropDrag: null,
+    zoom: 3,
+    draftPoly: [],
+  };
+
+  function activeObj() {
+    return S.objects[S.selObj] || null;
+  }
+
+  function ensureObj() {
+    if (S.selObj < 0 || !S.objects[S.selObj]) {
+      addObject("New wearable", 1);
+    }
+    return S.objects[S.selObj];
+  }
+
+  function addObject(name, slot) {
+    const o = {
+      name: name || "Custom Item",
+      id: 9001 + S.objects.length,
+      slot: slot != null ? slot : 1,
+      t48: false,
+      ox: 0,
+      oy: slot === 1 ? -20 : 0,
+      parts: [],
+    };
+    S.objects.push(o);
+    S.selObj = S.objects.length - 1;
+    S.selPart = -1;
+    renderObjects();
+    syncObjFields();
+    renderParts();
+    draw();
+    return o;
+  }
+
+  function syncObjFields() {
+    const o = activeObj();
+    if (!o) return;
+    document.getElementById("name").value = o.name;
+    document.getElementById("id").value = o.id;
+    document.getElementById("outSlot").value = String(o.slot);
+    document.getElementById("t48").checked = !!o.t48;
+    document.getElementById("ox").value = o.ox;
+    document.getElementById("oy").value = o.oy;
+  }
+
+  function readObjFields() {
+    const o = activeObj();
+    if (!o) return;
+    o.name = document.getElementById("name").value || o.name;
+    o.id = Math.max(9000, Math.min(9999, +document.getElementById("id").value || o.id));
+    o.slot = +document.getElementById("outSlot").value;
+    o.t48 = document.getElementById("t48").checked;
+    o.ox = +document.getElementById("ox").value || 0;
+    o.oy = +document.getElementById("oy").value || 0;
+  }
+
+
+  const main = document.getElementById("main");
+  const mctx = main.getContext("2d");
+  mctx.imageSmoothingEnabled = false;
+  const atlasCv = document.getElementById("atlas");
+  const actx = atlasCv.getContext("2d");
+  actx.imageSmoothingEnabled = false;
+
+  function status(t) { document.getElementById("status").textContent = t; }
+
+  // Load tiles + catalog
+  Promise.all([
+    new Promise((res, rej) => {
+      const img = new Image();
+      img.onload = () => res(img);
+      img.onerror = () => rej(new Error("tiles.png missing — place next to editor or use /tiles.png"));
+      img.src = "/tiles.png";
+    }),
+    fetch("/custom_clothes/wearable_atlas_catalog.json").then(r => r.json()),
+  ]).then(([img, cat]) => {
+    S.sheet = img;
+    S.catalog = cat.items || [];
+    document.getElementById("catStat").textContent = S.catalog.length + " atlas frames loaded";
+    status("Ready — pick stock items, crop pieces, stack parts, export data.");
+    renderList();
+    draw();
+  }).catch((e) => {
+    status("Load failed: " + e.message + " — ensure tiles.png and wearable_atlas_catalog.json are available.");
+  });
+
+  function renderList() {
+    const slot = document.getElementById("filterSlot").value;
+    const q = (document.getElementById("search").value || "").toLowerCase();
+    const box = document.getElementById("itemList");
+    box.innerHTML = "";
+    S.catalog.forEach((it) => {
+      if (slot !== "all" && String(it.slot) !== slot) return;
+      if (q && !(it.name || "").toLowerCase().includes(q) && String(it.id).indexOf(q) < 0) return;
+      const div = document.createElement("div");
+      div.className = "item" + (S.selectedItem && S.selectedItem.id === it.id ? " sel" : "");
+      const c = document.createElement("canvas");
+      c.width = 36; c.height = 36;
+      const cx = c.getContext("2d");
+      cx.imageSmoothingEnabled = false;
+      if (S.sheet) {
+        const a = it.atlas;
+        const sc = Math.min(36 / a.w, 36 / a.h);
+        cx.drawImage(S.sheet, a.x, a.y, a.w, a.h, 0, 0, a.w * sc, a.h * sc);
+      }
+      div.appendChild(c);
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.innerHTML = "<b>" + escapeHtml(it.name) + "</b><span>id " + it.id + " · " + (SLOT_LABEL[it.slot] || it.slot) + " · " + it.atlas.w + "×" + it.atlas.h + "</span>";
+      div.appendChild(meta);
+      div.onclick = () => {
+        S.selectedItem = it;
+        S.crop = { x: 0, y: 0, w: it.atlas.w, h: it.atlas.h };
+        renderList();
+        if (S.mode === "crop") drawAtlas();
+        status("Selected " + it.name + " (id " + it.id + ")");
+      };
+      box.appendChild(div);
+    });
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c]));
+  }
+  document.getElementById("filterSlot").onchange = renderList;
+  document.getElementById("search").oninput = renderList;
+
+  document.querySelectorAll(".mode").forEach((btn) => {
+    btn.onclick = () => {
+      document.querySelectorAll(".mode").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      S.mode = btn.getAttribute("data-mode");
+      main.style.display = S.mode === "crop" ? "none" : "block";
+      atlasCv.style.display = S.mode === "crop" ? "block" : "none";
+      S.draftPoly = [];
+      if (S.mode === "crop") drawAtlas(); else draw();
+      status(S.mode === "poly" ? "Click on the compose view to place polygon vertices on the selected part." : "Mode: " + S.mode);
+    };
+  });
+
+  function drawAtlas() {
+    const it = S.selectedItem;
+    actx.fillStyle = "#121820";
+    actx.fillRect(0, 0, atlasCv.width, atlasCv.height);
+    if (!it || !S.sheet) return;
+    const a = it.atlas;
+    const scale = Math.min(400 / a.w, 480 / a.h, 8);
+    const dx = (atlasCv.width - a.w * scale) / 2;
+    const dy = (atlasCv.height - a.h * scale) / 2;
+    actx.imageSmoothingEnabled = false;
+    actx.drawImage(S.sheet, a.x, a.y, a.w, a.h, dx, dy, a.w * scale, a.h * scale);
+    // crop rect
+    if (S.crop) {
+      actx.strokeStyle = "#5b9fd4";
+      actx.lineWidth = 2;
+      actx.strokeRect(dx + S.crop.x * scale, dy + S.crop.y * scale, S.crop.w * scale, S.crop.h * scale);
+      actx.fillStyle = "rgba(91,159,212,0.15)";
+      actx.fillRect(dx + S.crop.x * scale, dy + S.crop.y * scale, S.crop.w * scale, S.crop.h * scale);
+    }
+    S._atlasView = { dx, dy, scale, a };
+  }
+
+  // crop drag on atlas canvas
+  atlasCv.onmousedown = (e) => {
+    if (!S.selectedItem || !S._atlasView) return;
+    const rect = atlasCv.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (atlasCv.width / rect.width);
+    const y = (e.clientY - rect.top) * (atlasCv.height / rect.height);
+    const { dx, dy, scale } = S._atlasView;
+    const lx = Math.round((x - dx) / scale);
+    const ly = Math.round((y - dy) / scale);
+    S.cropDrag = { x0: lx, y0: ly };
+    S.crop = { x: lx, y: ly, w: 1, h: 1 };
+    drawAtlas();
+  };
+  window.addEventListener("mousemove", (e) => {
+    if (!S.cropDrag || !S.selectedItem) return;
+    const rect = atlasCv.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (atlasCv.width / rect.width);
+    const y = (e.clientY - rect.top) * (atlasCv.height / rect.height);
+    const { dx, dy, scale } = S._atlasView;
+    const lx = Math.round((x - dx) / scale);
+    const ly = Math.round((y - dy) / scale);
+    const x0 = Math.min(S.cropDrag.x0, lx), y0 = Math.min(S.cropDrag.y0, ly);
+    const x1 = Math.max(S.cropDrag.x0, lx), y1 = Math.max(S.cropDrag.y0, ly);
+    const a = S.selectedItem.atlas;
+    S.crop = {
+      x: Math.max(0, x0),
+      y: Math.max(0, y0),
+      w: Math.min(a.w, x1) - Math.max(0, x0),
+      h: Math.min(a.h, y1) - Math.max(0, y0),
+    };
+    if (S.crop.w < 1) S.crop.w = 1;
+    if (S.crop.h < 1) S.crop.h = 1;
+    drawAtlas();
+  });
+  window.addEventListener("mouseup", () => { S.cropDrag = null; });
+
+  function extractPartCanvas(it, crop) {
+    const c = document.createElement("canvas");
+    const a = it.atlas;
+    const cr = crop || { x: 0, y: 0, w: a.w, h: a.h };
+    c.width = cr.w;
+    c.height = cr.h;
+    const cx = c.getContext("2d");
+    cx.imageSmoothingEnabled = false;
+    cx.drawImage(S.sheet, a.x + cr.x, a.y + cr.y, cr.w, cr.h, 0, 0, cr.w, cr.h);
+    return c;
+  }
+
+  function addPart(full) {
+    const it = S.selectedItem;
+    if (!it || !S.sheet) { status("Select a stock item first"); return; }
+    const crop = full ? { x: 0, y: 0, w: it.atlas.w, h: it.atlas.h } : (S.crop || { x: 0, y: 0, w: it.atlas.w, h: it.atlas.h });
+    const canvas = extractPartCanvas(it, crop);
+    const obj = ensureObj();
+    readObjFields();
+    obj.parts.push({
+      sourceId: it.id,
+      sourceName: it.name,
+      name: it.name + " layer",
+      atlas: Object.assign({}, it.atlas),
+      crop: Object.assign({}, crop),
+      x: 40, y: 40,
+      hue: 0, sat: 100, bri: 100,
+      opacity: 100,
+      visible: true,
+      canvas,
+      polys: [],
+    });
+    S.selPart = obj.parts.length - 1;
+    renderParts();
+    draw();
+    status("Added part from " + it.name + " (" + crop.w + "×" + crop.h + ")");
+  }
+  document.getElementById("btnAddFull").onclick = () => addPart(true);
+  document.getElementById("btnAddCrop").onclick = () => addPart(false);
+
+  function renderObjects() {
+    const box = document.getElementById("objList");
+    if (!box) return;
+    if (!S.objects.length) {
+      box.innerHTML = "<div>No objects — click + New object</div>";
+      return;
+    }
+    box.innerHTML = S.objects.map((o, i) =>
+      '<div class="part' + (i === S.selObj ? " sel" : "") + '" data-i="' + i + '" style="cursor:pointer">' +
+      escapeHtml(o.name) + " · id " + o.id + " · slot " + o.slot +
+      " · " + o.parts.length + " layer(s)</div>"
+    ).join("");
+    box.querySelectorAll(".part").forEach((el) => {
+      el.onclick = () => {
+        readObjFields();
+        S.selObj = +el.getAttribute("data-i");
+        S.selPart = S.parts.length ? 0 : -1;
+        syncObjFields();
+        renderObjects();
+        renderParts();
+        renderPolyList();
+        draw();
+      };
+    });
+  }
+
+  function renderParts() {
+    const box = document.getElementById("parts");
+    const parts = S.parts;
+    box.innerHTML = parts.map((p, i) =>
+      '<div class="part' + (i === S.selPart ? " sel" : "") + '" data-i="' + i + '">' +
+      "L" + i + (p.visible === false ? " (hidden)" : "") + " · " + escapeHtml(p.name || p.sourceName) +
+      "<br><span class='tiny'>src " + p.sourceId + " · " + p.crop.w + "×" + p.crop.h +
+      " @ " + p.x + "," + p.y + " · op " + (p.opacity != null ? p.opacity : 100) +
+      "% · polys " + (p.polys && p.polys.length || 0) + "</span></div>"
+    ).join("") || '<p class="tiny">No layers — add full item or crop from the left.</p>';
+    box.querySelectorAll(".part").forEach((el) => {
+      el.onclick = () => {
+        S.selPart = +el.getAttribute("data-i");
+        const p = S.parts[S.selPart];
+        if (!p) return;
+        document.getElementById("hue").value = p.hue;
+        document.getElementById("sat").value = p.sat;
+        document.getElementById("bri").value = p.bri;
+        renderPolyList();
+        renderParts();
+        draw();
+      };
+    });
+  }
+
+  ["hue","sat","bri"].forEach((id) => {
+    document.getElementById(id).oninput = function () {
+      const p = S.parts[S.selPart];
+      if (!p) return;
+      p[id === "bri" ? "bri" : id] = +this.value;
+      draw();
+    };
+  });
+  document.getElementById("btnDel").onclick = () => {
+    if (S.selPart < 0) return;
+    S.parts.splice(S.selPart, 1);
+    S.selPart = Math.min(S.selPart, S.parts.length - 1);
+    renderParts(); draw();
+  };
+  document.getElementById("btnDup").onclick = () => {
+    if (S.selPart < 0) return;
+    const p = S.parts[S.selPart];
+    const copy = Object.assign({}, p, { crop: Object.assign({}, p.crop), atlas: Object.assign({}, p.atlas), canvas: p.canvas });
+    S.parts.splice(S.selPart + 1, 0, copy);
+    S.selPart++;
+    renderParts(); draw();
+  };
+
+
+  function renderPolyList() {
+    const box = document.getElementById("polyList");
+    const p = S.parts[S.selPart];
+    if (!box) return;
+    if (!p || !p.polys || !p.polys.length) {
+      box.innerHTML = "<div>No polygons on this part.</div>";
+      return;
+    }
+    box.innerHTML = p.polys.map((poly, i) =>
+      "#" + i + " · " + poly.points.length + " pts" +
+      (poly.protect ? " · protect" : "") +
+      (poly.recolor ? " · tint" : "") +
+      ' <button type="button" data-i="' + i + '" class="rmPoly">×</button>'
+    ).join("<br>");
+    box.querySelectorAll(".rmPoly").forEach((b) => {
+      b.onclick = (e) => {
+        e.stopPropagation();
+        p.polys.splice(+b.getAttribute("data-i"), 1);
+        renderPolyList(); draw();
+      };
+    });
+  }
+
+  document.getElementById("btnClosePoly").onclick = () => {
+    const p = S.parts[S.selPart];
+    if (!p) { status("Select a part first"); return; }
+    if (S.draftPoly.length < 3) { status("Need at least 3 points"); return; }
+    // draft points are in part-local pixel space
+    p.polys = p.polys || [];
+    p.polys.push({
+      points: S.draftPoly.map((pt) => ({ x: pt.x, y: pt.y })),
+      protect: document.getElementById("polyProtect").checked,
+      recolor: document.getElementById("polyRecolor").checked,
+      color: document.getElementById("polyColor").value,
+      alpha: (+document.getElementById("polyAlpha").value || 100) / 100,
+    });
+    S.draftPoly = [];
+    renderPolyList();
+    renderParts();
+    draw();
+    status("Polygon closed (" + p.polys.length + " on part)");
+  };
+  document.getElementById("btnClearDraft").onclick = () => {
+    S.draftPoly = [];
+    draw();
+  };
+
+  function rasterizePoly(points, w, h) {
+    const mask = new Uint8Array(w * h);
+    if (!points || points.length < 3) return mask;
+    for (let y = 0; y < h; y++) {
+      const xs = [];
+      for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+        const yi = points[i].y, yj = points[j].y;
+        if ((yi > y) !== (yj > y)) {
+          xs.push(points[i].x + (points[j].x - points[i].x) * (y - yi) / (yj - yi || 1));
+        }
+      }
+      xs.sort((a, b) => a - b);
+      for (let k = 0; k + 1 < xs.length; k += 2) {
+        const x0 = Math.max(0, Math.floor(xs[k]));
+        const x1 = Math.min(w - 1, Math.ceil(xs[k + 1]));
+        for (let x = x0; x <= x1; x++) mask[y * w + x] = 1;
+      }
+    }
+    return mask;
+  }
+
+  function hexToRgb(hex) {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : { r: 255, g: 136, b: 68 };
+  }
+
+  function recolorCanvas(src, hue, sat, bri, polys) {
+    const c = document.createElement("canvas");
+    c.width = src.width; c.height = src.height;
+    const cx = c.getContext("2d");
+    cx.drawImage(src, 0, 0);
+    const data = cx.getImageData(0, 0, c.width, c.height);
+    const d = data.data;
+    const w = c.width, h = c.height;
+    const protect = new Uint8Array(w * h);
+    const tintPolys = [];
+    (polys || []).forEach((poly) => {
+      const mask = rasterizePoly(poly.points, w, h);
+      if (poly.protect) {
+        for (let i = 0; i < mask.length; i++) if (mask[i]) protect[i] = 1;
+      }
+      if (poly.recolor) tintPolys.push({ mask, color: poly.color, alpha: poly.alpha != null ? poly.alpha : 1 });
+    });
+    const doMain = !(hue === 0 && sat === 100 && bri === 100);
+    if (doMain) {
+      for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+        if (d[i+3] < 8 || protect[p]) continue;
+        let r = d[i]/255, g = d[i+1]/255, b = d[i+2]/255;
+        const max = Math.max(r,g,b), min = Math.min(r,g,b);
+        let hh, s, l = (max+min)/2;
+        if (max === min) hh = s = 0;
+        else {
+          const dd = max - min;
+          s = l > 0.5 ? dd/(2-max-min) : dd/(max+min);
+          switch (max) {
+            case r: hh = (g-b)/dd + (g<b?6:0); break;
+            case g: hh = (b-r)/dd + 2; break;
+            default: hh = (r-g)/dd + 4;
+          }
+          hh /= 6;
+        }
+        hh = (hh*360 + hue + 360) % 360 / 360;
+        s = Math.max(0, Math.min(1, s * (sat/100)));
+        l = Math.max(0, Math.min(1, l * (bri/100)));
+        const hue2rgb = (pp,q,t) => {
+          if (t<0) t+=1; if (t>1) t-=1;
+          if (t<1/6) return pp+(q-pp)*6*t;
+          if (t<1/2) return q;
+          if (t<2/3) return pp+(q-pp)*(2/3-t)*6;
+          return pp;
+        };
+        let rr, gg, bb;
+        if (s === 0) rr = gg = bb = l;
+        else {
+          const q = l < 0.5 ? l*(1+s) : l+s-l*s;
+          const pp = 2*l - q;
+          rr = hue2rgb(pp,q,hh+1/3); gg = hue2rgb(pp,q,hh); bb = hue2rgb(pp,q,hh-1/3);
+        }
+        d[i]=rr*255; d[i+1]=gg*255; d[i+2]=bb*255;
+      }
+    }
+    tintPolys.forEach((tp) => {
+      const rgb = hexToRgb(tp.color);
+      const a = tp.alpha;
+      for (let p = 0; p < tp.mask.length; p++) {
+        if (!tp.mask[p]) continue;
+        const i = p * 4;
+        if (d[i+3] < 8) continue;
+        const lum = (d[i] + d[i+1] + d[i+2]) / (3 * 255);
+        d[i]     = Math.round(rgb.r * lum * a + d[i] * (1 - a));
+        d[i + 1] = Math.round(rgb.g * lum * a + d[i + 1] * (1 - a));
+        d[i + 2] = Math.round(rgb.b * lum * a + d[i + 2] * (1 - a));
+      }
+    });
+    cx.putImageData(data, 0, 0);
+    return c;
+  }
+
+  function composite() {
+    const parts = S.parts.filter((p) => p.visible !== false);
+    if (!parts.length) return null;
+    let maxX = 1, maxY = 1;
+    parts.forEach((p) => {
+      maxX = Math.max(maxX, p.x + p.canvas.width);
+      maxY = Math.max(maxY, p.y + p.canvas.height);
+    });
+    const out = document.createElement("canvas");
+    out.width = maxX; out.height = maxY;
+    const o = out.getContext("2d");
+    o.imageSmoothingEnabled = false;
+    parts.forEach((p) => {
+      const tinted = recolorCanvas(p.canvas, p.hue, p.sat, p.bri, p.polys);
+      o.globalAlpha = (p.opacity != null ? p.opacity : 100) / 100;
+      o.drawImage(tinted, p.x, p.y);
+      o.globalAlpha = 1;
+    });
+    return out;
+  }
+
+  function draw() {
+    mctx.fillStyle = "#121820";
+    mctx.fillRect(0, 0, main.width, main.height);
+    const z = S.zoom;
+    // rig
+    mctx.save();
+    mctx.translate(main.width/2, 40);
+    mctx.scale(z, z);
+    mctx.strokeStyle = "rgba(91,159,212,0.45)";
+    mctx.lineWidth = 1/z;
+    mctx.beginPath();
+    mctx.arc(0, 16, 14, 0, Math.PI*2);
+    mctx.moveTo(0, 30); mctx.lineTo(0, 80);
+    mctx.lineTo(-12, 130); mctx.lineTo(-14, 155);
+    mctx.moveTo(0, 80); mctx.lineTo(12, 130); mctx.lineTo(14, 155);
+    mctx.moveTo(0, 50); mctx.lineTo(-28, 75);
+    mctx.moveTo(0, 50); mctx.lineTo(28, 75);
+    mctx.stroke();
+    const sprite = composite();
+    if (sprite) {
+      mctx.drawImage(sprite, -sprite.width/2, 20);
+    }
+    // polygon overlays for selected part (part-local → compose space)
+    const sp = S.parts[S.selPart];
+    if (sp) {
+      const baseX = - (composite() ? composite().width / 2 : 0) + sp.x;
+      const baseY = 20 + sp.y;
+      (sp.polys || []).forEach((poly) => {
+        if (!poly.points || poly.points.length < 2) return;
+        mctx.beginPath();
+        mctx.strokeStyle = "rgba(230,179,92,0.95)";
+        mctx.lineWidth = 1 / z;
+        poly.points.forEach((pt, i) => {
+          const px = baseX + pt.x, py = baseY + pt.y;
+          if (i === 0) mctx.moveTo(px, py); else mctx.lineTo(px, py);
+        });
+        mctx.closePath();
+        mctx.stroke();
+      });
+      if (S.draftPoly.length) {
+        mctx.beginPath();
+        mctx.strokeStyle = "#5b9fd4";
+        mctx.lineWidth = 1.5 / z;
+        S.draftPoly.forEach((pt, i) => {
+          const px = baseX + pt.x, py = baseY + pt.y;
+          if (i === 0) mctx.moveTo(px, py); else mctx.lineTo(px, py);
+        });
+        mctx.stroke();
+        S.draftPoly.forEach((pt) => {
+          mctx.fillStyle = "#5b9fd4";
+          mctx.fillRect(baseX + pt.x - 1.5/z, baseY + pt.y - 1.5/z, 3/z, 3/z);
+        });
+      }
+    }
+    mctx.restore();
+  }
+
+  function nudge(dx, dy) {
+    const p = S.parts[S.selPart];
+    if (!p) return;
+    const st = +document.getElementById("step").value || 1;
+    p.x += dx * st; p.y += dy * st;
+    renderParts(); draw();
+  }
+  document.getElementById("nL").onclick = () => nudge(-1, 0);
+  document.getElementById("nR").onclick = () => nudge(1, 0);
+  document.getElementById("nU").onclick = () => nudge(0, -1);
+  document.getElementById("nD").onclick = () => nudge(0, 1);
+
+  // drag part on main
+  main.onmousedown = (e) => {
+    if (S.selPart < 0) return;
+    if (S.mode === "poly") {
+      const p = S.parts[S.selPart];
+      const rect = main.getBoundingClientRect();
+      const cx = (e.clientX - rect.left) * (main.width / rect.width);
+      const cy = (e.clientY - rect.top) * (main.height / rect.height);
+      // inverse of draw transform: translate(main.width/2, 40) scale(z)
+      const z = S.zoom;
+      const lx = (cx - main.width / 2) / z;
+      const ly = (cy - 40) / z;
+      const sprite = composite();
+      const baseX = - (sprite ? sprite.width / 2 : 0) + p.x;
+      const baseY = 20 + p.y;
+      const px = Math.round(lx - baseX);
+      const py = Math.round(ly - baseY);
+      S.draftPoly.push({ x: px, y: py });
+      draw();
+      status("Polygon points: " + S.draftPoly.length + " (Close polygon when done)");
+      return;
+    }
+    S.drag = { x: e.clientX, y: e.clientY, ox: S.parts[S.selPart].x, oy: S.parts[S.selPart].y };
+  };
+  window.addEventListener("mousemove", (e) => {
+    if (!S.drag || S.selPart < 0) return;
+    const p = S.parts[S.selPart];
+    p.x = Math.round(S.drag.ox + (e.clientX - S.drag.x) / S.zoom);
+    p.y = Math.round(S.drag.oy + (e.clientY - S.drag.y) / S.zoom);
+    renderParts(); draw();
+  });
+  window.addEventListener("mouseup", () => { S.drag = null; });
+
+  function buildItem() {
+    readObjFields();
+    const obj = activeObj();
+    if (!obj) { status("Create an object first"); return null; }
+    const sprite = composite();
+    if (!sprite) { status("Add at least one layer from the atlas"); return null; }
+    const id = Math.max(9000, Math.min(9999, obj.id | 0));
+    return {
+      version: 2,
+      id,
+      name: obj.name || ("Custom " + id),
+      category: 2,
+      slot: obj.slot | 0,
+      t48: !!obj.t48,
+      offsetX: obj.ox | 0,
+      offsetY: obj.oy | 0,
+      parts: obj.parts.filter((p) => p.visible !== false).map((p) => ({
+        sourceId: p.sourceId,
+        sourceName: p.sourceName,
+        name: p.name,
+        atlas: p.atlas,
+        crop: p.crop,
+        x: p.x, y: p.y,
+        hue: p.hue, sat: p.sat, bri: p.bri,
+        opacity: p.opacity != null ? p.opacity : 100,
+        polys: p.polys || [],
+      })),
+      sprite: sprite.toDataURL("image/png"),
+      server: true,
+    };
+  }
+
+  document.getElementById("btnJson").onclick = () => {
+    const item = buildItem();
+    if (!item) return;
+    const a = document.createElement("a");
+    a.download = "item_" + item.id + ".json";
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(item, null, 2)], { type: "application/json" }));
+    a.click();
+    status("Downloaded item_" + item.id + ".json (atlas parts + baked sprite)");
+  };
+  document.getElementById("btnPublish").onclick = () => {
+    const item = buildItem();
+    if (!item) return;
+    const base = (document.getElementById("server").value || "").replace(/\/$/, "");
+    status("Publishing " + item.id + "…");
+    fetch(base + "/api/custom-clothes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(item),
+    })
+      .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+      .then((res) => {
+        if (!res.ok) {
+          status("Publish failed: " + (res.j && res.j.error || "error") + " — set DIGGERZ_ALLOW_CUSTOM_PUBLISH=1 or drop JSON into custom_clothes/");
+          return;
+        }
+        status("Published " + item.name + " (" + item.id + ")");
+      })
+      .catch((e) => status("Error: " + e.message));
+  };
+
+  document.getElementById("btnNewObj").onclick = () => {
+    readObjFields();
+    const slot = +document.getElementById("outSlot").value || 1;
+    addObject(slot === 1 ? "Custom Hat" : slot === 5 ? "Custom Back" : "Custom Item", slot);
+    status("New object — stack layers from the left list");
+  };
+  document.getElementById("btnDupObj").onclick = () => {
+    readObjFields();
+    const o = activeObj();
+    if (!o) return;
+    const copy = JSON.parse(JSON.stringify({
+      name: o.name + " copy", id: Math.min(9999, (o.id|0) + 1), slot: o.slot, t48: o.t48, ox: o.ox, oy: o.oy,
+      parts: [],
+    }));
+    // deep-copy parts with canvases
+    o.parts.forEach((p) => {
+      const c = document.createElement("canvas");
+      c.width = p.canvas.width; c.height = p.canvas.height;
+      c.getContext("2d").drawImage(p.canvas, 0, 0);
+      copy.parts.push(Object.assign({}, p, {
+        atlas: Object.assign({}, p.atlas),
+        crop: Object.assign({}, p.crop),
+        polys: (p.polys || []).map((poly) => Object.assign({}, poly, { points: poly.points.map((pt) => Object.assign({}, pt)) })),
+        canvas: c,
+      }));
+    });
+    S.objects.push(copy);
+    S.selObj = S.objects.length - 1;
+    S.selPart = copy.parts.length ? 0 : -1;
+    syncObjFields();
+    renderObjects();
+    renderParts();
+    draw();
+  };
+  document.getElementById("btnDelObj").onclick = () => {
+    if (S.selObj < 0) return;
+    S.objects.splice(S.selObj, 1);
+    S.selObj = Math.min(S.selObj, S.objects.length - 1);
+    if (S.objects.length === 0) S.selObj = -1;
+    S.selPart = -1;
+    if (S.selObj >= 0) syncObjFields();
+    renderObjects();
+    renderParts();
+    draw();
+  };
+  document.getElementById("btnLayerUp").onclick = () => {
+    const parts = S.parts;
+    if (S.selPart <= 0) return;
+    const t = parts[S.selPart - 1];
+    parts[S.selPart - 1] = parts[S.selPart];
+    parts[S.selPart] = t;
+    S.selPart--;
+    renderParts(); draw();
+  };
+  document.getElementById("btnLayerDown").onclick = () => {
+    const parts = S.parts;
+    if (S.selPart < 0 || S.selPart >= parts.length - 1) return;
+    const t = parts[S.selPart + 1];
+    parts[S.selPart + 1] = parts[S.selPart];
+    parts[S.selPart] = t;
+    S.selPart++;
+    renderParts(); draw();
+  };
+  document.getElementById("btnLayerVis").onclick = () => {
+    const p = S.parts[S.selPart];
+    if (!p) return;
+    p.visible = p.visible === false ? true : false;
+    renderParts(); draw();
+  };
+  // keep object fields live
+  ["name","id","outSlot","t48","ox","oy"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.onchange = el.oninput = () => { readObjFields(); renderObjects(); draw(); };
+  });
+
+  // start with one empty object
+  addObject("Custom Hat", 1);
+
+})();
+</script>
+</body>
+</html>

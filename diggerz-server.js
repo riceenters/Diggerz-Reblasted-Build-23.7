@@ -29,6 +29,108 @@ const ROSTER_INTERVAL_MS = 5 * 1000;
 const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const ALLOWED_RELAY_TYPES = new Set(['session', 'hello', 'chat', 'typing', 'health', 'rgb-kpop-state']);
 const BUILD = '24.0';
+const CUSTOM_CLOTHES_DIR = path.join(__dirname, 'custom_clothes');
+const CUSTOM_ITEM_ID_MIN = 9000;
+const CUSTOM_ITEM_ID_MAX = 9999;
+/** @type {Map<number, object>} */
+const customClothesById = new Map();
+
+function isCustomItemId(id) {
+  id = Number(id) | 0;
+  return id >= CUSTOM_ITEM_ID_MIN && id <= CUSTOM_ITEM_ID_MAX;
+}
+
+function loadCustomClothes() {
+  customClothesById.clear();
+  try {
+    if (!fs.existsSync(CUSTOM_CLOTHES_DIR)) {
+      fs.mkdirSync(CUSTOM_CLOTHES_DIR, { recursive: true });
+      console.log('[CustomClothes] created', CUSTOM_CLOTHES_DIR);
+    }
+    const manifestPath = path.join(CUSTOM_CLOTHES_DIR, 'manifest.json');
+    let entries = [];
+    if (fs.existsSync(manifestPath)) {
+      try {
+        const man = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        entries = Array.isArray(man.items) ? man.items : [];
+      } catch (e) {
+        console.warn('[CustomClothes] bad manifest', e.message);
+      }
+    }
+    // Also load any item_*.json not listed
+    const files = fs.readdirSync(CUSTOM_CLOTHES_DIR).filter(f => /^item_\d+\.json$/i.test(f));
+    const fileSet = new Set(files);
+    for (const e of entries) {
+      if (e && e.file) fileSet.add(e.file);
+    }
+    for (const file of fileSet) {
+      try {
+        const full = path.join(CUSTOM_CLOTHES_DIR, file);
+        if (!fs.existsSync(full)) continue;
+        const item = JSON.parse(fs.readFileSync(full, 'utf8'));
+        const id = Number(item.id) | 0;
+        if (!isCustomItemId(id)) {
+          console.warn('[CustomClothes] skip id out of range', id, file);
+          continue;
+        }
+        // Hats only for server-authoritative wear for now (slot 1)
+        const slot = item.slot != null ? (Number(item.slot) | 0) : 1;
+        item.slot = slot;
+        item.category = 2;
+        item.server = true;
+        customClothesById.set(id, item);
+        console.log('[CustomClothes] loaded', id, item.name || file, 'slot', slot);
+      } catch (err) {
+        console.warn('[CustomClothes] failed', file, err.message);
+      }
+    }
+    console.log('[CustomClothes] total', customClothesById.size);
+  } catch (e) {
+    console.warn('[CustomClothes] load error', e.message);
+  }
+}
+
+function getCustomClothesCatalog() {
+  const items = [];
+  for (const item of customClothesById.values()) {
+    items.push({
+      id: item.id | 0,
+      name: String(item.name || ('Custom ' + item.id)),
+      slot: item.slot | 0,
+      category: 2,
+      t48: !!item.t48,
+      offsetX: item.offsetX != null ? Number(item.offsetX) : 0,
+      offsetY: item.offsetY != null ? Number(item.offsetY) : 0,
+      tint: item.tint || null,
+      sprite: item.sprite || null,
+    });
+  }
+  return { version: 1, items };
+}
+
+function sanitizeAppearance(arr) {
+  const out = [];
+  for (let i = 0; i < 11; i++) {
+    let v = Array.isArray(arr) ? (Number(arr[i]) | 0) : 0;
+    if (v < 0) v = 0;
+    // Stock dig items 1..2047, custom 9000..9999
+    if (v > 0 && v <= 2047) {
+      out.push(v);
+    } else if (isCustomItemId(v) && customClothesById.has(v)) {
+      // Only allow custom items that exist on the server
+      out.push(v);
+    } else if (isCustomItemId(v)) {
+      // Unknown custom id — strip so clients don't desync on missing assets
+      out.push(0);
+    } else {
+      out.push(0);
+    }
+  }
+  return out;
+}
+
+loadCustomClothes();
+
 const WORLD_WIDTH = 128;
 const BATTLE_BUILD_MS = Number(process.env.DIGGERZ_BUILD_MS || 40 * 1000);
 const BATTLE_FIRST_SHRINK_MS = Number(process.env.DIGGERZ_FIRST_SHRINK_MS || 90 * 1000);
@@ -1991,7 +2093,10 @@ function sanitizeItem(item) {
   const category = Number(item.category) | 0;
   const id = Number(item.id) | 0;
   const count = Math.max(0, Math.min(65535, Number(item.count) | 0));
-  if ((category !== 1 && category !== 2) || id <= 0 || id > 2047 || count <= 0) return null;
+  // Stock dig items: 1..2047. Custom clothes (server registry): 9000..9999.
+  const customOk = isCustomItemId(id) && customClothesById.has(id);
+  if ((category !== 1 && category !== 2) || id <= 0 || count <= 0) return null;
+  if (id > 2047 && !customOk) return null;
   return { category, id, variant: (Number(item.variant) | 0) & 31, count, extra: Number(item.extra) | 0, text: String(item.text || '').slice(0, 180) };
 }
 
@@ -2083,7 +2188,7 @@ function relayGameMessage(client, message, rawLength) {
   if (message.t==='hello') {
     const newName=normalizeName(message.name||client.name), changed=newName!==client.name;
     client.name=newName;
-    client.appearance=Array.isArray(message.appearance)?message.appearance.slice(0,11):client.appearance||[0,247,0,0,326,0,0,0,0,0,0];
+    client.appearance=sanitizeAppearance(Array.isArray(message.appearance)?message.appearance:client.appearance);
     client.appearanceText=String(message.appearanceText||client.appearanceText||'').slice(0,180);
     client.skin=Number.isFinite(Number(message.skin))?Number(message.skin):1.44;
     if(Number.isFinite(Number(message.wins))) client.wins=Math.max(0,Number(message.wins)|0);
@@ -3098,6 +3203,96 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (urlPath === '/banned') { const body=Buffer.from(banPageHtml(),'utf8'); res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Content-Length':body.length,'Cache-Control':'no-store'}); res.end(body); return; }
+  // ── Custom clothes (server-authoritative hats / wearables) ──
+  if (urlPath === '/api/custom-clothes' || urlPath === '/api/custom-clothes/catalog') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+    if (req.method === 'POST' && urlPath === '/api/custom-clothes') {
+      // Admin-less local publish: write item JSON into custom_clothes/ and reload
+      // (for production, gate this behind admin). Enabled when DIGGERZ_ALLOW_CUSTOM_PUBLISH=1
+      if (process.env.DIGGERZ_ALLOW_CUSTOM_PUBLISH !== '1') {
+        sendApiJson(res, 403, { ok: false, error: 'publish-disabled' });
+        return;
+      }
+      try {
+        const body = await new Promise((resolve, reject) => {
+          const chunks = [];
+          req.on('data', (c) => chunks.push(c));
+          req.on('end', () => {
+            try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); }
+            catch (e) { reject(e); }
+          });
+          req.on('error', reject);
+        });
+        const id = Number(body.id) | 0;
+        if (!isCustomItemId(id)) {
+          sendApiJson(res, 400, { ok: false, error: 'id-must-be-9000-9999' });
+          return;
+        }
+        body.category = 2;
+        body.server = true;
+        if (body.slot == null) body.slot = 1; // default hat
+        const file = 'item_' + id + '.json';
+        fs.writeFileSync(path.join(CUSTOM_CLOTHES_DIR, file), JSON.stringify(body, null, 2));
+        // update manifest
+        const manPath = path.join(CUSTOM_CLOTHES_DIR, 'manifest.json');
+        let man = { version: 1, items: [] };
+        try { if (fs.existsSync(manPath)) man = JSON.parse(fs.readFileSync(manPath, 'utf8')); } catch (e) {}
+        if (!Array.isArray(man.items)) man.items = [];
+        man.items = man.items.filter(x => (x && (x.id|0)) !== id);
+        man.items.push({ id, name: body.name || ('Custom ' + id), slot: body.slot|0, file });
+        fs.writeFileSync(manPath, JSON.stringify(man, null, 2));
+        loadCustomClothes();
+        sendApiJson(res, 200, { ok: true, id, catalog: getCustomClothesCatalog() });
+      } catch (e) {
+        sendApiJson(res, 500, { ok: false, error: String(e.message || e) });
+      }
+      return;
+    }
+    if (req.method === 'GET') {
+      sendApiJson(res, 200, Object.assign({ ok: true }, getCustomClothesCatalog()));
+      return;
+    }
+    sendApiJson(res, 405, { ok: false, error: 'method-not-allowed' });
+    return;
+  }
+  if (urlPath === '/api/custom-clothes/reload') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    loadCustomClothes();
+    sendApiJson(res, 200, Object.assign({ ok: true, reloaded: true }, getCustomClothesCatalog()));
+    return;
+  }
+  if (urlPath.startsWith('/custom_clothes/')) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    try {
+      const rel = decodeURIComponent(urlPath.slice('/custom_clothes/'.length)).replace(/\\/g, '/');
+      if (!rel || rel.includes('..')) { res.writeHead(400); res.end('bad path'); return; }
+      const full = path.join(CUSTOM_CLOTHES_DIR, rel);
+      if (!full.startsWith(CUSTOM_CLOTHES_DIR) || !fs.existsSync(full) || !fs.statSync(full).isFile()) {
+        res.writeHead(404); res.end('not found'); return;
+      }
+      const ext = path.extname(full).toLowerCase();
+      const types = { '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.js': 'text/javascript; charset=utf-8' };
+      const body = fs.readFileSync(full);
+      res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream', 'Content-Length': body.length, 'Cache-Control': 'no-store' });
+      res.end(body);
+    } catch (e) {
+      res.writeHead(500); res.end('error');
+    }
+    return;
+  }
+  if (urlPath === '/clothing-editor' || urlPath === '/clothing-editor/') {
+    try {
+      const editorPath = path.join(__dirname, 'clothing-editor', 'index.html');
+      const body = fs.readFileSync(editorPath);
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': body.length, 'Cache-Control': 'no-store' });
+      res.end(body);
+    } catch (e) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('clothing editor missing\n');
+    }
+    return;
+  }
   if (urlPath === '/map-editor') {
     try {
       const editorPath = path.join(__dirname, 'map-editor.html');
@@ -3302,6 +3497,8 @@ server.listen(PORT, HOST, () => {
     }
   }
   log(`Health check: http://127.0.0.1:${PORT}/health`);
+  log(`Custom clothes: ${customClothesById.size} item(s) — catalog http://127.0.0.1:${PORT}/api/custom-clothes`);
+  log(`Clothing editor: http://127.0.0.1:${PORT}/clothing-editor`);
   log(`Battle map pool (random per new room): Default Map${customBattleMaps.length ? ' + ' + customBattleMaps.map(m=>m.name).join(' + ') : ''}`);
 });
 

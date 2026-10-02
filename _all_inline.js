@@ -36788,9 +36788,12 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 h.O27(b, 0, 4, 4);
                 break;
             default:
-                b.Init(f.UNKNOWN_BLOCK_PNG()),
-                b instanceof F && h.N27(b),
-                b._1 = "Unknown"
+                // Custom wearables 9000-9999 (hats, pants, shirts, etc.)
+                if (!(window.DiggerzApplyCustomWearable && window.DiggerzApplyCustomWearable(b, c))) {
+                    b.Init(f.UNKNOWN_BLOCK_PNG()),
+                    b instanceof F && h.N27(b),
+                    b._1 = "Unknown"
+                }
             }
         return b
     }
