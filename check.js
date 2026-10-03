@@ -88793,67 +88793,93 @@ function __normalizeWearableScales(skel) {
         },
         __class__: rj
     });
-    // Remote Mortar projectile: based directly on the normal rj/Mortar missile.
-    // WASD selects a desired travel direction and the missile turns toward it
-    // gradually, using the same smooth steering idea as the Homing Mortar.
-    var Ro = function(a, b, c, d, e, g, p) {
-        rj.call(this, a, b, c, d, e, g, p);
-        this.set_local_r(.25);
-        this.set_local_g(1);
-        this.set_local_b(.25);
-        this.c9 = !0;
-        this._remoteSteerReady = true;
-        if (typeof window !== "undefined") window.__diggerzRemoteMortarActive = true;
-    };
-    v.RemoteMortarProjectile = Ro;
-    Ro.__name__ = "RemoteMortarProjectile";
-    Ro.__super__ = rj;
-    Ro.prototype = D(rj.prototype, {
-        b51: function(a) {
-            rj.prototype.b51.call(this, a);
-            this.A58(a)
-        },
-        e0: function() {
-            if (this._remoteSteerReady && this.b33 && typeof q !== "undefined") {
-                var ix = 0, iy = 0;
-                if (q.KeyDown(65)) ix -= 1;
-                if (q.KeyDown(68)) ix += 1;
-                if (q.KeyDown(87)) iy -= 1;
-                if (q.KeyDown(83)) iy += 1;
+    // Remote Mortar projectile: keep the normal Mortar projectile physics/lifecycle.
+// WASD only changes the direction of the projectile while it is airborne.
+var Ro = function(a, b, c, d, e, g, p) {
+    rj.call(this, a, b, c, d, e, g, p);
+    this._remoteAlive = true;
+    this._remoteOwner = p || null;
+    this._remoteSpeed = 300;
+    this._remoteAngle = 0;
 
-                if (ix || iy) {
-                    var il = Math.sqrt(ix * ix + iy * iy) || 1;
-                    ix /= il;
-                    iy /= il;
-
-                    try {
-                        var vel = this.b33.tBJ.wrap_vel.tBJ;
-                        var speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
-                        if (speed < 0.25) speed = 0.25;
-
-                        // Same basic angular steering idea as the Homing Mortar,
-                        // but the target is the WASD direction instead of a player.
-                        var desired = Math.atan2(iy, ix);
-                        var current = Math.atan2(vel.y, vel.x);
-                        var delta = desired - current;
-                        while (delta > Math.PI) delta -= Math.PI * 2;
-                        while (delta < -Math.PI) delta += Math.PI * 2;
-
-                        // Slow turn rate keeps Remote Mortar controllable but not OP.
-                        var maxTurn = 0.055;
-                        if (delta > maxTurn) delta = maxTurn;
-                        if (delta < -maxTurn) delta = -maxTurn;
-
-                        var angle = current + delta;
-                        vel.x = Math.cos(angle) * speed;
-                        vel.y = Math.sin(angle) * speed;
-                    } catch (_) {}
-                }
+    // Read the launch velocity once.  After that, WASD only rotates that
+    // existing velocity; no extra impulse/acceleration is added.
+    try {
+        var body = this.b33;
+        body.setupVelocity();
+        var vv = body.wrap_vel && body.wrap_vel.tBJ ? body.wrap_vel.tBJ : null;
+        if (vv) {
+            var vx0 = Number(vv.x) || 0, vy0 = Number(vv.y) || 0;
+            var s0 = Math.sqrt(vx0 * vx0 + vy0 * vy0);
+            if (s0 > 0.001) {
+                this._remoteSpeed = s0;
+                this._remoteAngle = Math.atan2(vy0, vx0);
             }
-            return rj.prototype.e0.call(this)
-        },
-        __class__: Ro
-    });
+        }
+    } catch (_) {}
+
+    if (typeof window !== "undefined") {
+        window.__diggerzRemoteMortarActive = true;
+        window.__diggerzRemoteMortarProjectile = this;
+    }
+};
+v.RemoteMortarProjectile = Ro;
+Ro.__name__ = "RemoteMortarProjectile";
+Ro.__super__ = rj;
+Ro.prototype = D(rj.prototype, {
+    b51: function(a) {
+        rj.prototype.b51.call(this, a);
+        this._remoteAlive = false;
+        if (typeof window !== "undefined" && window.__diggerzRemoteMortarProjectile === this) {
+            window.__diggerzRemoteMortarProjectile = null;
+            window.__diggerzRemoteMortarActive = false;
+        }
+    },
+    e0: function() {
+        // First run the normal Mortar projectile update/collision code.
+        var a = rj.prototype.e0.call(this);
+        if (!this._remoteAlive || !this.b33) return a;
+
+        try {
+            var left = !!q.KeyDown(65);
+            var right = !!q.KeyDown(68);
+            var up = !!q.KeyDown(87);
+            var down = !!q.KeyDown(83);
+
+            var ix = (right ? 1 : 0) - (left ? 1 : 0);
+            var iy = (down ? 1 : 0) - (up ? 1 : 0);
+
+            if (ix || iy) {
+                var inputLen = Math.sqrt(ix * ix + iy * iy) || 1;
+                ix /= inputLen;
+                iy /= inputLen;
+
+                var desired = Math.atan2(iy, ix);
+                var delta = desired - this._remoteAngle;
+                while (delta > Math.PI) delta -= Math.PI * 2;
+                while (delta < -Math.PI) delta += Math.PI * 2;
+
+                // Smoothly turn the normal Mortar projectile toward WASD.
+                var maxTurn = 0.08;
+                if (delta > maxTurn) delta = maxTurn;
+                if (delta < -maxTurn) delta = -maxTurn;
+                this._remoteAngle += delta;
+            }
+
+            var body = this.b33.tBJ;
+            body.setupVelocity();
+            var vel = body.wrap_vel.tBJ;
+            var speed = Number(this._remoteSpeed) || 300;
+            vel.x = Math.cos(this._remoteAngle) * speed;
+            vel.y = Math.sin(this._remoteAngle) * speed;
+            body.component.woken = true;
+            this.set_local_rot(this._remoteAngle);
+        } catch (_) {}
+
+        return a
+    },
+    __class__: Ro
+});
 
     var Eo = function(a, b, c, d, e, g, f) {
         rj.call(this, a, b, c, d, e, g, f);

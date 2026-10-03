@@ -88972,163 +88972,93 @@ function __normalizeWearableScales(skel) {
         },
         __class__: rj
     });
-    // Remote Mortar projectile: use the existing Homing Mortar projectile
-    // physics/steering shape, but replace its target with WASD.  The important
-    // difference is that we rotate the velocity at a fixed magnitude instead
-    // of applying an impulse every frame, so the missile never accelerates.
-    var Ro = function(a, b, c, d, e, g, p) {
-        rj.call(this, a, b, c, d, e, g, p);
-        this.set_local_r(.25);
-        this.set_local_g(1);
-        this.set_local_b(.25);
-        this.c9 = !0;
-        this._remoteAlive = true;
-        this._remoteOwner = p || null;
-        this._remoteSpeed = 300;
-        this._remoteAngle = 0;
+    // Remote Mortar projectile: keep the normal Mortar projectile physics/lifecycle.
+// WASD only changes the direction of the projectile while it is airborne.
+var Ro = function(a, b, c, d, e, g, p) {
+    rj.call(this, a, b, c, d, e, g, p);
+    this._remoteAlive = true;
+    this._remoteOwner = p || null;
+    this._remoteSpeed = 300;
+    this._remoteAngle = 0;
+
+    // Read the launch velocity once.  After that, WASD only rotates that
+    // existing velocity; no extra impulse/acceleration is added.
+    try {
+        var body = this.b33;
+        body.setupVelocity();
+        var vv = body.wrap_vel && body.wrap_vel.tBJ ? body.wrap_vel.tBJ : null;
+        if (vv) {
+            var vx0 = Number(vv.x) || 0, vy0 = Number(vv.y) || 0;
+            var s0 = Math.sqrt(vx0 * vx0 + vy0 * vy0);
+            if (s0 > 0.001) {
+                this._remoteSpeed = s0;
+                this._remoteAngle = Math.atan2(vy0, vx0);
+            }
+        }
+    } catch (_) {}
+
+    if (typeof window !== "undefined") {
+        window.__diggerzRemoteMortarActive = true;
+        window.__diggerzRemoteMortarProjectile = this;
+    }
+};
+v.RemoteMortarProjectile = Ro;
+Ro.__name__ = "RemoteMortarProjectile";
+Ro.__super__ = rj;
+Ro.prototype = D(rj.prototype, {
+    b51: function(a) {
+        rj.prototype.b51.call(this, a);
+        this._remoteAlive = false;
+        if (typeof window !== "undefined" && window.__diggerzRemoteMortarProjectile === this) {
+            window.__diggerzRemoteMortarProjectile = null;
+            window.__diggerzRemoteMortarActive = false;
+        }
+    },
+    e0: function() {
+        // First run the normal Mortar projectile update/collision code.
+        var a = rj.prototype.e0.call(this);
+        if (!this._remoteAlive || !this.b33) return a;
 
         try {
-            var body = this.b33;
-            body.tBJ.immutable_midstep("Body::gravMass");
-            body.tBJ.gravMassMode = 1;
-            body.tBJ.gravMass = 0;
-            body.tBJ.invalidate_gravMass();
-            body.tBJ.validate_gravMass();
+            var left = !!q.KeyDown(65);
+            var right = !!q.KeyDown(68);
+            var up = !!q.KeyDown(87);
+            var down = !!q.KeyDown(83);
 
-            body.setupVelocity();
-            var vv = body.wrap_vel && body.wrap_vel.tBJ ? body.wrap_vel.tBJ : null;
-            if (vv) {
-                var vx0 = Number(vv.x) || 0, vy0 = Number(vv.y) || 0;
-                var s0 = Math.sqrt(vx0 * vx0 + vy0 * vy0);
-                if (s0 > 0.001) {
-                    this._remoteSpeed = s0;
-                    this._remoteAngle = Math.atan2(vy0, vx0);
-                }
+            var ix = (right ? 1 : 0) - (left ? 1 : 0);
+            var iy = (down ? 1 : 0) - (up ? 1 : 0);
+
+            if (ix || iy) {
+                var inputLen = Math.sqrt(ix * ix + iy * iy) || 1;
+                ix /= inputLen;
+                iy /= inputLen;
+
+                var desired = Math.atan2(iy, ix);
+                var delta = desired - this._remoteAngle;
+                while (delta > Math.PI) delta -= Math.PI * 2;
+                while (delta < -Math.PI) delta += Math.PI * 2;
+
+                // Smoothly turn the normal Mortar projectile toward WASD.
+                var maxTurn = 0.08;
+                if (delta > maxTurn) delta = maxTurn;
+                if (delta < -maxTurn) delta = -maxTurn;
+                this._remoteAngle += delta;
             }
+
+            var body = this.b33.tBJ;
+            body.setupVelocity();
+            var vel = body.wrap_vel.tBJ;
+            var speed = Number(this._remoteSpeed) || 300;
+            vel.x = Math.cos(this._remoteAngle) * speed;
+            vel.y = Math.sin(this._remoteAngle) * speed;
+            body.component.woken = true;
+            this.set_local_rot(this._remoteAngle);
         } catch (_) {}
 
-        // Use the game's own keyboard state, but also bridge browser key events
-        // into that same state. This makes WASD reliable even when the canvas
-        // temporarily doesn't have keyboard focus.
-        if (typeof window !== "undefined" && !window.__diggerzRemoteMortarKeys) {
-            window.__diggerzRemoteMortarKeys = true;
-            window.__diggerzRemoteKeyDown = function(ev) {
-                try {
-                    var code = ev.which || ev.keyCode || 0;
-                    var k = String(ev.key || "").toLowerCase();
-                    if (code === 65 || k === "a") { q.mKeyDown[65] = true; q.mKeyDown[97] = true; }
-                    if (code === 68 || k === "d") { q.mKeyDown[68] = true; q.mKeyDown[100] = true; }
-                    if (code === 87 || k === "w") { q.mKeyDown[87] = true; q.mKeyDown[119] = true; }
-                    if (code === 83 || k === "s") { q.mKeyDown[83] = true; q.mKeyDown[115] = true; }
-                } catch (_) {}
-            };
-            window.__diggerzRemoteKeyUp = function(ev) {
-                try {
-                    var code = ev.which || ev.keyCode || 0;
-                    var k = String(ev.key || "").toLowerCase();
-                    if (code === 65 || k === "a") { q.mKeyDown[65] = false; q.mKeyDown[97] = false; }
-                    if (code === 68 || k === "d") { q.mKeyDown[68] = false; q.mKeyDown[100] = false; }
-                    if (code === 87 || k === "w") { q.mKeyDown[87] = false; q.mKeyDown[119] = false; }
-                    if (code === 83 || k === "s") { q.mKeyDown[83] = false; q.mKeyDown[115] = false; }
-                } catch (_) {}
-            };
-            window.addEventListener("keydown", window.__diggerzRemoteKeyDown, true);
-            window.addEventListener("keyup", window.__diggerzRemoteKeyUp, true);
-            window.addEventListener("blur", function() {
-                try {
-                    q.mKeyDown[65]=q.mKeyDown[97]=false;
-                    q.mKeyDown[68]=q.mKeyDown[100]=false;
-                    q.mKeyDown[87]=q.mKeyDown[119]=false;
-                    q.mKeyDown[83]=q.mKeyDown[115]=false;
-                } catch (_) {}
-            }, true);
-        }
-
-        if (typeof window !== "undefined") {
-            window.__diggerzRemoteMortarActive = true;
-            window.__diggerzRemoteMortarProjectile = this;
-        }
-    };
-    v.RemoteMortarProjectile = Ro;
-    Ro.__name__ = "RemoteMortarProjectile";
-    Ro.__super__ = rj;
-    Ro.prototype = D(rj.prototype, {
-        b51: function(a) {
-            rj.prototype.b51.call(this, a);
-            this._remoteAlive = false;
-            if (typeof window !== "undefined" && window.__diggerzRemoteMortarProjectile === this) {
-                window.__diggerzRemoteMortarProjectile = null;
-                window.__diggerzRemoteMortarActive = false;
-            }
-            this.A58(a)
-        },
-        e0: function() {
-            // Freeze the firing player while the missile is airborne.
-            try {
-                var owner = this._remoteOwner || l.z39;
-                var ob = owner && owner.b33 && owner.b33.tBJ;
-                if (ob) {
-                    ob.setupVelocity();
-                    if (ob.wrap_vel && ob.wrap_vel.tBJ) {
-                        ob.wrap_vel.tBJ.x = 0;
-                        ob.wrap_vel.tBJ.y = 0;
-                    }
-                }
-            } catch (_) {}
-
-            // Let the normal projectile physics/collision lifecycle run first.
-            var a = rj.prototype.e0.call(this);
-            if (!this._remoteAlive || !this.b33) return a;
-
-            try {
-                var left = !!(q.KeyDown(65) || q.KeyDown(97) || q.mKeyDown[65] || q.mKeyDown[97]);
-                var right = !!(q.KeyDown(68) || q.KeyDown(100) || q.mKeyDown[68] || q.mKeyDown[100]);
-                var up = !!(q.KeyDown(87) || q.KeyDown(119) || q.mKeyDown[87] || q.mKeyDown[119]);
-                var down = !!(q.KeyDown(83) || q.KeyDown(115) || q.mKeyDown[83] || q.mKeyDown[115]);
-
-                var ix = (right ? 1 : 0) - (left ? 1 : 0);
-                var iy = (down ? 1 : 0) - (up ? 1 : 0);
-
-                var body = this.b33.tBJ;
-                body.setupVelocity();
-                var vel = body.wrap_vel.tBJ;
-
-                // The launch speed is captured once in the constructor. Never
-                // derive speed from an accumulated impulse and never add speed.
-                var speed = Number(this._remoteSpeed) || 300;
-                var angle = Number(this._remoteAngle);
-                if (!isFinite(angle)) angle = 0;
-
-                if (ix || iy) {
-                    var inputLen = Math.sqrt(ix * ix + iy * iy) || 1;
-                    ix /= inputLen;
-                    iy /= inputLen;
-
-                    var desired = Math.atan2(iy, ix);
-                    var delta = desired - angle;
-
-                    // Same wrapped-angle approach used by Homing Mortar.
-                    while (delta > Math.PI) delta -= Math.PI * 2;
-                    while (delta < -Math.PI) delta += Math.PI * 2;
-
-                    // Deliberately slow steering.
-                    var maxTurn = 0.035;
-                    if (delta > maxTurn) delta = maxTurn;
-                    if (delta < -maxTurn) delta = -maxTurn;
-                    angle += delta;
-                    this._remoteAngle = angle;
-                }
-
-                // Rebuild velocity at exactly the original launch magnitude.
-                vel.x = Math.cos(this._remoteAngle) * speed;
-                vel.y = Math.sin(this._remoteAngle) * speed;
-                body.tBJ.component.woken = true;
-            } catch (_) {}
-
-            return a
-        },
-        __class__: Ro
-    });
+        return a
+    },
+    __class__: Ro
+});
 
     var Eo = function(a, b, c, d, e, g, f) {
         rj.call(this, a, b, c, d, e, g, f);

@@ -3054,7 +3054,8 @@ async function handleAdminApi(req, res, urlPath) {
     }
     if (action === 'force-join') {
       const requestedConnectionId = String(body.targetConnectionId || '');
-      // Admin joins the TARGET's room (not the reverse).
+      // Return the target room only. The admin client leaves its current room
+      // and then sends a force:true join on the same connection.
       const target = requestedConnectionId ? findClientGlobal(requestedConnectionId) : null;
       if (!target || !target.room) { sendApiJson(res,404,{ok:false,error:'player-not-found'}); return true; }
       sendApiJson(res,200,{ok:true, room: target.room.code, mode: target.room.mode});
