@@ -1937,7 +1937,7 @@ function joinRoom(client, message) {
   }
 
   const roomCode = normalizeRoom(message.room);
-  const mode = normalizeMode(message.mode);
+  let mode = normalizeMode(message.mode);
   const name = normalizeName(message.name);
   client.clientId = normalizeClientId(message.clientId);
   const activeBan = activeBanFor(client, name, client.clientId);
@@ -1973,8 +1973,13 @@ function joinRoom(client, message) {
   }
 
   if (room.mode !== mode) {
-    sendJson(client, { t: 'server-error', code: 'mode-mismatch', message: `Room ${roomCode} is ${room.mode}, not ${mode}.` });
-    return;
+    if (message.force === true) {
+      // Admin hop: adopt the target room mode instead of rejecting.
+      mode = room.mode;
+    } else {
+      sendJson(client, { t: 'server-error', code: 'mode-mismatch', message: `Room ${roomCode} is ${room.mode}, not ${mode}.` });
+      return;
+    }
   }
 
   if (mode === 'pvp' && !battleJoinable(room)) {
@@ -2498,23 +2503,21 @@ function relayGameMessage(client, message, rawLength) {
     if(Number.isFinite(packetPX)&&Number.isFinite(packetPY)) placementPos={x:packetPX,y:packetPY};
     else if(client.position) placementPos=client.position;
     else placementPos={x:x,y:y};
-    // Keep a soft range check only when we have a real position sample.
-    if(client.position && Math.hypot(placementPos.x-x,placementPos.y-y)>6.5)return;
-    // Placement vs player body: only block when clearly overlapping the actor.
-    if(id!==0 && placementOverlapsPlayer({position:placementPos},x,y))return;
-    // Other players: digtrade is softer so builds near peers still sync.
-    if(id!==0 && room.mode==='pvp' && placementBlockedByAnyPlayer(room,x,y))return;
-    if(id!==0 && room.mode!=='pvp' && placementBlockedByAnyPlayer(room,x,y)){
-      // Still block hard overlaps on digtrade, but only if the target cell
-      // is clearly occupied by a living player's center (not edge cases).
-      let blocked=false;
+    // Soft range: reject only absurd out-of-range places (mining/place both).
+    if(client.position && Math.hypot(placementPos.x-x,placementPos.y-y)>8)return;
+    // Place only: reject if target cell is essentially on the actor's feet.
+    // Do NOT use the wide placementOverlapsPlayer shield — it was rejecting
+    // valid adjacent places so peers never saw builds (mining still worked).
+    if(id!==0){
+      const distActor=Math.hypot(placementPos.x-x,placementPos.y-y);
+      if(distActor<0.85)return;
+      // Only block if another living player's center is almost on the cell.
       try {
         for (const other of room.clients) {
-          if (!other || other===client || !other.position || !other.alive) continue;
-          if (Math.hypot(other.position.x-x, other.position.y-y) < 0.55) { blocked=true; break; }
+          if (!other || other===client || !other.position || other.alive===false) continue;
+          if (Math.hypot(other.position.x-x, other.position.y-y) < 0.55) return;
         }
       } catch (_b) {}
-      if (blocked) return;
     }
     normalizeRoomTileAt(room,x,y);
     const key=`${x},${y}`;
@@ -2709,7 +2712,17 @@ function onTextMessage(client, text) {
     return;
   }
 
+  if (message.t === 'leave') {
+    leaveRoom(client);
+    sendJson(client, { t: 'left-room', serverNow: Date.now() });
+    return;
+  }
+
   if (message.t === 'join') {
+    // Admin room hop: if already in a room, leave first then join target.
+    if (client.room && message.force === true) {
+      leaveRoom(client);
+    }
     joinRoom(client, message);
     return;
   }
