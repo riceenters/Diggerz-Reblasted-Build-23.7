@@ -2479,10 +2479,18 @@ function relayGameMessage(client, message, rawLength) {
     // in the authoritative room overlay instead of dropping the update.
     requestedLayer=requestedLayer===2?2:0;
     const x=Number(message.x)|0,y=Number(message.y)|0,id=Number(message.id)|0,variant=Number(message.variant)|0;
-    if(x<0||x>=128||y<0||y>=80||!client.position||!client.alive||client.eliminated)return;
+    // Dig+Trade: never drop tile ops just because position/alive lag behind.
+    // Still reject eliminated PvP players.
+    if(x<0||x>=128||y<0||y>=80)return;
+    if(client.eliminated)return;
+    if(room.mode==='pvp' && (!client.alive || !client.position))return;
     const packetPX=Number(message.px), packetPY=Number(message.py);
-    const placementPos=(Number.isFinite(packetPX)&&Number.isFinite(packetPY))?{x:packetPX,y:packetPY}:client.position;
-    if(Math.hypot(placementPos.x-x,placementPos.y-y)>5)return;
+    let placementPos=null;
+    if(Number.isFinite(packetPX)&&Number.isFinite(packetPY)) placementPos={x:packetPX,y:packetPY};
+    else if(client.position) placementPos=client.position;
+    else placementPos={x:x,y:y};
+    // Keep a soft range check only when we have a real position sample.
+    if(client.position && Math.hypot(placementPos.x-x,placementPos.y-y)>6.5)return;
     if(id!==0 && placementOverlapsPlayer({position:placementPos},x,y))return;
     if(id!==0 && placementBlockedByAnyPlayer(room,x,y))return;
     normalizeRoomTileAt(room,x,y);
@@ -2502,7 +2510,13 @@ function relayGameMessage(client, message, rawLength) {
         prior=(actualLayer===2?room.backgroundTiles:room.tiles).get(key)||null;
         if(!prior) prior = actualLayer===2 ? mapBackgroundTileAt(room,x,y) : mapTileAt(room,x,y);
       }
-      if(!prior || (prior.id|0)===0)return;
+      // Dig+Trade procedural terrain is not always on room.map. Trust the
+      // miner's client and still broadcast a tombstone so every peer clears
+      // the cell and late joiners load the hole.
+      if(!prior || (prior.id|0)===0){
+        actualLayer=requestedLayer;
+        prior={x,y,id:1,variant:0,layer:actualLayer};
+      }
       const mineStore=actualLayer===2?room.backgroundTiles:room.tiles;
       const mineOther=actualLayer===2?room.tiles:room.backgroundTiles;
       mineOther.delete(key);
