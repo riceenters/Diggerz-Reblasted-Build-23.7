@@ -23933,16 +23933,17 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             if (!item) return;
             item.count--;
             if (!item.count) this.state.slots[slot] = this.emptyItem();
-            // Multiplayer place: send to server immediately + apply local tile.
-            // (Deferred-only path never pvpSent when native already filled the cell.)
+            // Multiplayer place:
+            // 1) Notify server IMMEDIATELY (so peers see the block)
+            // 2) Delay local setTile ~400ms so the native O33 spin/grow "fx" can play
+            //    (immediate setTile was killing the placement animation)
             var placeLayer = (layer|0)===2 ? 2 : 0;
             var placeKey = x + ":" + y + ":" + placeLayer;
             if (window.DiggerzIsMultiplayer && window.DiggerzIsMultiplayer(this)) {
                 if (!this._diggerzPendingPlacements) this._diggerzPendingPlacements = {};
-                // Allow re-place after 200ms so rapid builds still sync.
                 var prevPend = this._diggerzPendingPlacements[placeKey];
-                if (prevPend && (Date.now() - (prevPend.at||0)) < 200) return;
-                this._diggerzPendingPlacements[placeKey] = {id:id,variant:variant,layer:placeLayer,at:Date.now()};
+                if (prevPend && (Date.now() - (prevPend.at||0)) < 180) return;
+                this._diggerzPendingPlacements[placeKey] = {id:id,variant:variant||0,layer:placeLayer,at:Date.now()};
                 var px = actorX, py = actorY;
                 if (!isFinite(px) || !isFinite(py)) {
                     try { px = l.z39.b6 / l._44; py = l.z39.b7 / l._44; } catch (_p) { px = x; py = y; }
@@ -23954,31 +23955,33 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     layer: placeLayer,
                     px: px, py: py
                 };
-                // Prefer direct socket send so a missed "joined" flag cannot drop places.
-                try {
-                    if (window.DiggerzPvp22 && typeof window.DiggerzPvp22.send === 'function')
-                        window.DiggerzPvp22.send(placeMsg);
-                    else if (this.pvpSend)
-                        this.pvpSend(placeMsg);
-                } catch (_placeSend) {
-                    try { this.pvpSend(placeMsg); } catch (_e2) {}
+                function diggerzSendPlace(msg){
+                    try {
+                        if (window.DiggerzPvp22 && typeof window.DiggerzPvp22.send === 'function')
+                            return window.DiggerzPvp22.send(msg);
+                    } catch (_s1) {}
+                    try { if (typeof this.pvpSend === 'function') return this.pvpSend(msg); } catch (_s2) {}
+                    return false;
                 }
-                this.state.placed++;
-                // Local visual now (don't wait) — still block setTile hook from re-sending.
-                this._pvpApplyingTile = true;
-                try {
-                    this.setTile(x, y, id, variant, placeLayer);
-                } finally {
-                    this._pvpApplyingTile = false;
-                }
-                this.markDirty();
+                diggerzSendPlace.call(this, placeMsg);
+                // Second send a moment later in case the first frame races leave/join.
                 var self = this;
+                setTimeout(function(){ try { diggerzSendPlace.call(self, placeMsg); } catch (_s3) {} }, 60);
+                this.state.placed++;
+                // Local commit AFTER the spin/grow animation (~400ms).
                 setTimeout(function(){
                     try {
                         if (self._diggerzPendingPlacements)
                             delete self._diggerzPendingPlacements[placeKey];
-                    } catch (_clr) {}
-                }, 500);
+                        self._pvpApplyingTile = true;
+                        try {
+                            self.setTile(x, y, id, variant, placeLayer);
+                        } finally {
+                            self._pvpApplyingTile = false;
+                        }
+                        self.markDirty();
+                    } catch (_placeCommit) {}
+                }, 400);
             } else {
                 this.state.placed++;
                 this.setTile(x, y, id, variant, layer);
@@ -119471,11 +119474,14 @@ e50: function(a) {
       if(m.t==='peer-state'){var statePeer=this.pvpPeerForConnection(m._serverFrom),se=statePeer&&this.pvpEntityForPeer(statePeer);if(se&&isFinite(+m.x)&&isFinite(+m.y)){var sx=(+m.x)*l._44,sy=(+m.y)*l._44;if(Math.hypot((se.b6-sx)/l._44,(se.b7-sy)/l._44)>1.25){try{se.l38(sx,sy)}catch(_e){se.b6=sx;se.b7=sy}}}return}
       if(m.t==='tile'){
         var tx=m.x|0,ty=m.y|0,tLayer=(m.layer|0)===2?2:0,tkey=tx+':'+ty+':'+tLayer;
-        // Skip echo of our own optimistic placement if still pending.
+        // Skip echo of our own optimistic placement if still pending (anim in progress).
         if(String(m._serverFrom||'')===String(P.connectionId||'') && this._diggerzPendingPlacements && this._diggerzPendingPlacements[tkey]) return;
         this._pvpApplyingTile=true;
         try{
-          // Always force the visual/world update for remote place & mine.
+          // Force visual/world update. For places, clear first so sendTile/U37 always refreshes.
+          if((m.id|0)!==0){
+            try{this.setTile(tx,ty,0,0,tLayer)}catch(_clr){}
+          }
           this.setTile(tx,ty,m.id|0,m.variant|0,tLayer);
           // Keep service state mirrors in sync for late logic.
           try{

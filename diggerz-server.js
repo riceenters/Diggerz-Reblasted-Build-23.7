@@ -2503,22 +2503,11 @@ function relayGameMessage(client, message, rawLength) {
     if(Number.isFinite(packetPX)&&Number.isFinite(packetPY)) placementPos={x:packetPX,y:packetPY};
     else if(client.position) placementPos=client.position;
     else placementPos={x:x,y:y};
-    // Soft range: reject only absurd out-of-range places (mining/place both).
-    if(client.position && Math.hypot(placementPos.x-x,placementPos.y-y)>8)return;
-    // Place only: reject if target cell is essentially on the actor's feet.
-    // Do NOT use the wide placementOverlapsPlayer shield — it was rejecting
-    // valid adjacent places so peers never saw builds (mining still worked).
-    if(id!==0){
-      const distActor=Math.hypot(placementPos.x-x,placementPos.y-y);
-      if(distActor<0.85)return;
-      // Only block if another living player's center is almost on the cell.
-      try {
-        for (const other of room.clients) {
-          if (!other || other===client || !other.position || other.alive===false) continue;
-          if (Math.hypot(other.position.x-x, other.position.y-y) < 0.55) return;
-        }
-      } catch (_b) {}
-    }
+    // Mining already works with soft gates. Places were over-rejected — keep
+    // only a very loose range check so peers always see builds.
+    if(client.position && Math.hypot(placementPos.x-x,placementPos.y-y)>12)return;
+    // Do not reject places for player-overlap here. Client already gated that.
+    // Server is the sync authority for broadcasting, not a second collision pass.
     normalizeRoomTileAt(room,x,y);
     const key=`${x},${y}`;
     if(id===0){
