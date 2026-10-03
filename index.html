@@ -10956,6 +10956,27 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         return f.Get()
     }
     ;
+    // Purple Plaid (Hue -73 / Sat 100 / Lightness +10 from original plaid)
+    f.PURPLEPLAIDARM_PNG = function() {
+        t._5 = new r(2029,2032,17,14);
+        return f.Get()
+    }
+    ;
+    f.PURPLEPLAIDBUTT_PNG = function() {
+        t._5 = new r(1976,2038,34,8);
+        return f.Get()
+    }
+    ;
+    f.PURPLEPLAIDLEG_PNG = function() {
+        t._5 = new r(1944,2029,24,17);
+        return f.Get()
+    }
+    ;
+    f.PURPLEPLAIDTORSO_PNG = function() {
+        t._5 = new r(1904,2019,34,27);
+        return f.Get()
+    }
+    ;
     f.PLATFORMSHOE_PNG = function() {
         t._5 = new r(833,264,32,17);
         return f.Get()
@@ -34950,6 +34971,16 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 b.a4 = 2;
                 b._1 = "Plaid Shirt";
                 h.P20(b, f.PLAIDARM_PNG, f.PLAIDTORSO_PNG);
+                break;
+            case 396:
+                b.a4 = 2;
+                b._1 = "Purple Plaid Pants";
+                h.p29(b, f.PURPLEPLAIDLEG_PNG, f.PURPLEPLAIDBUTT_PNG);
+                break;
+            case 397:
+                b.a4 = 2;
+                b._1 = "Purple Plaid Shirt";
+                h.P20(b, f.PURPLEPLAIDARM_PNG, f.PURPLEPLAIDTORSO_PNG);
                 break;
             case 17:
                 b.a4 = 2;
