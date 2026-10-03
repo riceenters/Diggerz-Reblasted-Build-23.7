@@ -34981,12 +34981,28 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             case 396:
                 b.a4 = 2;
                 b._1 = "Purple Plaid Pants";
-                h.p29(b, f.PURPLEPLAIDLEG_PNG, f.PURPLEPLAIDBUTT_PNG);
+                h.p29(b, f.PLAIDLEG_PNG, f.PLAIDBUTT_PNG);
+                // RGB tint (h5) — same system as Cotton Candy. Lower = darker.
+                // Default purple: 140, 50, 220
+                b.h5(140, 50, 220);
+                if (b._9) {
+                    for (var _pi = 0; _pi < b._9.length; _pi++) {
+                        var _pc = b._9[_pi];
+                        if (_pc && _pc.h5) _pc.h5(140, 50, 220);
+                    }
+                }
                 break;
             case 397:
                 b.a4 = 2;
                 b._1 = "Purple Plaid Shirt";
-                h.P20(b, f.PURPLEPLAIDARM_PNG, f.PURPLEPLAIDTORSO_PNG);
+                h.P20(b, f.PLAIDARM_PNG, f.PLAIDTORSO_PNG);
+                b.h5(140, 50, 220);
+                if (b._9) {
+                    for (var _si = 0; _si < b._9.length; _si++) {
+                        var _sc = b._9[_si];
+                        if (_sc && _sc.h5) _sc.h5(140, 50, 220);
+                    }
+                }
                 break;
             case 17:
                 b.a4 = 2;
