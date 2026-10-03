@@ -2486,84 +2486,69 @@ function relayGameMessage(client, message, rawLength) {
     return;
   }
 
-  if (message.t==='tile') {
-    let requestedLayer=Number(message.layer)|0;
-    // The recovered client renderer stores normal build tiles in its
-    // foreground array; keep layer 1 compatible by treating it as foreground
-    // in the authoritative room overlay instead of dropping the update.
-    requestedLayer=requestedLayer===2?2:0;
-    const x=Number(message.x)|0,y=Number(message.y)|0,id=Number(message.id)|0,variant=Number(message.variant)|0;
-    // Dig+Trade: never drop tile ops just because position/alive lag behind.
-    // Still reject eliminated PvP players.
-    if(x<0||x>=128||y<0||y>=80)return;
-    if(client.eliminated)return;
-    if(room.mode==='pvp' && (!client.alive || !client.position))return;
-    const packetPX=Number(message.px), packetPY=Number(message.py);
-    let placementPos=null;
-    if(Number.isFinite(packetPX)&&Number.isFinite(packetPY)) placementPos={x:packetPX,y:packetPY};
-    else if(client.position) placementPos=client.position;
-    else placementPos={x:x,y:y};
-    // Mining already works with soft gates. Places were over-rejected — keep
-    // only a very loose range check so peers always see builds.
-    if(client.position && Math.hypot(placementPos.x-x,placementPos.y-y)>12)return;
-    // Do not reject places for player-overlap here. Client already gated that.
-    // Server is the sync authority for broadcasting, not a second collision pass.
-    normalizeRoomTileAt(room,x,y);
-    const key=`${x},${y}`;
-    if(id===0){
-      // Mining should work even if an older packet/map put the block on the
-      // opposite layer. Prefer the requested layer, then fall back to the
-      // other layer, and tell every client which layer was actually removed.
-      let actualLayer=requestedLayer;
-      let prior=(requestedLayer===2?room.backgroundTiles:room.tiles).get(key)||null;
-      // The room overlay starts empty.  Fall back to the immutable base map so
-      // mining an original map block creates a live tombstone instead of being
-      // silently ignored.
-      if(!prior) prior = requestedLayer===2 ? mapBackgroundTileAt(room,x,y) : mapTileAt(room,x,y);
-      if(!prior || (prior.id|0)===0){
-        actualLayer=requestedLayer===2?0:2;
-        prior=(actualLayer===2?room.backgroundTiles:room.tiles).get(key)||null;
-        if(!prior) prior = actualLayer===2 ? mapBackgroundTileAt(room,x,y) : mapTileAt(room,x,y);
+  if (message.t==='tile' || message.t==='block-place') {
+    // Fully server-authoritative tiles. Client requests; server stores + broadcasts.
+    let requestedLayer = Number(message.layer) | 0;
+    requestedLayer = requestedLayer === 2 ? 2 : 0;
+    const x = Number(message.x) | 0, y = Number(message.y) | 0;
+    const id = Number(message.id) | 0, variant = (Number(message.variant) | 0) & 31;
+    if (x < 0 || x >= 128 || y < 0 || y >= 80) return;
+    if (client.eliminated) return;
+    ensureRoomState(room);
+    const key = `${x},${y}`;
+
+    if (id === 0) {
+      // ---- MINE (already working) ----
+      let actualLayer = requestedLayer;
+      let prior = (requestedLayer === 2 ? room.backgroundTiles : room.tiles).get(key) || null;
+      if (!prior) prior = requestedLayer === 2 ? mapBackgroundTileAt(room, x, y) : mapTileAt(room, x, y);
+      if (!prior || (prior.id | 0) === 0) {
+        actualLayer = requestedLayer === 2 ? 0 : 2;
+        prior = (actualLayer === 2 ? room.backgroundTiles : room.tiles).get(key) || null;
+        if (!prior) prior = actualLayer === 2 ? mapBackgroundTileAt(room, x, y) : mapTileAt(room, x, y);
       }
-      // Dig+Trade procedural terrain is not always on room.map. Trust the
-      // miner's client and still broadcast a tombstone so every peer clears
-      // the cell and late joiners load the hole.
-      if(!prior || (prior.id|0)===0){
-        actualLayer=requestedLayer;
-        prior={x,y,id:1,variant:0,layer:actualLayer};
+      if (!prior || (prior.id | 0) === 0) {
+        actualLayer = requestedLayer;
+        prior = { x, y, id: 1, variant: 0, layer: actualLayer };
       }
-      const mineStore=actualLayer===2?room.backgroundTiles:room.tiles;
-      const mineOther=actualLayer===2?room.tiles:room.backgroundTiles;
+      const mineStore = actualLayer === 2 ? room.backgroundTiles : room.tiles;
+      const mineOther = actualLayer === 2 ? room.tiles : room.backgroundTiles;
       mineOther.delete(key);
-      mineStore.set(key,{x,y,id:0,variant:0,layer:actualLayer,ownerConnectionId:client.connectionId,_serverTombstone:true});
-      if(prior.id===122&&room.speaker&&room.speaker.x===x&&room.speaker.y===y) room.speaker=null;
-      room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
-      broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:actualLayer,_serverCorrection:actualLayer!==requestedLayer,_serverFrom:client.connectionId,_serverName:client.name,replace:true});
-      if(prior.id===122)syncSpeaker(room);
+      mineStore.set(key, { x, y, id: 0, variant: 0, layer: actualLayer, ownerConnectionId: client.connectionId, _serverTombstone: true });
+      if (prior.id === 122 && room.speaker && room.speaker.x === x && room.speaker.y === y) room.speaker = null;
+      room.cottonMachines.delete(key); room.turretCooldowns.delete(key);
+      broadcastRoom(room, { t: 'tile', x, y, id: 0, variant: 0, layer: actualLayer, _serverFrom: client.connectionId, _serverName: client.name, replace: true });
+      if (prior.id === 122) syncSpeaker(room);
       return;
     }
-    const catalogLayer=expectedBlockLayer(id);
-    const desiredLayer=requestedLayer===1?1:catalogLayer;
-    const store=desiredLayer===2?room.backgroundTiles:room.tiles;
-    const other=desiredLayer===2?room.tiles:room.backgroundTiles;
-    const wrong=other.get(key)||null;
-    if(wrong)other.delete(key);
-    if(room.mode==='digtrade'&&id===122&&desiredLayer!==0)return;
-    if(room.mode==='digtrade'&&id===122){
-      if(room.speaker && (room.speaker.x!==x||room.speaker.y!==y)){
-        const prior=store.get(key)||null;
-        sendJson(client,{t:'speaker-place-blocked',x,y,tile:prior?{id:prior.id|0,variant:prior.variant|0,layer:desiredLayer}:{id:0,variant:0,layer:desiredLayer}});return;
-      }
-      room.speaker={x,y,on:false,trackIndex:0,startedAt:0,ownerConnectionId:client.connectionId};
+
+    // ---- PLACE (server is authority) ----
+    // No distance/overlap rejects — client already gated. Always store + broadcast.
+    const catalogLayer = expectedBlockLayer(id);
+    const desiredLayer = catalogLayer === 2 ? 2 : 0;
+    const store = desiredLayer === 2 ? room.backgroundTiles : room.tiles;
+    const other = desiredLayer === 2 ? room.tiles : room.backgroundTiles;
+    if (other.has(key)) {
+      other.delete(key);
+      broadcastRoom(room, { t: 'tile', x, y, id: 0, variant: 0, layer: desiredLayer === 2 ? 0 : 2, _serverFrom: client.connectionId, _serverName: client.name, replace: true });
     }
-    const tile={x,y,id,variant,layer:desiredLayer,ownerConnectionId:client.connectionId};
-    store.set(key,tile);
-    room.cottonMachines.delete(key);room.turretCooldowns.delete(key);
-    if(wrong) broadcastRoom(room,{t:'tile',x,y,id:0,variant:0,layer:desiredLayer===2?0:2,_serverCorrection:true,_serverFrom:client.connectionId,_serverName:client.name});
-    broadcastRoom(room,Object.assign({t:'tile'},tile,{_serverCorrection:desiredLayer!==requestedLayer,_serverFrom:client.connectionId,_serverName:client.name,replace:true}));
-    if(id===122)syncSpeaker(room);
+    if (room.mode === 'digtrade' && id === 122 && desiredLayer !== 0) return;
+    if (room.mode === 'digtrade' && id === 122) {
+      room.speaker = { x, y, on: false, trackIndex: 0, startedAt: 0, ownerConnectionId: client.connectionId };
+    }
+    const tile = { x, y, id, variant, layer: desiredLayer, ownerConnectionId: client.connectionId };
+    store.set(key, tile);
+    room.cottonMachines.delete(key); room.turretCooldowns.delete(key);
+    // Broadcast to EVERYONE including the placer — clients apply the same visual.
+    broadcastRoom(room, {
+      t: 'tile', x, y, id, variant, layer: desiredLayer,
+      _serverFrom: client.connectionId, _serverName: client.name,
+      replace: true, _serverPlaced: true
+    });
+    if (id === 122) syncSpeaker(room);
     return;
   }
+
   if(message.t==='speaker-toggle'){
     if(room.mode!=='digtrade'||!room.speaker)return;
     const x=Number(message.x)|0,y=Number(message.y)|0;if(room.speaker.x!==x||room.speaker.y!==y)return;

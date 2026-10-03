@@ -23933,42 +23933,58 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             if (!item) return;
             item.count--;
             if (!item.count) this.state.slots[slot] = this.emptyItem();
-            // Multiplayer place:
-            // 1) Notify server IMMEDIATELY (so peers see the block)
-            // 2) Delay local setTile ~400ms so the native O33 spin/grow "fx" can play
-            //    (immediate setTile was killing the placement animation)
+            // SERVER-AUTHORITATIVE PLACE:
+            // Client only requests; server stores the tile and broadcasts to all.
+            // Local spin/grow anim (O33) still plays; world tile commits after ~400ms.
             var placeLayer = (layer|0)===2 ? 2 : 0;
-            var placeKey = x + ":" + y + ":" + placeLayer;
+            var placeKey = (x|0) + ":" + (y|0) + ":" + placeLayer;
             if (window.DiggerzIsMultiplayer && window.DiggerzIsMultiplayer(this)) {
                 if (!this._diggerzPendingPlacements) this._diggerzPendingPlacements = {};
                 var prevPend = this._diggerzPendingPlacements[placeKey];
-                if (prevPend && (Date.now() - (prevPend.at||0)) < 180) return;
-                this._diggerzPendingPlacements[placeKey] = {id:id,variant:variant||0,layer:placeLayer,at:Date.now()};
+                if (prevPend && (Date.now() - (prevPend.at||0)) < 150) return;
+                this._diggerzPendingPlacements[placeKey] = {id:id|0,variant:(variant||0)|0,layer:placeLayer,at:Date.now()};
                 var px = actorX, py = actorY;
                 if (!isFinite(px) || !isFinite(py)) {
                     try { px = l.z39.b6 / l._44; py = l.z39.b7 / l._44; } catch (_p) { px = x; py = y; }
                 }
                 var placeMsg = {
+                    t: 'block-place',
+                    x: x|0, y: y|0,
+                    id: id|0, variant: (variant||0)|0,
+                    layer: placeLayer,
+                    px: px, py: py
+                };
+                // Also send classic tile message for older server builds.
+                var tileMsg = {
                     t: 'tile',
                     x: x|0, y: y|0,
                     id: id|0, variant: (variant||0)|0,
                     layer: placeLayer,
                     px: px, py: py
                 };
-                function diggerzSendPlace(msg){
+                function diggerzSendPlaceBoth(a,b){
                     try {
-                        if (window.DiggerzPvp22 && typeof window.DiggerzPvp22.send === 'function')
-                            return window.DiggerzPvp22.send(msg);
+                        var P = window.DiggerzPvp22;
+                        if (P && typeof P.send === 'function') {
+                            P.send(a); P.send(b);
+                            return true;
+                        }
                     } catch (_s1) {}
-                    try { if (typeof this.pvpSend === 'function') return this.pvpSend(msg); } catch (_s2) {}
+                    try {
+                        if (typeof this.pvpSend === 'function') {
+                            this.pvpSend(a); this.pvpSend(b);
+                            return true;
+                        }
+                    } catch (_s2) {}
                     return false;
                 }
-                diggerzSendPlace.call(this, placeMsg);
-                // Second send a moment later in case the first frame races leave/join.
+                diggerzSendPlaceBoth.call(this, placeMsg, tileMsg);
                 var self = this;
-                setTimeout(function(){ try { diggerzSendPlace.call(self, placeMsg); } catch (_s3) {} }, 60);
+                setTimeout(function(){
+                    try { diggerzSendPlaceBoth.call(self, placeMsg, tileMsg); } catch (_s3) {}
+                }, 50);
                 this.state.placed++;
-                // Local commit AFTER the spin/grow animation (~400ms).
+                // Delay local tile so O33 spin/grow animation can play.
                 setTimeout(function(){
                     try {
                         if (self._diggerzPendingPlacements)
@@ -119472,16 +119488,14 @@ e50: function(a) {
       if(m.t==='chat'){var chatPeer=this.pvpPeerForConnection(m._serverFrom);if(chatPeer&&chatPeer.id){var id=chatPeer.id;this.enqueue(12,1,function(p){p.R8(id);p.R9(String(m.text||'').slice(0,180))})}return}
       if(m.t==='typing'){var typingPeer=this.pvpPeerForConnection(m._serverFrom);if(typingPeer&&typingPeer.id){var tid=typingPeer.id,active=!!m.active;this.enqueue(49,1,function(p){p.R8(tid);p.s0(active)})}return}
       if(m.t==='peer-state'){var statePeer=this.pvpPeerForConnection(m._serverFrom),se=statePeer&&this.pvpEntityForPeer(statePeer);if(se&&isFinite(+m.x)&&isFinite(+m.y)){var sx=(+m.x)*l._44,sy=(+m.y)*l._44;if(Math.hypot((se.b6-sx)/l._44,(se.b7-sy)/l._44)>1.25){try{se.l38(sx,sy)}catch(_e){se.b6=sx;se.b7=sy}}}return}
-      if(m.t==='tile'){
+      if(m.t==='tile'||m.t==='block-place'){
         var tx=m.x|0,ty=m.y|0,tLayer=(m.layer|0)===2?2:0,tkey=tx+':'+ty+':'+tLayer;
-        // Skip echo of our own optimistic placement if still pending (anim in progress).
-        if(String(m._serverFrom||'')===String(P.connectionId||'') && this._diggerzPendingPlacements && this._diggerzPendingPlacements[tkey]) return;
+        var fromMe=String(m._serverFrom||'')===String(P.connectionId||'');
+        // During our own place animation, ignore self-echo so fx can finish.
+        if(fromMe && (m.id|0)!==0 && this._diggerzPendingPlacements && this._diggerzPendingPlacements[tkey]) return;
         this._pvpApplyingTile=true;
         try{
-          // Force visual/world update. For places, clear first so sendTile/U37 always refreshes.
-          if((m.id|0)!==0){
-            try{this.setTile(tx,ty,0,0,tLayer)}catch(_clr){}
-          }
+          // Server-authoritative visual apply for every peer.
           this.setTile(tx,ty,m.id|0,m.variant|0,tLayer);
           // Keep service state mirrors in sync for late logic.
           try{
