@@ -2135,7 +2135,13 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 b = .35;
                 c = .2;
                 break;
-            default:
+            case 99:
+                // Rainbow text (^!) — hue cycles in Ef.e0
+                a = 1;
+                b = .15;
+                c = .15;
+                break;
+                        default:
                 c = b = a = 1
             }
             this.b1 ? (this.set_local_r(a),
@@ -6880,8 +6886,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 if ("^" == J && this.E35)
                     e = !0,
                     k = null;
-                else if (e && ("0" == J || "1" == J || "2" == J || "3" == J || "4" == J || "5" == J || "6" == J || "7" == J || "8" == J || "9" == J))
-                    d = H.parseInt(this.E32.charAt(f)),
+                else if (e && ("!" == J || "0" == J || "1" == J || "2" == J || "3" == J || "4" == J || "5" == J || "6" == J || "7" == J || "8" == J || "9" == J))
+                    d = "!" == J ? 99 : H.parseInt(this.E32.charAt(f)),
                     k = null,
                     e = !1;
                 else if (null != k) {
@@ -18211,6 +18217,24 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             Ef.R30.push(this)
         },
         e0: function() {
+            // Rainbow text color (^! / C5===99)
+            if (99 == this.C5) {
+                var t = (Date.now() % 3000) / 3000 * 6.28318530718;
+                var r = .5 + .5 * Math.sin(t);
+                var g = .5 + .5 * Math.sin(t + 2.09439510239);
+                var b = .5 + .5 * Math.sin(t + 4.18879020479);
+                try {
+                    if (this.b1) {
+                        this.set_local_r(r);
+                        this.set_local_g(g);
+                        this.set_local_b(b);
+                    } else {
+                        this.set_r(r);
+                        this.set_g(g);
+                        this.set_b(b);
+                    }
+                } catch (_rb) {}
+            }
             return z.prototype.e0.call(this)
         },
         E4: function(a) {
@@ -23903,24 +23927,44 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             item.count--;
             if (!item.count) this.state.slots[slot] = this.emptyItem();
             // In the recovered client O33() starts the real 400ms placement animation.
-            // The old multiplayer rebuild applied the tile immediately, which caused
-            // the renderer's tile refresh to delete the native "fx" object on the same
-            // frame, making the placement animation appear to never play. Keep the game
-            // state authoritative, but commit the visible tile after the native animation.
-            var placeKey = x + ":" + y;
+            // Multiplayer MUST notify the server immediately — waiting 410ms meant
+            // native code often already wrote the tile, tileAt() was true, setTile
+            // was skipped, and other players never received the place.
+            var placeKey = x + ":" + y + ":" + ((layer|0)===2?2:0);
             if (window.DiggerzIsMultiplayer && window.DiggerzIsMultiplayer(this)) {
                 if (!this._diggerzPendingPlacements) this._diggerzPendingPlacements = {};
                 if (this._diggerzPendingPlacements[placeKey]) return;
-                this._diggerzPendingPlacements[placeKey] = {id:id,variant:variant,layer:layer};
+                this._diggerzPendingPlacements[placeKey] = {id:id,variant:variant,layer:layer,at:Date.now()};
+                // Send to server NOW so peers see the block.
+                try {
+                    var px = actorX, py = actorY;
+                    if (!isFinite(px) || !isFinite(py)) {
+                        try { px = l.z39.b6 / l._44; py = l.z39.b7 / l._44; } catch (_p) {}
+                    }
+                    if (window.DiggerzPvp22 && window.DiggerzPvp22.joined) {
+                        this.pvpSend({
+                            t: 'tile',
+                            x: x|0, y: y|0,
+                            id: id|0, variant: (variant||0)|0,
+                            layer: (layer|0)===2 ? 2 : 0,
+                            px: px, py: py
+                        });
+                    }
+                } catch (_placeSend) {}
+                this.state.placed++;
                 var self = this;
+                // Local visual still waits so the 400ms place animation can play.
                 setTimeout(function(){
                     try {
                         var pending = self._diggerzPendingPlacements && self._diggerzPendingPlacements[placeKey];
-                        if (!pending) return;
-                        delete self._diggerzPendingPlacements[placeKey];
-                        if (self.tileAt(x,y)) return;
-                        self.state.placed++;
-                        self.setTile(x,y,pending.id,pending.variant,pending.layer);
+                        if (pending) delete self._diggerzPendingPlacements[placeKey];
+                        // Apply local state/visual without re-sending (already sent above).
+                        self._pvpApplyingTile = true;
+                        try {
+                            self.setTile(x, y, id, variant, layer);
+                        } finally {
+                            self._pvpApplyingTile = false;
+                        }
                         self.markDirty();
                     } catch (_placeCommit) {}
                 }, 410);
@@ -118512,7 +118556,15 @@ e50: function(a) {
 #diggerz-admin-panel h2{margin:0 0 10px;font-size:18px}#diggerz-admin-panel h3{margin:14px 0 6px;font-size:13px;color:#f5cf63}
 #diggerz-admin-panel label{display:block;margin:6px 0 3px}#diggerz-admin-panel input,#diggerz-admin-panel select{width:100%;box-sizing:border-box;padding:7px;border:1px solid #697b8d;border-radius:5px;background:#0b121a;color:#fff}
 #diggerz-admin-panel .row{display:grid;grid-template-columns:1fr 1fr;gap:7px}#diggerz-admin-panel button{margin-top:7px;padding:8px 10px;border:0;border-radius:5px;background:#31465b;color:#fff;font-weight:700;cursor:pointer}#diggerz-admin-panel button:hover{background:#405c77}
-#diggerz-admin-status{min-height:36px;margin-top:10px;padding:7px;background:#081018;border-radius:5px;color:#b9d7f3;white-space:pre-wrap}#admin-ban-list{display:grid;gap:6px;margin-top:7px}#admin-ban-list button{width:100%;text-align:left;background:#32171b;border:1px solid #7d343d}#diggerz-admin-modal{display:none;position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.72);align-items:center;justify-content:center}#diggerz-admin-modal .box{width:min(520px,calc(100vw - 28px));max-height:90vh;overflow:auto;box-sizing:border-box;padding:18px;background:#101923;border:2px solid #f5cf63;border-radius:8px;color:#fff;font:13px/1.35 Arial,sans-serif}#diggerz-admin-modal .times{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}#diggerz-admin-modal input,#diggerz-admin-modal textarea{width:100%;box-sizing:border-box;padding:7px;background:#070c12;color:#fff;border:1px solid #697b8d;border-radius:5px}#diggerz-admin-modal textarea{min-height:82px;resize:vertical}#diggerz-admin-modal .row{display:flex;gap:8px}#diggerz-admin-modal button{padding:9px 12px;border:0;border-radius:5px;background:#31465b;color:#fff;font-weight:700;cursor:pointer}#diggerz-admin-modal .danger{background:#7d1f2a}#diggerz-admin-modal .permanent.active{background:#a20b18}
+#diggerz-admin-status{min-height:36px;margin-top:10px;padding:7px;background:#081018;border-radius:5px;color:#b9d7f3;white-space:pre-wrap}
+#admin-online-list{display:grid;gap:8px;margin-top:8px;max-height:280px;overflow:auto}
+#admin-online-list .pl-card{background:#0b121a;border:1px solid #3a4d63;border-radius:6px;padding:8px}
+#admin-online-list .pl-name{font-weight:700;color:#f5cf63;margin-bottom:4px}
+#admin-online-list .pl-meta{opacity:.75;font-size:11px;margin-bottom:6px}
+#admin-online-list .pl-actions{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+#admin-online-list .pl-actions button{margin-top:0;padding:6px 4px;font-size:11px}
+#admin-chat-viewer{display:none;margin-top:8px;max-height:160px;overflow:auto;background:#081018;border-radius:5px;padding:8px;font-size:11px;white-space:pre-wrap;color:#cfe6ff}
+#admin-ban-list{display:grid;gap:6px;margin-top:7px}#admin-ban-list button{width:100%;text-align:left;background:#32171b;border:1px solid #7d343d}#diggerz-admin-modal{display:none;position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.72);align-items:center;justify-content:center}#diggerz-admin-modal .box{width:min(520px,calc(100vw - 28px));max-height:90vh;overflow:auto;box-sizing:border-box;padding:18px;background:#101923;border:2px solid #f5cf63;border-radius:8px;color:#fff;font:13px/1.35 Arial,sans-serif}#diggerz-admin-modal .times{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}#diggerz-admin-modal input,#diggerz-admin-modal textarea{width:100%;box-sizing:border-box;padding:7px;background:#070c12;color:#fff;border:1px solid #697b8d;border-radius:5px}#diggerz-admin-modal textarea{min-height:82px;resize:vertical}#diggerz-admin-modal .row{display:flex;gap:8px}#diggerz-admin-modal button{padding:9px 12px;border:0;border-radius:5px;background:#31465b;color:#fff;font-weight:700;cursor:pointer}#diggerz-admin-modal .danger{background:#7d1f2a}#diggerz-admin-modal .permanent.active{background:#a20b18}
 
 .admin-inv-grid{margin-top:8px;background:#0b111a;border:1px solid #40506a;border-radius:7px;padding:8px}.admin-inv-title{font-weight:800;margin-bottom:8px}.admin-inv-cells{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;max-height:430px;overflow:auto;padding:4px}.admin-inv-cell{min-height:52px;background:#162131;border:1px solid #33465f;border-radius:5px;padding:3px;position:relative;display:flex;flex-direction:column;justify-content:center;align-items:center;cursor:grab;user-select:none}.admin-inv-cell.over{outline:2px solid #71d7ff}.admin-inv-cell.dragging{opacity:.45}.admin-inv-index{position:absolute;left:3px;top:2px;font-size:8px;color:#7487a2}.admin-inv-name{font-size:9px;text-align:center;line-height:1.05;max-width:100%;overflow:hidden;text-overflow:ellipsis}.admin-inv-qty{font-size:9px;color:#f5cf63}.admin-inv-actions{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}.admin-inv-actions button{font-size:10px;padding:5px 7px}
 </style>
@@ -118529,10 +118581,16 @@ e50: function(a) {
   <button id="admin-spawn-item" type="button">Give Selected Item</button>
   <h3>Coins</h3>
   <label>Amount</label><input id="admin-coins" type="number" min="1" max="1000000" value="1000"><button id="admin-add-coins" type="button">Give Coins</button>
-  <h3>Players</h3>
+  <h3>Online Players (all servers)</h3>
+  <button id="admin-refresh-online" type="button">Refresh Online List</button>
+  <div id="admin-online-list">Click refresh to load players…</div>
+  <div id="admin-chat-viewer"></div>
+  <h3>Players (manual)</h3>
   <label>Player Name</label><input id="admin-player" type="text" list="admin-player-names" autocomplete="off" placeholder="Type an online username…"><datalist id="admin-player-names"></datalist>
   <div class="row"><button id="admin-tp" type="button">Teleport To</button><button id="admin-kill" type="button">Kill Player</button></div>
   <div class="row"><button id="admin-kick" type="button">Kick Player</button><button id="admin-ban" type="button">Ban Player</button></div>
+  <div class="row"><button id="admin-private-warn" type="button">Private Warn</button><button id="admin-join-room" type="button">Join Their Room</button></div>
+  <label>Private warning text</label><input id="admin-warn-text" type="text" maxlength="180" placeholder="Only they will see this…">
   <label>Custom New Name</label><input id="admin-new-name" type="text" maxlength="24" autocomplete="off" placeholder="Enter the new live name…">
   <div class="row"><button id="admin-rename" type="button">Rename Live</button><button id="admin-bring" type="button">Bring To Me</button></div>
   <div class="row"><button id="admin-inventory-view" type="button">View Inventory</button><button id="admin-inventory-refresh" type="button">Refresh Inventory</button><button id="admin-open-rig-editor" type="button">Rig Editor</button></div>
@@ -118766,13 +118824,104 @@ e50: function(a) {
 
 
   function authHeaders(){return {'Authorization':'Bearer '+adminToken,'Content-Type':'application/json'}}
-  function selectedPeer(){var s=ownerService(),name=document.getElementById('admin-player').value.trim();if(!s||!name)return null;if(window.DiggerzPvp22&&String(window.DiggerzPvp22.connectionId||'')&&name===s.playerName())return {connectionId:window.DiggerzPvp22.connectionId,name:name};var p=s.pvpFindPeerByName?s.pvpFindPeerByName(name):null;return p?{connectionId:p.connectionId,name:p.name}:null}
+  function selectedPeer(){var s=ownerService(),name=document.getElementById('admin-player').value.trim();if(!name)return null;if(window.__adminSelectedOnline&&String(window.__adminSelectedOnline.name||'')===name&&window.__adminSelectedOnline.connectionId)return {connectionId:window.__adminSelectedOnline.connectionId,name:name,room:window.__adminSelectedOnline.room,mode:window.__adminSelectedOnline.mode};if(!s)return null;if(window.DiggerzPvp22&&String(window.DiggerzPvp22.connectionId||'')&&name===s.playerName())return {connectionId:window.DiggerzPvp22.connectionId,name:name};var p=s.pvpFindPeerByName?s.pvpFindPeerByName(name):null;return p?{connectionId:p.connectionId,name:p.name}:null}
   var mod={action:'',target:null,permanent:false};
   var modal=document.getElementById('diggerz-admin-modal');
   function openModeration(action){var typed=document.getElementById('admin-player').value.trim(),target=selectedPeer();if(action==='kick'&&!target)return say('Kick requires a connected player.');if(action==='ban'&&!typed)return say('Type the username you want to ban.');if(action==='ban'&&!target)target={connectionId:'',name:typed,offline:true};mod={action:action,target:target,permanent:false};document.getElementById('admin-modal-title').textContent=action==='ban'?'ban player':'kick player';document.getElementById('admin-modal-player').textContent='player: '+target.name+(target.offline?' (offline/private lookup)':'');document.getElementById('admin-ban-time').style.display=action==='ban'?'block':'none';document.getElementById('admin-mod-reason').value='';['seconds','hours','days','weeks','months','years'].forEach(function(k){document.getElementById('admin-ban-'+k).value='0'});var pb=document.getElementById('admin-ban-permanent');pb.classList.remove('active');pb.textContent='Permanent';modal.style.display='flex'}
   function closeModeration(){modal.style.display='none';mod={action:'',target:null,permanent:false}}
   document.getElementById('admin-kick').onclick=function(){if(!ownerService())return say('Admin authentication required.');openModeration('kick')};
   document.getElementById('admin-ban').onclick=function(){if(!ownerService())return say('Admin authentication required.');openModeration('ban')};
+
+  var ADMIN_API='https://diggerz-multiplayer-test-production.up.railway.app';
+  async function refreshOnlinePlayers(){
+    var box=document.getElementById('admin-online-list');
+    if(!box||!adminToken){if(box)box.textContent='Admin auth required.';return}
+    box.textContent='Loading…';
+    try{
+      var r=await fetch(ADMIN_API+'/api/admin/online',{headers:{'Authorization':'Bearer '+adminToken},cache:'no-store'});
+      var d={};try{d=await r.json()}catch(e){}
+      if(!r.ok||!d.ok)throw new Error(d.error||'failed');
+      var list=Array.isArray(d.players)?d.players:[];
+      box.innerHTML='';
+      if(!list.length){box.textContent='No players online.';return}
+      list.forEach(function(p){
+        var card=document.createElement('div');card.className='pl-card';
+        var name=document.createElement('div');name.className='pl-name';name.textContent=p.name||'Player';
+        var meta=document.createElement('div');meta.className='pl-meta';
+        meta.textContent=(p.mode||'?')+' · room '+String(p.room||'?')+(p.alive===false?' · dead':'');
+        var acts=document.createElement('div');acts.className='pl-actions';
+        function mk(label,fn){var b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=fn;acts.appendChild(b)}
+        mk('Select',function(){window.__adminSelectedOnline=p;document.getElementById('admin-player').value=p.name||'';say('Selected '+p.name+' in '+p.room)});
+        mk('Kick',function(){window.__adminSelectedOnline=p;document.getElementById('admin-player').value=p.name||'';openModeration('kick')});
+        mk('Ban',function(){window.__adminSelectedOnline=p;document.getElementById('admin-player').value=p.name||'';openModeration('ban')});
+        mk('Warn',async function(){
+          var text=document.getElementById('admin-warn-text').value.trim()||prompt('Private warning for '+p.name+':');
+          if(!text)return;
+          try{
+            await moderate('private-warn',{connectionId:p.connectionId,name:p.name},{text:text,reason:text});
+            say('Warned '+p.name);
+          }catch(e){say('Warn failed: '+e.message)}
+        });
+        mk('Chat',async function(){
+          var viewer=document.getElementById('admin-chat-viewer');
+          viewer.style.display='block';viewer.textContent='Loading chat for '+p.room+'…';
+          try{
+            var cr=await fetch(ADMIN_API+'/api/admin/room-chat?room='+encodeURIComponent(p.room),{headers:{'Authorization':'Bearer '+adminToken},cache:'no-store'});
+            var cd={};try{cd=await cr.json()}catch(e){}
+            if(!cr.ok||!cd.ok)throw new Error(cd.error||'chat failed');
+            var lines=(cd.chat||[]).map(function(c){
+              var t=c.at?new Date(c.at).toLocaleTimeString():'';
+              return '['+t+'] '+(c.name||'?')+': '+(c.text||'');
+            });
+            viewer.textContent=lines.length?('Room '+p.room+'\\n'+lines.join('\\n')):('Room '+p.room+'\\n(no recent chat)');
+          }catch(e){viewer.textContent='Chat load failed: '+e.message}
+        });
+        mk('Join',async function(){
+          try{
+            var res=await moderate('force-join',{connectionId:p.connectionId,name:p.name},{});
+            if(!res||!res.room)throw new Error('no room');
+            say('Joining room '+res.room+' ('+res.mode+')…');
+            try{
+              var P=window.DiggerzPvp22;
+              if(P){
+                P.mode=res.mode==='digtrade'?'digtrade':'pvp';
+                P.room=String(res.room||'');
+                // Re-matchmake into that private room if the client supports it.
+                if(P.socket&&P.socket.readyState===1){
+                  P.send({t:'matchmake',mode:P.mode,name:(ownerService()&&ownerService().playerName&&ownerService().playerName())||'Admin',room:P.room,clientId:(P.clientId||'')});
+                }
+              }
+            }catch(_j){}
+          }catch(e){say('Join failed: '+e.message)}
+        });
+        card.appendChild(name);card.appendChild(meta);card.appendChild(acts);box.appendChild(card);
+      });
+    }catch(e){box.textContent='Failed: '+e.message}
+  }
+  document.getElementById('admin-refresh-online').onclick=function(){refreshOnlinePlayers()};
+  document.getElementById('admin-private-warn').onclick=async function(){
+    if(!ownerService())return say('Admin authentication required.');
+    var peer=selectedPeer(), text=document.getElementById('admin-warn-text').value.trim();
+    if(!peer||!peer.connectionId)return say('Select a connected player first.');
+    if(!text)return say('Enter a warning message.');
+    try{await moderate('private-warn',peer,{text:text,reason:text});say('Warned '+peer.name)}catch(e){say('Warn failed: '+e.message)}
+  };
+  document.getElementById('admin-join-room').onclick=async function(){
+    if(!ownerService())return say('Admin authentication required.');
+    var peer=selectedPeer();
+    if(!peer||!peer.connectionId)return say('Select a connected player first.');
+    try{
+      var res=await moderate('force-join',peer,{});
+      if(!res||!res.room)throw new Error('no room');
+      say('Their room: '+res.room+' ('+res.mode+') — use private join with that code if auto-join fails.');
+    }catch(e){say('Join lookup failed: '+e.message)}
+  };
+  // Auto-refresh online list while panel is open
+  setInterval(function(){
+    var panel=document.getElementById('diggerz-admin-panel');
+    if(panel&&panel.style.display!=='none'&&adminToken)refreshOnlinePlayers();
+  },8000);
+
   document.getElementById('admin-mod-cancel').onclick=closeModeration;
   document.getElementById('admin-ban-permanent').onclick=function(){mod.permanent=!mod.permanent;this.classList.toggle('active',mod.permanent);this.textContent=mod.permanent?'Permanent: ON':'Permanent'};
   async function moderate(action,target,extra){if(!adminToken)return {ok:false,error:'admin-auth'};var response=await fetch('https://diggerz-multiplayer-test-production.up.railway.app/api/admin/moderate',{method:'POST',headers:authHeaders(),body:JSON.stringify(Object.assign({action:action,targetConnectionId:target&&target.connectionId||'',targetName:target&&target.name||''},extra||{})),cache:'no-store'});var data={};try{data=await response.json()}catch(e){};if(!response.ok)throw new Error(data.error||'moderation failed');return data}
@@ -119247,6 +119396,7 @@ e50: function(a) {
         setTimeout(retryWorldSync,0);
         return
       }
+      if(m.t==='admin-private-warn'){var wtxt=String(m.text||'').slice(0,180);try{this.message('^1[ADMIN WARNING]^7 '+wtxt)}catch(e0){}try{if(this.centerMessage)this.centerMessage('^1WARNING:^7 '+wtxt);else if(l.z38&&l.z38.R35)l.z38.R35.C46('^1[ADMIN]^7 '+wtxt)}catch(e1){}return}
       if(m.t==='chat'){var chatPeer=this.pvpPeerForConnection(m._serverFrom);if(chatPeer&&chatPeer.id){var id=chatPeer.id;this.enqueue(12,1,function(p){p.R8(id);p.R9(String(m.text||'').slice(0,180))})}return}
       if(m.t==='typing'){var typingPeer=this.pvpPeerForConnection(m._serverFrom);if(typingPeer&&typingPeer.id){var tid=typingPeer.id,active=!!m.active;this.enqueue(49,1,function(p){p.R8(tid);p.s0(active)})}return}
       if(m.t==='peer-state'){var statePeer=this.pvpPeerForConnection(m._serverFrom),se=statePeer&&this.pvpEntityForPeer(statePeer);if(se&&isFinite(+m.x)&&isFinite(+m.y)){var sx=(+m.x)*l._44,sy=(+m.y)*l._44;if(Math.hypot((se.b6-sx)/l._44,(se.b7-sy)/l._44)>1.25){try{se.l38(sx,sy)}catch(_e){se.b6=sx;se.b7=sy}}}return}

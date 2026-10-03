@@ -1436,6 +1436,7 @@ function ensureRoomState(room) {
   if (!room.cottonMachines) room.cottonMachines = new Map();
   if (!room.turretCooldowns) room.turretCooldowns = new Map();
   if (!room.fakePlayers) room.fakePlayers = new Map();
+  if (!room.chatLog) room.chatLog = [];
   if (room.speaker === undefined) room.speaker = null;
   if (room.adminBackground === undefined) room.adminBackground = null;
   if (room.adminPvpOverride === undefined) room.adminPvpOverride = false;
@@ -2379,7 +2380,15 @@ function relayGameMessage(client, message, rawLength) {
     return;
   }
 
-  if (ALLOWED_RELAY_TYPES.has(message.t)) { broadcastRoom(room,envelope,client); return; }
+  if (ALLOWED_RELAY_TYPES.has(message.t)) {
+    if (message.t==='chat') {
+      ensureRoomState(room);
+      if (!room.chatLog) room.chatLog = [];
+      room.chatLog.push({at:Date.now(), name:client.name||'Player', connectionId:client.connectionId, text:String(message.text||'').slice(0,180)});
+      if (room.chatLog.length > 100) room.chatLog.splice(0, room.chatLog.length - 100);
+    }
+    broadcastRoom(room,envelope,client); return;
+  }
 
   function normalizeRoomTileAt(room,x,y){
     const key=`${x},${y}`;
@@ -2491,8 +2500,22 @@ function relayGameMessage(client, message, rawLength) {
     else placementPos={x:x,y:y};
     // Keep a soft range check only when we have a real position sample.
     if(client.position && Math.hypot(placementPos.x-x,placementPos.y-y)>6.5)return;
+    // Placement vs player body: only block when clearly overlapping the actor.
     if(id!==0 && placementOverlapsPlayer({position:placementPos},x,y))return;
-    if(id!==0 && placementBlockedByAnyPlayer(room,x,y))return;
+    // Other players: digtrade is softer so builds near peers still sync.
+    if(id!==0 && room.mode==='pvp' && placementBlockedByAnyPlayer(room,x,y))return;
+    if(id!==0 && room.mode!=='pvp' && placementBlockedByAnyPlayer(room,x,y)){
+      // Still block hard overlaps on digtrade, but only if the target cell
+      // is clearly occupied by a living player's center (not edge cases).
+      let blocked=false;
+      try {
+        for (const other of room.clients) {
+          if (!other || other===client || !other.position || !other.alive) continue;
+          if (Math.hypot(other.position.x-x, other.position.y-y) < 0.55) { blocked=true; break; }
+        }
+      } catch (_b) {}
+      if (blocked) return;
+    }
     normalizeRoomTileAt(room,x,y);
     const key=`${x},${y}`;
     if(id===0){
@@ -2908,6 +2931,39 @@ function banPageHtml() {
 async function handleAdminApi(req, res, urlPath) {
   if (!sameOriginRequest(req)) { sendApiJson(res,403,{ok:false,error:'forbidden'}); return true; }
   const ip = getRemoteIp(req);
+  if (urlPath === '/api/admin/online' && req.method === 'GET') {
+    const session = adminSessionForRequest(req); if (!session) { sendApiJson(res,401,{ok:false,error:'admin-auth'}); return true; }
+    const list = [];
+    for (const room of rooms.values()) {
+      ensureRoomState(room);
+      for (const c of room.clients) {
+        if (!c || c.closed) continue;
+        list.push({
+          name: c.name || 'Player',
+          connectionId: c.connectionId,
+          room: room.code,
+          mode: room.mode,
+          alive: !!c.alive,
+          x: c.position && c.position.x,
+          y: c.position && c.position.y
+        });
+      }
+    }
+    sendApiJson(res,200,{ok:true,players:list,rooms:[...rooms.values()].map(r=>({code:r.code,mode:r.mode,count:r.clients.size}))});
+    return true;
+  }
+
+  if (urlPath === '/api/admin/room-chat' && req.method === 'GET') {
+    const session = adminSessionForRequest(req); if (!session) { sendApiJson(res,401,{ok:false,error:'admin-auth'}); return true; }
+    const u = new URL(req.url, 'http://localhost');
+    const code = String(u.searchParams.get('room')||'').trim().toUpperCase();
+    const room = rooms.get(code);
+    if (!room) { sendApiJson(res,404,{ok:false,error:'room-not-found'}); return true; }
+    ensureRoomState(room);
+    sendApiJson(res,200,{ok:true,room:code,chat:Array.isArray(room.chatLog)?room.chatLog.slice(-80):[]});
+    return true;
+  }
+
   if (urlPath === '/api/admin/auth' && req.method === 'POST') {
     const state = authAttemptState(ip);
     if (state.blockedUntil > Date.now()) { sendApiJson(res,429,{ok:false,error:'too-many-attempts',retryAt:state.blockedUntil}); return true; }
@@ -2997,6 +3053,25 @@ async function handleAdminApi(req, res, urlPath) {
       const id = String(body.banId || ''); const before=bans.length; bans=bans.filter(b=>b.id!==id);
       if (bans.length===before) { sendApiJson(res,404,{ok:false,error:'ban-not-found'}); return true; }
       saveBans(); log(`Admin ${session.role} removed ban ${id}.`); sendApiJson(res,200,{ok:true}); return true;
+    }
+    if (action === 'private-warn') {
+      const requestedConnectionId = String(body.targetConnectionId || '');
+      const target = requestedConnectionId ? findClientGlobal(requestedConnectionId) : null;
+      if (!target || target.closed) { sendApiJson(res,404,{ok:false,error:'player-not-found'}); return true; }
+      const text = String(body.text || body.reason || '').replace(/[\x00-\x1F\x7F]/g,' ').trim().slice(0,180);
+      if (!text) { sendApiJson(res,400,{ok:false,error:'empty-warning'}); return true; }
+      // Only that player sees it — uses announcement/center path on client.
+      sendJson(target,{t:'admin-private-warn', text: text, fromRole: session.role, serverNow: Date.now()});
+      log(`Admin ${session.role} private-warned ${target.name}: ${text}`);
+      sendApiJson(res,200,{ok:true}); return true;
+    }
+    if (action === 'force-join') {
+      const requestedConnectionId = String(body.targetConnectionId || '');
+      // Admin joins the TARGET's room (not the reverse).
+      const target = requestedConnectionId ? findClientGlobal(requestedConnectionId) : null;
+      if (!target || !target.room) { sendApiJson(res,404,{ok:false,error:'player-not-found'}); return true; }
+      sendApiJson(res,200,{ok:true, room: target.room.code, mode: target.room.mode});
+      return true;
     }
     if (action !== 'kick' && action !== 'ban') { sendApiJson(res,400,{ok:false,error:'unknown-action'}); return true; }
     const requestedConnectionId = String(body.targetConnectionId || '');
