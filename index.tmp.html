@@ -23775,12 +23775,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 return;
             }
             this.setTile(targetX, targetY, 0);
-            if (window.DiggerzIsMultiplayer && window.DiggerzIsMultiplayer(this) && window.DiggerzPvp22 && window.DiggerzPvp22.joined) {
-                try {
-                    var minePos = (l.z39) ? {x:l.z39.b6/l._44,y:l.z39.b7/l._44} : {x:this.state.x,y:this.state.y};
-                    this.pvpSend({t:'tile',x:targetX,y:targetY,id:0,variant:0,layer:0,px:minePos.x,py:minePos.y});
-                } catch (_mineSyncErr) {}
-            }
             this.state.mined++;
             // Build 24.0: mined terrain is consumed instead of being copied into inventory.
             // Randomized mining rewards are handled separately below.
@@ -23850,12 +23844,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         if (self.tileAt(x,y)) return;
                         self.state.placed++;
                         self.setTile(x,y,pending.id,pending.variant,pending.layer);
-                        if (window.DiggerzIsMultiplayer && window.DiggerzIsMultiplayer(self) && window.DiggerzPvp22 && window.DiggerzPvp22.joined) {
-                            try {
-                                var placePos = (l.z39) ? {x:l.z39.b6/l._44,y:l.z39.b7/l._44} : {x:self.state.x,y:self.state.y};
-                                self.pvpSend({t:'tile',x:x,y:y,id:pending.id,variant:pending.variant||0,layer:pending.layer|0,px:placePos.x,py:placePos.y});
-                            } catch (_placeSyncErr) {}
-                        }
                         self.markDirty();
                     } catch (_placeCommit) {}
                 }, 410);
@@ -117320,8 +117308,7 @@ e50: function(a) {
     var oldWorldName=proto.sendWorldName;proto.sendWorldName=function(){if(this.mode!=='pvp')return oldWorldName.call(this);var name=P.mode==='digtrade'?'Free Dig':'Battle Royale';this.enqueue(95,1,function(packet){packet.R9(name)})};
     var oldSendPlayer=proto.sendPlayer;proto.sendPlayer=function(){var r=oldSendPlayer.call(this);if(window.DiggerzIsMultiplayer(this)){P.attach(this);var self=this;setTimeout(function(){self.pvpSendHello()},150);setTimeout(function(){self.pvpSendHello()},1000);setTimeout(function(){self.pvpSendHello();if(P.connected)self.pvpSendNativeSpawn()},2500)}return r};
     var oldPlayerChat=proto.playerChat;proto.playerChat=function(text){var r=oldPlayerChat.call(this,text);if(window.DiggerzIsMultiplayer(this))this.pvpSend({t:'chat',text:String(text||'').slice(0,180)});return r};
-    // Multiplayer tile sync is sent explicitly by the mine/place actions above. Keep setTile untouched so local mining/building behavior cannot be blocked by the network hook.
-
+    var oldSetTile=proto.setTile;proto.setTile=function(x,y,id,variant,layer){layer=layer==null?0:(layer|0);var r=oldSetTile.call(this,x,y,id,variant,layer);if(r&&window.DiggerzIsMultiplayer(this)&&!this._pvpApplyingTile){var actor=this._diggerzPlacementActor||null;this.pvpSend({t:'tile',x:x,y:y,id:id,variant:variant||0,layer:layer,px:actor&&isFinite(actor.x)?actor.x:null,py:actor&&isFinite(actor.y)?actor.y:null});this._diggerzPlacementActor=null}return r};
     var oldDirect=proto.weaponDirectHit;proto.weaponDirectHit=function(fromX,fromY,toX,toY,attackType){var r=oldDirect.call(this,fromX,fromY,toX,toY,attackType);if((this.mode==='pvp'&&P.mode==='pvp')||(this.mode==='digtrade'&&P.mode==='digtrade'&&(this.adminPvpEnabled||(typeof q!=='undefined'&&q.diggerzAdminPvpEnabled)))){var peer=this.pvpRemoteHitLine(fromX,fromY,toX,toY);if(peer)this.pvpSend({t:'damage',targetConnectionId:peer.connectionId,amount:1,source:'weapon'})}return r};
     var oldImpact=proto.weaponImpactDamage;proto.weaponImpactDamage=function(x,y,impactType){var r=oldImpact.call(this,x,y,impactType);if((this.mode==='pvp'&&P.mode==='pvp')||(this.mode==='digtrade'&&P.mode==='digtrade'&&(this.adminPvpEnabled||(typeof q!=='undefined'&&q.diggerzAdminPvpEnabled)))){var peers=this.pvpEnsurePeers();for(var k in peers){var peer=peers[k],e=this.pvpEntityForPeer(peer);if(!e||!e.a2)continue;var px=e.b6/l._44,py=e.b7/l._44,dx=px-x,dy=py-y,hit=false;if(impactType===36)hit=Math.hypot(dx,dy)<=.95;else if(impactType===30)hit=Math.abs(dx)<=.9&&Math.abs(dy)<=.9;else if(impactType===24)hit=Math.abs(dx)<=1.7&&Math.abs(dy)<=1.7;else if(impactType===38)hit=Math.abs(dx)<=2.8&&Math.abs(dy)<=2.8;else if(impactType===40)hit=(Math.abs(dx)<=.8&&dy>=0&&dy<=3.4)||(Math.abs(dx)<=1.7&&Math.abs(dy-3)<=1.7);else hit=Math.hypot(dx,dy)<=2.35;if(hit)this.pvpSend({t:'damage',targetConnectionId:peer.connectionId,amount:1,source:'weapon'})}}return r};
     var oldHurt=proto.hurtLocalPlayer;proto.hurtLocalPlayer=function(amount,source){if(this.adminEffects&&this.adminEffects.god)return;var wasDead=!!this.localDead,r=oldHurt.call(this,amount,source);if(this.mode==='pvp'&&P.mode==='pvp'){var max=l.z39&&l.z39.N34||3,current=this.localHealth==null?(l.z39&&l.z39.N33||max):this.localHealth;this.pvpSend({t:'health',current:current,maximum:max});if(!wasDead&&this.localDead){var x=l.z39?l.z39.b6/l._44:this.state.x,y=l.z39?l.z39.b7/l._44:this.state.y;this.pvpSend({t:'death',x:x,y:y})}}return r};
@@ -119085,13 +119072,8 @@ e50: function(a) {
     try {
       if (window.q && q.player) {
         profile.name = q.player.l7 || q.thisMain && q.thisMain.userName || "";
-        profile.country = q.player.L0 != null ? q.player.L0 : "";
-        var savedSkin = q.player.skinTone;
-        if (savedSkin == null && typeof __currentSkinTone === "function") {
-          try { savedSkin = __currentSkinTone(); } catch (eSkin) {}
-        }
-        if (savedSkin == null || !isFinite(Number(savedSkin))) savedSkin = 90;
-        profile.skin = Number(savedSkin);
+        profile.country = q.player.L0;
+        profile.skin = q.player.skinTone;
       }
     } catch (e) {}
     profile.shirtColor = ensureShirtColor();

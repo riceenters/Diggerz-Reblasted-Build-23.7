@@ -120287,13 +120287,8 @@ e50: function(a) {
     try {
       if (window.q && q.player) {
         profile.name = q.player.l7 || q.thisMain && q.thisMain.userName || "";
-        profile.country = q.player.L0 != null ? q.player.L0 : "";
-        var savedSkin = q.player.skinTone;
-        if (savedSkin == null && typeof __currentSkinTone === "function") {
-          try { savedSkin = __currentSkinTone(); } catch (eSkin) {}
-        }
-        if (savedSkin == null || !isFinite(Number(savedSkin))) savedSkin = 90;
-        profile.skin = Number(savedSkin);
+        profile.country = q.player.L0;
+        profile.skin = q.player.skinTone;
       }
     } catch (e) {}
     profile.shirtColor = ensureShirtColor();
