@@ -34982,27 +34982,14 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 b.a4 = 2;
                 b._1 = "Purple Plaid Pants";
                 h.p29(b, f.PLAIDLEG_PNG, f.PLAIDBUTT_PNG);
-                // RGB tint (h5) — same system as Cotton Candy. Lower = darker.
-                // Default purple: 140, 50, 220
-                b.h5(140, 50, 220);
-                if (b._9) {
-                    for (var _pi = 0; _pi < b._9.length; _pi++) {
-                        var _pc = b._9[_pi];
-                        if (_pc && _pc.h5) _pc.h5(140, 50, 220);
-                    }
-                }
+                // True RGB formula (same as True RGB items), fixed purple, not tilesheet.
+                try { window.DiggerzApplyTrueRgbPurple && window.DiggerzApplyTrueRgbPurple(b); } catch (_pp) {}
                 break;
             case 397:
                 b.a4 = 2;
                 b._1 = "Purple Plaid Shirt";
                 h.P20(b, f.PLAIDARM_PNG, f.PLAIDTORSO_PNG);
-                b.h5(140, 50, 220);
-                if (b._9) {
-                    for (var _si = 0; _si < b._9.length; _si++) {
-                        var _sc = b._9[_si];
-                        if (_sc && _sc.h5) _sc.h5(140, 50, 220);
-                    }
-                }
+                try { window.DiggerzApplyTrueRgbPurple && window.DiggerzApplyTrueRgbPurple(b); } catch (_ps) {}
                 break;
             case 17:
                 b.a4 = 2;
@@ -52216,7 +52203,10 @@ function __normalizeWearableScales(skel) {
                 517:{base:379,trueRgb:false,slot:4}, 567:{base:379,trueRgb:true,slot:4},
                 518:{base:20,trueRgb:false,slot:2}, 568:{base:20,trueRgb:true,slot:2},
                 519:{base:187,trueRgb:false,slot:2}, 569:{base:187,trueRgb:true,slot:2},
-                520:{base:23,trueRgb:false,slot:7}, 570:{base:23,trueRgb:true,slot:7}
+                520:{base:23,trueRgb:false,slot:7}, 570:{base:23,trueRgb:true,slot:7},
+                // Purple Plaid — True RGB formula, fixed purple (not rainbow cycle)
+                396:{base:15,trueRgb:true,slot:7,fixedPurple:true},
+                397:{base:16,trueRgb:true,slot:2,fixedPurple:true}
             };
             function __dzRainbowColor(phase) {
                 var t = ((phase % 1) + 1) % 1, q = t * 6, i = Math.floor(q), f = q - i;
@@ -52262,10 +52252,14 @@ function __normalizeWearableScales(skel) {
             function __applyCustomizeRGB(skel, app, now) {
                 if (!skel || !app) return;
                 var phase = Number(now || Date.now()) / 2400;
-                var color = __dzRainbowColor(phase);
+                var rainbow = __dzRainbowColor(phase);
                 for (var slot = 0; slot < 11; slot++) {
                     var id = app[slot]|0, def = __dzRgbDefs[id];
                     if (!def) continue;
+                    // Fixed purple for Purple Plaid (True RGB brightness curve)
+                    var color = (def.fixedPurple || id === 396 || id === 397)
+                        ? [0.70, 0.15, 1.0]
+                        : rainbow;
                     // Body-texture RGB cosmetics are rendered by tinting the exact
                     // body parts the native player renderer uses.
                     if (slot === 2) {
@@ -121677,7 +121671,84 @@ e50: function(a) {
   },ms);});
 })();
 </script>
-<script src="/build239-client.js"></script><script src="/build240-client.js"></script><script id="diggerz-admin-remote-backpack">
+<script src="/build239-client.js"></script><script src="/build240-client.js"></script>
+<script id="diggerz-purple-plaid-true-rgb">
+(function () {
+  // Same math as True RGB items in build240-client:
+  //   low = 0.10, gain = 0.62, color channels in 0..1
+  // Change PURPLE to adjust hue; lower numbers = darker.
+  var PURPLE = [0.70, 0.15, 1.0];
+  var LOW = 0.10, GAIN = 0.62;
+
+  function channels() {
+    return [
+      LOW + GAIN * PURPLE[0],
+      LOW + GAIN * PURPLE[1],
+      LOW + GAIN * PURPLE[2]
+    ];
+  }
+
+  function tintNode(node) {
+    if (!node) return;
+    var c = channels();
+    try {
+      if (typeof node.set_local_r === 'function') node.set_local_r(c[0]);
+      if (typeof node.set_local_g === 'function') node.set_local_g(c[1]);
+      if (typeof node.set_local_b === 'function') node.set_local_b(c[2]);
+      if (typeof node.set_r === 'function') node.set_r(c[0]);
+      if (typeof node.set_g === 'function') node.set_g(c[1]);
+      if (typeof node.set_b === 'function') node.set_b(c[2]);
+      node.c9 = false;
+    } catch (e) {}
+    try {
+      var kids = node._9 || [];
+      for (var i = 0; i < kids.length; i++) tintNode(kids[i]);
+    } catch (e2) {}
+  }
+
+  window.DiggerzApplyTrueRgbPurple = tintNode;
+  window.DiggerzPurplePlaidRGB = PURPLE; // tweak: window.DiggerzPurplePlaidRGB = [0.5,0.1,0.9]
+
+  function entityNode(ent, path) {
+    try {
+      var node = ent && ent.i33 ? ent.i33 : ent;
+      for (var i = 0; i < path.length; i++)
+        node = node && node.f2 ? node.f2(path[i]) : null;
+      return node || null;
+    } catch (e) { return null; }
+  }
+
+  function tintWorn() {
+    try {
+      var svc = window.q && q.diggerzService;
+      var app = svc && svc.state && svc.state.appearance;
+      var ent = window.l && l.z39;
+      if (!ent || !app) return;
+      // Shirt slot 2 — Purple Plaid Shirt (397)
+      if ((app[2] | 0) === 397) {
+        tintNode(entityNode(ent, ['torso']));
+        tintNode(entityNode(ent, ['front_shoulder', 'arm']));
+        tintNode(entityNode(ent, ['back_shoulder', 'arm_back']));
+      }
+      // Pants slot 7 — Purple Plaid Pants (396)
+      if ((app[7] | 0) === 396) {
+        tintNode(entityNode(ent, ['pants']));
+        tintNode(entityNode(ent, ['front_lowerleg', 'leg']));
+        tintNode(entityNode(ent, ['back_lowerleg', 'leg_back']));
+      }
+    } catch (e) {}
+  }
+
+  function loop() {
+    tintWorn();
+    try { requestAnimationFrame(loop); } catch (e) { setTimeout(loop, 50); }
+  }
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', function () { requestAnimationFrame(loop); });
+  else requestAnimationFrame(loop);
+})();
+</script>
+<script id="diggerz-admin-remote-backpack">
 (function(){
   // Admin Remote Backpack: this is a duplicate of the game's native hb/Q44
   // backpack inventory, populated from the selected player's authoritative slots.
