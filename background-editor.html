@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diggerz.io Background Editor — Build 25.0</title>
+<style>
+:root{color-scheme:dark;--bg:#070a0f;--panel:#111822;--panel2:#0a1017;--line:#314154;--text:#eef6ff;--muted:#91a5bb;--gold:#f6d35d;--blue:#63c8ff}
+*{box-sizing:border-box}html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font:14px/1.35 Arial,sans-serif;overflow:hidden}
+button,input,select{font:inherit}button{cursor:pointer}
+.app{height:100%;display:grid;grid-template-rows:auto 1fr}
+.top{display:flex;gap:8px;align-items:center;padding:9px 11px;background:#0d141d;border-bottom:1px solid var(--line);box-shadow:0 2px 12px #000;z-index:5}
+.brand{font-weight:900;color:var(--gold);font-size:18px;white-space:nowrap}
+.top input,.top select,.top button,.side input,.side select,.side button{background:#172332;color:#fff;border:1px solid #40536a;border-radius:6px;padding:8px}
+.top #name{width:210px}.spacer{flex:1}.primary{background:#365d2d!important;border-color:#69945e!important}.danger{background:#553033!important;border-color:#8a565b!important}
+.work{min-height:0;display:grid;grid-template-columns:300px 1fr 320px}
+.side{min-height:0;background:var(--panel);overflow:auto;border-right:1px solid var(--line);padding:11px}
+.side.right{border-right:0;border-left:1px solid var(--line)}
+h2{font-size:15px;margin:0 0 10px;color:var(--gold)}h3{font-size:13px;margin:14px 0 7px;color:#cfe5fa}
+label{display:block;color:#aebfd0;margin:8px 0 4px}.row{display:grid;grid-template-columns:1fr 1fr;gap:7px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.preset{display:block;width:100%;text-align:left;margin:5px 0;padding:9px!important}.preset.active{outline:2px solid var(--gold)}
+.layers{display:flex;flex-direction:column;gap:6px}.layer{border:1px solid #34475b;border-radius:7px;background:#0c131c;padding:8px;cursor:pointer}.layer.active{outline:2px solid var(--gold)}.layer strong{display:block}.layer span{font-size:11px;color:#91a5bb}
+.previewWrap{min-width:0;min-height:0;display:grid;grid-template-rows:auto 1fr;background:#05080c}
+.tools{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#0c121a;border-bottom:1px solid var(--line)}
+.previewScroll{min-width:0;min-height:0;display:grid;place-items:center;overflow:auto;padding:30px}
+.previewFrame{position:relative;width:960px;height:540px;overflow:hidden;border:3px solid #fff;box-shadow:0 0 35px #000;background:#111;transform-origin:center}
+#preview{position:absolute;inset:0;width:100%;height:100%;display:block}
+.layerControls{display:none}.layerControls.show{display:block}
+.small{font-size:11px;color:var(--muted);line-height:1.45}
+.fileName{font-size:11px;color:#8fb8dc;margin-top:4px;word-break:break-all}
+.swatch{width:100%;height:38px;padding:2px!important}
+input[type=range]{width:100%}
+input[type=number]{width:100%}
+.check{display:flex;align-items:center;gap:7px;margin:8px 0}.check input{width:auto}
+.toast{position:fixed;right:14px;bottom:14px;background:#132337;border:1px solid #6684a6;border-radius:7px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:.18s;pointer-events:none;z-index:50}.toast.show{opacity:1;transform:none}
+@media(max-width:1050px){.work{grid-template-columns:250px 1fr 280px}.brand{font-size:15px}.top #name{width:150px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div class="brand">DIGGERZ.IO BACKGROUND EDITOR</div>
+    <label>Name <input id="name" value="New Background" maxlength="50"></label>
+    <button id="new">New Blank</button>
+    <button id="importBtn">Import</button>
+    <button id="saveDraft">Save Draft</button>
+    <button id="loadDraft">Load Draft</button>
+    <div class="spacer"></div>
+    <button id="exportJson" class="primary">Export JSON</button>
+    <button id="exportPng">Export Preview PNG</button>
+    <input id="importFile" type="file" accept=".json,application/json" hidden>
+  </div>
+
+  <div class="work">
+    <aside class="side">
+      <h2>Existing Diggerz Backgrounds</h2>
+      <div id="presets"></div>
+      <h3>Layers</h3>
+      <div class="row"><button id="addColor">+ Color</button><button id="addGradient">+ Gradient</button></div>
+      <div class="row"><button id="addImage">+ Image</button><button id="duplicate">Duplicate</button></div>
+      <div class="row"><button id="moveUp">Move Up</button><button id="moveDown">Move Down</button></div>
+      <button id="removeLayer" class="danger" style="width:100%;margin-top:7px">Remove Layer</button>
+      <input id="imageFile" type="file" accept="image/*" hidden>
+      <div class="layers" id="layers" style="margin-top:10px"></div>
+      <p class="small">Existing themes are editable starting points. Custom image layers can use an uploaded preview image plus an asset name/path for the game build.</p>
+    </aside>
+
+    <main class="previewWrap">
+      <div class="tools">
+        <label>Preview Zoom <input id="zoom" type="range" min="40" max="120" value="80"></label>
+        <span id="zoomLabel">80%</span>
+        <div class="spacer"></div>
+        <span class="small">960 × 540 preview · layer order: bottom → top</span>
+      </div>
+      <div class="previewScroll">
+        <div class="previewFrame" id="previewFrame"><canvas id="preview" width="960" height="540"></canvas></div>
+      </div>
+    </main>
+
+    <aside class="side right">
+      <h2>Background Settings</h2>
+      <label>Game Background ID <input id="bgId" type="number" min="0" max="9999" value="10"></label>
+      <label>Legacy recipe / note <input id="recipe" placeholder="Optional, e.g. A39(...)"></label>
+      <div class="check"><input id="loopX" type="checkbox" checked><span>Background repeats horizontally</span></div>
+      <div class="check"><input id="loopY" type="checkbox"><span>Background repeats vertically</span></div>
+
+      <div id="layerPanel" class="layerControls">
+        <h3>Selected Layer</h3>
+        <label>Layer Name <input id="layerName"></label>
+        <label>Type <select id="layerType"><option value="color">Solid Color</option><option value="gradient">Gradient</option><option value="image">Image</option></select></label>
+
+        <div id="colorControls">
+          <label>Color <input id="color1" class="swatch" type="color" value="#07132b"></label>
+        </div>
+
+        <div id="gradientControls">
+          <label>Top / Start Color <input id="grad1" class="swatch" type="color" value="#07132b"></label>
+          <label>Bottom / End Color <input id="grad2" class="swatch" type="color" value="#1c315d"></label>
+          <label>Gradient Angle <input id="gradAngle" type="number" value="90" step="1"></label>
+        </div>
+
+        <div id="imageControls">
+          <label>Game asset/path <input id="assetPath" placeholder="assets/my_background.png"></label>
+          <button id="chooseImage" style="width:100%">Choose Preview Image</button>
+          <div class="fileName" id="imageName">No preview image loaded.</div>
+          <label>Fit <select id="fit"><option value="contain">Contain</option><option value="cover">Cover</option><option value="stretch">Stretch</option><option value="native">Native</option></select></label>
+          <div class="check"><input id="repeatX" type="checkbox" checked><span>Repeat X</span></div>
+          <div class="check"><input id="repeatY" type="checkbox"><span>Repeat Y</span></div>
+        </div>
+
+        <h3>Transform</h3>
+        <div class="row"><label>X <input id="x" type="number" value="0" step="1"></label><label>Y <input id="y" type="number" value="0" step="1"></label></div>
+        <div class="row"><label>Scale X <input id="sx" type="number" value="1" step=".05"></label><label>Scale Y <input id="sy" type="number" value="1" step=".05"></label></div>
+        <div class="row"><label>Scroll X <input id="scrollX" type="number" value="0" step=".05"></label><label>Scroll Y <input id="scrollY" type="number" value="0" step=".05"></label></div>
+        <div class="row"><label>Parallax X <input id="parallaxX" type="number" value="1" step=".05"></label><label>Parallax Y <input id="parallaxY" type="number" value="1" step=".05"></label></div>
+        <label>Opacity <input id="opacity" type="range" min="0" max="1" value="1" step=".01"></label>
+        <div class="row"><div class="check"><input id="flipX" type="checkbox"><span>Flip X</span></div><div class="check"><input id="flipY" type="checkbox"><span>Flip Y</span></div></div>
+        <label>Tint <input id="tint" class="swatch" type="color" value="#ffffff"></label>
+      </div>
+
+      <h3>Export Notes</h3>
+      <p class="small">JSON export stores the layer stack, transforms, parallax values, and asset references. Uploaded preview images are not embedded into the JSON; add the named asset to the Diggerz build when integrating the background.</p>
+    </aside>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const BUILTIN=[
+ {id:0,name:'Mountains',recipe:'A39(MOUNTAIN_PNG,HILL_PNG,1,0,a36,1)',layers:[{name:'Sky',type:'gradient',a:'#8fcbef',b:'#6d99c5',angle:90},{name:'Mountains',type:'image',asset:'MOUNTAIN_PNG',fit:'cover',repeatX:true,repeatY:false,y:150,parallaxX:.25,parallaxY:.1},{name:'Hills',type:'image',asset:'HILL_PNG',fit:'cover',repeatX:true,repeatY:false,y:260,parallaxX:.55,parallaxY:.2}]},
+ {id:1,name:'Grey',recipe:'A30()',layers:[{name:'Grey Sky',type:'gradient',a:'#8ab4df',b:'#33475e',angle:90}]},
+ {id:2,name:'Sunset',recipe:'a31()',layers:[{name:'Sunset Sky',type:'gradient',a:'#e6e6e6',b:'#767676',angle:90}]},
+ {id:3,name:'Moon',recipe:'A38()',layers:[{name:'Night Sky',type:'gradient',a:'#390b16',b:'#9d2028',angle:90},{name:'Moon',type:'image',asset:'MOON_PNG',fit:'native',x:660,y:80,sx:1,sy:1,parallaxX:.1,parallaxY:.05}]},
+ {id:4,name:'Icy Mountains',recipe:'A39(ICY_MOUNTAINS_PNG,ICY_HILLS_PNG,0,1,a36,1)',layers:[{name:'Icy Sky',type:'gradient',a:'#dff4ff',b:'#a8cfdf',angle:90},{name:'Icy Mountains',type:'image',asset:'ICY_MOUNTAINS_PNG',fit:'cover',repeatX:true,y:150,parallaxX:.25,parallaxY:.1},{name:'Icy Hills',type:'image',asset:'ICY_HILLS_PNG',fit:'cover',repeatX:true,y:270,parallaxX:.55,parallaxY:.2}]},
+ {id:5,name:'Clouds',recipe:'a39()',layers:[{name:'Red Sky',type:'gradient',a:'#5c0710',b:'#c52e2e',angle:90},{name:'Clouds',type:'image',asset:'CLOUDS_PNG',fit:'cover',repeatX:true,parallaxX:.35,parallaxY:.1}]},
+ {id:6,name:'Background 6',recipe:'A32()',layers:[{name:'Deep Night',type:'gradient',a:'#07132b',b:'#1c315d',angle:90}]},
+ {id:7,name:'Background 7',recipe:'A31()',layers:[{name:'Earth',type:'gradient',a:'#6b4634',b:'#17191c',angle:90}]},
+ {id:8,name:'Green Screen',recipe:'a33(green)',layers:[{name:'Green',type:'color',color:'#00e893'}]},
+ {id:9,name:'Beta Bknd',recipe:'a32()',layers:[{name:'Beta',type:'gradient',a:'#767676',b:'#dddddd',angle:90}]}
+];
+const canvas=document.getElementById('preview'),ctx=canvas.getContext('2d'),layersEl=document.getElementById('layers');
+const imageCache=new Map();
+let doc={format:'diggerz-background-v1',version:1,id:10,name:'New Background',recipe:'',loopX:true,loopY:false,layers:[]},selected=-1,time=0;
+
+function normLayer(l){
+ return Object.assign({name:'Layer',type:'color',color:'#111827',a:'#07132b',b:'#1c315d',angle:90,asset:'',previewData:'',fit:'cover',repeatX:false,repeatY:false,x:0,y:0,sx:1,sy:1,scrollX:0,scrollY:0,parallaxX:1,parallaxY:1,opacity:1,flipX:false,flipY:false,tint:'#ffffff'},l||{});
+}
+function toast(s){const e=document.getElementById('toast');e.textContent=s;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2200)}
+function resetBlank(){doc={format:'diggerz-background-v1',version:1,id:10,name:'New Background',recipe:'',loopX:true,loopY:false,layers:[normLayer({name:'Sky',type:'gradient',a:'#07132b',b:'#1c315d'})]};selected=0;syncAll()}
+function loadPreset(p){doc={format:'diggerz-background-v1',version:1,id:p.id,name:p.name+' Custom',recipe:p.recipe,sourceThemeId:p.id,loopX:true,loopY:false,layers:(p.layers||[]).map(normLayer)};selected=0;syncAll();toast('Loaded '+p.name+' as an editable background.')}
+function syncAll(){document.getElementById('name').value=doc.name||'';document.getElementById('bgId').value=doc.id??10;document.getElementById('recipe').value=doc.recipe||'';document.getElementById('loopX').checked=doc.loopX!==false;document.getElementById('loopY').checked=!!doc.loopY;renderPresets();renderLayers();syncLayerPanel();draw()}
+function renderPresets(){const root=document.getElementById('presets');root.innerHTML='';for(const p of BUILTIN){const b=document.createElement('button');b.className='preset'+(doc.sourceThemeId===p.id?' active':'');b.textContent=p.id+' · '+p.name;b.title=p.recipe;b.onclick=()=>loadPreset(p);root.appendChild(b)}}
+function renderLayers(){layersEl.innerHTML='';doc.layers.forEach((l,i)=>{const e=document.createElement('div');e.className='layer'+(i===selected?' active':'');e.innerHTML='<strong>'+escapeHtml(l.name||('Layer '+(i+1)))+'</strong><span>'+l.type+(l.asset?' · '+escapeHtml(l.asset):'')+'</span>';e.onclick=()=>{selected=i;renderLayers();syncLayerPanel()};layersEl.appendChild(e)})}
+function escapeHtml(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function current(){return selected>=0&&selected<doc.layers.length?doc.layers[selected]:null}
+function syncLayerPanel(){const l=current(),p=document.getElementById('layerPanel');p.classList.toggle('show',!!l);if(!l)return;for(const [id,key] of [['layerName','name'],['layerType','type'],['color1','color'],['grad1','a'],['grad2','b'],['gradAngle','angle'],['assetPath','asset'],['fit','fit'],['x','x'],['y','y'],['sx','sx'],['sy','sy'],['scrollX','scrollX'],['scrollY','scrollY'],['parallaxX','parallaxX'],['parallaxY','parallaxY'],['opacity','opacity'],['tint','tint']]){const e=document.getElementById(id);if(e)e.value=l[key]??e.value}document.getElementById('repeatX').checked=!!l.repeatX;document.getElementById('repeatY').checked=!!l.repeatY;document.getElementById('flipX').checked=!!l.flipX;document.getElementById('flipY').checked=!!l.flipY;document.getElementById('imageName').textContent=l.previewData?'Preview image loaded.':(l.asset||'No preview image loaded.');updateTypeControls()}
+function updateTypeControls(){const l=current();if(!l)return;document.getElementById('colorControls').style.display=l.type==='color'?'block':'none';document.getElementById('gradientControls').style.display=l.type==='gradient'?'block':'none';document.getElementById('imageControls').style.display=l.type==='image'?'block':'none'}
+function addLayer(type){const l=normLayer({name:type==='image'?'Image Layer':type==='gradient'?'Gradient Layer':'Color Layer',type});doc.layers.push(l);selected=doc.layers.length-1;renderLayers();syncLayerPanel();draw()}
+function draw(){
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ for(const l of doc.layers){
+  ctx.save();ctx.globalAlpha=Math.max(0,Math.min(1,+l.opacity||0));
+  if(l.type==='color'){ctx.fillStyle=l.color||'#000';ctx.fillRect(0,0,canvas.width,canvas.height)}
+  else if(l.type==='gradient'){const ang=(+l.angle||90)*Math.PI/180,cx=canvas.width/2,cy=canvas.height/2,len=Math.abs(Math.cos(ang))*canvas.width+Math.abs(Math.sin(ang))*canvas.height;const x1=cx-Math.cos(ang)*len/2,y1=cy-Math.sin(ang)*len/2,x2=cx+Math.cos(ang)*len/2,y2=cy+Math.sin(ang)*len/2,g=ctx.createLinearGradient(x1,y1,x2,y2);g.addColorStop(0,l.a||'#000');g.addColorStop(1,l.b||'#fff');ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height)}
+  else if(l.type==='image'){drawImageLayer(l)}
+  ctx.restore();
+ }
+}
+function imgFor(l){
+ const key=l.previewData||l.asset;if(!key)return null;
+ if(imageCache.has(key))return imageCache.get(key);
+ const im=new Image();im.onload=()=>draw();im.src=l.previewData||('/'+String(l.asset||'').replace(/^\//,''));imageCache.set(key,im);return im;
+}
+function drawImageLayer(l){
+ const im=imgFor(l);if(!im||!im.complete||!im.naturalWidth)return;
+ let dw=im.naturalWidth*(+l.sx||1),dh=im.naturalHeight*(+l.sy||1);
+ if(l.fit==='stretch'){dw=canvas.width*(+l.sx||1);dh=canvas.height*(+l.sy||1)}
+ else if(l.fit==='cover'||l.fit==='contain'){const r=l.fit==='cover'?Math.max(canvas.width/im.naturalWidth,canvas.height/im.naturalHeight):Math.min(canvas.width/im.naturalWidth,canvas.height/im.naturalHeight);dw=im.naturalWidth*r*(+l.sx||1);dh=im.naturalHeight*r*(+l.sy||1)}
+ let ox=(+l.x||0)+time*(+l.scrollX||0),oy=(+l.y||0)+time*(+l.scrollY||0);
+ const xs=l.repeatX?Math.ceil(canvas.width/Math.max(1,dw))+2:1,ys=l.repeatY?Math.ceil(canvas.height/Math.max(1,dh))+2:1;
+ const startX=l.repeatX?(-((ox%dw)+dw)%dw-dw):ox,startY=l.repeatY?(-((oy%dh)+dh)%dh-dh):oy;
+ ctx.save();ctx.translate(canvas.width/2,canvas.height/2);ctx.scale(l.flipX?-1:1,l.flipY?-1:1);ctx.translate(-canvas.width/2,-canvas.height/2);
+ for(let ix=0;ix<xs;ix++)for(let iy=0;iy<ys;iy++)ctx.drawImage(im,startX+ix*dw,startY+iy*dh,dw,dh);
+ if((l.tint||'#ffffff').toLowerCase()!=='#ffffff'){ctx.globalCompositeOperation='multiply';ctx.fillStyle=l.tint;ctx.fillRect(0,0,canvas.width,canvas.height);ctx.globalCompositeOperation='destination-in';for(let ix=0;ix<xs;ix++)for(let iy=0;iy<ys;iy++)ctx.drawImage(im,startX+ix*dw,startY+iy*dh,dw,dh)}
+ ctx.restore();
+}
+function updateFromPanel(){
+ const l=current();if(!l)return;
+ l.name=document.getElementById('layerName').value;l.type=document.getElementById('layerType').value;l.color=document.getElementById('color1').value;l.a=document.getElementById('grad1').value;l.b=document.getElementById('grad2').value;l.angle=+document.getElementById('gradAngle').value||0;l.asset=document.getElementById('assetPath').value.trim();l.fit=document.getElementById('fit').value;l.repeatX=document.getElementById('repeatX').checked;l.repeatY=document.getElementById('repeatY').checked;l.x=+document.getElementById('x').value||0;l.y=+document.getElementById('y').value||0;l.sx=+document.getElementById('sx').value||1;l.sy=+document.getElementById('sy').value||1;l.scrollX=+document.getElementById('scrollX').value||0;l.scrollY=+document.getElementById('scrollY').value||0;l.parallaxX=+document.getElementById('parallaxX').value||0;l.parallaxY=+document.getElementById('parallaxY').value||0;l.opacity=+document.getElementById('opacity').value;l.flipX=document.getElementById('flipX').checked;l.flipY=document.getElementById('flipY').checked;l.tint=document.getElementById('tint').value;renderLayers();updateTypeControls();draw()
+}
+for(const id of ['layerName','layerType','color1','grad1','grad2','gradAngle','assetPath','fit','repeatX','repeatY','x','y','sx','sy','scrollX','scrollY','parallaxX','parallaxY','opacity','flipX','flipY','tint'])document.getElementById(id).addEventListener('input',updateFromPanel);
+document.getElementById('name').oninput=e=>doc.name=e.target.value;document.getElementById('bgId').oninput=e=>doc.id=+e.target.value||0;document.getElementById('recipe').oninput=e=>doc.recipe=e.target.value;document.getElementById('loopX').onchange=e=>doc.loopX=e.target.checked;document.getElementById('loopY').onchange=e=>doc.loopY=e.target.checked;
+document.getElementById('addColor').onclick=()=>addLayer('color');document.getElementById('addGradient').onclick=()=>addLayer('gradient');document.getElementById('addImage').onclick=()=>{addLayer('image');document.getElementById('imageFile').click()};document.getElementById('duplicate').onclick=()=>{const l=current();if(!l)return;doc.layers.splice(selected+1,0,normLayer(JSON.parse(JSON.stringify(l))));selected++;renderLayers();syncLayerPanel();draw()};
+document.getElementById('removeLayer').onclick=()=>{if(selected<0)return;doc.layers.splice(selected,1);selected=Math.min(selected,doc.layers.length-1);renderLayers();syncLayerPanel();draw()};
+document.getElementById('moveUp').onclick=()=>{if(selected<0||selected>=doc.layers.length-1)return;[doc.layers[selected],doc.layers[selected+1]]=[doc.layers[selected+1],doc.layers[selected]];selected++;renderLayers();draw()};
+document.getElementById('moveDown').onclick=()=>{if(selected<=0)return;[doc.layers[selected],doc.layers[selected-1]]=[doc.layers[selected-1],doc.layers[selected]];selected--;renderLayers();draw()};
+document.getElementById('chooseImage').onclick=()=>document.getElementById('imageFile').click();document.getElementById('imageFile').onchange=e=>{const f=e.target.files[0],l=current();if(!f||!l)return;const r=new FileReader();r.onload=()=>{l.previewData=String(r.result);document.getElementById('imageName').textContent=f.name+' (preview only)';imageCache.delete(l.previewData);draw()};r.readAsDataURL(f);e.target.value=''};
+document.getElementById('new').onclick=()=>{if(confirm('Start a new blank background?'))resetBlank()};
+function exportObject(){const o=JSON.parse(JSON.stringify(doc));for(const l of o.layers)delete l.previewData;return o}
+function download(name,text,type){const blob=new Blob([text],{type}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+document.getElementById('exportJson').onclick=()=>{const o=exportObject(),slug=(o.name||'background').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'background';download(slug+'.background.json',JSON.stringify(o,null,2)+'\n','application/json');toast('Background JSON exported.')};
+document.getElementById('exportPng').onclick=()=>canvas.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=((doc.name||'background').replace(/[^a-z0-9_-]+/gi,'_'))+'.png';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)},'image/png');
+document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();document.getElementById('importFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const o=JSON.parse(await f.text());if(o.format!=='diggerz-background-v1'||!Array.isArray(o.layers))throw new Error('Not a Diggerz background editor file.');doc=o;doc.layers=doc.layers.map(normLayer);selected=doc.layers.length?0:-1;syncAll();toast('Background imported.')}catch(err){alert(err.message)}e.target.value=''};
+function draftKey(){return 'diggerz.backgrounddraft.'+(doc.name||'background').toLowerCase().replace(/[^a-z0-9_-]+/g,'_')}
+document.getElementById('saveDraft').onclick=()=>{try{localStorage.setItem(draftKey(),JSON.stringify(doc));localStorage.setItem('diggerz.backgrounddraft.last',draftKey());toast('Draft saved in this browser.')}catch(e){toast('Could not save draft.')}}
+document.getElementById('loadDraft').onclick=()=>{try{const k=localStorage.getItem('diggerz.backgrounddraft.last');if(!k||!localStorage.getItem(k))return toast('No saved background draft.');doc=JSON.parse(localStorage.getItem(k));doc.layers=doc.layers.map(normLayer);selected=doc.layers.length?0:-1;syncAll();toast('Draft loaded.')}catch(e){toast('Could not load draft.')}}
+document.getElementById('zoom').oninput=e=>{const z=+e.target.value;document.getElementById('zoomLabel').textContent=z+'%';document.getElementById('previewFrame').style.transform='scale('+(z/100)+')'};
+function loop(ts){time=ts/1000;draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
+resetBlank();
+</script>
+</body>
+</html>
