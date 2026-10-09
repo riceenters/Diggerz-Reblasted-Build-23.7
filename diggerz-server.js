@@ -3218,6 +3218,23 @@ const server = http.createServer(async (req, res) => {
     }
     return;
   }
+  if (urlPath === '/intro-editor') {
+    try {
+      const editorPath = path.join(__dirname, 'intro-editor.html');
+      const body = fs.readFileSync(editorPath);
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Length': body.length,
+        'Cache-Control': 'no-store'
+      });
+      res.end(body);
+    } catch (error) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+      res.end('Diggerz intro editor is missing on the server.\n');
+    }
+    return;
+  }
+
   if (urlPath === '/background-editor') {
     try {
       const editorPath = path.join(__dirname, 'background-editor.html');
