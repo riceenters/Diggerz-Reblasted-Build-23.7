@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diggerz.io Intro Editor — Build 25.0</title>
+<style>
+:root{color-scheme:dark;--bg:#06080c;--panel:#111821;--panel2:#0b1118;--line:#314156;--text:#eef6ff;--muted:#8fa4b9;--gold:#f5cf58;--accent:#61c8ff}
+*{box-sizing:border-box}html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font:14px/1.35 Arial,sans-serif;overflow:hidden}
+button,input,select,textarea{font:inherit}button{cursor:pointer}
+.app{height:100%;display:grid;grid-template-rows:auto 1fr auto}
+.top{display:flex;gap:8px;align-items:center;padding:9px 10px;background:#0d141d;border-bottom:1px solid var(--line)}
+.brand{font-weight:900;color:var(--gold);font-size:18px;white-space:nowrap}
+.top button,.top input,.top select,.side button,.side input,.side select,.side textarea{background:#172332;color:#fff;border:1px solid #40536a;border-radius:6px;padding:8px}
+.top #projectName{width:220px}.spacer{flex:1}.primary{background:#365d2d!important;border-color:#69945e!important}.danger{background:#553033!important;border-color:#8a565b!important}
+.work{min-height:0;display:grid;grid-template-columns:280px 1fr 320px}
+.side{min-height:0;overflow:auto;background:var(--panel);padding:10px;border-right:1px solid var(--line)}.side.right{border-right:0;border-left:1px solid var(--line)}
+h2{font-size:15px;color:var(--gold);margin:0 0 10px}h3{font-size:13px;color:#cfe5fa;margin:14px 0 7px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:6px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}label{display:block;color:#aebfd0;margin:8px 0 4px}
+.sceneList{display:flex;flex-direction:column;gap:6px}.scene{padding:8px;border:1px solid #34475b;background:#0c131c;border-radius:7px;cursor:pointer}.scene.active{outline:2px solid var(--gold)}.scene strong{display:block}.scene span{font-size:11px;color:var(--muted)}
+.previewWrap{min-width:0;min-height:0;display:grid;grid-template-rows:auto 1fr;background:#05080c}
+.tools{display:flex;gap:7px;align-items:center;padding:8px 10px;background:#0c121a;border-bottom:1px solid var(--line)}
+.previewScroll{min-height:0;display:grid;place-items:center;overflow:auto;padding:24px}
+.stage{position:relative;width:960px;height:540px;background:#000;border:3px solid #fff;box-shadow:0 0 30px #000;overflow:hidden;transform-origin:center}
+.stage>*{position:absolute}.bg{inset:0;background:#000}.media{inset:0;width:100%;height:100%;object-fit:contain}.textLayer{left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;white-space:pre-wrap;text-shadow:0 3px 14px #000}
+.overlay{inset:0;pointer-events:none}.grid{background-image:linear-gradient(rgba(255,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.08) 1px,transparent 1px);background-size:32px 32px}
+.bottom{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:8px 10px;background:#0c121a;border-top:1px solid var(--line)}
+.timeline{height:18px;background:#111a24;border:1px solid #3a4d61;border-radius:6px;position:relative;overflow:hidden;cursor:pointer}.timelineFill{height:100%;width:0;background:linear-gradient(90deg,#8b5d11,#f5cf58)}
+.small{font-size:11px;color:var(--muted)}textarea{width:100%;min-height:70px;resize:vertical}.swatch{width:100%;height:38px;padding:2px!important}.check{display:flex;gap:7px;align-items:center;margin:8px 0}.check input{width:auto}
+.assetName{font-size:11px;color:#8eb8dc;word-break:break-all;margin-top:5px}
+.toast{position:fixed;right:14px;bottom:50px;background:#132337;border:1px solid #6684a6;border-radius:7px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:.18s;pointer-events:none}.toast.show{opacity:1;transform:none}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="top">
+  <div class="brand">DIGGERZ.IO INTRO EDITOR</div>
+  <label>Name <input id="projectName" value="Build 25 Intro"></label>
+  <button id="newProject">New</button><button id="importProject">Import</button><button id="saveDraft">Save Draft</button><button id="loadDraft">Load Draft</button>
+  <div class="spacer"></div>
+  <button id="exportProject" class="primary">Export Intro JSON</button>
+  <input id="projectFile" type="file" accept=".json,application/json" hidden>
+</div>
+
+<div class="work">
+<aside class="side">
+  <h2>Scenes</h2>
+  <div class="row"><button id="addScene">+ Scene</button><button id="duplicateScene">Duplicate</button></div>
+  <div class="row"><button id="sceneUp">Move Up</button><button id="sceneDown">Move Down</button></div>
+  <button id="removeScene" class="danger" style="width:100%;margin-top:6px">Remove Scene</button>
+  <div id="sceneList" class="sceneList" style="margin-top:10px"></div>
+  <h3>Project Audio</h3>
+  <button id="chooseAudio" style="width:100%">Choose Intro Audio</button>
+  <div id="audioName" class="assetName">No audio selected.</div>
+  <div class="check"><input id="audioLoop" type="checkbox"><span>Loop audio</span></div>
+  <label>Audio Volume <input id="audioVolume" type="range" min="0" max="1" step=".01" value="1"></label>
+  <input id="audioFile" type="file" accept="audio/*" hidden>
+</aside>
+
+<main class="previewWrap">
+  <div class="tools">
+    <button id="play">Play Intro</button><button id="stop">Stop</button>
+    <label>Preview Zoom <input id="zoom" type="range" min="40" max="110" value="80"></label><span id="zoomLabel">80%</span>
+    <div class="spacer"></div><span id="timeLabel" class="small">0.00 / 0.00s</span>
+  </div>
+  <div class="previewScroll">
+    <div class="stage" id="stage">
+      <div class="bg" id="stageBg"></div>
+      <img class="media" id="stageImage" hidden>
+      <video class="media" id="stageVideo" muted playsinline hidden></video>
+      <div class="textLayer" id="stageText"></div>
+      <div class="overlay" id="stageOverlay"></div>
+    </div>
+  </div>
+</main>
+
+<aside class="side right">
+  <h2>Selected Scene</h2>
+  <label>Scene Name <input id="sceneName"></label>
+  <div class="row"><label>Duration (s) <input id="duration" type="number" min=".1" step=".1" value="2"></label><label>Delay Before (s) <input id="delay" type="number" min="0" step=".1" value="0"></label></div>
+  <label>Background Color <input id="bgColor" class="swatch" type="color" value="#000000"></label>
+  <label>Text <textarea id="text"></textarea></label>
+  <div class="row"><label>Font Size <input id="fontSize" type="number" min="8" max="240" value="64"></label><label>Text Color <input id="textColor" class="swatch" type="color" value="#ffffff"></label></div>
+  <label>Font Weight <select id="fontWeight"><option>400</option><option>700</option><option selected>900</option></select></label>
+  <div class="row"><label>X (%) <input id="x" type="number" min="0" max="100" value="50"></label><label>Y (%) <input id="y" type="number" min="0" max="100" value="50"></label></div>
+  <label>Media Fit <select id="fit"><option value="contain">Contain</option><option value="cover">Cover</option><option value="stretch">Stretch</option></select></label>
+  <div class="row"><button id="chooseImage">Choose Image</button><button id="chooseVideo">Choose Video</button></div>
+  <div id="mediaName" class="assetName">No media selected.</div>
+  <button id="clearMedia" style="width:100%;margin-top:6px">Clear Media</button>
+  <input id="imageFile" type="file" accept="image/*" hidden><input id="videoFile" type="file" accept="video/*" hidden>
+
+  <h3>Animation</h3>
+  <label>Entrance <select id="enter"><option value="none">None</option><option value="fade">Fade In</option><option value="zoom">Zoom In</option><option value="slideLeft">Slide From Left</option><option value="slideRight">Slide From Right</option><option value="glitch">Glitch</option></select></label>
+  <label>Exit <select id="exit"><option value="none">None</option><option value="fade">Fade Out</option><option value="zoom">Zoom Out</option></select></label>
+  <div class="row"><label>Enter Time <input id="enterTime" type="number" min="0" step=".05" value=".4"></label><label>Exit Time <input id="exitTime" type="number" min="0" step=".05" value=".4"></label></div>
+  <label>Overlay <select id="overlay"><option value="none">None</option><option value="scanlines">Scanlines</option><option value="grid">Grid</option><option value="vignette">Vignette</option></select></label>
+</aside>
+</div>
+
+<div class="bottom">
+  <button id="prevScene">◀</button>
+  <div class="timeline" id="timeline"><div class="timelineFill" id="timelineFill"></div></div>
+  <button id="nextScene">▶</button>
+</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+let project,selected=0,playing=false,startTs=0,currentTime=0,raf=0,audioObject=null;
+function baseScene(i=1){return {name:'Scene '+i,duration:2,delay:0,bgColor:'#000000',text:'',fontSize:64,textColor:'#ffffff',fontWeight:'900',x:50,y:50,fit:'contain',mediaType:'',mediaData:'',mediaName:'',enter:'fade',exit:'fade',enterTime:.4,exitTime:.4,overlay:'none'}}
+function reset(){project={format:'diggerz-intro-v1',version:1,name:'Build 25 Intro',audio:{name:'',data:'',loop:false,volume:1},scenes:[baseScene(1)]};selected=0;sync()}
+function toast(s){const e=$('toast');e.textContent=s;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),1800)}
+function totalDuration(){return project.scenes.reduce((a,s)=>a+(+s.delay||0)+(+s.duration||0),0)}
+function sceneAt(t){let cur=0;for(let i=0;i<project.scenes.length;i++){const s=project.scenes[i],d=(+s.delay||0)+(+s.duration||0);if(t<cur+d)return {i,local:t-cur,scene:s,start:cur};cur+=d}return {i:project.scenes.length-1,local:999,scene:project.scenes.at(-1),start:cur}}
+function renderSceneList(){const r=$('sceneList');r.innerHTML='';project.scenes.forEach((s,i)=>{const e=document.createElement('div');e.className='scene'+(i===selected?' active':'');e.innerHTML='<strong>'+esc(s.name)+'</strong><span>'+((+s.delay||0)+(+s.duration||0)).toFixed(2)+'s</span>';e.onclick=()=>{selected=i;syncPanel();renderSceneList();renderAtSceneStart()};r.appendChild(e)})}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function cur(){return project.scenes[selected]}
+function sync(){ $('projectName').value=project.name; $('audioLoop').checked=!!project.audio.loop; $('audioVolume').value=project.audio.volume??1;$('audioName').textContent=project.audio.name||'No audio selected.';renderSceneList();syncPanel();renderAtSceneStart()}
+function syncPanel(){const s=cur();if(!s)return;for(const [id,key] of [['sceneName','name'],['duration','duration'],['delay','delay'],['bgColor','bgColor'],['text','text'],['fontSize','fontSize'],['textColor','textColor'],['fontWeight','fontWeight'],['x','x'],['y','y'],['fit','fit'],['enter','enter'],['exit','exit'],['enterTime','enterTime'],['exitTime','exitTime'],['overlay','overlay']])$(id).value=s[key];$('mediaName').textContent=s.mediaName||'No media selected.'}
+function updatePanel(){const s=cur();if(!s)return;for(const [id,key,num] of [['sceneName','name'],['duration','duration',1],['delay','delay',1],['bgColor','bgColor'],['text','text'],['fontSize','fontSize',1],['textColor','textColor'],['fontWeight','fontWeight'],['x','x',1],['y','y',1],['fit','fit'],['enter','enter'],['exit','exit'],['enterTime','enterTime',1],['exitTime','exitTime',1],['overlay','overlay']])s[key]=num?+$(id).value:$(id).value;renderSceneList();renderAtSceneStart()}
+for(const id of ['sceneName','duration','delay','bgColor','text','fontSize','textColor','fontWeight','x','y','fit','enter','exit','enterTime','exitTime','overlay'])$(id).addEventListener('input',updatePanel);
+$('projectName').oninput=e=>project.name=e.target.value;
+$('addScene').onclick=()=>{project.scenes.push(baseScene(project.scenes.length+1));selected=project.scenes.length-1;sync()};
+$('duplicateScene').onclick=()=>{project.scenes.splice(selected+1,0,JSON.parse(JSON.stringify(cur())));selected++;sync()};
+$('removeScene').onclick=()=>{if(project.scenes.length<=1)return toast('Intro needs at least one scene.');project.scenes.splice(selected,1);selected=Math.min(selected,project.scenes.length-1);sync()};
+$('sceneUp').onclick=()=>{if(selected<=0)return;[project.scenes[selected-1],project.scenes[selected]]=[project.scenes[selected],project.scenes[selected-1]];selected--;sync()};
+$('sceneDown').onclick=()=>{if(selected>=project.scenes.length-1)return;[project.scenes[selected+1],project.scenes[selected]]=[project.scenes[selected],project.scenes[selected+1]];selected++;sync()};
+function fileToData(file,cb){const r=new FileReader();r.onload=()=>cb(String(r.result));r.readAsDataURL(file)}
+$('chooseImage').onclick=()=>$('imageFile').click();$('chooseVideo').onclick=()=>$('videoFile').click();
+$('imageFile').onchange=e=>{const f=e.target.files[0];if(!f)return;fileToData(f,d=>{const s=cur();s.mediaType='image';s.mediaData=d;s.mediaName=f.name;syncPanel();renderAtSceneStart()});e.target.value=''};
+$('videoFile').onchange=e=>{const f=e.target.files[0];if(!f)return;fileToData(f,d=>{const s=cur();s.mediaType='video';s.mediaData=d;s.mediaName=f.name;syncPanel();renderAtSceneStart()});e.target.value=''};
+$('clearMedia').onclick=()=>{const s=cur();s.mediaType='';s.mediaData='';s.mediaName='';syncPanel();renderAtSceneStart()};
+$('chooseAudio').onclick=()=>$('audioFile').click();$('audioFile').onchange=e=>{const f=e.target.files[0];if(!f)return;fileToData(f,d=>{project.audio={name:f.name,data:d,loop:$('audioLoop').checked,volume:+$('audioVolume').value};$('audioName').textContent=f.name;setupAudio()});e.target.value=''};
+$('audioLoop').onchange=e=>{project.audio.loop=e.target.checked;if(audioObject)audioObject.loop=e.target.checked};$('audioVolume').oninput=e=>{project.audio.volume=+e.target.value;if(audioObject)audioObject.volume=+e.target.value};
+function setupAudio(){if(audioObject){audioObject.pause();audioObject=null}if(project.audio.data){audioObject=new Audio(project.audio.data);audioObject.loop=!!project.audio.loop;audioObject.volume=project.audio.volume??1}}
+function renderScene(s,local){
+ $('stageBg').style.background=s.bgColor||'#000';
+ const img=$('stageImage'),vid=$('stageVideo'),txt=$('stageText'),ov=$('stageOverlay');
+ img.hidden=true;vid.hidden=true;vid.pause();
+ if(s.mediaType==='image'&&s.mediaData){img.src=s.mediaData;img.style.objectFit=s.fit==='stretch'?'fill':s.fit;img.hidden=false}
+ if(s.mediaType==='video'&&s.mediaData){vid.src=s.mediaData;vid.style.objectFit=s.fit==='stretch'?'fill':s.fit;vid.hidden=false;try{vid.currentTime=Math.max(0,local-(+s.delay||0));if(playing)vid.play().catch(()=>{})}catch(e){}}
+ txt.textContent=s.text||'';txt.style.fontSize=(+s.fontSize||64)+'px';txt.style.color=s.textColor||'#fff';txt.style.fontWeight=s.fontWeight||'900';txt.style.left=(+s.x||50)+'%';txt.style.top=(+s.y||50)+'%';
+ ov.className='overlay';ov.style.background='';
+ if(s.overlay==='scanlines')ov.style.background='repeating-linear-gradient(0deg,rgba(255,255,255,.035),rgba(255,255,255,.035) 1px,transparent 1px,transparent 3px)';
+ if(s.overlay==='grid')ov.classList.add('grid');
+ if(s.overlay==='vignette')ov.style.background='radial-gradient(circle at center,transparent 40%,rgba(0,0,0,.8) 100%)';
+ let p=Math.max(0,local-(+s.delay||0)),dur=Math.max(.01,+s.duration||2),alpha=1,scale=1,tx=0;
+ if(p<0)alpha=0;
+ if(s.enter==='fade'&&p>=0)alpha=Math.min(1,p/Math.max(.01,+s.enterTime||.4));
+ if(s.enter==='zoom'&&p>=0){const q=Math.min(1,p/Math.max(.01,+s.enterTime||.4));alpha=q;scale=.78+.22*q}
+ if(s.enter==='slideLeft'&&p>=0){const q=Math.min(1,p/Math.max(.01,+s.enterTime||.4));alpha=q;tx=-120*(1-q)}
+ if(s.enter==='slideRight'&&p>=0){const q=Math.min(1,p/Math.max(.01,+s.enterTime||.4));alpha=q;tx=120*(1-q)}
+ if(s.enter==='glitch'&&p>=0&&p<Math.max(.01,+s.enterTime||.4)){alpha=.65+Math.random()*.35;tx=(Math.random()-.5)*18}
+ const remain=dur-p;if(remain<Math.max(.01,+s.exitTime||.4)){const q=Math.max(0,remain/Math.max(.01,+s.exitTime||.4));if(s.exit==='fade')alpha*=q;if(s.exit==='zoom'){alpha*=q;scale*=1+(1-q)*.18}}
+ const content=[img,vid,txt];for(const n of content){n.style.opacity=alpha;n.style.transform=(n===txt?'translate(-50%,-50%) ':'')+'translateX('+tx+'px) scale('+scale+')'}
+}
+function renderAtSceneStart(){const t=project.scenes.slice(0,selected).reduce((a,s)=>a+(+s.delay||0)+(+s.duration||0),0);currentTime=t;const hit=sceneAt(t);renderScene(hit.scene,hit.local);updateTimeUI()}
+function updateTimeUI(){const total=totalDuration();$('timeLabel').textContent=currentTime.toFixed(2)+' / '+total.toFixed(2)+'s';$('timelineFill').style.width=(total?Math.min(100,currentTime/total*100):0)+'%'}
+function tick(ts){if(!playing)return;if(!startTs)startTs=ts-currentTime*1000;currentTime=(ts-startTs)/1000;const total=totalDuration();if(currentTime>=total){stopPlayback();currentTime=total;updateTimeUI();return}const hit=sceneAt(currentTime);selected=hit.i;renderScene(hit.scene,hit.local);renderSceneList();updateTimeUI();raf=requestAnimationFrame(tick)}
+function playIntro(){if(playing)return;playing=true;startTs=0;if(audioObject){try{audioObject.currentTime=currentTime;audioObject.play()}catch(e){}}raf=requestAnimationFrame(tick)}
+function stopPlayback(){playing=false;cancelAnimationFrame(raf);startTs=0;if(audioObject)audioObject.pause();const v=$('stageVideo');v.pause()}
+$('play').onclick=playIntro;$('stop').onclick=()=>{stopPlayback();currentTime=0;selected=0;renderAtSceneStart()};
+$('prevScene').onclick=()=>{stopPlayback();selected=Math.max(0,selected-1);syncPanel();renderSceneList();renderAtSceneStart()};$('nextScene').onclick=()=>{stopPlayback();selected=Math.min(project.scenes.length-1,selected+1);syncPanel();renderSceneList();renderAtSceneStart()};
+$('timeline').onclick=e=>{stopPlayback();const r=e.currentTarget.getBoundingClientRect();currentTime=Math.max(0,Math.min(totalDuration(),(e.clientX-r.left)/r.width*totalDuration()));const hit=sceneAt(currentTime);selected=hit.i;syncPanel();renderSceneList();renderScene(hit.scene,hit.local);updateTimeUI()};
+$('zoom').oninput=e=>{const z=+e.target.value;$('zoomLabel').textContent=z+'%';$('stage').style.transform='scale('+(z/100)+')'};
+function exportObject(){return JSON.parse(JSON.stringify(project))}
+function download(name,text){const b=new Blob([text],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+$('exportProject').onclick=()=>{const o=exportObject(),slug=(o.name||'diggerz-intro').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'diggerz-intro';download(slug+'.intro.json',JSON.stringify(o,null,2)+'\n');toast('Intro JSON exported.')};
+$('importProject').onclick=()=>$('projectFile').click();$('projectFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const o=JSON.parse(await f.text());if(o.format!=='diggerz-intro-v1'||!Array.isArray(o.scenes))throw new Error('Not a Diggerz intro project.');project=o;selected=0;setupAudio();sync()}catch(err){alert(err.message)}e.target.value=''};
+$('saveDraft').onclick=()=>{try{localStorage.setItem('diggerz.intro.draft',JSON.stringify(project));toast('Draft saved.')}catch(e){toast('Could not save draft.')}};
+$('loadDraft').onclick=()=>{try{const s=localStorage.getItem('diggerz.intro.draft');if(!s)return toast('No saved intro draft.');project=JSON.parse(s);selected=0;setupAudio();sync();toast('Draft loaded.')}catch(e){toast('Could not load draft.')}};
+$('newProject').onclick=()=>{if(confirm('Start a new intro project?')){stopPlayback();reset()}};
+reset();
+</script>
+</body>
+</html>
