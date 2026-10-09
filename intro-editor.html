@@ -22,7 +22,7 @@ h2{font-size:15px;color:var(--gold);margin:0 0 10px}h3{font-size:13px;color:#cfe
 .tools{display:flex;gap:7px;align-items:center;padding:8px 10px;background:#0c121a;border-bottom:1px solid var(--line)}
 .previewScroll{min-height:0;display:grid;place-items:center;overflow:auto;padding:24px}
 .stage{position:relative;width:960px;height:540px;background:#000;border:3px solid #fff;box-shadow:0 0 30px #000;overflow:hidden;transform-origin:center}
-.stage>*{position:absolute}.bg{inset:0;background:#000}.media{inset:0;width:100%;height:100%;object-fit:contain}.textLayer{left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;white-space:pre-wrap;text-shadow:0 3px 14px #000}
+.stage>*{position:absolute}.bg{inset:0;background:#000}.media{inset:0;width:100%;height:100%;object-fit:contain}.textLayer{left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;white-space:pre-wrap;font-family:Impact,Haettenschweiler,'Arial Black',sans-serif;font-weight:900;letter-spacing:-.025em;-webkit-text-stroke:2px #000;text-shadow:3px 3px 0 #000,0 0 8px rgba(0,0,0,.95)}
 .overlay{inset:0;pointer-events:none}.grid{background-image:linear-gradient(rgba(255,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.08) 1px,transparent 1px);background-size:32px 32px}
 .bottom{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:8px 10px;background:#0c121a;border-top:1px solid var(--line)}
 .timeline{height:18px;background:#111a24;border:1px solid #3a4d61;border-radius:6px;position:relative;overflow:hidden;cursor:pointer}.timelineFill{height:100%;width:0;background:linear-gradient(90deg,#8b5d11,#f5cf58)}
@@ -45,7 +45,7 @@ h2{font-size:15px;color:var(--gold);margin:0 0 10px}h3{font-size:13px;color:#cfe
 <div class="work">
 <aside class="side">
   <h2>Scenes</h2>
-  <div class="row"><button id="addScene">+ Scene</button><button id="duplicateScene">Duplicate</button></div>
+  <div class="row"><button id="addScene">+ Scene</button><button id="duplicateScene">Duplicate</button></div><button id="addText" style="width:100%;margin-top:6px;background:#4a3a13;border-color:#a9872d">+ Add Diggerz Text</button>
   <div class="row"><button id="sceneUp">Move Up</button><button id="sceneDown">Move Down</button></div>
   <button id="removeScene" class="danger" style="width:100%;margin-top:6px">Remove Scene</button>
   <div id="sceneList" class="sceneList" style="margin-top:10px"></div>
@@ -79,8 +79,10 @@ h2{font-size:15px;color:var(--gold);margin:0 0 10px}h3{font-size:13px;color:#cfe
   <label>Scene Name <input id="sceneName"></label>
   <div class="row"><label>Duration (s) <input id="duration" type="number" min=".1" step=".1" value="2"></label><label>Delay Before (s) <input id="delay" type="number" min="0" step=".1" value="0"></label></div>
   <label>Background Color <input id="bgColor" class="swatch" type="color" value="#000000"></label>
-  <label>Text <textarea id="text"></textarea></label>
-  <div class="row"><label>Font Size <input id="fontSize" type="number" min="8" max="240" value="64"></label><label>Text Color <input id="textColor" class="swatch" type="color" value="#ffffff"></label></div>
+  <h3 style="margin-top:14px;color:#f5cf58">Diggerz Text</h3>
+  <div class="small" style="margin-bottom:6px">Preview style matches the chunky rare-drop prompt look. Final in-game intro can use native MAIN_FONT_BIG.</div>
+  <label>Text <textarea id="text" placeholder="Type your intro text here..."></textarea></label>
+  <div class="row"><label>Font Size <input id="fontSize" type="number" min="8" max="240" value="64"></label><label>Text Color <input id="textColor" class="swatch" type="color" value="#ffffff"></label></div><div class="row"><label>Outline Width <input id="outlineWidth" type="number" min="0" max="12" step="1" value="2"></label><label>Outline Color <input id="outlineColor" class="swatch" type="color" value="#000000"></label></div>
   <label>Font Weight <select id="fontWeight"><option>400</option><option>700</option><option selected>900</option></select></label>
   <div class="row"><label>X (%) <input id="x" type="number" min="0" max="100" value="50"></label><label>Y (%) <input id="y" type="number" min="0" max="100" value="50"></label></div>
   <label>Media Fit <select id="fit"><option value="contain">Contain</option><option value="cover">Cover</option><option value="stretch">Stretch</option></select></label>
@@ -108,7 +110,7 @@ h2{font-size:15px;color:var(--gold);margin:0 0 10px}h3{font-size:13px;color:#cfe
 <script>
 const $=id=>document.getElementById(id);
 let project,selected=0,playing=false,startTs=0,currentTime=0,raf=0,audioObject=null;
-function baseScene(i=1){return {name:'Scene '+i,duration:2,delay:0,bgColor:'#000000',text:'',fontSize:64,textColor:'#ffffff',fontWeight:'900',x:50,y:50,fit:'contain',mediaType:'',mediaData:'',mediaName:'',enter:'fade',exit:'fade',enterTime:.4,exitTime:.4,overlay:'none'}}
+function baseScene(i=1){return {name:'Scene '+i,duration:2,delay:0,bgColor:'#000000',text:'',fontSize:64,textColor:'#ffffff',fontWeight:'900',outlineWidth:2,outlineColor:'#000000',x:50,y:50,fit:'contain',mediaType:'',mediaData:'',mediaName:'',enter:'fade',exit:'fade',enterTime:.4,exitTime:.4,overlay:'none'}}
 function reset(){project={format:'diggerz-intro-v1',version:1,name:'Build 25 Intro',audio:{name:'',data:'',loop:false,volume:1},scenes:[baseScene(1)]};selected=0;sync()}
 function toast(s){const e=$('toast');e.textContent=s;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),1800)}
 function totalDuration(){return project.scenes.reduce((a,s)=>a+(+s.delay||0)+(+s.duration||0),0)}
@@ -117,11 +119,11 @@ function renderSceneList(){const r=$('sceneList');r.innerHTML='';project.scenes.
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function cur(){return project.scenes[selected]}
 function sync(){ $('projectName').value=project.name; $('audioLoop').checked=!!project.audio.loop; $('audioVolume').value=project.audio.volume??1;$('audioName').textContent=project.audio.name||'No audio selected.';renderSceneList();syncPanel();renderAtSceneStart()}
-function syncPanel(){const s=cur();if(!s)return;for(const [id,key] of [['sceneName','name'],['duration','duration'],['delay','delay'],['bgColor','bgColor'],['text','text'],['fontSize','fontSize'],['textColor','textColor'],['fontWeight','fontWeight'],['x','x'],['y','y'],['fit','fit'],['enter','enter'],['exit','exit'],['enterTime','enterTime'],['exitTime','exitTime'],['overlay','overlay']])$(id).value=s[key];$('mediaName').textContent=s.mediaName||'No media selected.'}
-function updatePanel(){const s=cur();if(!s)return;for(const [id,key,num] of [['sceneName','name'],['duration','duration',1],['delay','delay',1],['bgColor','bgColor'],['text','text'],['fontSize','fontSize',1],['textColor','textColor'],['fontWeight','fontWeight'],['x','x',1],['y','y',1],['fit','fit'],['enter','enter'],['exit','exit'],['enterTime','enterTime',1],['exitTime','exitTime',1],['overlay','overlay']])s[key]=num?+$(id).value:$(id).value;renderSceneList();renderAtSceneStart()}
-for(const id of ['sceneName','duration','delay','bgColor','text','fontSize','textColor','fontWeight','x','y','fit','enter','exit','enterTime','exitTime','overlay'])$(id).addEventListener('input',updatePanel);
+function syncPanel(){const s=cur();if(!s)return;for(const [id,key] of [['sceneName','name'],['duration','duration'],['delay','delay'],['bgColor','bgColor'],['text','text'],['fontSize','fontSize'],['textColor','textColor'],['fontWeight','fontWeight'],['outlineWidth','outlineWidth'],['outlineColor','outlineColor'],['x','x'],['y','y'],['fit','fit'],['enter','enter'],['exit','exit'],['enterTime','enterTime'],['exitTime','exitTime'],['overlay','overlay']])$(id).value=s[key];$('mediaName').textContent=s.mediaName||'No media selected.'}
+function updatePanel(){const s=cur();if(!s)return;for(const [id,key,num] of [['sceneName','name'],['duration','duration',1],['delay','delay',1],['bgColor','bgColor'],['text','text'],['fontSize','fontSize',1],['textColor','textColor'],['fontWeight','fontWeight'],['outlineWidth','outlineWidth',1],['outlineColor','outlineColor'],['x','x',1],['y','y',1],['fit','fit'],['enter','enter'],['exit','exit'],['enterTime','enterTime',1],['exitTime','exitTime',1],['overlay','overlay']])s[key]=num?+$(id).value:$(id).value;renderSceneList();renderAtSceneStart()}
+for(const id of ['sceneName','duration','delay','bgColor','text','fontSize','textColor','fontWeight','outlineWidth','outlineColor','x','y','fit','enter','exit','enterTime','exitTime','overlay'])$(id).addEventListener('input',updatePanel);
 $('projectName').oninput=e=>project.name=e.target.value;
-$('addScene').onclick=()=>{project.scenes.push(baseScene(project.scenes.length+1));selected=project.scenes.length-1;sync()};
+$('addScene').onclick=()=>{project.scenes.push(baseScene(project.scenes.length+1));selected=project.scenes.length-1;sync()};$('addText').onclick=()=>{const s=cur();if(!s)return;s.text=s.text||'DIGGERZ.IO';s.fontSize=s.fontSize||64;s.textColor=s.textColor||'#ffffff';s.fontWeight='900';s.outlineWidth=s.outlineWidth??2;s.outlineColor=s.outlineColor||'#000000';syncPanel();renderAtSceneStart();setTimeout(()=>{$('text').focus();$('text').select()},0)};
 $('duplicateScene').onclick=()=>{project.scenes.splice(selected+1,0,JSON.parse(JSON.stringify(cur())));selected++;sync()};
 $('removeScene').onclick=()=>{if(project.scenes.length<=1)return toast('Intro needs at least one scene.');project.scenes.splice(selected,1);selected=Math.min(selected,project.scenes.length-1);sync()};
 $('sceneUp').onclick=()=>{if(selected<=0)return;[project.scenes[selected-1],project.scenes[selected]]=[project.scenes[selected],project.scenes[selected-1]];selected--;sync()};
@@ -140,7 +142,7 @@ function renderScene(s,local){
  img.hidden=true;vid.hidden=true;vid.pause();
  if(s.mediaType==='image'&&s.mediaData){img.src=s.mediaData;img.style.objectFit=s.fit==='stretch'?'fill':s.fit;img.hidden=false}
  if(s.mediaType==='video'&&s.mediaData){vid.src=s.mediaData;vid.style.objectFit=s.fit==='stretch'?'fill':s.fit;vid.hidden=false;try{vid.currentTime=Math.max(0,local-(+s.delay||0));if(playing)vid.play().catch(()=>{})}catch(e){}}
- txt.textContent=s.text||'';txt.style.fontSize=(+s.fontSize||64)+'px';txt.style.color=s.textColor||'#fff';txt.style.fontWeight=s.fontWeight||'900';txt.style.left=(+s.x||50)+'%';txt.style.top=(+s.y||50)+'%';
+ txt.textContent=s.text||'';txt.style.fontSize=(+s.fontSize||64)+'px';txt.style.color=s.textColor||'#fff';txt.style.fontWeight='900';txt.style.fontFamily="Impact,Haettenschweiler,'Arial Black',sans-serif";txt.style.webkitTextStroke=(Math.max(0,+s.outlineWidth||0))+'px '+(s.outlineColor||'#000');txt.style.textShadow='3px 3px 0 '+(s.outlineColor||'#000')+',0 0 8px rgba(0,0,0,.95)';txt.style.left=(+s.x||50)+'%';txt.style.top=(+s.y||50)+'%';
  ov.className='overlay';ov.style.background='';
  if(s.overlay==='scanlines')ov.style.background='repeating-linear-gradient(0deg,rgba(255,255,255,.035),rgba(255,255,255,.035) 1px,transparent 1px,transparent 3px)';
  if(s.overlay==='grid')ov.classList.add('grid');
