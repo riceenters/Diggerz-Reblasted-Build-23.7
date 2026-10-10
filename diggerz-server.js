@@ -60,6 +60,7 @@ const MULE_OGG_PATH = path.join(__dirname, 'mule.ogg');
 const BUILD25_MENU_PATH = path.join(__dirname, 'build25-menu.mp3');
 const BUILD25_FOXY_GIF_PATH = path.join(__dirname, 'build25-foxy.gif');
 const BUILD25_FOXY_SCREAM_PATH = path.join(__dirname, 'build25-foxy-scream.mp3');
+const BUILD25_FOXY_FINAL_PATH = path.join(__dirname, 'build25-foxy-final.png');
 const MULE_REMOTE_URL = 'https://jtoh.fandom.com/wiki/Special:Redirect/file/8-Bit_Weapon_-_M.U.L.E_(Bitblaster_Mix).mp3';
 const BUILD25_MENU_REMOTE_URL = 'https://www.myinstants.com/media/sounds/slendytubbies-2d-main-menu-theme.mp3';
 const MAPS_DIR = path.join(__dirname, 'maps');
@@ -420,6 +421,7 @@ let muleOgg = null;
 let build25MenuMp3 = null;
 let build25FoxyGif = null;
 let build25FoxyScreamMp3 = null;
+let build25FoxyFinalPng = null;
 try { gameHtml = patchGameHtmlForBuild239(fs.readFileSync(GAME_HTML_PATH)); } catch (error) { console.warn('[Diggerz] index.html not found at startup:', error.message); }
 try { build239ClientJs = fs.readFileSync(BUILD239_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build239-client.js not found:', error.message); }
 try { build240ClientJs = fs.readFileSync(BUILD240_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build240-client.js not found:', error.message); }
@@ -427,6 +429,7 @@ try { build250ClientJs = fs.readFileSync(BUILD250_CLIENT_PATH); } catch (error) 
 try { build25MenuMp3 = fs.readFileSync(BUILD25_MENU_PATH); } catch (error) { console.warn('[Diggerz 25.0] build25-menu.mp3 not bundled; using remote fallback.'); }
 try { build25FoxyGif = fs.readFileSync(BUILD25_FOXY_GIF_PATH); } catch (error) { console.warn('[Diggerz 25.0] build25-foxy.gif not bundled.'); }
 try { build25FoxyScreamMp3 = fs.readFileSync(BUILD25_FOXY_SCREAM_PATH); } catch (error) { console.warn('[Diggerz 25.0] build25-foxy-scream.mp3 not bundled.'); }
+try { build25FoxyFinalPng = fs.readFileSync(BUILD25_FOXY_FINAL_PATH); } catch (error) { console.warn('[Diggerz 25.0] build25-foxy-final.png not bundled.'); }
 try { tilesPng = fs.readFileSync(TILES_PNG_PATH); } catch (error) { console.warn('[Diggerz] tiles.png not found:', error.message); }
 try { bkndPng = fs.readFileSync(BKND_PNG_PATH); } catch (error) { console.warn('[Diggerz] bknd.png not found:', error.message); }
 try { reblastedPng = fs.readFileSync(REBLASTED_PNG_PATH); } catch (error) { console.warn('[Diggerz] reblasted.png not found:', error.message); }
@@ -3307,6 +3310,7 @@ const server = http.createServer(async (req, res) => {
   if (urlPath === '/build25-menu.mp3') { if (build25MenuMp3) serveBuffer(res,build25MenuMp3,'audio/mpeg'); else proxyRemoteAudio(res,BUILD25_MENU_REMOTE_URL); return; }
   if (urlPath === '/build25-foxy.gif') { if (build25FoxyGif) serveBuffer(res,build25FoxyGif,'image/gif'); else { res.writeHead(404); res.end(); } return; }
   if (urlPath === '/build25-foxy-scream.mp3') { if (build25FoxyScreamMp3) serveBuffer(res,build25FoxyScreamMp3,'audio/mpeg'); else { res.writeHead(404); res.end(); } return; }
+  if (urlPath === '/build25-foxy-final.png') { if (build25FoxyFinalPng) serveBuffer(res,build25FoxyFinalPng,'image/png'); else { res.writeHead(404); res.end(); } return; }
   if (urlPath === '/build25-lime.png') { try { const b=fs.readFileSync(path.join(__dirname,'build25-lime.png')); serveBuffer(res,b,'image/png'); } catch(e) { res.writeHead(404); res.end(); } return; }
   if (urlPath === '/build25-heufancy.png') { try { const b=fs.readFileSync(path.join(__dirname,'build25-heufancy.png')); serveBuffer(res,b,'image/png'); } catch(e) { res.writeHead(404); res.end(); } return; }
   if (urlPath === '/music_theme.ogg') { serveBuffer(res,musicOgg[0],'audio/ogg'); return; }
