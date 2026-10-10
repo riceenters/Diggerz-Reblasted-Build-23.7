@@ -5,8 +5,8 @@ window.__diggerzBuild250BootInstalled=true;
 
 var BUILD='25.0-dev';
 var MENU_TRACK='/build25-menu.mp3';
-var FOXY_IMAGE='/build25-foxy.png';
-var FOXY_SOUND='/build25-foxy.ogg';
+var FOXY_IMAGE='/build25-foxy.gif';
+var FOXY_SOUND='/build25-foxy-scream.mp3';
 var FOXY_ODDS=667;
 var INTRO_TOTAL_SECONDS=26; // finished intro project: 26 seconds before menu reveal
 var FOXY_NEXT_BOOT_KEY='diggerz.build25.foxyScaredLastBoot';
@@ -193,7 +193,9 @@ async function maybeFoxy(){
   try{
     var scare=new Audio(FOXY_SOUND);scare.volume=1;scare.play().catch(function(){});
   }catch(e){}
-  await sleep(720);
+  // The GIF itself is authored to play exactly once (14 frames / 0.8s).
+  // Keep its final frame visible until the full scream finishes (~2.04s), then flash.
+  await sleep(2043);
   markFoxyForNextBoot();
   return true;
 }
