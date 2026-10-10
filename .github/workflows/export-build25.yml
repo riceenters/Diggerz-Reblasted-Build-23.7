@@ -1,0 +1,21 @@
+name: Export Build 25 Index
+on:
+  push:
+    branches:
+      - build-25.0-dev
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare build
+        run: |
+          mkdir -p out
+          cp index.html out/Diggerz-Build-25-index.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Diggerz-Build-25-index
+          path: out/Diggerz-Build-25-index.html
+          if-no-files-found: error
