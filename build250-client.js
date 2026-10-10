@@ -8,6 +8,7 @@ var MENU_TRACK='/build25-menu.mp3';
 var FOXY_IMAGE='/build25-foxy.png';
 var FOXY_SOUND='/build25-foxy.ogg';
 var FOXY_ODDS=667;
+var INTRO_TOTAL_SECONDS=26; // finished intro project: 26 seconds before menu reveal
 var FOXY_NEXT_BOOT_KEY='diggerz.build25.foxyScaredLastBoot';
 var introStarted=false,introFinished=false,menuAudio=null,overlay=null,stage=null,sceneMedia=null,sceneText=null,flash=null;
 var joinedLast=false;
@@ -229,6 +230,10 @@ async function runIntro(){
   if(introStarted)return;introStarted=true;
   makeOverlay();
   SCENES[SCENES.length-1].text=pickFinalMessage();
+  // One audio element owns BOTH the intro and menu music. Start at 0 once,
+  // then never seek/restart it when the intro overlay disappears.
+  var bootAudio=setupMenuAudio();
+  if(bootAudio){try{bootAudio.currentTime=0;bootAudio.loop=true;bootAudio.volume=1}catch(e){}}
   await ensureAudioAndStart();
   for(var i=0;i<SCENES.length;i++)await playScene(SCENES[i]);
   var scared=await maybeFoxy();
@@ -237,12 +242,15 @@ async function runIntro(){
   var st=document.getElementById('diggerz-build25-intro-style');if(st)try{st.remove()}catch(e){}
   introFinished=true;
   window.__diggerzBuild25IntroFinished=true;
+  // menuAudio is intentionally still playing here at ~26s into the track.
+  // The remaining music becomes the main-menu soundtrack seamlessly.
   watchMenuMusic();
 }
 window.DiggerzBuild250Boot={
   build:BUILD,
   messages:FINAL_MESSAGES.slice(),
   odds:FOXY_ODDS,
+  introSeconds:INTRO_TOTAL_SECONDS,
   get audio(){return menuAudio},
   replay:function(){if(overlay)return;introStarted=false;introFinished=false;runIntro()}
 };
