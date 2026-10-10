@@ -45,6 +45,7 @@ const RGB_LIGHTSWORD_IDS = new Set([516,517,566,567]);
 const GAME_HTML_PATH = path.join(__dirname, 'index.html');
 const BUILD239_CLIENT_PATH = path.join(__dirname, 'build239-client.js');
 const BUILD240_CLIENT_PATH = path.join(__dirname, 'build240-client.js');
+const BUILD250_CLIENT_PATH = path.join(__dirname, 'build250-client.js');
 const TILES_PNG_PATH = path.join(__dirname, 'tiles.png');
 const BKND_PNG_PATH = path.join(__dirname, 'bknd.png');
 const REBLASTED_PNG_PATH = path.join(__dirname, 'reblasted.png');
@@ -57,6 +58,7 @@ const JAMS_VIP_OGG_PATH = path.join(__dirname, 'jams_vip.ogg');
 const EPIC_SEA_OGG_PATH = path.join(__dirname, 'epic_sea.ogg');
 const MULE_OGG_PATH = path.join(__dirname, 'mule.ogg');
 const MULE_REMOTE_URL = 'https://jtoh.fandom.com/wiki/Special:Redirect/file/8-Bit_Weapon_-_M.U.L.E_(Bitblaster_Mix).mp3';
+const BUILD25_MENU_REMOTE_URL = 'https://www.myinstants.com/media/sounds/slendytubbies-2d-main-menu-theme.mp3';
 const MAPS_DIR = path.join(__dirname, 'maps');
 const BANS_FILE = process.env.DIGGERZ_BANS_FILE || path.join(__dirname, 'bans.json');
 const PLAYERS_FILE = process.env.DIGGERZ_PLAYERS_FILE || path.join(__dirname, 'players.json');
@@ -376,6 +378,11 @@ function patchGameHtmlForBuild239(input) {
     const bodyClose = html.lastIndexOf('</body>');
     html = bodyClose >= 0 ? html.slice(0, bodyClose) + build240Tag + html.slice(bodyClose) : html + build240Tag;
   }
+  if (!html.includes('build250-client.js')) {
+    const build250Tag = '<script src="/build250-client.js"></script>';
+    const bodyClose = html.lastIndexOf('</body>');
+    html = bodyClose >= 0 ? html.slice(0, bodyClose) + build250Tag + html.slice(bodyClose) : html + build250Tag;
+  }
 
   const marker239 = '<hr><a name="Build 23.8"></a>';
   if (!html.includes('Build 23.9 - Economy, Beta Gun, Support & UPDATE Hat') && html.includes(marker239)) {
@@ -395,6 +402,7 @@ function patchGameHtmlForBuild239(input) {
 let gameHtml = null;
 let build239ClientJs = null;
 let build240ClientJs = null;
+let build250ClientJs = null;
 let tilesPng = null;
 let bkndPng = null;
 let reblastedPng = null;
@@ -409,6 +417,7 @@ let muleOgg = null;
 try { gameHtml = patchGameHtmlForBuild239(fs.readFileSync(GAME_HTML_PATH)); } catch (error) { console.warn('[Diggerz] index.html not found at startup:', error.message); }
 try { build239ClientJs = fs.readFileSync(BUILD239_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build239-client.js not found:', error.message); }
 try { build240ClientJs = fs.readFileSync(BUILD240_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build240-client.js not found:', error.message); }
+try { build250ClientJs = fs.readFileSync(BUILD250_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build250-client.js not found:', error.message); }
 try { tilesPng = fs.readFileSync(TILES_PNG_PATH); } catch (error) { console.warn('[Diggerz] tiles.png not found:', error.message); }
 try { bkndPng = fs.readFileSync(BKND_PNG_PATH); } catch (error) { console.warn('[Diggerz] bknd.png not found:', error.message); }
 try { reblastedPng = fs.readFileSync(REBLASTED_PNG_PATH); } catch (error) { console.warn('[Diggerz] reblasted.png not found:', error.message); }
@@ -3127,7 +3136,7 @@ function buildItchClientZip() {
   const localAssets = [
     'tiles.png','bknd.png','reblasted.png','favicon.png','levelup.ogg',
     'music_theme.ogg','music_theme2.ogg','music_theme3.ogg','music_theme4.ogg',
-    'balloon_pop.ogg','swap.ogg','mule.ogg','build239-client.js','build240-client.js'
+    'balloon_pop.ogg','swap.ogg','mule.ogg','build239-client.js','build240-client.js','build250-client.js','build25-lime.png','build25-heufancy.png'
   ];
   for (const asset of localAssets) {
     itchHtml = itchHtml.split("'/" + asset + "'").join("'" + asset + "'");
@@ -3159,6 +3168,7 @@ function buildItchClientZip() {
     ...(muleOgg ? [{ name: 'mule.ogg', data: muleOgg }] : []),
     { name: 'build239-client.js', data: build239ClientJs },
     { name: 'build240-client.js', data: build240ClientJs },
+    ...(build250ClientJs ? [{ name: 'build250-client.js', data: build250ClientJs }] : []),
     { name: 'README.txt', data: readme }
   ]);
   return itchClientZip;
@@ -3267,6 +3277,7 @@ const server = http.createServer(async (req, res) => {
   }
   if (urlPath === '/build239-client.js') { serveBuffer(res,build239ClientJs,'application/javascript; charset=utf-8'); return; }
   if (urlPath === '/build240-client.js') { serveBuffer(res,build240ClientJs,'application/javascript; charset=utf-8'); return; }
+  if (urlPath === '/build250-client.js') { serveBuffer(res,build250ClientJs,'application/javascript; charset=utf-8'); return; }
   if (urlPath === '/tiles.png') { serveBuffer(res,tilesPng,'image/png'); return; }
   if (urlPath === '/bknd.png') { serveBuffer(res,bkndPng,'image/png'); return; }
   if (urlPath === '/reblasted.png') { serveBuffer(res,reblastedPng,'image/png'); return; }
@@ -3284,6 +3295,9 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (urlPath === '/levelup.ogg') { serveBuffer(res,levelupOgg,'audio/ogg'); return; }
+  if (urlPath === '/build25-menu.mp3') { proxyRemoteAudio(res,BUILD25_MENU_REMOTE_URL); return; }
+  if (urlPath === '/build25-lime.png') { try { const b=fs.readFileSync(path.join(__dirname,'build25-lime.png')); serveBuffer(res,b,'image/png'); } catch(e) { res.writeHead(404); res.end(); } return; }
+  if (urlPath === '/build25-heufancy.png') { try { const b=fs.readFileSync(path.join(__dirname,'build25-heufancy.png')); serveBuffer(res,b,'image/png'); } catch(e) { res.writeHead(404); res.end(); } return; }
   if (urlPath === '/music_theme.ogg') { serveBuffer(res,musicOgg[0],'audio/ogg'); return; }
   if (urlPath === '/music_theme2.ogg') { serveBuffer(res,musicOgg[1],'audio/ogg'); return; }
   if (urlPath === '/music_theme3.ogg') { serveBuffer(res,musicOgg[2],'audio/ogg'); return; }
