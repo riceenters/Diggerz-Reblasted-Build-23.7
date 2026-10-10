@@ -6,6 +6,7 @@ window.__diggerzBuild250BootInstalled=true;
 var BUILD='25.0-dev';
 var MENU_TRACK='/build25-menu.mp3';
 var FOXY_IMAGE='/build25-foxy.gif';
+var FOXY_FINAL_IMAGE='/build25-foxy-final.png';
 var FOXY_SOUND='/build25-foxy-scream.mp3';
 var FOXY_ODDS=667;
 var INTRO_TOTAL_SECONDS=26; // finished intro project: 26 seconds before menu reveal
@@ -184,18 +185,31 @@ async function assetExists(url){
   }catch(e){return false}
 }
 async function maybeFoxy(){
-  if(rand(FOXY_ODDS)!==0)return false;
+  var forced=false;
+  try{forced=new URLSearchParams(location.search).get('forceFoxy')==='1'}catch(e){}
+  if(!forced&&rand(FOXY_ODDS)!==0)return false;
   if(!(await assetExists(FOXY_IMAGE)))return false;
   var foxy=document.getElementById('diggerz25-foxy');
   resetScene();
   if(!foxy)return false;
-  foxy.src=FOXY_IMAGE;foxy.style.display='block';
+
+  // Start the animation fresh every time. The underlying Diggerz menu is
+  // already loaded underneath this overlay and is never replaced.
+  foxy.src=FOXY_IMAGE+'?boot='+Date.now();
+  foxy.style.display='block';
+
   try{
-    var scare=new Audio(FOXY_SOUND);scare.volume=1;scare.play().catch(function(){});
+    var scare=new Audio(FOXY_SOUND);
+    scare.volume=1;
+    scare.play().catch(function(){});
   }catch(e){}
-  // The GIF itself is authored to play exactly once (14 frames / 0.8s).
-  // Keep its final frame visible until the full scream finishes (~2.04s), then flash.
-  await sleep(2043);
+
+  // Foxy animation is ~0.8s. Freeze on its last frame while the scream
+  // finishes, matching the approved playtest.
+  await sleep(800);
+  if(await assetExists(FOXY_FINAL_IMAGE))foxy.src=FOXY_FINAL_IMAGE;
+  await sleep(1243);
+
   markFoxyForNextBoot();
   return true;
 }
