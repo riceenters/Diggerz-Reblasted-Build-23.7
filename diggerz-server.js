@@ -400,6 +400,13 @@ function patchGameHtmlForBuild239(input) {
     html = html.replace(marker240, section240 + marker240);
   }
 
+  // Build 25: newer Coaster Town wearables use item IDs above 700.
+  // The admin panel must enumerate the same range as adminSpawnItem (1..2047).
+  html = html.replace(
+    'var out = [], max = category === 1 ? 700 : 700, id, display, name;',
+    'var out = [], max = 2047, id, display, name;'
+  );
+
   // Build 25: safe pet atlas patch.
   // Keep every original 2048x2048 tile pixel in place and append the missing
   // Coaster Town pet art at x >= 2048 inside a virtual SVG atlas.
