@@ -414,7 +414,7 @@ function patchGameHtmlForBuild239(input) {
   // Build 25 release: hide the temporary 1-coin Coaster Town test shop
   // entries while leaving all item IDs, sprite registrations, saves, and
   // admin-grant/equipment paths unchanged.
-  const ctShopRow = /^[ \\t]*\\{shopId:\\d+, itemId:\\d+, price:1, name:"[^"]+", description:"CT (?:import|pet) \\(id \\d+\\)\\."\\},?\\r?\\n/gm;
+  const ctShopRow = /^[ \t]*\{shopId:\d+, itemId:\d+, price:1, name:"[^"]+", description:"CT (?:import|pet) \(id \d+\)\."\},?\r?\n/gm;
   const ctShopEntries = html.match(ctShopRow) || [];
   if (ctShopEntries.length === 134) {
     html = html.replace(ctShopRow, '');
