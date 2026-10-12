@@ -459,6 +459,28 @@ function patchGameHtmlForBuild239(input) {
   if (html.includes(cupidFactoryBefore)) html = html.replace(cupidFactoryBefore, cupidFactoryAfter);
   else if (!html.includes(cupidFactoryAfter)) console.warn('[Diggerz 25] Cupid live wing factory mapping missing');
 
+  // Build 25 cleanup: retire the Dig+Trade music player UI only.
+  // PvP match music and the in-world Bluetooth speaker are unaffected.
+  const oldMusicPanelToggle = "player.style.display=show?'block':'none'";
+  if (html.includes(oldMusicPanelToggle)) {
+    html = html.replace(oldMusicPanelToggle, "player.style.display='none'");
+  } else {
+    console.warn('[Build 25] Dig+Trade music panel toggle not found.');
+  }
+
+  // Build 25 idle synchronization: ballet_pose is exclusive to ballerina shoes
+  // (item 161). Never force this idle on a player who unequipped the shoes.
+  const oldIdlePlay = "this.i33._38(this.I32, !0, 100, 1)";
+  const fixedIdlePlay = 'this.i33._38(this.I32 === "ballet_pose" && !(this.J33 && this.J33.indexOf(161) >= 0) ? "idle" : this.I32, !0, 100, 1)';
+  if (html.includes(oldIdlePlay)) html = html.replace(oldIdlePlay, fixedIdlePlay);
+  else if (!html.includes(fixedIdlePlay)) console.warn('[Build 25] local idle playback anchor missing.');
+
+  // Remote players decode their animation name before playback.
+  const remoteAnimAnchor = "g = this.i33._33(Math.floor(g));";
+  const remoteAnimFixed = 'g = this.i33._33(Math.floor(g));\n                    if (g === "ballet_pose" && !(this.J33 && this.J33.indexOf(161) >= 0)) g = "idle";';
+  if (html.includes(remoteAnimAnchor)) html = html.replace(remoteAnimAnchor, remoteAnimFixed);
+  else if (!html.includes(remoteAnimFixed)) console.warn('[Build 25] remote idle playback anchor missing.');
+
   return Buffer.from(html, 'utf8');
 }
 
