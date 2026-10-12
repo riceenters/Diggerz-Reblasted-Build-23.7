@@ -411,6 +411,17 @@ function patchGameHtmlForBuild239(input) {
   // The previous virtual 4096x2048 SVG atlas conflicted with original sprite coordinates.
   // Item names, shop entries, and pet rig mappings remain sourced from index.html.
 
+  // Build 25 release: hide the temporary 1-coin Coaster Town test shop
+  // entries while leaving all item IDs, sprite registrations, saves, and
+  // admin-grant/equipment paths unchanged.
+  const ctShopRow = /^[ \\t]*\\{shopId:\\d+, itemId:\\d+, price:1, name:"[^"]+", description:"CT (?:import|pet) \\(id \\d+\\)\\."\\},?\\r?\\n/gm;
+  const ctShopEntries = html.match(ctShopRow) || [];
+  if (ctShopEntries.length === 134) {
+    html = html.replace(ctShopRow, '');
+  } else {
+    console.warn('[Diggerz 25] Expected 134 Coaster Town test shop rows; found', ctShopEntries.length, '- leaving catalog unchanged.');
+  }
+
   return Buffer.from(html, 'utf8');
 }
 
