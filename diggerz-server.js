@@ -442,20 +442,20 @@ function patchGameHtmlForBuild239(input) {
   // Build 25 Dead Cupid Wings (item 932): mirror normal two-sided wings.
   // The imported item previously drew only its left wing and lacked the live
   // animated wing entity factory case.
-  const cupidItemBefore = 'case 932:\\n                b.Init(f.CT_DEADCUPID_WING_LEFT_PNG());\\n                b.a4 = 2;\\n                b._1 = "Dead Cupid Wings";\\n                h.O27(b, 0, -3, 5);\\n                break;';
-  const cupidItemAfter = 'case 932:\\n                b.Init(f.CT_DEADCUPID_WING_LEFT_PNG());\\n                b.a4 = 2;\\n                b._1 = "Dead Cupid Wings";\\n' +
-    '                b.A4 = -b._5.width / 2;\\n                b.A5 = -b._5.height / 4;\\n' +
-    '                h.p25(b);\\n                h.O27(b, 0, -6, 5);\\n' +
-    '                var cupidRight = z.I9();\\n                cupidRight.Init(f.CT_DEADCUPID_WING_RIGHT_PNG());\\n' +
-    '                cupidRight.D7(b);\\n                b._9.push(cupidRight);\\n' +
-    '                cupidRight._1 = "cw";\\n                cupidRight.A4 = cupidRight._5.width / 2;\\n' +
-    '                cupidRight.A5 = 0;\\n                cupidRight.b6 = -b.A4;\\n' +
-    '                cupidRight.b7 = -b.A5;\\n                h.p26(b, .7);\\n                break;';
+  const cupidItemBefore = 'case 932:\n                b.Init(f.CT_DEADCUPID_WING_LEFT_PNG());\n                b.a4 = 2;\n                b._1 = "Dead Cupid Wings";\n                h.O27(b, 0, -3, 5);\n                break;';
+  const cupidItemAfter = 'case 932:\n                b.Init(f.CT_DEADCUPID_WING_LEFT_PNG());\n                b.a4 = 2;\n                b._1 = "Dead Cupid Wings";\n' +
+    '                b.A4 = -b._5.width / 2;\n                b.A5 = -b._5.height / 4;\n' +
+    '                h.p25(b);\n                h.O27(b, 0, -6, 5);\n' +
+    '                var cupidRight = z.I9();\n                cupidRight.Init(f.CT_DEADCUPID_WING_RIGHT_PNG());\n' +
+    '                cupidRight.D7(b);\n                b._9.push(cupidRight);\n' +
+    '                cupidRight._1 = "cw";\n                cupidRight.A4 = cupidRight._5.width / 2;\n' +
+    '                cupidRight.A5 = 0;\n                cupidRight.b6 = -b.A4;\n' +
+    '                cupidRight.b7 = -b.A5;\n                h.p26(b, .7);\n                break;';
   if (html.includes(cupidItemBefore)) html = html.replace(cupidItemBefore, cupidItemAfter);
   else if (!html.includes(cupidItemAfter)) console.warn('[Diggerz 25] Cupid wing item mapping missing');
 
-  const cupidFactoryBefore = 'case 211:\\n        case 212:\\n        case 213:\\n            return new wp(b,a);';
-  const cupidFactoryAfter = 'case 211:\\n        case 212:\\n        case 213:\\n        case 932:\\n            return new wp(b,a);';
+  const cupidFactoryBefore = 'case 211:\n        case 212:\n        case 213:\n            return new wp(b,a);';
+  const cupidFactoryAfter = 'case 211:\n        case 212:\n        case 213:\n        case 932:\n            return new wp(b,a);';
   if (html.includes(cupidFactoryBefore)) html = html.replace(cupidFactoryBefore, cupidFactoryAfter);
   else if (!html.includes(cupidFactoryAfter)) console.warn('[Diggerz 25] Cupid live wing factory mapping missing');
 
