@@ -426,11 +426,11 @@ function patchGameHtmlForBuild239(input) {
   // Build 25 live pet visibility: registered CT pet IDs must construct the
   // same live pet entity as original pets. The preview-only fix was insufficient.
   // Patch the served HTML in memory, preserving the checked-in game file.
-  const petFactoryCases = 'case 140:\\n            return new Td(a,b,c);\\n        case 149:';
-  const petFactoryCasesPatched = 'case 140:\\n            return new Td(a,b,c);\\n' +
-    '        case 416:\\n        case 901:\\n        case 929:\\n' +
-    '        case 930:\\n        case 931:\\n        case 951:\\n' +
-    '        case 981:\\n            return new Td(a,b,c);\\n        case 149:';
+  const petFactoryCases = 'case 140:\n            return new Td(a,b,c);\n        case 149:';
+  const petFactoryCasesPatched = 'case 140:\n            return new Td(a,b,c);\n' +
+    '        case 416:\n        case 901:\n        case 929:\n' +
+    '        case 930:\n        case 931:\n        case 951:\n' +
+    '        case 981:\n            return new Td(a,b,c);\n        case 149:';
   if (html.includes(petFactoryCases)) {
     html = html.replace(petFactoryCases, petFactoryCasesPatched);
     console.log('[Diggerz 25] Registered seven CT pets with the live entity factory.');
