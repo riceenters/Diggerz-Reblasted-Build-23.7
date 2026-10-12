@@ -411,17 +411,18 @@ function patchGameHtmlForBuild239(input) {
   // The previous virtual 4096x2048 SVG atlas conflicted with original sprite coordinates.
   // Item names, shop entries, and pet rig mappings remain sourced from index.html.
 
-  // Build 25: hide only the temporary headwear listings from the shop.
-  // Preserve all new pets, clothing, weapons, and every underlying item ID.
-  const ctShopRow = /^[ \t]*\{shopId:\d+, itemId:\d+, price:1, name:"([^"]+)", description:"CT import \(id \d+\)\."\},?\r?\n/gm;
-  const ctHeadwearName = /(?:hat|helmet|mask|hair|horns?|antlers?|cat ears|evil eyes|skull head|mummy head|creepy baby|dark pumpkin|demon pig|snow freak|cute xmas bob|grump|mr frosty)/i;
-  let ctHatsHidden = 0;
-  html = html.replace(ctShopRow, function(row, name) {
-    if (!ctHeadwearName.test(name)) return row;
-    ctHatsHidden++;
-    return '';
-  });
-  console.log('[Diggerz 25] Hidden ' + ctHatsHidden + ' temporary headwear shop listings; pets and other imports remain available.');
+  // Build 25: remove only the 134 temporary 1-coin CT test listings.
+  // Do not delete item definitions, owned items, equips, or regular shop items.
+  const ctShopRow = /^[ \t]*\{shopId:\d+, itemId:\d+, price:1, name:"[^"]+", description:"CT (?:import|pet) \(id \d+\)\."\},?\r?\n/gm;
+  const ctRows = html.match(ctShopRow) || [];
+  if (ctRows.length === 134) {
+    html = html.replace(ctShopRow, '');
+    console.log('[Diggerz 25] Hidden all 134 temporary CT 1-coin shop listings.');
+  } else {
+    console.error('[Diggerz 25] Unexpected CT shop listing count:', ctRows.length);
+    // Remove any recognized temporary CT rows rather than leave them exposed.
+    html = html.replace(ctShopRow, '');
+  }
 
   // Build 25 live pet visibility: registered CT pet IDs must construct the
   // same live pet entity as original pets. The preview-only fix was insufficient.
