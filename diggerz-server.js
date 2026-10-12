@@ -45,6 +45,7 @@ const RGB_LIGHTSWORD_IDS = new Set([516,517,566,567]);
 const GAME_HTML_PATH = path.join(__dirname, 'index.html');
 const BUILD239_CLIENT_PATH = path.join(__dirname, 'build239-client.js');
 const BUILD240_CLIENT_PATH = path.join(__dirname, 'build240-client.js');
+const BUILD250_CLIENT_PATH = path.join(__dirname, 'build250-client.js');
 const TILES_PNG_PATH = path.join(__dirname, 'tiles.png');
 const BKND_PNG_PATH = path.join(__dirname, 'bknd.png');
 const REBLASTED_PNG_PATH = path.join(__dirname, 'reblasted.png');
@@ -56,7 +57,12 @@ const SWAP_OGG_PATH = path.join(__dirname, 'swap.ogg');
 const JAMS_VIP_OGG_PATH = path.join(__dirname, 'jams_vip.ogg');
 const EPIC_SEA_OGG_PATH = path.join(__dirname, 'epic_sea.ogg');
 const MULE_OGG_PATH = path.join(__dirname, 'mule.ogg');
+const BUILD25_PET_STRIP_B64 = 'iVBORw0KGgoAAAANSUhEUgAABMcAAACUCAMAAACgGL4vAAABgFBMVEXwVlqXKiCvlVdzWhbkppyjbh+tYV2qmDK0qJ/uLC7VXDXoyaQaFhRwHRIgDQ2QkJD///+KioofGxuNjY3tmgfbx00tIhlpaWn/O0jIq1vDvcPOzs5PPChFOzpJSUmNZFT+b4P/ydEAAAACAQFJRUN2U0dpRjUrKSjn5+eXl5dWNyi4uLfY2NjHx8cXFhQAAAA3NjapqKgBAAAAAAAAAACJiIjss2UAAABYWFhIQjxnZmZ4eHgAAAApGhH5+PhIKBaKZ1VhOypwTUSYdmswIxmPbGJ5Ylf1uwDv49vm2dGvh1B0Uzm0FQ6AW0opBQFFHQxuSAjYpFzJmFX///9SNA/rqACrdwCOBQOlDAn///9GLSPSlQD///+TdkzVVUfFurL///9PPCinmpTAHBL0Z1XlrWD5wQBPAgHIiAD///9tBACUZgCLWwCRdDORhHqCWSWNZjGShjPhql7///+4RTelfEW9hADVqWxVQSzUxrr+eI0WFRM+PUFAPkNuIxRpOAaFzfbBAAAAgHRSTlP//v/+//7///X///+l/tpZj6xrLP//C3////9vKUquBP//APz+/v7+/v7+/v/+/i7+/s5MsP7/j/7+/v5u/vz+//7///7//v/////+/v/7//7//w7+/v7+/yj+/lH////QBv//////+v9w/f7+////////rf///v8E//8R/////j2xL88AAB5LSURBVHja7Z2Jf9NWtoBDKW3p3tmXt3Jla5e12rLkJQETQlLSJAQYwloKLUuhna6vnU77r79z7pVsZ5dELMnt+X4zwExdIkv3fjrn3G3hHEEQxHyzQLeAIAjyGEEQBHmMIAiCPEYQBHmMIAiCPEYQBEEeIwiCII8RBEEeIwiCII8RBEGQxwiCIMhjBEGQxwiCIMhjBEEQ5DGCIAjyGPEbo9VzGfN7iEd3gzxGEHOI59txEANRJLFWSepstWrx3eE6PK8m10IeI4jiGnNt00jQ7U4pP9NnrluxPDwfgtAJnd+sy8hjxK+AHpMURREaM02V7c0sMV6Zwc8MWKUp7L+mJGYJkZX50//Vqk8QSB4jfg0ai4wpj5l7AzLP/2zd9U84WnGZHrNelV/7bcZk+6d/S/+WBDZjZWaziTn/RR4jiJPIrliMGlNSjZmBuytO6rz79MMbN2585p5k9OSzyHSYW+X3dpkly/YEmbES4yMfgsA+d5lf/cDK0R7rQODq5ohV835+tvfZ9Vuz/PxJcfX2TVLRSwUGfqgIUo/pkj/dKj/78JMPP/zHP05UZBCN6IYhMbfCPpxklP1+fyQDJXkM00nPw9Fh29ZkcQ1+rT3mi7Q780X6NflSPNXgtYPsZsr7+ZPj9uDJVfz9JvmscDimG6nHTE5g+eOCmPfuh5988gl67On6yT1fj0U6DilU2dzd/R7zyvqpCHhMYxaXWdUR2cLRWtJDWbWyPin8PLMdqw4i67F8ToXP26ZUSaO8PXgfPXb1/QF5rBAdOQ5UR2SWQmO6HkgWcwXsKWpMBGTrvZNrYLpjgjbjCkVWiccwuJGxMAcGA49BXtvtwr1utTpwLZVFp0d4DK7L0Jlqqhmrh/B5RbEswym12njY2xJR9awPFj6vKkbEqnix3Bx8jQK7ff9+6XeJZwesBoWA1stMxWJSgDgm95iu647jwK9qFIZhFIXs1JTHOifnENPhMz3U6t7b+zxmlTDuINJJ+K+NCtO66DHwWkfEDe5sGsexA6MLRz4pJbQVQ5WztXSXSQPFYqYpV98zOpgQx6hUP+PnY+gDViVJ8c376LGrTwa3r5Z8j8YD9hVmBUmpBbtAr5jKPCsKgsRkicW4xxJi9NiHyIl6jNm6o4tinFXV/UvqOOCxfuqxTjke09BeNv7StbVuVxMtCWK0E70AnN6bto5jQr2Foy7YMJhjOFGUzbIQa0I8xhw9qnYUJ33CkqFjAJzx86qB4ZhdQSx59f7922Czr++fQ48NSotYsflrS0tNzapQZEKmli2FdtG0pCMHKaozBoXGPRawdz4U3Ljx9AQ9JjuqkxTjqgrI/HE8VqrH4Cd1Na4w/AVCsm6XV8v+zQOzvH/f/5079/HBLdRP63D90Q420qOKm0d6zFRtwwjVMNtzgh9oKDJznLD6Ahl0D8s0JCvKnBMHGI7JcQGPeT3f7/Re0mNpOHa/pBoZNI6hpjWbQ22p2awwt3TtCO3DpRMUqk+23DC1mDr2mDrxmBMJkUFaCR47WJReJ/fkMmbpqqqLapzEKmvlSTyW5JX9EnoelsZsEYYJj3W7kgT+sn6SuNDy/n0ff3ygxzwMw2RooucbAu3IZOnIvFKPAkO3VSlrXsl08Jia9fMzfsKqEbMga2jYYRF8nKkFQslOuiaksMe+Bo/d/HqA4djXt0vK5hgbDkFkSxp6rGlVVqxmLADdiNq8aTpW/okDHotTi01Ehh4TyaUzCNjODbAYauyzg78l7zM5S0suvOV5QKZDe/er9hiPx+QyPAYtpy8nHuuixyTQmNQV4Rh6LO8D/PiggIwnk1pjF+flI1rpwlFRqxOZRhgFcra0A8LAADwWqHLlo7DQuC3IKsPMSvUgC7VYXEDBfGAU477CydnVrwdPrj65j+HY+0/K80cfRLa9rWmYWjY1VlEtALpizMManDKBxazcHkvSSnW/x0Q4NjBj9tEN9NjTzw5ZDukWeBP1GMRjcOWqXV1W3ptMICstHutgPKZpXfgPKIw7DJcSJOGYVOBF9B9osl2qRIv191gMaY4OvdULR92lyDF05gQWy3pXQwM8lvXzs+2nFmSVenalMitgkp5fwR4TIwoYzbFiq4avvg8eex/Dsdtfl/oqR5MNNRGRaUWv/gRqPJEKsRiu79ad/E1HpJXqGKEx9JjKNeYMBpBZsqdPn362fkj5DZ6hDD0xn8g8psOPUeMqh3u9/R4r+jbyfNfNFJC6zLZtVJYmpQ5DZPkn8Xv+EdOPk6BsOjgeNRsH0SzisRaTFcOWzSBjzgsRp4xBTcDq4DGGU0ayXwpcu4U14ZyXjt8Zwl0HOiErOo/26pPBk9v3n9w8d7PMiRctUUUVHuNNpNRFLbtEFjvoMdPRw/y9wLPiaY1NPOaoXGP6YDAwA4yXDy2BQcfhIUWuwKoFEXwAf69f4UrpVuIxgKeVp58XfYaeGDDO5DELPCaJUGxC1/4pWeKZ36S7Ektsln3tYI1BI+3l9xj0bSVgkZ659g1XYFosiuvhMck29SiHx1iABducl45z7HB8wzBAgTgPsUCOcfXm7ZtPBufe+2Dw+3J7AX/zYbV/jbcRraL8CFpuiBGZ7gQFYpuePW2x/R4zB4iuBof2cAypoQeGIcv19F3mOPHJpR44xcDLuYvY2xOP8UL/8z8WXZHisv7nv2RKSn1s55NIbGwzLjdeKCvisUl0LYr7zYNFtgaW/O8CHtMteFiZy5g48xSyhLAO8/ldDJJyeAnCZQgIWN6nAN8Y/iVbMYwwma9WbCbizTdU1RwYuqq+cbPc2wTxGLaZNWg6FU6DssBkqmMVaDg9SVX3iWzKY8ZA4Fitw38811go5coRPSab8om19M54sU/2uSe/g/zrn5xXkL/+8Y+vdwsW6xjbuP4sU+PHUURZmwRiYeoxWfz+clG9i7EY5xCPHfa3LxwdQjJZVzN3TXAH9OZQrnYzk7RdyIYJr1g38+djA9cl5YuKexCyxrw8Bgk1XzdccOTv94Gi8O6mBLmCsmSOjet3ijmox3awzM/RKqtXY2AIJguL7JuwNx4be0wMWY49ph/mMUzOuMZCaLl5mq7PTjDxYOy7W7euP3u2wU2WTQXvQop3+vTp56+//s/XgX8+X+vaxWaQtdBj32X5Oni3bNkeR2KLXzWEv7TEYy81KfgYjTUah17iwjHviMgMMz+tDq95S3VIK+FtaRu6nX34EQcsndyzJ1wWKRIXmAnfHX618HYVKJi/pybdbaC+l7vG9RKbgXqs2Wgu8SHLfkX1sYnJCm3/4kvxvgIZ/zXxmHKcxzAcCxPymekkNxFk/e8uffrppU8vXbrez7oTDtyyd3GBEJ+LquG+PUVnXnCP3cry5T2csyxyyNVV+OVOG39dXZa6icdGhddl4KOwhMYms8b21seKeAzdq+vZp+iKsmM9PNYCreAL1svxeSlvecvDmb8WCgzLY6FhxBH/U34hfKBDRwsd7G8fZP6KYsxR6/f760VN5rEh15g2rHqdZatXbMdWJuGm/LtFlnrMmXhMCf3DG20YTkRW0U2AZ7lxDUSGfLed7WGkxbFk8lgyYlnoCyQea2VoMGBOScZgrLG5jB5rN6TGV48a4v/jezkWvYnwRkmisebBHmsOC+WVOIhnOtlzM3Fj7epXJYlrcVieEQf8fN5EwWeyYnKBYXlMVQxLNQyVFSiSBTwYZMFgYAQ5LMa68Mg/QraboyLrelpstKQBFW1ZdBIVPu6xaZMJjyUVfz3xmHrYG8qbhGNRFFmVvYQxtD5zKeHa6SyP0t01WCmwCnvszK1RhmbbwuFKCP4wsVzd4h5b7d551P62ISZiSLjqsthN9FKNaUdozC8Qj2GBzAly2NVlpW8SftS1W3IOpbp8wbSbTwLMVFRcOWAYMv7ZsUxutPz34L0B3189hB73XvZ23x9eSTw2xOc/yh8JwlcQa3zdeT2hoscsKdplsiDixFxkutCYeWgX9Xh1LEoIq0uusUgwupV47PPtDE7x93gMR2wKDjQxtv3s1kaGVtDiy5Iknlgubi5Ki+32o+5qu735qL2cTsHoFrqJLZftHBmNNYbrh/fPhWP+6lw7QOT9fKa/0ytWNxRJbmtmnz+XbFQUY26pGHyRfBxzo1l8wCDfo/w71581GPw9888ebQ+5vlKN4Yhjbh+5fN7QSR7CgTMq/U55Z0h6HWZHUzFZILs+YslSFOC0C8V04sMHFlt8AE62JR6PRXuaL46jlLZrM68TbFy/BiK7nkVHbzMcbUa60nno+ouLF15bGBYasXTZ9vVr17IEcz7f74ILa21rU1r8CgKyrTZHVPy7WndU7BJGSVZ5/mCNLfWP+GoLx4rJz+fUE9aYX3iHWXi/5UqV8n4e77yqKDaTwGOQFYaKIhm84B/y2f05jfJf+D2dQcbqmIeTBbXmUuKxdMixm/9WnfQZjJOhh9IS1Z4rpyIL1MAWP7fl9TquBf9AgmTLP6L03BMiQ5eJXTemA6Ry9zdO5yY/O3NmI8MrFa4bevzFixcXG8sAauzhw4fvFLlenw2v3/rD6QwJYRKQcWOttu+sgccebQqPbSXhWLfIwkRR4+dTxw6p8fcLrhMvv9Lr7w0M8LnitJ56lNz2tyMTy2MgM4zKAsUJFAPrXJBn6vmr/X8OrVj5c/YwajtZUQQeG1dHcXlRpWtb8UVmR6HEpwSX1v891wrFYvE43BV5eR0f21TrOPNOFZjGJYHEYla541Zednm+LVZSJx6DP125cvfuw4WHRToLZOe/fP7dLZY1IOMi697ZfLSWOIxzp7jHRI1fOzypbAyPvCe18dj47Tc5pwRPLbEVRa9Nze0Aj0U8rRSTLyAw45GYiUts2CzX+XTEgiIhsnFWKTLLTsUaC0WFHZcC9cprPFYoLFYkCmTTIkvHeni+KUm2xMou/beyzev/HVxfQ3iM7wbRbDbOCI+xQg/OGl6/9ixDm4UbM0omva690l6d9lg77IJZu107t8e4xpaS2tiBIjtmJ4O6eAxrA6EaS5ZQWUssepeNwcCAUD+qZUCGxrLQtIoCzd8IAty1IcLZ/bFpMja7fVZFViloNqc0tqT1xd0rrce19oaJYTIVNQhKHbjusDCSLLfQdGBvWmTppH4/LZuxOkzrPoB32SjZz6bZ7IrH/w147M3ThbyL2fXG40wVMtyiRxMB2bft9i6PrWLJfzW/x7zJjIvz5w8sjzWPWQK/UB+NmSgEnc+/SkJ6vjYuwr5R5RzNIx4orj3lJ8DCszVkM1bwJLBQUUJDeGxGIkuySsF4Pj5qjM8DE6+CGeeXrc743Bws67eS5shr7TgDVVWDUg3Q812/6ATMzpTIkvirhds0Y8mM1WI65IGNoD/StJ0dbVxV2FgArl0r1Or+5GFd7tr1DP+yz/jkW55YbrV3w63WyO0xl8lHa0xbP+bC6uExDOKD5AhCSVZ0HLyT+ZA5Jm6Wqsr1OExur8ccS8y6MHAupazEcPk2fBEzVBw2O5GNs0ptnFumGms2tWE/90K9ghmkODhnFzLuLa3jpoiO6kh1VcBRJTKcyNlLq0D8aNteXa/Z6u/s8I2XkmlXv9xdePjmpU83ivUViMg2vrs2Ov5f9vDWiNlia6vtA1jNu8LNZ/3mlMfOH1QbO+a66uExXJWSHKWqMrABzo7nExj5HPtID+w6dgnMd/miJNy0R7Jt9BhuiKuokZJGlTOYlzWdVWrjVowaw40reIvuz3pOGKZiEd//UFfjUJKt5OtGQaDreG6RUXpA9pKPMhUZ378HJxlb3GO1DcdafN96sYHczhDbwM6pu28+/MOlT68VTF5wz4tbtzKMM0+NWH771QEe29LyPfcWs47UGI5UHpfv1sJj/iQcMy2m4y8SXzdt8FUOjh4GdUwsxWAWpsM6jtLJhvCYroSBEkkzC8h2ZZUTkS0l2+/An5a04fo6m6FFcKsbxxjDdRbg/C3HcUwTE20DZ9VL9RxnPqQ8lHrMFoeYybUOx/CCta426vPNMLnHhqfu3n147dKlT08XC8jgoW5fv7Z9/FApj165yBpfioDsq7++OuWx77W888lHE4019nkM540dm1ss1EMIaThmynzzRtSY+F/4j6CPqHYN2xM8zmS4Ej3mWGak4IFRuinHOmhNeKw3A4cMNW2/yNaSlxdfL7nUR5HNaugSR7e4xlBYSiIzvvsqSGzsMQePD50Tj/E9DhKPSekhZjUOx96GC2wsw9PeSUSGBYVv3hQeKxqQdXip//hlljhiCTeqK0mrm1/yitjmG8blKZHl3IQM/r7EY43z+wMyLI0dr8U6eAzfLRGvjeHm0DHkZBLvJI44wCjUQWR2DWdewKVFzBIesywndCRT1y0WqJByyUEwo3isw/pXmvtEtjYOwptY+l/SZukxPMXFFBoTNU1D7K6v60Jpicf0wfx4DKPc1GP8DYQ1/rqGY3xOCM58bTTO74jtyZE3v7n75mMU2XbBajKW+h/f2j62zXZEQGbfWd3cet7+/oe3thzz8qtvvZV6rJHzuacrkg6w2PlhtomIdfCYzywxWMnfhLoi8YlYYgsJeKWrahzEVg0L/QzPY5J54MjwnKjAglyKb+wdBZKqCo/NoMPtLC4u7lZZszGJx5a4x5b667ObEgsvG33aY4nM+GEh4rf581iyPklOdrjmY5U2q+PwEs4cYxLO4L+CHV3j5yWBxn7+5pu7Z64//sNLBWS/fH69f3y7cVlflrtd0Fj7+db34DDHuGxcvtze/J57bDnnc/eYpQ2xwa73IUNOTHY+nUeU6Rks1MIHYhJWjPuXgRcc/kKP+FIfnCgf4zlGNSy1uCwIxZUbfFvsmMXcYzGL4khVw9l4jLHuIqcxVlnzypVGmlo2NeGxRkNms+vyjm7s99i4WIbZJVbK5sljaYlMHJYhPGbVcrqPyCkXl5cbVxrw4OGJ7/Ay2c+nvnkTNPT4FgZkhUJxHITuDzOMD3niVi2utrc2v/z+gbliXgZW3nrFXMGg7E7e5+7uGvReT/ehyjHsXgOPtcBeKg9qmBThaKWYfsE1hvWyIIhVVk+PxYnHFDwzSYmtEGeIRBH8R0WPWbO4asYaiynCWmtXgDVRYVhrvvbaa6++9uBBoISzSong9ZmcQCuclWSSY4khTqBC6jlPHktKZGJzZjmZO1bDcOw/LWbjYkrORWgDGJOBx7R3Tp36hvW5yK4XvPCem/G4ERdvlSatbj76anX1DX3lMvfYyj34L068yPvcPbFbgddz2V4yfpEaeKzHbEsZKCa0HjwPQGhM5rve47FakhrEEatjwXXKY2hd07FlXbWxaBZBYIZ/mkGJCoKhxWkazQZqTARkwMKPP746+N/BIAjl1sw6vIx73/OCmK6nRpv+H1jRDAI9niuPickXYq957rF6hmMtURpbvJhw4cLFpoaHw//886lTEE99/t3jW8+Kvj9bnWw7pHui1H/6THvr1b9BNIYig1+NlZWVtza/38pf0hivw2olB67wtVnZ9zCogcc8JoeDgalDtuIwGd/vJm58Yzl6EEg4TYn/VkuPRVLiMRCtjVet6yGTQr44ByKzeAYdocesXRbD6fyNiciGp8BjwBva7DqhC+8WfcIujyVHg6PHVNOuZXnpyKhAHmtMrml1DF5kkFVOLHbhAkTlw2Gfrb/z80fYT549fvz5zLMX3CxtpHW/3Gq/ghZbAZHdCxr3Vi7r935YubxaevZUC49ZjoICiEyIZLjGcKwv0PlMSqw5BRZjtazzO3biMRW3zoXLxyMz5cRjljWLeMRncuKwK7ymry01+LEMwmPDjz567ccfFxYWmjNMxMU5bYd4LAE8Bm+l6g+Wz10iSy2GW6uyWm4u6TOLR2EXLy5eEBpr9vnE5/V31hlOxbz++PTMR/dx7kW/L609b285DkRh4LFA7oZ4JgZkVCv9sp98LepjDCcfWZZpyszhJRZ4FUq4RA9L5YnG6tcl8LAkW4xX8j05TCMADeP+Y4yfRcbscCbDlVoSiKXLK8Uc/ib+NsQ9Ff8Hl9n1ZzhjAGJkZ6Itvi5cF2d38/1Y+Z8xrYzmK608t2cLH1bTaBL6S3cci124cIXv1sTQYHhUDNbqN0roLXhYnzWSMCBTfwCN3bsQy10pDmypAf3hTtn3rh4ew4bPYkgtLVEkxsmv2EFAYHKMm6bXcdqFy0JFFh4zcMaubqhMwuQSgjRVhZQznMWqUMgqrowlxj221khq/KgxaMpn/7KwcHaWE59wboz41riOMkhIt8cPHDEjVpmjZUnTJTIr2Sma1TQc4y/QxbHGFvmG5jio13FdLNHjBlhup4xeC7fKXvvyq60HDyAee6CJza67kvRAUd4q+9nXY94FNHyJmWbM7ABHwnAXCdQYlvdlnBhv17FNueKwJBxpNfG4NxyOsJLJ4GEUS7j6charknYtrlxaWmo2EpGtNXh6cers2bOnZlmgYMlgjJAZxM27PabyCf24Ut6dN42JKEPA6lvcw8zywkRjzUQa6RbwLa+MztLht0prroqAzLElKTnWMoLEclRyj63HPFgZy0oRGMuO8Nwa0BZPUTCfxOSsnhVXn9l4+q4xQI+puMIyGo8Wx3Fss5kM12ENZ7TXY0lmKY4M+ezsX87OdDtFP1k2NnGZqTvp2ZG6bqQLZefw7BJv7DG5xsU9zCynNKZVk7/zjU9Hq19urr5QV1YiPIs3OWkENwoIy+2ytVhf6TIVsrEwSk8ShCgHz3zgsY1ks5q+Gj2hLH2AJb3Jabh4pCyz43hWYxM9voX7RGNLWioyDfcqgKtaP9WfqUOws0uRak5ExndY2q02ubZp2TGGmHisvtcPbeDiWGPNfjXdAzPL06vtrTOP7ry4Z0TjI8YlKYCA7HK5968WHuskJ4qm+ydiFBYl0Q1OrnY7tWxN3FgsGIhwbHLcmzfbkzbEDuDD1GMjHqA1mzvJOQy9me89di6driiHgb57Un+CI7F5G6vcVyCrtYchs0SPrSV7mXsVdVtr9dut9vPNV/R7yREjwmMhNIGV5d+ex8519s/jtcZaq/EJsdxkkYkDrf4+Mc9ue2kvNRmuo5y6Z0L3rU5n1jtbt7zJE8PQbJfN9MiauUlnmBqwcZ2/xh7Dc0dTjWmVDQu77ItvV9ubX75qXo6mPSYZl82VoFS71ui8pHF1sudPL6/q1Do94dFPZJbd6FviGN7hCHPuRCp+2eZo9fzUZpYdxjE/J0m8ffz5tBh/nsnBtvWeNALXOUqWcPQr2wrGY/1vISDbWnTMIB2sRLQHsRT/Zj2295Xf6/i9+Wj5VczS9dypIOzjc3/6uLLXz75g2u3N6+HkaYGs/h7jzS49Iquy283Y2hdfPGq/4ty7J0sT+Ob95e4YuHCOePlyUSVBo+eXcJxI1peO77pMnCPemutnyT0mz4HH+ItM42mlW9k1+Mxa+2K1/f2FC/fGg5VjmZV6XeQxgtgVYrBkVZJb8yvF2sJoPHmsKutvf/HFZvvO8osX8h6PSaXGieQxgtgVYgiTzcNihA6eOFPpeEQHM8vn7c3l5Qej7h6PWeQxgqgqxBhX++YgQe5l3C5sdrhsuLGx1V5dviCWJU0xKrPQTx4jiN0mE9Pj3Pm41l61BVKPsY2NLx49Wm4s97u7IzKZPEYQxJzk4f2NjTOPVoMX0p7EstQBS/IYQRDFI0LGtkFk+uUHe+tjpR5xRh4jCKI4HcaGwwt/I48RBDHPmSUbOc49x97nMZc8RhDE3Ihs+UXwg0weIwhijkUmv3hxL9wTkMlU5ycIYm5oQUDWWFaZRvNgCYKY34Bs1O2+0bX2rEsq8QrIYwRBvHRA1u0u65a8K610yWMEQcxbQBaz7nQ4RvuPEQQxXwGZ1lz+QbOmqmO/vXNGCIKY84DMajYf6Fa/m2rst3fuG0EQv4KAbO3eC8uyZdvGQyN+e+fwEgQx53QYG21vd/sVnQ1EHiMI4iQyy/HxDF75m5uTxwiCOAE8vxqFkccIgvhVQB4jCII8RhAEQR4jCIIgjxEEQR4jCIIgjxEEQZDHCIIgyGMEQZDHCIIgyGMEQRDkMYIgCPIYQRDkMYIgCPIYQRAEeYwgCII8RhAEeYwgCII8RhAEQR4jCIIgjxEEQR4jCIIgjxEEQZDHCIIgyGMEQZDHCIIgyGMEQRDkMYIgCPIYQRDkMYIgCPIYQRAEeYwgCII8RhAEeYwgCII8RhAEQR4jCIIgjxEEQR4jCIIgjxEEQZDHCIIgyGMEQZDHCIIgyGMEQRDkMYIgCPIYQRDkMYIgCPIYQRAEeYwgCPIYQRAEeYwgCII8RhAEQR4jCII8RhAEQR4jCIIgjxEEQZDHCIIgjxEEQZDHCIIgyGMEQRDkMYIgyGMEQRDzwv8D848yIhkOER4AAAAASUVORK5CYII=';
 const MULE_REMOTE_URL = 'https://jtoh.fandom.com/wiki/Special:Redirect/file/8-Bit_Weapon_-_M.U.L.E_(Bitblaster_Mix).mp3';
+const BUILD25_MENU_REMOTE_URL = 'https://www.myinstants.com/media/sounds/slendytubbies-2d-main-menu-theme.mp3';
+const BUILD25_FOXY_GIF_PATH = path.join(__dirname, 'build25-foxy.gif');
+const BUILD25_FOXY_SCREAM_PATH = path.join(__dirname, 'build25-foxy-scream.mp3');
+const BUILD25_FOXY_FINAL_PATH = path.join(__dirname, 'build25-foxy-final.png');
 const MAPS_DIR = path.join(__dirname, 'maps');
 const BANS_FILE = process.env.DIGGERZ_BANS_FILE || path.join(__dirname, 'bans.json');
 const PLAYERS_FILE = process.env.DIGGERZ_PLAYERS_FILE || path.join(__dirname, 'players.json');
@@ -376,6 +382,11 @@ function patchGameHtmlForBuild239(input) {
     const bodyClose = html.lastIndexOf('</body>');
     html = bodyClose >= 0 ? html.slice(0, bodyClose) + build240Tag + html.slice(bodyClose) : html + build240Tag;
   }
+  if (!html.includes('build250-client.js')) {
+    const build250Tag = '<script src="/build250-client.js"></script>';
+    const bodyClose = html.lastIndexOf('</body>');
+    html = bodyClose >= 0 ? html.slice(0, bodyClose) + build250Tag + html.slice(bodyClose) : html + build250Tag;
+  }
 
   const marker239 = '<hr><a name="Build 23.8"></a>';
   if (!html.includes('Build 23.9 - Economy, Beta Gun, Support & UPDATE Hat') && html.includes(marker239)) {
@@ -389,12 +400,39 @@ function patchGameHtmlForBuild239(input) {
     html = html.replace(marker240, section240 + marker240);
   }
 
+  // Build 25: newer Coaster Town wearables use item IDs above 700.
+  // The admin panel must enumerate the same range as adminSpawnItem (1..2047).
+  html = html.replace(
+    'var out = [], max = category === 1 ? 700 : 700, id, display, name;',
+    'var out = [], max = 2047, id, display, name;'
+  );
+
+  // Lime integration: preserve the game's native embedded 2048x2048 PNG atlas.
+  // The previous virtual 4096x2048 SVG atlas conflicted with original sprite coordinates.
+  // Item names, shop entries, and pet rig mappings remain sourced from index.html.
+
+  // Build 25: hide only the temporary headwear listings from the shop.
+  // Preserve all new pets, clothing, weapons, and every underlying item ID.
+  const ctShopRow = /^[ \t]*\{shopId:\d+, itemId:\d+, price:1, name:"([^"]+)", description:"CT import \(id \d+\)\."\},?\r?\n/gm;
+  const ctHeadwearName = /(?:hat|helmet|mask|hair|horns?|antlers?|cat ears|evil eyes|skull head|mummy head|creepy baby|dark pumpkin|demon pig|snow freak|cute xmas bob|grump|mr frosty)/i;
+  let ctHatsHidden = 0;
+  html = html.replace(ctShopRow, function(row, name) {
+    if (!ctHeadwearName.test(name)) return row;
+    ctHatsHidden++;
+    return '';
+  });
+  console.log('[Diggerz 25] Hidden ' + ctHatsHidden + ' temporary headwear shop listings; pets and other imports remain available.');
+
   return Buffer.from(html, 'utf8');
 }
 
 let gameHtml = null;
 let build239ClientJs = null;
 let build240ClientJs = null;
+let build250ClientJs = null;
+let build25FoxyGif = null;
+let build25FoxyScreamMp3 = null;
+let build25FoxyFinalPng = null;
 let tilesPng = null;
 let bkndPng = null;
 let reblastedPng = null;
@@ -409,6 +447,10 @@ let muleOgg = null;
 try { gameHtml = patchGameHtmlForBuild239(fs.readFileSync(GAME_HTML_PATH)); } catch (error) { console.warn('[Diggerz] index.html not found at startup:', error.message); }
 try { build239ClientJs = fs.readFileSync(BUILD239_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build239-client.js not found:', error.message); }
 try { build240ClientJs = fs.readFileSync(BUILD240_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build240-client.js not found:', error.message); }
+try { build250ClientJs = fs.readFileSync(BUILD250_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build250-client.js not found:', error.message); }
+try { build25FoxyGif = fs.readFileSync(BUILD25_FOXY_GIF_PATH); } catch (error) { console.warn('[Diggerz 25.0] build25-foxy.gif not bundled.'); }
+try { build25FoxyScreamMp3 = fs.readFileSync(BUILD25_FOXY_SCREAM_PATH); } catch (error) { console.warn('[Diggerz 25.0] build25-foxy-scream.mp3 not bundled.'); }
+try { build25FoxyFinalPng = fs.readFileSync(BUILD25_FOXY_FINAL_PATH); } catch (error) { console.warn('[Diggerz 25.0] build25-foxy-final.png not bundled.'); }
 try { tilesPng = fs.readFileSync(TILES_PNG_PATH); } catch (error) { console.warn('[Diggerz] tiles.png not found:', error.message); }
 try { bkndPng = fs.readFileSync(BKND_PNG_PATH); } catch (error) { console.warn('[Diggerz] bknd.png not found:', error.message); }
 try { reblastedPng = fs.readFileSync(REBLASTED_PNG_PATH); } catch (error) { console.warn('[Diggerz] reblasted.png not found:', error.message); }
@@ -3347,6 +3389,10 @@ function buildItchClientZip() {
     ...(muleOgg ? [{ name: 'mule.ogg', data: muleOgg }] : []),
     { name: 'build239-client.js', data: build239ClientJs },
     { name: 'build240-client.js', data: build240ClientJs },
+    ...(build250ClientJs ? [{ name: 'build250-client.js', data: build250ClientJs }] : []),
+    ...(build25FoxyGif ? [{ name: 'build25-foxy.gif', data: build25FoxyGif }] : []),
+    ...(build25FoxyFinalPng ? [{ name: 'build25-foxy-final.png', data: build25FoxyFinalPng }] : []),
+    ...(build25FoxyScreamMp3 ? [{ name: 'build25-foxy-scream.mp3', data: build25FoxyScreamMp3 }] : []),
     { name: 'README.txt', data: readme }
   ]);
   return itchClientZip;
@@ -3422,6 +3468,7 @@ const server = http.createServer(async (req, res) => {
   }
   if (urlPath === '/build239-client.js') { serveBuffer(res,build239ClientJs,'application/javascript; charset=utf-8'); return; }
   if (urlPath === '/build240-client.js') { serveBuffer(res,build240ClientJs,'application/javascript; charset=utf-8'); return; }
+  if (urlPath === '/build250-client.js') { serveBuffer(res,build250ClientJs,'application/javascript; charset=utf-8'); return; }
   if (urlPath === '/tiles.png') { serveBuffer(res,tilesPng,'image/png'); return; }
   if (urlPath === '/bknd.png') { serveBuffer(res,bkndPng,'image/png'); return; }
   if (urlPath === '/reblasted.png') { serveBuffer(res,reblastedPng,'image/png'); return; }
@@ -3439,6 +3486,12 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (urlPath === '/levelup.ogg') { serveBuffer(res,levelupOgg,'audio/ogg'); return; }
+  if (urlPath === '/build25-menu.mp3') { proxyRemoteAudio(res,BUILD25_MENU_REMOTE_URL); return; }
+  if (urlPath === '/build25-lime.png') { try { const b=fs.readFileSync(path.join(__dirname,'build25-lime.png')); serveBuffer(res,b,'image/png'); } catch(e) { res.writeHead(404); res.end(); } return; }
+  if (urlPath === '/build25-heufancy.png') { try { const b=fs.readFileSync(path.join(__dirname,'build25-heufancy.png')); serveBuffer(res,b,'image/png'); } catch(e) { res.writeHead(404); res.end(); } return; }
+  if (urlPath === '/build25-foxy.gif') { if (build25FoxyGif) serveBuffer(res,build25FoxyGif,'image/gif'); else { res.writeHead(404); res.end(); } return; }
+  if (urlPath === '/build25-foxy-scream.mp3') { if (build25FoxyScreamMp3) serveBuffer(res,build25FoxyScreamMp3,'audio/mpeg'); else { res.writeHead(404); res.end(); } return; }
+  if (urlPath === '/build25-foxy-final.png') { if (build25FoxyFinalPng) serveBuffer(res,build25FoxyFinalPng,'image/png'); else { res.writeHead(404); res.end(); } return; }
   if (urlPath === '/music_theme.ogg') { serveBuffer(res,musicOgg[0],'audio/ogg'); return; }
   if (urlPath === '/music_theme2.ogg') { serveBuffer(res,musicOgg[1],'audio/ogg'); return; }
   if (urlPath === '/music_theme3.ogg') { serveBuffer(res,musicOgg[2],'audio/ogg'); return; }
