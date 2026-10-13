@@ -271,3 +271,75 @@ window.DiggerzBuild250Boot={
 function boot(){if(document.body)runIntro();else setTimeout(boot,20)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 }());
+
+/* Build 25 Cart Racing hybrid prototype — isolated until multiplayer playtest. */
+(function(){
+  'use strict';
+  if(window.__diggerzCartRaceInstalled)return;
+  window.__diggerzCartRaceInstalled=true;
+  var button=null, raceRoom='', hookedSocket=null, pendingCart=false, results=null;
+  function raceActive(){var p=window.DiggerzPvp22;return !!(p&&p.mode==='race'&&(p.requested||p.joined));}
+  function ensureCart(){
+    if(!raceActive())return false;
+    try{
+      if(typeof l==='undefined'||!l.z39||typeof oa==='undefined')return false;
+      var player=l.z39;
+      if(player.i32===oa.MODE_CART)return true;
+      if(typeof player.L31!=='function')return false;
+      // Native Diggerz cart system: item 109 is its Basic Cart.
+      // Coaster Town's recovered original physics are not installed yet.
+      player.J31|=1;
+      player.L31([109],[0],[0],[0],[0],[0],[0]);
+      return player.i32===oa.MODE_CART;
+    }catch(e){console.warn('[Cart Racing] native cart entry:',e);return false}
+  }
+  function launch(){
+    try{
+      var p=window.DiggerzPvp22;
+      if(!p||typeof q==='undefined'||typeof l==='undefined'||!q.InitMainGame)return;
+      p.mode='race';p.requested=true;p.intentionalClose=false;
+      q.diggerzPvpRequested=true;q.diggerzPeerMode='race';q.diggerzDigTradeRequested=false;q.diggerzShopRequested=false;
+      l.A45=false;l.A46=false;l.A47=false;l.A48=false;l.A40=null;
+      q.player.l7=false;q.mClicked=false;
+      q.InitMainGame();
+      pendingCart=true;
+    }catch(e){console.error('[Cart Racing] launch failed:',e)}
+  }
+  function installButton(){
+    if(button||!document.body)return;
+    button=document.createElement('button');button.id='build25-cart-race-launch';
+    button.textContent='CART RACING (TEST)';
+    button.style.cssText='position:fixed;right:14px;bottom:16px;z-index:900;color:#fff;background:#bd4626;border:2px solid #ffd279;border-radius:9px;padding:12px 17px;font:bold 15px Arial;cursor:pointer;box-shadow:0 4px 20px #0008';
+    button.onclick=launch;document.body.appendChild(button);
+  }
+  function handleRacePacket(ev){
+    if(!raceActive()||typeof ev.data!=='string')return;
+    var m;try{m=JSON.parse(ev.data)}catch(e){return}
+    if(!m||!m.t)return;
+    if(m.t==='race-setup'||m.t==='race-respawn'){pendingCart=true;setTimeout(ensureCart,150);return}
+    if(m.t==='race-start'){pendingCart=true;return}
+    if(m.t==='race-checkpoint'){console.info('[Cart Racing] checkpoint',m.number,m.total);return}
+    if(m.t==='race-results'){
+      if(results)results.remove();
+      results=document.createElement('div');results.id='build25-race-results';
+      results.style.cssText='position:fixed;inset:0;z-index:2147483000;background:#000c;color:#fff;display:flex;align-items:center;justify-content:center;font:18px Arial';
+      var box=document.createElement('div');box.style.cssText='padding:30px;background:#172332;border:2px solid #f7c76b;border-radius:14px;text-align:center;max-width:440px';
+      var h=document.createElement('h2');h.textContent='Cart Racing Results';box.appendChild(h);
+      (m.finishers||[]).forEach(function(f){var p=document.createElement('p');p.textContent='#'+f.place+' '+f.name;box.appendChild(p)});
+      function action(label,fn){var b=document.createElement('button');b.textContent=label;b.style.cssText='margin:8px;padding:12px 16px;cursor:pointer';b.onclick=fn;box.appendChild(b)}
+      action('Play Again',function(){location.reload()});
+      action('Dig & Trade',function(){location.reload()});
+      results.appendChild(box);document.body.appendChild(results);
+    }
+  }
+  document.addEventListener('keydown',function(ev){if(raceActive()&&(ev.code==='KeyC'||ev.key==='c'||ev.key==='C')){ev.preventDefault();ev.stopImmediatePropagation()}},true);
+  setInterval(function(){
+    var p=window.DiggerzPvp22;
+    if(!p)return;
+    if(p.socket&&p.socket!==hookedSocket){hookedSocket=p.socket;hookedSocket.addEventListener('message',handleRacePacket)}
+    if(pendingCart&&ensureCart())pendingCart=false;
+    if(window.__diggerzBuild25IntroFinished&&!p.joined&&!p.starting){
+      installButton();if(button)button.style.display=raceActive()?'none':'block';
+    }else if(button)button.style.display='none';
+  },300);
+}());
