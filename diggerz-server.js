@@ -481,6 +481,32 @@ function patchGameHtmlForBuild239(input) {
   if (html.includes(remoteAnimAnchor)) html = html.replace(remoteAnimAnchor, remoteAnimFixed);
   else if (!html.includes(remoteAnimFixed)) console.warn('[Build 25] remote idle playback anchor missing.');
 
+  // Cart Racing hybrid prototype: route the existing multiplayer stack through
+  // its own race mode, while retaining the original game runtime.
+  const cartRaceClientPatches=[
+    [
+      "function setMode(mode){P.mode=mode==='digtrade'?'digtrade':'pvp';",
+      "function setMode(mode){P.mode=mode==='race'?'race':(mode==='digtrade'?'digtrade':'pvp');"
+    ],
+    [
+      "service.mode==='pvp'||service.mode==='digtrade'",
+      "service.mode==='pvp'||service.mode==='digtrade'||service.mode==='race'"
+    ],
+    [
+      'this.mode === "pvp" || this.mode === "digtrade"',
+      'this.mode === "pvp" || this.mode === "digtrade" || this.mode === "race"'
+    ],
+    [
+      'new DiggerzService(this, "pvp")',
+      'new DiggerzService(this, (window.DiggerzPvp22 && window.DiggerzPvp22.mode === "race") ? "race" : "pvp")'
+    ]
+  ];
+  for(const [from,to] of cartRaceClientPatches){
+    if(html.includes(to))continue;
+    if(!html.includes(from)){console.warn('[Cart Racing] Client anchor not found:',from);continue;}
+    html=html.replace(from,to);
+  }
+
   return Buffer.from(html, 'utf8');
 }
 
