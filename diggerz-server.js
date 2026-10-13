@@ -894,7 +894,13 @@ function sanitizeMap(raw, filename = '') {
     if(expectedBlockLayer(id)===2){ if(seenBg2.has(key))continue; seenBg2.add(key); normalizedBackgroundTiles.push(row); }
     else { if(seenFg.has(key))continue; seenFg.add(key); normalizedTiles.push(row); }
   }
-  return { format:'diggerz-pvp-map-v1', name, width:128, height:80, background:Math.max(0,Math.min(9,Number(raw.background)|0)), tiles:normalizedTiles, backgroundTiles:normalizedBackgroundTiles };
+  // Race markers are editor metadata, derived from validated foreground tiles.
+  const race = {
+    spawn: normalizedTiles.filter(row => row[2] === 662).map(row => ({x:row[0],y:row[1]})),
+    finish: normalizedTiles.filter(row => row[2] === 663).map(row => ({x:row[0],y:row[1]})),
+    checkpoints: normalizedTiles.filter(row => row[2] === 350).map(row => ({x:row[0],y:row[1]}))
+  };
+  return { format:'diggerz-pvp-map-v1', name, width:128, height:80, background:Math.max(0,Math.min(9,Number(raw.background)|0)), tiles:normalizedTiles, backgroundTiles:normalizedBackgroundTiles, race };
 }
 
 function loadCustomMaps() {
