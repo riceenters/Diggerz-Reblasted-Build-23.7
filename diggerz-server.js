@@ -1281,7 +1281,7 @@ function relayBinary(client, payload) {
     try {
       const x = readNativeFixedBE(payload, 2);
       const y = readNativeFixedBE(payload, 18);
-      if (Number.isFinite(x) && Number.isFinite(y)) client.position = {x,y};
+      if (Number.isFinite(x) && Number.isFinite(y)) { client.position = {x,y}; if (client.room && client.room.mode==='race') activateRaceCheckpoint(client); }
     } catch {}
   }
 
@@ -1766,6 +1766,39 @@ function finishBattleIfNeeded(room) {
   broadcastRoom(room, { t:'winner', connectionId:winner.connectionId, name:winner.name, kills:winner.kills|0 });
   broadcastBattleState(room);
   log(`Battle ${room.code}: ${winner.name} wins with ${winner.kills|0} kills.`);
+  return true;
+}
+
+// Cart Racing checkpoint state. Only active in race rooms; never changes PvP or Dig & Trade.
+function raceMarkerAt(room, x, y, markerId) {
+  const map=room && room.map;
+  if (!map || !map.race) return false;
+  const key=markerId===350?'checkpoints':markerId===662?'spawn':'finish';
+  return Array.isArray(map.race[key]) && map.race[key].some(p=>p.x===x && p.y===y);
+}
+function activateRaceCheckpoint(client) {
+  const room=client && client.room;
+  if (!room || room.mode!=='race' || !room.map || !client.position) return false;
+  const px=Number(client.position.x), py=Number(client.position.y);
+  if (!Number.isFinite(px)||!Number.isFinite(py)) return false;
+  const tiles=room.map.race && room.map.race.checkpoints || [];
+  const found=tiles.find(p=>Math.abs(px-(p.x+.5))<=1.25 && Math.abs(py-(p.y+.5))<=1.5);
+  if (!found) return false;
+  const key=found.x+','+found.y;
+  if (client.raceCheckpointKey===key) return false;
+  client.raceCheckpointKey=key;
+  client.raceCheckpoint={x:found.x+.5,y:Math.max(0,found.y-1)};
+  sendJson(client,{t:'race-checkpoint',x:client.raceCheckpoint.x,y:client.raceCheckpoint.y});
+  return true;
+}
+function respawnRaceClient(client) {
+  const room=client && client.room;
+  if (!room || room.mode!=='race' || !room.map) return false;
+  const spawn=room.map.race && room.map.race.spawn && room.map.race.spawn[0];
+  const pos=client.raceCheckpoint || (spawn ? {x:spawn.x+.5,y:Math.max(0,spawn.y-1)} : null);
+  if (!pos) return false;
+  client.position={x:pos.x,y:pos.y};
+  sendJson(client,{t:'race-respawn',x:pos.x,y:pos.y,inCart:true});
   return true;
 }
 
@@ -2299,6 +2332,12 @@ function relayGameMessage(client, message, rawLength) {
   const room=client.room;
   ensureRoomState(room);
   const envelope=Object.assign({},message,{_serverFrom:client.connectionId,_serverName:client.name});
+  if (room.mode==='race' && message.t==='race-death') {
+    // The race client will send this only when its local racer dies.
+    respawnRaceClient(client);
+    return;
+  }
+
 
   if (message.t==='hello') {
     const newName=normalizeName(message.name||client.name), changed=newName!==client.name;
@@ -2307,7 +2346,7 @@ function relayGameMessage(client, message, rawLength) {
     client.appearanceText=String(message.appearanceText||client.appearanceText||'').slice(0,180);
     client.skin=Number.isFinite(Number(message.skin))?Number(message.skin):1.44;
     if(Number.isFinite(Number(message.wins))) client.wins=Math.max(0,Number(message.wins)|0);
-    if(Number.isFinite(Number(message.x))&&Number.isFinite(Number(message.y))) client.position={x:Number(message.x),y:Number(message.y)};
+    if(Number.isFinite(Number(message.x))&&Number.isFinite(Number(message.y))) client.position={x:Number(message.x),y:Number(message.y)}; if(room.mode==='race') activateRaceCheckpoint(client);
     if(changed){rememberPlayer(client,client.name,client.clientId);broadcastRoom(room,{t:'peer-rename',connectionId:client.connectionId,name:client.name,oldName:message.oldName||'',_serverFrom:client.connectionId,_serverName:client.name});broadcastRoster(room);}
     broadcastRoom(room,{t:'hello',id:message.id,name:client.name,appearance:message.appearance,appearanceText:message.appearanceText||'',x:client.position.x,y:client.position.y,skin:message.skin,wins:message.wins||0,mode:client.mode,adminEffects:{...client.adminEffects},adminModifiers:{...client.adminModifiers},_serverFrom:client.connectionId,_serverName:client.name},client);
     return;
