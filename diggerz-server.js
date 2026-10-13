@@ -907,7 +907,7 @@ function loadCustomMaps() {
   const maps=[];
   try { fs.mkdirSync(MAPS_DIR,{recursive:true}); } catch {}
   let files=[];
-  try { files=fs.readdirSync(MAPS_DIR).filter(f=>{const n=f.toLowerCase();return (n.endsWith('.json')||n.endsWith('.json.gz')||n.endsWith('.json.gz.b64'))&&n!=='digtrade.json';}).sort((a,b)=>a.localeCompare(b)); }
+  try { files=fs.readdirSync(MAPS_DIR).filter(f=>{const n=f.toLowerCase();return (n.endsWith('.json')||n.endsWith('.json.gz')||n.endsWith('.json.gz.b64'))&&n!=='digtrade.json'&&n!=='coaster-racing-park.json';}).sort((a,b)=>a.localeCompare(b)); }
   catch (error) { console.warn('[Diggerz] could not read maps folder:', error.message); return maps; }
   for (const file of files) {
     try {
@@ -2103,7 +2103,7 @@ function addClientToRoom(client, room, mode, name) {
   client.shots = 0;
   client.hits = 0;
   client.position = mode==='race' && room.map && room.map.race && room.map.race.spawn.length ? (()=>{const a=room.map.race.spawn[room.clients.size%room.map.race.spawn.length];return {x:a.x+.5,y:a.y-.9};})() : { x: randomSpawnX(room), y: 2 };
-  if(mode==='race'){client.raceCheckpoint=null;client.raceCheckpointKey='';client.raceLastPosition=null;client.raceFinished=false;}
+  if(mode==='race'){client.raceCheckpoint=null;client.raceCheckpointKey='';client.raceCheckpointIndex=0;client.raceLastPosition=null;client.raceFinished=false;}
   room.clients.add(client);
 
   sendJson(client, {
@@ -3759,7 +3759,14 @@ server.on('upgrade', (req, socket) => {
 
 const battleClock = setInterval(() => {
   const now = Date.now();
-  for (const room of rooms.values()) { battleTick(room, now); specialWorldTick(room, now); }
+  for (const room of rooms.values()) {
+    battleTick(room, now); specialWorldTick(room, now);
+    if(room.mode==='race' && room.race){
+      const race=room.race;
+      if(race.phase==='countdown' && now>=race.startAt){race.phase='racing';broadcastRoom(room,{t:'race-start',at:race.startAt});}
+      if(race.phase==='racing' && (now>=race.deadline || (race.firstFinishAt && now>=race.firstFinishAt+90000) || [...room.clients].every(c=>c.raceFinished)))endCartRace(room);
+    }
+  }
 }, 200);
 battleClock.unref();
 
