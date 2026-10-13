@@ -518,8 +518,8 @@ function patchGameHtmlForBuild239(input) {
   // Build 25: moving players should face their actual horizontal travel direction.
   // Original native sprite logic looks at mouse X, even on slope motion.
   // Only change facing on meaningful horizontal displacement; preserve it at rest.
-  const oldPlayerFacing='c = q.mX - this.A7;\\n            this.k33 = 0 < c ? 1 : 0 > c ? -1 : 0;';
-  const movementPlayerFacing='c = Math.abs(this.B32) > .01 ? this.B32 : (this.k33 || this.i33.b4 || 1);\\n            this.k33 = 0 < c ? 1 : -1;';
+  const oldPlayerFacing='c = q.mX - this.A7;\n            this.k33 = 0 < c ? 1 : 0 > c ? -1 : 0;';
+  const movementPlayerFacing='c = Math.abs(this.B32) > .01 ? this.B32 : (this.k33 || this.i33.b4 || 1);\n            this.k33 = 0 < c ? 1 : -1;';
   if (html.includes(oldPlayerFacing)) {
     html=html.replace(oldPlayerFacing,movementPlayerFacing);
     console.log('[Build 25] Player sprite facing follows movement direction.');
