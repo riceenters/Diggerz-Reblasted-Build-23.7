@@ -1882,12 +1882,13 @@ function advanceCartRace(client) {
   const place=race.finishers.length;
   if(place===1){race.winnerId=client.connectionId;race.firstFinishAt=now;sendJson(client,{t:'coin-award',amount:100,reason:'cart-race-win'});}
   broadcastRoom(room,{t:'race-finish',connectionId:client.connectionId,name:client.name,place,coins:place===1?100:0});
-  if([...room.clients].every(c=>c.raceFinished))endCartRace(room);
+  if(place===1)endCartRace(room);
 }
 function endCartRace(room){
   const r=room && room.race;if(!r||r.phase==='finished')return;
   r.phase='finished';r.finishedAt=Date.now();
-  broadcastRoom(room,{t:'race-results',finishers:r.finishers.slice(),winnerId:r.winnerId,options:['digtrade','play-again']});
+  broadcastRoom(room,{t:'race-kill-all',winnerId:r.winnerId});
+  broadcastRoom(room,{t:'race-results',finishers:r.finishers.slice(),winnerId:r.winnerId,options:['digtrade','play-again','leave']});
 }
 function respawnBattleClient(client) {
   const room = client && client.room;
@@ -2173,7 +2174,7 @@ function addClientToRoom(client, room, mode, name) {
     tiles: [...room.tiles.values()], backgroundTiles: [...room.backgroundTiles.values()], drops: [...room.drops.values()], coins: [...room.coins.values()], speaker: room.speaker ? {...room.speaker} : null, serverNow: Date.now()
   });
   if (mode === 'pvp') sendBattleState(client);
-  if(mode==='race'){sendJson(client,{t:'race-setup',spawn:client.position,mapName:room.map.name,lockedCart:true}); if(room.race.phase==='waiting'&&room.clients.size>=2){room.race.phase='countdown';room.race.startAt=Date.now()+5000;room.race.deadline=room.race.startAt+360000;broadcastRoom(room,{t:'race-countdown',startsAt:room.race.startAt});}}
+  if(mode==='race'){sendJson(client,{t:'race-setup',spawn:client.position,mapName:room.map.name,lockedCart:true}); if(room.race.phase==='waiting'&&room.clients.size>=3){room.race.phase='countdown';room.race.startAt=Date.now()+4500;room.race.deadline=room.race.startAt+360000;broadcastRoom(room,{t:'race-countdown',startsAt:room.race.startAt});}}
   // Fake players are real native player entities on every browser. Send the same
   // recovered opcode-5 spawn packet used by an actual connected player.
   if (room.fakePlayers) for (const fake of room.fakePlayers.values()) sendFakeNativeSpawn(room,fake,client);
@@ -2605,6 +2606,12 @@ function relayGameMessage(client, message, rawLength) {
     const items=Array.isArray(message.items)?message.items.map(sanitizeItem).filter(Boolean):[]; sendJson(requester,{t:'admin-inventory-action-result',requestId:id,action:req.action,targetConnectionId:client.connectionId,targetName:client.name,items}); return;
   }
 
+  if(message.t==='race-again' && room.mode==='race'){
+    if(room.race.phase!=='finished')return;
+    // A rematch needs a new room; never issue a second 100 coin award in this one.
+    sendJson(client,{t:'race-requeue',requested:true});
+    return;
+  }
   if (message.t==='race-ready' && room.mode==='race'){sendJson(client,{t:'race-setup',spawn:client.position,mapName:room.map.name,lockedCart:true});return;}
   if (message.t==='state') {
     if(client.controlledBy) return;
@@ -3161,6 +3168,7 @@ function leaveRoom(client) {
 
   log(`${client.connectionId} left ${room.code}. ${room.clients.size}/${MAX_ROOM_PLAYERS}`);
 
+  if (room.mode === 'race' && room.race && room.race.phase==='countdown' && room.clients.size<3) {room.race.phase='waiting';room.race.startAt=0;broadcastRoom(room,{t:'race-waiting',count:room.clients.size,minimum:3});}
   if (room.mode === 'pvp' && room.battle && room.battle.elimination) { broadcastRemaining(room); finishBattleIfNeeded(room); }
 
   if (room.clients.size === 0) {
@@ -3810,7 +3818,7 @@ const battleClock = setInterval(() => {
     if(room.mode==='race' && room.race){
       const race=room.race;
       if(race.phase==='countdown' && now>=race.startAt){race.phase='racing';broadcastRoom(room,{t:'race-start',at:race.startAt});}
-      if(race.phase==='racing' && (now>=race.deadline || (race.firstFinishAt && now>=race.firstFinishAt+90000) || [...room.clients].every(c=>c.raceFinished)))endCartRace(room);
+      if(race.phase==='racing' && now>=race.deadline)endCartRace(room);
     }
   }
 }, 200);
