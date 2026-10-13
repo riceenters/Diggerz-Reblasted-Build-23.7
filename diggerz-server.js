@@ -483,8 +483,8 @@ function patchGameHtmlForBuild239(input) {
 
   // Build 25: use the native, proven spring entity (Wo) for block 313.
   // This preserves the existing engine collision and impulse implementation.
-  const spring313Original = 'case 313:\\n                h.q23(b, 312);\\n                null != p && (b = new Tn(p,c,d,e,g,w));\\n                h.Q20(b, 312, d, 1);\\n                b.c9 = !0;\\n                b.a4 = 1;\\n                b._1 = "Spikes";\\n                h.o20(b);\\n                break;';
-  const spring313Native = 'case 313:\\n                h.q23(b, 312);\\n                null != p && (b = new Wo(p,c,d,e,g,w));\\n                h.Q20(b, 312, d, 1);\\n                b.c9 = !0;\\n                b.a4 = 1;\\n                b._1 = "Spring Spikes";\\n                h.o20(b);\\n                break;';
+  const spring313Original = 'case 313:\n                h.q23(b, 312);\n                null != p && (b = new Tn(p,c,d,e,g,w));\n                h.Q20(b, 312, d, 1);\n                b.c9 = !0;\n                b.a4 = 1;\n                b._1 = "Spikes";\n                h.o20(b);\n                break;';
+  const spring313Native = 'case 313:\n                h.q23(b, 312);\n                null != p && (b = new Wo(p,c,d,e,g,w));\n                h.Q20(b, 312, d, 1);\n                b.c9 = !0;\n                b.a4 = 1;\n                b._1 = "Spring Spikes";\n                h.o20(b);\n                break;';
   if (html.includes(spring313Original)) {
     html = html.replace(spring313Original, spring313Native);
     console.log('[Build 25] Block 313 now uses native Tosser spring collision and bounce.');
