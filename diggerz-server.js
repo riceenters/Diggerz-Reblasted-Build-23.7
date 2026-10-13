@@ -481,6 +481,54 @@ function patchGameHtmlForBuild239(input) {
   if (html.includes(remoteAnimAnchor)) html = html.replace(remoteAnimAnchor, remoteAnimFixed);
   else if (!html.includes(remoteAnimFixed)) console.warn('[Build 25] remote idle playback anchor missing.');
 
+  // Build 25 Spring Spikes (#313): keep original trap damage and animation,
+  // add the spring graphic and upward spring launch when touched from above.
+  const springSpikeBefore = 'case 313:\n                h.q23(b, 312);\n                null != p && (b = new Tn(p,c,d,e,g,w));\n                h.Q20(b, 312, d, 1);\n                b.c9 = !0;\n                b.a4 = 1;\n                b._1 = "Spikes";\n                h.o20(b);\n                break;';
+  const springSpikeAfter = 'case 313:\n                h.q23(b, 312);\n                null != p && (b = new Tn(p,c,d,e,g,w));\n                h.Q20(b, 312, d, 1);\n                b.c9 = !0;\n                b.a4 = 1;\n                b._1 = "Spring Spikes";\n' +
+    '                if (p && b._9) {\n' +
+    '                    var springGraphic = z.I9();\n' +
+    '                    springGraphic.Init(f.SPRINGS_PNG());\n' +
+    '                    springGraphic.D7(b);\n' +
+    '                    springGraphic.b7 = l._44 / 2;\n' +
+    '                    springGraphic.b2 = !0;\n' +
+    '                    b._9.unshift(springGraphic);\n' +
+    '                }\n' +
+    '                h.o20(b);\n                break;';
+  if (html.includes(springSpikeBefore)) {
+    html = html.replace(springSpikeBefore, springSpikeAfter);
+    console.log('[Build 25] Spring Spikes block 313 entity and graphic installed.');
+  } else if (!html.includes(springSpikeAfter)) {
+    console.warn('[Build 25] Spring Spikes block 313 entity anchor not found.');
+  }
+
+  const springTickBefore = 'if (this.mode !== "shop") this.checkDamageHazard();';
+  const springTickAfter = 'if (this.mode !== "shop") { this.checkDamageHazard(); this.checkSpringSpikes(); }';
+  const springMethodAnchor = '        checkDamageHazard: function() {';
+  const springMethod = 
+    '        checkSpringSpikes: function() {\n' +
+    '            if (!l.z39 || !l.z39.b33 || this.localDead) return;\n' +
+    '            if (this.springSpikeCooldown && this.ticks < this.springSpikeCooldown) return;\n' +
+    '            var px = l.z39.b6 / l._44, py = l.z39.b7 / l._44;\n' +
+    '            var tx = Math.floor(px + .5), ty = Math.floor(py + .95);\n' +
+    '            if (this.tileAt(tx,ty) !== 313) return;\n' +
+    '            try {\n' +
+    '                var spike = l.z38 && l.z38.R39 && l.z38.R39[l._46] ?\n' +
+    '                    l.z38.R39[l._46].r33(tx*l._44,ty*l._44) : null;\n' +
+    '                if (!spike || !spike.i45 || !spike.H42) return;\n' +
+    '                if (l.z39.b7 > spike.b7) return;\n' +
+    '                var body = l.z39.b33;\n' +
+    '                var impulse = new Z(0,-12500);\n' +
+    '                body.applyImpulse(impulse);\n' +
+    '                this.springSpikeCooldown = this.ticks + 30;\n' +
+    '            } catch (e) { console.warn("[Spring Spikes]",e); }\n' +
+    '        },\n';
+  if (html.includes(springTickBefore) && html.includes(springMethodAnchor)) {
+    html = html.replace(springTickBefore, springTickAfter);
+    html = html.replace(springMethodAnchor, springMethod + springMethodAnchor);
+  } else if (!html.includes(springTickAfter)) {
+    console.warn('[Build 25] Spring Spikes impulse hook anchor not found.');
+  }
+
   return Buffer.from(html, 'utf8');
 }
 
