@@ -11,7 +11,7 @@ var FOXY_SOUND='/build25-foxy-scream.mp3';
 var FOXY_ODDS=667;
 var INTRO_TOTAL_SECONDS=26; // finished intro project: 26 seconds before menu reveal
 var FOXY_NEXT_BOOT_KEY='diggerz.build25.foxyScaredLastBoot';
-var introStarted=false,introFinished=false,menuAudio=null,overlay=null,stage=null,sceneMedia=null,sceneText=null,flash=null;
+var introStarted=false,introFinished=false,introSkipRequested=false,introSkipResolve=null,menuAudio=null,overlay=null,stage=null,sceneMedia=null,sceneText=null,flash=null;
 var joinedLast=false;
 
 var FINAL_MESSAGES=[
@@ -41,7 +41,7 @@ var SCENES=[
  {duration:1,delay:1,bgColor:'#000000',text:'',fontSize:73,textColor:'#ff0000',fontWeight:'700',outlineWidth:2,outlineColor:'#ff0000',x:50,y:50,mediaType:'',mediaSrc:'',fit:'contain',mediaW:100,mediaH:100,enterTime:.4,exitTime:.4}
 ];
 
-function sleep(ms){return new Promise(function(resolve){setTimeout(resolve,Math.max(0,ms|0))})}
+function sleep(ms){return new Promise(function(resolve){var done=false;var t=setTimeout(finish,Math.max(0,ms|0));function finish(){if(done)return;done=true;clearTimeout(t);if(introSkipResolve===finish)introSkipResolve=null;resolve()}introSkipResolve=finish;if(introSkipRequested)finish()})}
 function rand(max){
   max=Math.max(1,max|0);
   try{
@@ -90,6 +90,10 @@ function makeOverlay(){
   var click=document.createElement('div');click.id='diggerz25-click';click.textContent='CLICK TO START';
   stage.appendChild(sceneMedia);stage.appendChild(sceneText);stage.appendChild(foxy);stage.appendChild(flash);
   overlay.appendChild(stage);overlay.appendChild(click);
+  var skip=document.createElement('button');skip.id='diggerz25-skip';skip.type='button';skip.textContent='SKIP INTRO';
+  skip.style.cssText='position:absolute;z-index:50;right:18px;top:18px;background:#1c1c1cdd;color:white;border:2px solid #eee;border-radius:8px;padding:12px 18px;font:bold 15px Arial;cursor:pointer;pointer-events:auto';
+  skip.onclick=function(ev){ev.stopPropagation();introSkipRequested=true;if(introSkipResolve)introSkipResolve();};
+  overlay.appendChild(skip);
   document.body.appendChild(overlay);
   return overlay;
 }
@@ -141,9 +145,11 @@ function resetScene(){
   stage.style.background='#000';
 }
 async function playScene(s){
+  if(introSkipRequested)return;
   resetScene();
   stage.style.background=s.bgColor||'#000';
   if(s.delay>0)await sleep(s.delay*1000);
+  if(introSkipRequested)return;
   sceneText.textContent=s.text||'';
   sceneText.style.fontSize=(+s.fontSize||64)+'px';
   sceneText.style.color=s.textColor||'#fff';
@@ -174,6 +180,7 @@ async function playScene(s){
   })})});
   var duration=Math.max(.1,+s.duration||1),exit=Math.max(0,Math.min(duration,+s.exitTime||0));
   await sleep(Math.max(0,(duration-exit)*1000));
+  if(introSkipRequested)return;
   sceneText.style.transitionDuration=exit+'s';sceneMedia.style.transitionDuration=exit+'s';
   sceneText.style.opacity='0';sceneMedia.style.opacity='0';
   if(exit>0)await sleep(exit*1000);
@@ -241,7 +248,7 @@ function watchMenuMusic(){
   },250);
 }
 async function runIntro(){
-  if(introStarted)return;introStarted=true;
+  if(introStarted)return;introStarted=true;introSkipRequested=false;
   makeOverlay();
   SCENES[SCENES.length-1].text=pickFinalMessage();
   // One audio element owns BOTH the intro and menu music. Start at 0 once,
@@ -249,9 +256,8 @@ async function runIntro(){
   var bootAudio=setupMenuAudio();
   if(bootAudio){try{bootAudio.currentTime=0;bootAudio.loop=true;bootAudio.volume=1}catch(e){}}
   await ensureAudioAndStart();
-  for(var i=0;i<SCENES.length;i++)await playScene(SCENES[i]);
-  var scared=await maybeFoxy();
-  await flashToMenu(scared);
+  for(var i=0;i<SCENES.length&&!introSkipRequested;i++)await playScene(SCENES[i]);
+  if(!introSkipRequested){var scared=await maybeFoxy();if(!introSkipRequested)await flashToMenu(scared);}
   if(overlay)try{overlay.remove()}catch(e){}
   var st=document.getElementById('diggerz-build25-intro-style');if(st)try{st.remove()}catch(e){}
   introFinished=true;
@@ -277,10 +283,10 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   'use strict';
   if(window.__diggerzCartRaceInstalled)return;
   window.__diggerzCartRaceInstalled=true;
-  var button=null, raceRoom='', hookedSocket=null, pendingCart=false, results=null;
+  var button=null, raceRoom='', hookedSocket=null, pendingCart=false, results=null,manualExit=false,lastC=0;
   function raceActive(){var p=window.DiggerzPvp22;return !!(p&&p.mode==='race'&&(p.requested||p.joined));}
   function ensureCart(){
-    if(!raceActive())return false;
+    if(!raceActive()||manualExit)return false;
     try{
       if(typeof l==='undefined'||!l.z39||typeof oa==='undefined')return false;
       var player=l.z39;
@@ -302,7 +308,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       l.A45=false;l.A46=false;l.A47=false;l.A48=false;l.A40=null;
       q.player.l7=false;q.mClicked=false;
       q.InitMainGame();
-      pendingCart=true;
+      manualExit=false;pendingCart=true;
     }catch(e){console.error('[Cart Racing] launch failed:',e)}
   }
   function installButton(){
@@ -316,7 +322,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(!raceActive()||typeof ev.data!=='string')return;
     var m;try{m=JSON.parse(ev.data)}catch(e){return}
     if(!m||!m.t)return;
-    if(m.t==='race-setup'||m.t==='race-respawn'){pendingCart=true;setTimeout(ensureCart,150);return}
+    if(m.t==='race-setup'||m.t==='race-respawn'){manualExit=false;pendingCart=true;setTimeout(ensureCart,150);return}
     if(m.t==='race-start'){pendingCart=true;return}
     if(m.t==='race-checkpoint'){console.info('[Cart Racing] checkpoint',m.number,m.total);return}
     if(m.t==='race-results'){
@@ -332,12 +338,24 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       results.appendChild(box);document.body.appendChild(results);
     }
   }
-  document.addEventListener('keydown',function(ev){if(raceActive()&&(ev.code==='KeyC'||ev.key==='c'||ev.key==='C')){ev.preventDefault();ev.stopImmediatePropagation()}},true);
+  // Native C key remains responsible for toggling cart state.
+  // Prevent inventory-selection ejections from persisting, but respect C exits.
+  document.addEventListener('keydown',function(ev){
+    if(!raceActive()||!(ev.code==='KeyC'||ev.key==='c'||ev.key==='C')||ev.repeat)return;
+    if(Date.now()-lastC<220)return;
+    lastC=Date.now();
+    try{
+      var inCart=typeof l!=='undefined'&&l.z39&&typeof oa!=='undefined'&&l.z39.i32===oa.MODE_CART;
+      manualExit=!!inCart;
+      if(!manualExit)pendingCart=true;
+    }catch(e){}
+    // Do not suppress the native event: original C handler handles exit/entry.
+  },true);
   setInterval(function(){
     var p=window.DiggerzPvp22;
     if(!p)return;
     if(p.socket&&p.socket!==hookedSocket){hookedSocket=p.socket;hookedSocket.addEventListener('message',handleRacePacket)}
-    if(pendingCart&&ensureCart())pendingCart=false;
+    if(raceActive()&&!manualExit){pendingCart=true;if(ensureCart())pendingCart=false;}
     if(window.__diggerzBuild25IntroFinished&&!p.joined&&!p.starting){
       installButton();if(button)button.style.display=raceActive()?'none':'block';
     }else if(button)button.style.display='none';
