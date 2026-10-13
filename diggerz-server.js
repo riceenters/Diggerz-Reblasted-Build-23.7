@@ -575,7 +575,7 @@ function normalizeRoom(value) {
 }
 
 function normalizeMode(value) {
-  return value === 'digtrade' ? 'digtrade' : 'pvp';
+  return value === 'race' ? 'race' : (value === 'digtrade' ? 'digtrade' : 'pvp');
 }
 
 function normalizeName(value) {
@@ -927,6 +927,13 @@ function loadCustomMaps() {
 }
 
 const customBattleMaps = loadCustomMaps();
+let cartRaceMap=null;
+try {
+  const raceFile=path.join(MAPS_DIR,'coaster-racing-park.json');
+  cartRaceMap=sanitizeMap(JSON.parse(fs.readFileSync(raceFile,'utf8')),'coaster-racing-park.json');
+  if(!cartRaceMap || !cartRaceMap.race || !cartRaceMap.race.spawn.length || !cartRaceMap.race.finish.length) throw new Error('Missing race markers');
+  console.log('[Diggerz] Cart Racing map loaded: '+cartRaceMap.name);
+} catch(error){ console.warn('[Diggerz] Cart Racing unavailable:',error.message); cartRaceMap=null; }
 let digTradeMap=null;
 try {
   const file=path.join(MAPS_DIR,'digtrade.json');
@@ -1281,7 +1288,7 @@ function relayBinary(client, payload) {
     try {
       const x = readNativeFixedBE(payload, 2);
       const y = readNativeFixedBE(payload, 18);
-      if (Number.isFinite(x) && Number.isFinite(y)) { client.position = {x,y}; if (client.room && client.room.mode==='race') activateRaceCheckpoint(client); }
+      if (Number.isFinite(x) && Number.isFinite(y)) { client.position = {x,y}; if (client.room && client.room.mode==='race') advanceCartRace(client); }
     } catch {}
   }
 
@@ -1639,6 +1646,7 @@ function ensureRoomState(room) {
   if (room.speaker === undefined) room.speaker = null;
   if (room.adminBackground === undefined) room.adminBackground = null;
   if (room.adminPvpOverride === undefined) room.adminPvpOverride = false;
+  if (room.mode==='race' && !room.race) room.race={phase:'waiting',startAt:0,firstFinishAt:0,finishers:[],winnerId:null,finishedAt:0,deadline:0};
   if (room.mode === 'pvp' && !room.battle) {
     room.battle = {
       phase: 'waiting',
@@ -1802,6 +1810,39 @@ function respawnRaceClient(client) {
   return true;
 }
 
+// Server-authoritative Cart Racing markers and single-award finish ordering.
+function advanceCartRace(client) {
+  const room=client && client.room, race=room && room.race;
+  if(!race || room.mode!=='race'||!room.map||!client.position||client.raceFinished)return;
+  if(race.phase==='countdown'&&Date.now()>=race.startAt){race.phase='racing';broadcastRoom(room,{t:'race-start',at:race.startAt});}
+  if(race.phase!=='racing')return;
+  const now=Date.now(), pos=client.position, previous=client.raceLastPosition;
+  // Prevent a client from teleporting directly to the finish to claim coins.
+  if(previous && now-previous.at<1000 && Math.hypot(pos.x-previous.x,pos.y-previous.y)>25)return;
+  client.raceLastPosition={x:pos.x,y:pos.y,at:now};
+  const near=p=>Math.abs(pos.x-(p.x+.5))<1.4&&Math.abs(pos.y-(p.y+.5))<2.1;
+  const checkpoints=room.map.race.checkpoints || [];
+  for(let i=0;i<checkpoints.length;i++){
+    const cp=checkpoints[i];
+    if(near(cp)&&i===(client.raceCheckpointIndex||0)){
+      client.raceCheckpointIndex=i+1;client.raceCheckpoint={x:cp.x+.5,y:Math.max(0,cp.y-1)};
+      sendJson(client,{t:'race-checkpoint',number:i+1,total:checkpoints.length,x:client.raceCheckpoint.x,y:client.raceCheckpoint.y});
+    }
+  }
+  if((client.raceCheckpointIndex||0)<checkpoints.length)return;
+  if(!room.map.race.finish.some(near))return;
+  client.raceFinished=true;
+  race.finishers.push({connectionId:client.connectionId,name:client.name,place:race.finishers.length+1});
+  const place=race.finishers.length;
+  if(place===1){race.winnerId=client.connectionId;race.firstFinishAt=now;sendJson(client,{t:'coin-award',amount:100,reason:'cart-race-win'});}
+  broadcastRoom(room,{t:'race-finish',connectionId:client.connectionId,name:client.name,place,coins:place===1?100:0});
+  if([...room.clients].every(c=>c.raceFinished))endCartRace(room);
+}
+function endCartRace(room){
+  const r=room && room.race;if(!r||r.phase==='finished')return;
+  r.phase='finished';r.finishedAt=Date.now();
+  broadcastRoom(room,{t:'race-results',finishers:r.finishers.slice(),winnerId:r.winnerId,options:['digtrade','play-again']});
+}
 function respawnBattleClient(client) {
   const room = client && client.room;
   if (!room || room.mode !== 'pvp' || !room.battle || room.battle.elimination || client.eliminated) return;
@@ -2061,7 +2102,8 @@ function addClientToRoom(client, room, mode, name) {
   client.kills = 0;
   client.shots = 0;
   client.hits = 0;
-  client.position = { x: randomSpawnX(room), y: 2 };
+  client.position = mode==='race' && room.map && room.map.race && room.map.race.spawn.length ? (()=>{const a=room.map.race.spawn[room.clients.size%room.map.race.spawn.length];return {x:a.x+.5,y:a.y-.9};})() : { x: randomSpawnX(room), y: 2 };
+  if(mode==='race'){client.raceCheckpoint=null;client.raceCheckpointKey='';client.raceLastPosition=null;client.raceFinished=false;}
   room.clients.add(client);
 
   sendJson(client, {
@@ -2085,6 +2127,7 @@ function addClientToRoom(client, room, mode, name) {
     tiles: [...room.tiles.values()], backgroundTiles: [...room.backgroundTiles.values()], drops: [...room.drops.values()], coins: [...room.coins.values()], speaker: room.speaker ? {...room.speaker} : null, serverNow: Date.now()
   });
   if (mode === 'pvp') sendBattleState(client);
+  if(mode==='race'){sendJson(client,{t:'race-setup',spawn:client.position,mapName:room.map.name,lockedCart:true}); if(room.race.phase==='waiting'&&room.clients.size>=2){room.race.phase='countdown';room.race.startAt=Date.now()+5000;room.race.deadline=room.race.startAt+360000;broadcastRoom(room,{t:'race-countdown',startsAt:room.race.startAt});}}
   // Fake players are real native player entities on every browser. Send the same
   // recovered opcode-5 spawn packet used by an actual connected player.
   if (room.fakePlayers) for (const fake of room.fakePlayers.values()) sendFakeNativeSpawn(room,fake,client);
@@ -2152,7 +2195,7 @@ function matchmake(client, message) {
       drops: new Map(),
       tiles: new Map(),
       backgroundTiles: new Map(),
-      map: mode === 'pvp' ? pickBattleMap() : (mode === 'digtrade' ? digTradeMap : null)
+      map: mode === 'race' ? cartRaceMap : (mode === 'pvp' ? pickBattleMap() : (mode === 'digtrade' ? digTradeMap : null))
     };
     rooms.set(code, room);
     log(`Automatic ${mode} match ${code} created${mode === 'pvp' ? ` on ${battleMapName(room)}` : ''}.`);
@@ -2214,6 +2257,8 @@ function joinRoom(client, message) {
     }
   }
 
+  if (mode==='race' && !cartRaceMap) {sendJson(client,{t:'server-error',code:'race-map-missing',message:'Cart Racing map not available.'});return;}
+  if (mode==='race' && room.race && room.race.phase!=='waiting') {sendJson(client,{t:'server-error',code:'race-in-progress',message:'Race already started.'});return;}
   if (mode === 'pvp' && !battleJoinable(room)) {
     sendJson(client, { t:'server-error', code:'match-in-progress', message:`Room ${roomCode} already started fighting.` });
     return;
@@ -2514,6 +2559,7 @@ function relayGameMessage(client, message, rawLength) {
     const items=Array.isArray(message.items)?message.items.map(sanitizeItem).filter(Boolean):[]; sendJson(requester,{t:'admin-inventory-action-result',requestId:id,action:req.action,targetConnectionId:client.connectionId,targetName:client.name,items}); return;
   }
 
+  if (message.t==='race-ready' && room.mode==='race'){sendJson(client,{t:'race-setup',spawn:client.position,mapName:room.map.name,lockedCart:true});return;}
   if (message.t==='state') {
     if(client.controlledBy) return;
     let x=Number(message.x), y=Number(message.y);
@@ -2522,6 +2568,7 @@ function relayGameMessage(client, message, rawLength) {
         x=Math.max(room.battle.left+.45,Math.min(room.battle.right-.45,x));
       } else x=Math.max(-20,Math.min(WORLD_WIDTH+20,x));
       client.position={x,y:Math.max(-30,Math.min(120,y))};
+      if(room.mode==='race')advanceCartRace(client);
       // Native packets remain the primary movement path, but this canonical
       // JSON fallback lets peers repair a remote player that fell behind after
       // tab throttling or a missed binary packet.
