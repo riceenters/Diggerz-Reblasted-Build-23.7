@@ -507,6 +507,14 @@ function patchGameHtmlForBuild239(input) {
     html=html.replace(from,to);
   }
 
+  // Hybrid prototype: Coaster Town's Bat Cart visual for race riders only.
+  // Leave every existing Basic Cart instance outside Cart Racing untouched.
+  const normalCartSprite='k.Init(f.BASIC_CART_PNG());';
+  const raceCartSprite='k.Init((window.DiggerzPvp22 && window.DiggerzPvp22.mode === "race") ? f.BATCART_PNG() : f.BASIC_CART_PNG());';
+  const cartSpriteMatches=html.split(normalCartSprite).length-1;
+  if(cartSpriteMatches>=2)html=html.split(normalCartSprite).join(raceCartSprite);
+  else console.warn('[Cart Racing] Expected cart-render paths missing:',cartSpriteMatches);
+
   return Buffer.from(html, 'utf8');
 }
 
