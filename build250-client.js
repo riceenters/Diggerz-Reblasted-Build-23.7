@@ -347,7 +347,14 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(m.t==='race-countdown'){startCountdown(Number(m.startsAt));return}
     if(m.t==='race-waiting'){racePhase='waiting';clearInterval(countdownTimer);return}
     if(m.t==='race-start'){racePhase='racing';pendingCart=true;showCountdown('GO!');playRaceTheme();return}
-    if(m.t==='race-kill-all'){stopRaceTheme();racePhase='finished';return}
+    if(m.t==='race-kill-all'){
+      stopRaceTheme();racePhase='finished';
+      var impact=document.createElement('div');impact.style.cssText='position:fixed;inset:0;background:#d20b18;opacity:.8;z-index:2147482998;pointer-events:none;transition:opacity .55s ease';
+      document.body.appendChild(impact);
+      requestAnimationFrame(function(){impact.style.opacity='0'});
+      setTimeout(function(){impact.remove()},700);
+      return;
+    }
     if(m.t==='race-standings'){
       var self=window.DiggerzPvp22, cid=self&&self.connectionId;
       var standings=m.standings||[];
