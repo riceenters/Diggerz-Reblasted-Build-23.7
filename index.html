@@ -23225,15 +23225,26 @@ var u = function() {};
                 } catch (eFb) {}
                 this.state.skin_tone = Math.max(0, Math.min(100, _fallback));
             }
+            // Build-15: digtrade/cloud must NOT overwrite local skin slider.
+            // Source of truth is q.player.l9 (Globals / localStorage), not state.skin_tone.
             try {
-                if (q.player) {
-                    q.player.l9 = Number(this.state.skin_tone);
-                    q.player.skinTone = q.player.l9;
-                }
+                var __tone = 90;
+                if (q.player && q.player.l9 != null && isFinite(Number(q.player.l9)) && Number(q.player.l9) > 0)
+                    __tone = Number(q.player.l9);
                 try {
-                    if (typeof window.__diggerzApplySkinToLivePlayer === "function")
-                        window.__diggerzApplySkinToLivePlayer(q.player.l9);
-                } catch (eLiveR) {}
+                    var __ls = window.localStorage.getItem("diggerz.skinTone.v1");
+                    if (__ls != null && isFinite(Number(__ls)) && Number(__ls) > 0)
+                        __tone = Number(__ls);
+                } catch (eLS) {}
+                if (__tone > 0 && __tone <= 2.5)
+                    __tone = Math.max(0, Math.min(100, (__tone - 0.45) / 1.1 * 100));
+                __tone = Math.max(0.01, Math.min(100, __tone));
+                if (q.player) {
+                    q.player.l9 = __tone;
+                    try { q.player.skinTone = __tone; } catch (eST) {}
+                }
+                // Mirror into state for sendPlayer only — never the other way around
+                this.state.skin_tone = __tone;
             } catch (eSkL) {}
             this.state.appearance = (saved.appearance || []).slice(0, 11);
             this.state.appearanceText = saved.appearanceText || "";
@@ -55013,14 +55024,22 @@ function __normalizeWearableScales(skel) {
                             var tone = (__saveSelf.y42 && __saveSelf.y42.D43 != null)
                                 ? Number(__saveSelf.y42.D43) : 90;
                             if (!isFinite(tone)) tone = 90;
-                            tone = Math.max(0, Math.min(100, tone));
+                            tone = Math.max(0.01, Math.min(100, tone));
                             if (q.player) q.player.l9 = tone;
-                            if (q.diggerzService && q.diggerzService.state) {
-                                q.diggerzService.state.skin_tone = tone;
-                                if (typeof q.diggerzService.markDirty === "function")
-                                    q.diggerzService.markDirty();
-                            }
-                            try { if (typeof window.__diggerzApplySkinToLivePlayer === "function") window.__diggerzApplySkinToLivePlayer(tone); } catch (eLiveS) {}
+                            try { window.localStorage.setItem("diggerz.skinTone.v1", String(tone)); } catch (eLS) {}
+                            try { q.SaveGlobals(); } catch (eSG) {}
+                            // Optional: keep digtrade state in sync for packet, but no cloud markDirty for skin
+                            try {
+                                if (q.diggerzService && q.diggerzService.state)
+                                    q.diggerzService.state.skin_tone = tone;
+                            } catch (eSvc) {}
+                            try {
+                                if (typeof l !== "undefined" && l.z39) {
+                                    l.z39.l9 = .45 + 1.1 * tone / 100;
+                                    if (typeof l.z39.m35 === "function") l.z39.m35();
+                                    if (typeof l.z39.m36 === "function") l.z39.m36();
+                                }
+                            } catch (eLiveS) {}
                         } catch (eToneS) {}
                         // Strip any items no longer owned before saving
                         try { app = __sanitizeAppearance(app); __equippedNow = app.slice(); } catch (eSan2) {}
@@ -55524,26 +55543,29 @@ function __normalizeWearableScales(skel) {
             return ja.prototype.E7.call(this, a);
         },
         e0: function() {
+            // Build-15 style: slider lives only on q.player.l9 (local). No cloud markDirty.
             this.y42.set_local_r(this.y42.set_local_g(this.y42.set_local_b(.45 + 1.1 * this.y42.D43 / 100)));
-            q.player.l9 = Math.max(0, Math.min(100, this.y42.D43));
+            q.player.l9 = Math.max(.01, Math.min(100, Number(this.y42.D43) || 90));
             try { q.player.skinTone = q.player.l9; } catch (eST) {}
+            // Local-only mirror (not digtrade cloud). Throttle Globals flush.
             try {
-                if (q.diggerzService && q.diggerzService.state) {
-                    q.diggerzService.state.skin_tone = q.player.l9;
-                    if (typeof q.diggerzService.markDirty === "function")
-                        q.diggerzService.markDirty();
+                var __now = Date.now();
+                if (!window.__dzSkinSaveAt || __now - window.__dzSkinSaveAt > 800) {
+                    window.__dzSkinSaveAt = __now;
+                    try { window.localStorage.setItem("diggerz.skinTone.v1", String(q.player.l9)); } catch (eLS) {}
+                    try { q.SaveGlobals(); } catch (eSG) {}
                 }
-            } catch (eSkinSave) {}
-            try { window.localStorage.setItem("diggerz.skinTone.v1", String(q.player.l9)); } catch (eLS) {}
+            } catch (eLoc) {}
+            // If already in a match, tint the live mesh (same as build15 after join)
             try {
-                var _pr = {};
-                try { _pr = JSON.parse(window.localStorage.getItem("diggerz.profile.v1") || "{}"); } catch (eP) {}
-                _pr.skin_tone = q.player.l9;
-                window.localStorage.setItem("diggerz.profile.v1", JSON.stringify(_pr));
-            } catch (eProf) {}
-            try { q.SaveGlobals(); } catch (eSG) {}
-            // Push tone onto the live in-world player mesh (RGB + m38 rebuild)
-            try { if (typeof window.__diggerzApplySkinToLivePlayer === "function") window.__diggerzApplySkinToLivePlayer(q.player.l9); } catch (eLive) {}
+                if (typeof l !== "undefined" && l.z39 && q.player) {
+                    l.z39.l9 = .45 + 1.1 * q.player.l9 / 100;
+                    try {
+                        if (typeof l.z39.m35 === "function") l.z39.m35();
+                        if (typeof l.z39.m36 === "function") l.z39.m36();
+                    } catch (eM) {}
+                }
+            } catch (eLive) {}
             return ja.prototype.e0.call(this)
         },
         C39: function() {
