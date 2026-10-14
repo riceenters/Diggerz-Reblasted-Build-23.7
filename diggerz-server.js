@@ -1334,7 +1334,11 @@ function relayBinary(client, payload) {
     try {
       const x = readNativeFixedBE(payload, 2);
       const y = readNativeFixedBE(payload, 18);
-      if (Number.isFinite(x) && Number.isFinite(y)) { client.position = {x,y}; if (client.room && client.room.mode==='race') advanceCartRace(client); }
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        if(client.room && client.room.mode==='race' && client.room.race && client.room.race.phase!=='racing'){
+          client.position=client.raceStartPosition||client.position;
+        } else {client.position={x,y}; if(client.room && client.room.mode==='race')advanceCartRace(client);}
+      }
     } catch {}
   }
 
@@ -1860,9 +1864,11 @@ function respawnRaceClient(client) {
 function advanceCartRace(client) {
   const room=client && client.room, race=room && room.race;
   if(!race || room.mode!=='race'||!room.map||!client.position||client.raceFinished)return;
+  if(race.phase==='waiting'||race.phase==='countdown')return;
   if(race.phase==='countdown'&&Date.now()>=race.startAt){race.phase='racing';broadcastRoom(room,{t:'race-start',at:race.startAt});}
   if(race.phase!=='racing')return;
   const now=Date.now(), pos=client.position, previous=client.raceLastPosition;
+  if(now-race.startAt<500)return;
   // Prevent a client from teleporting directly to the finish to claim coins.
   if(previous && now-previous.at<1000 && Math.hypot(pos.x-previous.x,pos.y-previous.y)>25)return;
   client.raceLastPosition={x:pos.x,y:pos.y,at:now};
@@ -1882,12 +1888,13 @@ function advanceCartRace(client) {
   const place=race.finishers.length;
   if(place===1){race.winnerId=client.connectionId;race.firstFinishAt=now;sendJson(client,{t:'coin-award',amount:100,reason:'cart-race-win'});}
   broadcastRoom(room,{t:'race-finish',connectionId:client.connectionId,name:client.name,place,coins:place===1?100:0});
-  if([...room.clients].every(c=>c.raceFinished))endCartRace(room);
+  if(place===1)endCartRace(room);
 }
 function endCartRace(room){
   const r=room && room.race;if(!r||r.phase==='finished')return;
   r.phase='finished';r.finishedAt=Date.now();
-  broadcastRoom(room,{t:'race-results',finishers:r.finishers.slice(),winnerId:r.winnerId,options:['digtrade','play-again']});
+  broadcastRoom(room,{t:'race-kill-all',winnerId:r.winnerId});
+  broadcastRoom(room,{t:'race-results',finishers:r.finishers.slice(),winnerId:r.winnerId,options:['digtrade','play-again','leave']});
 }
 function respawnBattleClient(client) {
   const room = client && client.room;
@@ -2149,7 +2156,7 @@ function addClientToRoom(client, room, mode, name) {
   client.shots = 0;
   client.hits = 0;
   client.position = mode==='race' && room.map && room.map.race && room.map.race.spawn.length ? (()=>{const a=room.map.race.spawn[room.clients.size%room.map.race.spawn.length];return {x:a.x+.5,y:a.y-.9};})() : { x: randomSpawnX(room), y: 2 };
-  if(mode==='race'){client.raceCheckpoint=null;client.raceCheckpointKey='';client.raceCheckpointIndex=0;client.raceLastPosition=null;client.raceFinished=false;}
+  if(mode==='race'){client.raceCheckpoint=null;client.raceCheckpointKey='';client.raceCheckpointIndex=0;client.raceLastPosition=null;client.raceFinished=false;client.raceStartPosition={...client.position};}
   room.clients.add(client);
 
   sendJson(client, {
@@ -2173,7 +2180,7 @@ function addClientToRoom(client, room, mode, name) {
     tiles: [...room.tiles.values()], backgroundTiles: [...room.backgroundTiles.values()], drops: [...room.drops.values()], coins: [...room.coins.values()], speaker: room.speaker ? {...room.speaker} : null, serverNow: Date.now()
   });
   if (mode === 'pvp') sendBattleState(client);
-  if(mode==='race'){sendJson(client,{t:'race-setup',spawn:client.position,mapName:room.map.name,lockedCart:true}); if(room.race.phase==='waiting'&&room.clients.size>=2){room.race.phase='countdown';room.race.startAt=Date.now()+5000;room.race.deadline=room.race.startAt+360000;broadcastRoom(room,{t:'race-countdown',startsAt:room.race.startAt});}}
+  if(mode==='race'){sendJson(client,{t:'race-setup',spawn:client.position,mapName:room.map.name,lockedCart:true}); if(room.race.phase==='waiting'&&room.clients.size>=3){room.race.phase='countdown';room.race.startAt=Date.now()+4500;room.race.deadline=room.race.startAt+360000;broadcastRoom(room,{t:'race-countdown',startsAt:room.race.startAt});}}
   // Fake players are real native player entities on every browser. Send the same
   // recovered opcode-5 spawn packet used by an actual connected player.
   if (room.fakePlayers) for (const fake of room.fakePlayers.values()) sendFakeNativeSpawn(room,fake,client);
@@ -2605,6 +2612,12 @@ function relayGameMessage(client, message, rawLength) {
     const items=Array.isArray(message.items)?message.items.map(sanitizeItem).filter(Boolean):[]; sendJson(requester,{t:'admin-inventory-action-result',requestId:id,action:req.action,targetConnectionId:client.connectionId,targetName:client.name,items}); return;
   }
 
+  if(message.t==='race-again' && room.mode==='race'){
+    if(room.race.phase!=='finished')return;
+    // A rematch needs a new room; never issue a second 100 coin award in this one.
+    sendJson(client,{t:'race-requeue',requested:true});
+    return;
+  }
   if (message.t==='race-ready' && room.mode==='race'){sendJson(client,{t:'race-setup',spawn:client.position,mapName:room.map.name,lockedCart:true});return;}
   if (message.t==='state') {
     if(client.controlledBy) return;
@@ -3161,6 +3174,7 @@ function leaveRoom(client) {
 
   log(`${client.connectionId} left ${room.code}. ${room.clients.size}/${MAX_ROOM_PLAYERS}`);
 
+  if (room.mode === 'race' && room.race && room.race.phase==='countdown' && room.clients.size<3) {room.race.phase='waiting';room.race.startAt=0;broadcastRoom(room,{t:'race-waiting',count:room.clients.size,minimum:3});}
   if (room.mode === 'pvp' && room.battle && room.battle.elimination) { broadcastRemaining(room); finishBattleIfNeeded(room); }
 
   if (room.clients.size === 0) {
@@ -3682,6 +3696,11 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (urlPath === '/levelup.ogg') { serveBuffer(res,levelupOgg,'audio/ogg'); return; }
+  if (urlPath === '/cart-racing-theme.mp3') {
+    try { serveBuffer(res,fs.readFileSync(path.join(__dirname,'Pinapple Rag Techno Remake.mp3')),'audio/mpeg'); }
+    catch(e){ res.writeHead(404,{'Content-Type':'text/plain'});res.end('Cart Racing theme missing'); }
+    return;
+  }
   if (urlPath === '/build25-menu.mp3') { proxyRemoteAudio(res,BUILD25_MENU_REMOTE_URL); return; }
   if (urlPath === '/build25-lime.png') { try { const b=fs.readFileSync(path.join(__dirname,'build25-lime.png')); serveBuffer(res,b,'image/png'); } catch(e) { res.writeHead(404); res.end(); } return; }
   if (urlPath === '/build25-heufancy.png') { try { const b=fs.readFileSync(path.join(__dirname,'build25-heufancy.png')); serveBuffer(res,b,'image/png'); } catch(e) { res.writeHead(404); res.end(); } return; }
@@ -3810,7 +3829,24 @@ const battleClock = setInterval(() => {
     if(room.mode==='race' && room.race){
       const race=room.race;
       if(race.phase==='countdown' && now>=race.startAt){race.phase='racing';broadcastRoom(room,{t:'race-start',at:race.startAt});}
-      if(race.phase==='racing' && (now>=race.deadline || (race.firstFinishAt && now>=race.firstFinishAt+90000) || [...room.clients].every(c=>c.raceFinished)))endCartRace(room);
+      if(race.phase==='racing' && now>=race.deadline)endCartRace(room);
+      if(race.phase==='waiting'||race.phase==='countdown'||race.phase==='racing'){
+        if(!race.lastRankBroadcast || now-race.lastRankBroadcast>=500){
+          race.lastRankBroadcast=now;
+          const start=room.map?.race?.spawn?.[0]||{x:11,y:39};
+          const finish=room.map?.race?.finish?.[0]||{x:7,y:58};
+          const checkpoints=room.map?.race?.checkpoints||[];
+          const pts=[start,...checkpoints,finish];
+          const racers=[...room.clients].map(c=>{
+            const idx=Math.min(checkpoints.length,c.raceCheckpointIndex||0);
+            const p=c.position||start;
+            const next=pts[idx+1]||finish;
+            const dist=Math.hypot(p.x-next.x,p.y-next.y);
+            return {connectionId:c.connectionId,name:c.name,progress:idx,dist};
+          }).sort((a,b)=>b.progress-a.progress||a.dist-b.dist);
+          broadcastRoom(room,{t:'race-standings',standings:racers.map((c,i)=>({connectionId:c.connectionId,name:c.name,place:i+1}))},true);
+        }
+      }
     }
   }
 }, 200);
