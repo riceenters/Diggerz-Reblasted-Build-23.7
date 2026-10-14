@@ -1905,7 +1905,7 @@ function advanceCartRace(client) {
   const room=client && client.room, race=room && room.race;
   if(!race || room.mode!=='race'||!room.map||!client.position||client.raceFinished)return;
   if(race.phase==='waiting')return;
-  if(race.phase==='countdown'&&Date.now()>=race.startAt){race.phase='racing';broadcastRoom(room,{t:'race-start',at:race.startAt});}
+  if(race.phase==='countdown'&&Date.now()>=race.startAt){race.phase='racing';broadcastRoom(room,{t:'race-start',at:race.startAt});log('Race '+room.code+': GO!');}
   if(race.phase!=='racing')return;
   const now=Date.now(), pos=client.position, previous=client.raceLastPosition;
   if(now-race.startAt<500)return;
@@ -1919,14 +1919,15 @@ function advanceCartRace(client) {
     if(near(cp)&&i===(client.raceCheckpointIndex||0)){
       client.raceCheckpointIndex=i+1;client.raceCheckpoint={x:cp.x+.5,y:Math.max(0,cp.y-1)};
       sendJson(client,{t:'race-checkpoint',number:i+1,total:checkpoints.length,x:client.raceCheckpoint.x,y:client.raceCheckpoint.y});
+      log('Race '+room.code+': '+client.name+' touched checkpoint '+(i+1)+'/'+checkpoints.length);
     }
   }
-  if((client.raceCheckpointIndex||0)<checkpoints.length)return;
+  // Checkpoints save respawn positions; they are not mandatory race gates.
   if(!room.map.race.finish.some(near))return;
   client.raceFinished=true;
   race.finishers.push({connectionId:client.connectionId,name:client.name,place:race.finishers.length+1});
   const place=race.finishers.length;
-  if(place===1){race.winnerId=client.connectionId;race.firstFinishAt=now;sendJson(client,{t:'coin-award',amount:100,reason:'cart-race-win'});}
+  if(place===1){race.winnerId=client.connectionId;race.firstFinishAt=now;sendJson(client,{t:'coin-award',amount:100,reason:'cart-race-win'});log('Race '+room.code+': '+client.name+' finished FIRST; 100 coin award message sent');}
   broadcastRoom(room,{t:'race-finish',connectionId:client.connectionId,name:client.name,place,coins:place===1?100:0});
   if(place===1)endCartRace(room);
 }
@@ -2220,7 +2221,7 @@ function addClientToRoom(client, room, mode, name) {
     tiles: [...room.tiles.values()], backgroundTiles: [...room.backgroundTiles.values()], drops: [...room.drops.values()], coins: [...room.coins.values()], speaker: room.speaker ? {...room.speaker} : null, serverNow: Date.now()
   });
   if (mode === 'pvp') sendBattleState(client);
-  if(mode==='race'){sendJson(client,{t:'race-setup',spawn:client.position,mapName:room.map.name,lockedCart:true}); broadcastRoom(room,{t:'race-waiting',count:room.clients.size,minimum:3}); if(room.race.phase==='waiting'&&room.clients.size>=3){room.race.phase='countdown';room.race.startAt=Date.now()+4500;room.race.deadline=room.race.startAt+360000;broadcastRoom(room,{t:'race-countdown',startsAt:room.race.startAt});}}
+  if(mode==='race'){sendJson(client,{t:'race-setup',spawn:client.position,mapName:room.map.name,lockedCart:true}); broadcastRoom(room,{t:'race-waiting',count:room.clients.size,minimum:3}); if(room.race.phase==='waiting'&&room.clients.size>=3){room.race.phase='countdown';room.race.startAt=Date.now()+4500;room.race.deadline=room.race.startAt+360000;broadcastRoom(room,{t:'race-countdown',startsAt:room.race.startAt});log('Race '+room.code+': three players joined; countdown started');}}
   // Fake players are real native player entities on every browser. Send the same
   // recovered opcode-5 spawn packet used by an actual connected player.
   if (room.fakePlayers) for (const fake of room.fakePlayers.values()) sendFakeNativeSpawn(room,fake,client);
