@@ -283,7 +283,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   'use strict';
   if(window.__diggerzCartRaceInstalled)return;
   window.__diggerzCartRaceInstalled=true;
-  var button=null, raceRoom='', hookedSocket=null, pendingCart=false, results=null,manualExit=false,lastC=0;
+  var button=null, raceRoom='', hookedSocket=null, pendingCart=false, results=null,manualExit=false,lastC=0,racePhase='waiting',raceAudio=null,countdownTimer=null;
   function raceActive(){var p=window.DiggerzPvp22;return !!(p&&p.mode==='race'&&(p.requested||p.joined));}
   function ensureCart(){
     if(!raceActive()||manualExit)return false;
@@ -314,27 +314,52 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   function installButton(){
     if(button||!document.body)return;
     button=document.createElement('button');button.id='build25-cart-race-launch';
-    button.textContent='CART RACING (TEST)';
-    button.style.cssText='position:fixed;right:14px;bottom:16px;z-index:900;color:#fff;background:#bd4626;border:2px solid #ffd279;border-radius:9px;padding:12px 17px;font:bold 15px Arial;cursor:pointer;box-shadow:0 4px 20px #0008';
-    button.onclick=launch;document.body.appendChild(button);
+    button.innerHTML='<span class="build25-new">NEW</span><span>CART RACING</span>';
+    button.style.cssText='position:fixed;right:14px;bottom:16px;z-index:900;color:#fff;background:linear-gradient(145deg,#f34335,#8f0b12);border:3px solid #ff9c90;border-radius:12px;padding:12px 22px;font:bold 17px Arial;cursor:pointer;box-shadow:0 4px 20px #0008;display:flex;flex-direction:column;gap:2px;align-items:center';
+    button.onclick=launch;
+    if(!document.getElementById('build25-cart-race-style')){var st=document.createElement('style');st.id='build25-cart-race-style';st.textContent='@keyframes raceNewPop{0%,100%{transform:scale(.7)}50%{transform:scale(1.16)}}.build25-new{font:900 12px Arial;color:#ffff33;letter-spacing:2px;animation:raceNewPop 1.3s ease-in-out infinite;text-shadow:0 2px #740000}#build25-race-countdown{position:fixed;inset:0;z-index:2147482999;pointer-events:none;display:flex;align-items:center;justify-content:center;font:1000 clamp(110px,23vw,360px) Impact,Arial Black,sans-serif;text-shadow:8px 12px 0 #400;animation:raceSmash .62s cubic-bezier(.11,1.2,.38,1) both}@keyframes raceSmash{from{transform:scale(4) rotate(-12deg);opacity:0}45%{transform:scale(.84);opacity:1}to{transform:scale(1);opacity:1}}';document.head.appendChild(st)}
+    document.body.appendChild(button);
+  }
+  function showCountdown(value){
+    var el=document.getElementById('build25-race-countdown');if(el)el.remove();
+    el=document.createElement('div');el.id='build25-race-countdown';
+    el.textContent=value;el.style.color=value==='GO!'?'#00edff':'#ef2525';
+    document.body.appendChild(el);
+    setTimeout(function(){if(el.isConnected)el.remove()},900);
+  }
+  function playRaceTheme(){
+    if(raceAudio)return;
+    raceAudio=new Audio('/cart-racing-theme.mp3');raceAudio.loop=true;raceAudio.volume=.65;
+    raceAudio.play().catch(function(e){console.warn('[Cart Racing] theme missing or blocked',e)});
+  }
+  function stopRaceTheme(){if(raceAudio){raceAudio.pause();raceAudio.currentTime=0;raceAudio=null}}
+  function startCountdown(startsAt){
+    racePhase='countdown';clearInterval(countdownTimer);
+    var last='';
+    function tick(){var ms=startsAt-Date.now();var shown=ms<=0?'GO!':String(Math.ceil(ms/1000));if(shown!==last&&(['3','2','1','GO!'].indexOf(shown)>=0)){last=shown;showCountdown(shown)}if(ms<=-800){clearInterval(countdownTimer);racePhase='racing';playRaceTheme()}}
+    countdownTimer=setInterval(tick,60);tick();
   }
   function handleRacePacket(ev){
     if(!raceActive()||typeof ev.data!=='string')return;
     var m;try{m=JSON.parse(ev.data)}catch(e){return}
     if(!m||!m.t)return;
     if(m.t==='race-setup'||m.t==='race-respawn'){manualExit=false;pendingCart=true;setTimeout(ensureCart,150);return}
-    if(m.t==='race-start'){pendingCart=true;return}
+    if(m.t==='race-countdown'){startCountdown(Number(m.startsAt));return}
+    if(m.t==='race-waiting'){racePhase='waiting';clearInterval(countdownTimer);return}
+    if(m.t==='race-start'){racePhase='racing';pendingCart=true;showCountdown('GO!');playRaceTheme();return}
+    if(m.t==='race-kill-all'){stopRaceTheme();racePhase='finished';return}
     if(m.t==='race-checkpoint'){console.info('[Cart Racing] checkpoint',m.number,m.total);return}
     if(m.t==='race-results'){
-      if(results)results.remove();
+      stopRaceTheme();racePhase='finished';if(results)results.remove();
       results=document.createElement('div');results.id='build25-race-results';
       results.style.cssText='position:fixed;inset:0;z-index:2147483000;background:#000c;color:#fff;display:flex;align-items:center;justify-content:center;font:18px Arial';
       var box=document.createElement('div');box.style.cssText='padding:30px;background:#172332;border:2px solid #f7c76b;border-radius:14px;text-align:center;max-width:440px';
-      var h=document.createElement('h2');h.textContent='Cart Racing Results';box.appendChild(h);
+      var h=document.createElement('h2');var pstate=window.DiggerzPvp22;h.textContent=(m.winnerId&&pstate&&m.winnerId===pstate.connectionId)?'YOU WIN!':'RACE OVER';box.appendChild(h);
       (m.finishers||[]).forEach(function(f){var p=document.createElement('p');p.textContent='#'+f.place+' '+f.name;box.appendChild(p)});
       function action(label,fn){var b=document.createElement('button');b.textContent=label;b.style.cssText='margin:8px;padding:12px 16px;cursor:pointer';b.onclick=fn;box.appendChild(b)}
-      action('Play Again',function(){location.reload()});
+      action('Play Again',function(){try{sessionStorage.setItem('build25-auto-race','1')}catch(e){}location.reload()});
       action('Dig & Trade',function(){location.reload()});
+      action('Leave',function(){location.reload()});
       results.appendChild(box);document.body.appendChild(results);
     }
   }
@@ -357,7 +382,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(p.socket&&p.socket!==hookedSocket){hookedSocket=p.socket;hookedSocket.addEventListener('message',handleRacePacket)}
     if(raceActive()&&!manualExit){pendingCart=true;if(ensureCart())pendingCart=false;}
     if(window.__diggerzBuild25IntroFinished&&!p.joined&&!p.starting){
-      installButton();if(button)button.style.display=raceActive()?'none':'block';
+      installButton();if(button)button.style.display=raceActive()?'none':'flex';
+      try{if(sessionStorage.getItem('build25-auto-race')==='1'){sessionStorage.removeItem('build25-auto-race');launch()}}catch(e){}
     }else if(button)button.style.display='none';
   },300);
 }());
