@@ -983,7 +983,10 @@ function sanitizeMap(raw, filename = '') {
     finish: normalizedTiles.filter(row => row[2] === 663).map(row => ({x:row[0],y:row[1]})),
     checkpoints: normalizedTiles.filter(row => row[2] === 350).map(row => ({x:row[0],y:row[1]}))
   };
-  return { format:'diggerz-pvp-map-v1', name, width:128, height:80, background:Math.max(0,Math.min(9,Number(raw.background)|0)), tiles:normalizedTiles, backgroundTiles:normalizedBackgroundTiles, race };
+  // Race Spawn (662) and Finish (663) are metadata only, NEVER physics tiles.
+  // Keeping them out of the foreground avoids unknown solid engine blocks.
+  const playableTiles=normalizedTiles.filter(row=>row[2]!==662 && row[2]!==663);
+  return { format:'diggerz-pvp-map-v1', name, width:128, height:80, background:Math.max(0,Math.min(9,Number(raw.background)|0)), tiles:playableTiles, backgroundTiles:normalizedBackgroundTiles, race };
 }
 
 function loadCustomMaps() {
@@ -2192,7 +2195,7 @@ function addClientToRoom(client, room, mode, name) {
   client.kills = 0;
   client.shots = 0;
   client.hits = 0;
-  client.position = mode==='race' && room.map && room.map.race && room.map.race.spawn.length ? (()=>{const a=room.map.race.spawn[room.clients.size%room.map.race.spawn.length];return {x:a.x+.5,y:a.y-.9};})() : { x: randomSpawnX(room), y: 2 };
+  client.position = mode==='race' && room.map && room.map.race && room.map.race.spawn.length ? (()=>{const a=room.map.race.spawn[room.clients.size%room.map.race.spawn.length];return {x:a.x+.5,y:a.y+.5};})() : { x: randomSpawnX(room), y: 2 };
   if(mode==='race'){client.raceCheckpoint=null;client.raceCheckpointKey='';client.raceCheckpointIndex=0;client.raceLastPosition=null;client.raceFinished=false;client.raceStartPosition={...client.position};}
   room.clients.add(client);
 
@@ -2673,6 +2676,11 @@ function relayGameMessage(client, message, rawLength) {
     return;
   }
 
+  // Cart Racing forbids weapons and PvP independently of the client's UI.
+  if(room.mode==='race' && ['aim','attack','tool-attack','impact','damage','projectile','weapon-fire','weapon-hit','pvp-hit'].includes(message.t)) {
+    if(message.t==='attack')sendJson(client,{t:'fire-blocked'});
+    return;
+  }
   if (message.t==='aim') {
     // Build 23.3 hotfix: cursor-follow animation belongs to held weapons, not
     // mining tools. Patched clients explicitly mark weapon aim packets.
