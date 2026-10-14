@@ -16574,6 +16574,16 @@ var u = function() {};
             a.c9 = !1
         },
         m35: function() {
+            // Build-15 skin: entity.l9 is RGB. For local player, always derive from q.player.l9 slider.
+            try {
+                if (typeof l !== "undefined" && this === l.z39 && q.player) {
+                    var __t = Number(q.player.l9);
+                    if (isFinite(__t) && __t > 2.5)
+                        this.l9 = 0.45 + 1.1 * Math.max(0, Math.min(100, __t)) / 100;
+                    else if (isFinite(__t) && __t > 0)
+                        this.l9 = __t;
+                }
+            } catch (__sk35) {}
             var a = this.i33.f2("head");
             a.F5();
             a.Init(f.HEAD_PNG());
@@ -16591,6 +16601,15 @@ var u = function() {};
             a._9.push(b)
         },
         m36: function() {
+            try {
+                if (typeof l !== "undefined" && this === l.z39 && q.player) {
+                    var __t = Number(q.player.l9);
+                    if (isFinite(__t) && __t > 2.5)
+                        this.l9 = 0.45 + 1.1 * Math.max(0, Math.min(100, __t)) / 100;
+                    else if (isFinite(__t) && __t > 0)
+                        this.l9 = __t;
+                }
+            } catch (__sk36) {}
             this.j36 = this.j35 = null;
             for (var a = this.i33.f2("front_arm"), b = 0, c = a._9; b < c.length; ) {
                 var d = c[b];
@@ -16677,6 +16696,7 @@ var u = function() {};
                         e.set_g(e.b9);
                         e.set_b(e.B0);
                         e.b2 = !0;
+                        // Build-15: only factory T41 (O29) hides the head — pumpkin, masks, etc.
                         if (f.T41) {
                             d = 0;
                             for (p = g._9; d < p.length; )
@@ -20084,6 +20104,22 @@ var u = function() {};
             100 < this.a1 && E.v2(yk.n7()),
             0 >= a && (d.a2 = !1)));
             c = this.V31(c);
+            // Build-15: entity.l9 must be RGB before m38 so m35/m36 tint head+arms
+            try {
+                if (c && c === l.z39 && q.player) {
+                    var __tone = q.player.l9;
+                    try {
+                        var __ls = window.localStorage.getItem("diggerz.skinTone.v1");
+                        if (__ls != null && isFinite(Number(__ls))) __tone = Number(__ls);
+                    } catch (__eLs) {}
+                    if (typeof window.__diggerzSkinSlider === "function")
+                        __tone = window.__diggerzSkinSlider(__tone);
+                    else
+                        __tone = Math.max(0, Math.min(100, Number(__tone) || 90));
+                    try { q.player.l9 = __tone; } catch (__eT) {}
+                    c.l9 = 0.45 + 1.1 * __tone / 100;
+                }
+            } catch (__skPre) {}
             null != c && c.m38(p, f);
             c != l.z39 && null != c && (T.remove(l.A41, c._1),
             l.A41.push(c._1),
@@ -23194,6 +23230,10 @@ var u = function() {};
                     q.player.l9 = Number(this.state.skin_tone);
                     q.player.skinTone = q.player.l9;
                 }
+                try {
+                    if (typeof window.__diggerzApplySkinToLivePlayer === "function")
+                        window.__diggerzApplySkinToLivePlayer(q.player.l9);
+                } catch (eLiveR) {}
             } catch (eSkL) {}
             this.state.appearance = (saved.appearance || []).slice(0, 11);
             this.state.appearanceText = saved.appearanceText || "";
@@ -23581,8 +23621,13 @@ var u = function() {};
                 packet.R2(Math.max(0, Math.min(65535, s.wins|0)));
                 packet.R8(self.zeroId);
                 packet.R4(0);
-                var skin = q.player ? .45 + 1.1 * (q.player.l9 || 90) / 100 : 1.44;
-                packet.r8(skin);
+                var __st = (q.player && q.player.l9 != null) ? q.player.l9 : 90;
+                if (typeof window.__diggerzSkinSlider === "function")
+                    __st = window.__diggerzSkinSlider(__st);
+                else
+                    __st = Math.max(0, Math.min(100, Number(__st) || 90));
+                try { if (q.player) q.player.l9 = __st; } catch (__eSt) {}
+                packet.r8(0.45 + 1.1 * __st / 100);
                 packet.r8(1)
             })
         },
@@ -24733,7 +24778,8 @@ var u = function() {};
             var inventory = l.z39 && l.z39.n38 && l.z39.n38.B30;
             var rendered = inventory && inventory[slot];
             var appearanceSlot = rendered && rendered.a4 === 2 && rendered.h44 === item.id ? rendered.t46 : -1;
-            if (appearanceSlot == null || appearanceSlot < 0 || appearanceSlot >= this.state.appearance.length || appearanceSlot === 8) {
+            // Slot 8 is the pet slot — allow it (was wrongly rejected before).
+            if (appearanceSlot == null || appearanceSlot < 0 || appearanceSlot >= this.state.appearance.length) {
                 this.message("^1That item has no wearable cosmetic slot.");
                 return
             }
@@ -24751,6 +24797,21 @@ var u = function() {};
                 item.variant = 1;
                 if (appearanceSlot === 10) this.state.appearanceText = item.text || ""
             }
+            // Build-15: set entity RGB from slider, then m38 (m35/m36 paint head+arms)
+            try {
+                if (l.z39 && typeof l.z39.m38 === "function") {
+                    var __ap = (this.state.appearance || []).slice(0, 11);
+                    while (__ap.length < 11) __ap.push(0);
+                    var __tone = (q.player && q.player.l9 != null) ? q.player.l9 : 90;
+                    if (typeof window.__diggerzSkinSlider === "function")
+                        __tone = window.__diggerzSkinSlider(__tone);
+                    else
+                        __tone = Math.max(0, Math.min(100, Number(__tone) || 90));
+                    l.z39.l9 = 0.45 + 1.1 * __tone / 100;
+                    l.z39.J33 = [];
+                    l.z39.m38(__ap, this.state.appearanceText || "");
+                }
+            } catch (__eqLive) {}
             this.sendPlayer();
             this.sendInventory();
             this.markDirty()
@@ -28194,60 +28255,92 @@ var u = function() {};
                 b.push(p);
                 null == h.n26[g] && (h.n26[g] = h.n27.G2("pet_anims", "pet_" + g, f, Td.M39, q.player.l2, !0))
             }
-            d = h.n26[c[8]].f2("wing");
-            null != d && 7 > c[8] && (e = a.f2("wing"),
-            null != e && (d.D6(e),
-            e.h4(b[8], !0)));
-            h.n26[c[0]].f2("head").D6(a.f2("head"));
-            a.f2("head").h4(b[0], !0);
-            h.n26[c[1]].f2("body").D6(a.f2("body"));
-            a.f2("body").h4(b[1], !0);
-            d = h.n26[c[2]].f2("collar");
-            null != d && (e = a.f2("collar"),
-            null != e && (d.D6(e),
-            e.h4(b[2], !0)));
-            h.n26[c[3]].f2("backleg").D6(a.f2("backleg"));
-            a.f2("backleg").h4(b[3], !0);
-            h.n26[c[3]].f2("backleg2").D6(a.f2("backleg2"));
-            a.f2("backleg2").h4(b[3], !0);
-            h.n26[c[3]].f2("frontleg").D6(a.f2("frontleg"));
-            a.f2("frontleg").h4(b[3], !0);
-            h.n26[c[3]].f2("frontleg2").D6(a.f2("frontleg2"));
-            a.f2("frontleg2").h4(b[3], !0);
-            h.n26[c[4]].f2("backpaw").D6(a.f2("backpaw"));
-            a.f2("backpaw").h4(b[4], !0);
-            h.n26[c[4]].f2("backpaw2").D6(a.f2("backpaw2"));
-            a.f2("backpaw2").h4(b[4], !0);
-            h.n26[c[4]].f2("frontpaw").D6(a.f2("frontpaw"));
-            a.f2("frontpaw").h4(b[4], !0);
-            h.n26[c[4]].f2("frontpaw2").D6(a.f2("frontpaw2"));
-            a.f2("frontpaw2").h4(b[4], !0);
-            d = h.n26[c[5]].f2("ear");
-            null != d && (e = a.f2("ear"),
-            null != e && (d.D6(e),
-            e.h4(b[5], !0)));
-            d = h.n26[c[5]].f2("prickear");
-            null != d && (e = a.f2("prickear"),
-            null != e && (d.D6(e),
-            e.h4(b[5], !0)));
-            h.n26[c[6]].f2("eye").D6(a.f2("eye"));
-            a.f2("eye").h4(b[6], !0);
-            d = h.n26[c[7]].f2("tail");
-            null != d && (e = a.f2("tail"),
-            null != e && (d.D6(e),
-            e.h4(b[7], !0)));
-            d = h.n26[c[7]].f2("longtail_base");
-            null != d && (e = a.f2("longtail_base"),
-            null != e && (d.D6(e),
-            e.h4(b[7], !0)));
-            d = h.n26[c[7]].f2("longtail_mid");
-            null != d && (e = a.f2("longtail_mid"),
-            null != e && (d.D6(e),
-            e.h4(b[7], !0)));
-            d = h.n26[c[7]].f2("longtail_end");
-            null != d && (e = a.f2("longtail_end"),
-            null != e && (d.D6(e),
-            e.h4(b[7], !0)));
+            // Coaster-Town-faithful pet part copy (texture + local transforms).
+            // Do NOT copy screen A7/A8 from template skins — that shifted parts and made rigs look messy.
+            function __dzCopyPetPart(src, dst, frame) {
+                if (!src || !dst) return;
+                try {
+                    dst._3 = src._3;
+                    if (src._5 && typeof src._5.clone === "function") dst._5 = src._5.clone();
+                    else dst._5 = src._5;
+                } catch (e0) {}
+                try {
+                    if (src.b1) {
+                        dst.b6 = src.b6;
+                        dst.b7 = src.b7;
+                        dst.set_local_rot(src.b3);
+                        dst.set_local_alp(src.B1);
+                        dst.set_local_xScale(src.b4);
+                        dst.set_local_yScale(src.b5);
+                        dst.set_local_r(src.b8);
+                        dst.set_local_g(src.b9);
+                        dst.set_local_b(src.B0);
+                    }
+                } catch (e1) {}
+                try {
+                    if (src.a6 != null) dst.set_rot(src.a6);
+                    if (src.a7 != null) dst.set_alp(src.a7);
+                    if (src.a8 != null) dst.set_xScale(src.a8);
+                    if (src.a9 != null) dst.set_yScale(src.a9);
+                    if (src.A1 != null) dst.set_r(src.A1);
+                    if (src.A2 != null) dst.set_g(src.A2);
+                    if (src.A3 != null) dst.set_b(src.A3);
+                } catch (e2) {}
+                try { dst.c9 = src.c9; } catch (e3) {}
+                try { dst.C0 = src.C0; } catch (e4) {}
+                if (frame != null && frame !== void 0) {
+                    try { dst.h4(frame, !0); } catch (e5) {}
+                }
+            }
+            function __dzPetSrc(skinIdx, part) {
+                try {
+                    var sk = h.n26[skinIdx];
+                    return sk && sk.f2 ? sk.f2(part) : null;
+                } catch (e) { return null; }
+            }
+            // wing — CT only when skin index < 7
+            try {
+                if (7 > c[8]) __dzCopyPetPart(__dzPetSrc(c[8], "wing"), a.f2("wing"), b[8]);
+            } catch (eW) {}
+            __dzCopyPetPart(__dzPetSrc(c[0], "head"), a.f2("head"), b[0]);
+            __dzCopyPetPart(__dzPetSrc(c[1], "body"), a.f2("body"), b[1]);
+            try {
+                var __col = __dzPetSrc(c[2], "collar"), __colD = a.f2("collar");
+                if (__col && __colD) __dzCopyPetPart(__col, __colD, b[2]);
+            } catch (eC) {}
+            __dzCopyPetPart(__dzPetSrc(c[3], "backleg"), a.f2("backleg"), b[3]);
+            __dzCopyPetPart(__dzPetSrc(c[3], "backleg2"), a.f2("backleg2"), b[3]);
+            __dzCopyPetPart(__dzPetSrc(c[3], "frontleg"), a.f2("frontleg"), b[3]);
+            __dzCopyPetPart(__dzPetSrc(c[3], "frontleg2"), a.f2("frontleg2"), b[3]);
+            __dzCopyPetPart(__dzPetSrc(c[4], "backpaw"), a.f2("backpaw"), b[4]);
+            __dzCopyPetPart(__dzPetSrc(c[4], "backpaw2"), a.f2("backpaw2"), b[4]);
+            __dzCopyPetPart(__dzPetSrc(c[4], "frontpaw"), a.f2("frontpaw"), b[4]);
+            __dzCopyPetPart(__dzPetSrc(c[4], "frontpaw2"), a.f2("frontpaw2"), b[4]);
+            try {
+                var __ear = __dzPetSrc(c[5], "ear"), __earD = a.f2("ear");
+                if (__ear && __earD) __dzCopyPetPart(__ear, __earD, b[5]);
+            } catch (eE) {}
+            try {
+                var __pe = __dzPetSrc(c[5], "prickear"), __peD = a.f2("prickear");
+                if (__pe && __peD) __dzCopyPetPart(__pe, __peD, b[5]);
+            } catch (eP) {}
+            __dzCopyPetPart(__dzPetSrc(c[6], "eye"), a.f2("eye"), b[6]);
+            try {
+                var __tl = __dzPetSrc(c[7], "tail"), __tlD = a.f2("tail");
+                if (__tl && __tlD) __dzCopyPetPart(__tl, __tlD, b[7]);
+            } catch (eT) {}
+            try {
+                var __lb = __dzPetSrc(c[7], "longtail_base"), __lbD = a.f2("longtail_base");
+                if (__lb && __lbD) __dzCopyPetPart(__lb, __lbD, b[7]);
+            } catch (eLb) {}
+            try {
+                var __lm = __dzPetSrc(c[7], "longtail_mid"), __lmD = a.f2("longtail_mid");
+                if (__lm && __lmD) __dzCopyPetPart(__lm, __lmD, b[7]);
+            } catch (eLm) {}
+            try {
+                var __le = __dzPetSrc(c[7], "longtail_end"), __leD = a.f2("longtail_end");
+                if (__le && __leD) __dzCopyPetPart(__le, __leD, b[7]);
+            } catch (eLe) {}
             a instanceof Td && a.set_local_xScale(a.set_local_yScale(c[9] / 100))
         }
     }
@@ -35600,6 +35693,7 @@ var u = function() {};
                 b.Init(f.ODETTEMASK_PNG());
                 b.a4 = 2;
                 b._1 = "Odette Mask";
+                h.O29(b);
                 h.O27(b, 1.79, -8.91, 1);
                 try {
                     b.set_local_xScale(b.set_local_yScale(1.15));
@@ -35953,6 +36047,7 @@ var u = function() {};
                 b.Init(f.TRIGGERED_PNG());
                 b.a4 = 2;
                 b._1 = "Triggered Face";
+                h.O29(b);
                 h.O27(b, 0, 0, 6);
                 break;
             case 63:
@@ -36497,6 +36592,7 @@ var u = function() {};
                 b.Init(f.EGGHAT_PNG());
                 b.a4 = 2;
                 b._1 = "White Egg Mask";
+                h.O29(b);
                 h.O27(b, 4, -24, 1);
                 h.p20(b);
                 break;
@@ -36504,6 +36600,7 @@ var u = function() {};
                 b.Init(f.EGGHAT_PNG());
                 b.a4 = 2;
                 b._1 = "Purple Egg Mask";
+                h.O29(b);
                 h.O27(b, 4, -24, 1);
                 b.c9 = !0;
                 b.set_local_g(.5);
@@ -36514,6 +36611,7 @@ var u = function() {};
                 b.Init(f.EGGHAT_PNG());
                 b.a4 = 2;
                 b._1 = "Pink Egg Mask";
+                h.O29(b);
                 h.O27(b, 4, -24, 1);
                 b.c9 = !0;
                 b.set_local_g(.5);
@@ -36525,6 +36623,7 @@ var u = function() {};
                 b.Init(f.EGGHAT_PNG());
                 b.a4 = 2;
                 b._1 = "Green Egg Mask";
+                h.O29(b);
                 h.O27(b, 4, -24, 1);
                 b.c9 = !0;
                 b.set_local_r(.6);
@@ -36535,6 +36634,7 @@ var u = function() {};
                 b.Init(f.EGGHAT_PNG());
                 b.a4 = 2;
                 b._1 = "Yellow Egg Mask";
+                h.O29(b);
                 h.O27(b, 4, -24, 1);
                 b.c9 = !0;
                 b.set_local_b(.6);
@@ -36544,6 +36644,7 @@ var u = function() {};
                 b.Init(f.EGGHAT_PNG());
                 b.a4 = 2;
                 b._1 = "Blue Egg Mask";
+                h.O29(b);
                 h.O27(b, 4, -24, 1);
                 b.c9 = !0;
                 b.set_local_g(.6);
@@ -37117,6 +37218,7 @@ var u = function() {};
                 b.Init(f.O2MASK_PNG());
                 b.a4 = 2;
                 b._1 = "Blast Mask";
+                h.O29(b);
                 h.O27(b, -3, 9, 6);
                 break;
             case 226:
@@ -37727,12 +37829,14 @@ var u = function() {};
                 b.Init(f.CT_MUMMY_HEAD_PNG());
                 b.a4 = 2;
                 b._1 = "Mummy Head";
+                h.O29(b);
                 h.O27(b, 0, 0, 6);
                 break;
             case 907:
                 b.Init(f.CT_SKULLMASK_PNG());
                 b.a4 = 2;
                 b._1 = "Skull Head";
+                h.O29(b);
                 h.O27(b, -4, -10, 1);
                 break;
             case 908:
@@ -37766,12 +37870,14 @@ var u = function() {};
                 b.Init(f.CT_DARKPUMPKIN_PNG());
                 b.a4 = 2;
                 b._1 = "Dark Pumpkin";
+                h.O29(b);
                 h.O27(b, 0, -12, 1);
                 break;
             case 913:
                 b.Init(f.CT_PIGDEMON_PNG());
                 b.a4 = 2;
                 b._1 = "Demon Pig";
+                h.O29(b);
                 h.O27(b, 0, -12, 1);
                 h.p23(b);
                 b.c9 = !0;
@@ -37831,6 +37937,7 @@ var u = function() {};
                 b.Init(f.CT_MRUNHAPPY_PNG());
                 b.a4 = 2;
                 b._1 = "Grump";
+                h.O29(b);
                 h.O27(b, -2, -12, 1);
                 break;
             case 922:
@@ -37843,6 +37950,7 @@ var u = function() {};
                 b.Init(f.CT_SNOWFREAK_PNG());
                 b.a4 = 2;
                 b._1 = "Snow Freak";
+                h.O29(b);
                 h.O27(b, -2, -8, 1);
                 break;
             case 924:
@@ -38059,6 +38167,7 @@ var u = function() {};
                 b.Init(f.CT_LIGHTBUNNY_PNG());
                 b.a4 = 2;
                 b._1 = "White Bunny Mask";
+                h.O29(b);
                 h.O27(b, 8, -24, 1);
                 h.p23(b);
                 b.c9 = !0;
@@ -38090,6 +38199,7 @@ var u = function() {};
                 b.Init(f.CT_LIGHTBUNNY_PNG());
                 b.a4 = 2;
                 b._1 = "Pink Bunny Mask";
+                h.O29(b);
                 b.h3("pink");
                 h.O27(b, 8, -24, 1);
                 h.p23(b);
@@ -38100,6 +38210,7 @@ var u = function() {};
                 b.Init(f.CT_LIGHTBUNNY_PNG());
                 b.a4 = 2;
                 b._1 = "Purple Bunny Mask";
+                h.O29(b);
                 b.h3("purple");
                 h.O27(b, 8, -24, 1);
                 h.p23(b);
@@ -38110,6 +38221,7 @@ var u = function() {};
                 b.Init(f.CT_LIGHTBUNNY_PNG());
                 b.a4 = 2;
                 b._1 = "Yellow Bunny Mask";
+                h.O29(b);
                 b.h3("yellow");
                 h.O27(b, 8, -24, 1);
                 h.p23(b);
@@ -38120,6 +38232,7 @@ var u = function() {};
                 b.Init(f.CT_LIGHTBUNNY_PNG());
                 b.a4 = 2;
                 b._1 = "Orange Bunny Mask";
+                h.O29(b);
                 b.h3("orange");
                 h.O27(b, 8, -24, 1);
                 h.p23(b);
@@ -38130,6 +38243,7 @@ var u = function() {};
                 b.Init(f.CT_LIGHTBUNNY_PNG());
                 b.a4 = 2;
                 b._1 = "Green Bunny Mask";
+                h.O29(b);
                 b.h3("green");
                 h.O27(b, 8, -24, 1);
                 h.p23(b);
@@ -38140,6 +38254,7 @@ var u = function() {};
                 b.Init(f.CT_LIGHTBUNNY_PNG());
                 b.a4 = 2;
                 b._1 = "Cyan Bunny Mask";
+                h.O29(b);
                 b.h3("cyan");
                 h.O27(b, 8, -24, 1);
                 h.p23(b);
@@ -38160,6 +38275,7 @@ var u = function() {};
                 b.Init(f.CT_SPENCER_PNG());
                 b.a4 = 2;
                 b._1 = "Spencer Mask";
+                h.O29(b);
                 h.O27(b, -3, -14, 1);
                 h.p23(b);
                 b.c9 = !0;
@@ -38246,6 +38362,7 @@ var u = function() {};
                 b.Init(f.CT_REAPER_PNG());
                 b.a4 = 2;
                 b._1 = "White Reaper Mask";
+                h.O29(b);
                 h.O27(b, 1, -14, 1);
                 h.p23(b);
                 b.c9 = !0;
@@ -38255,6 +38372,7 @@ var u = function() {};
                 b.Init(f.CT_REAPER_PNG());
                 b.a4 = 2;
                 b._1 = "Black Reaper Mask";
+                h.O29(b);
                 b.h3("black");
                 h.p23(b);
                 b.c9 = !0;
@@ -38265,6 +38383,7 @@ var u = function() {};
                 b.Init(f.CT_REAPER_PNG());
                 b.a4 = 2;
                 b._1 = "Red Reaper Mask";
+                h.O29(b);
                 b.h3("red");
                 h.p23(b);
                 b.c9 = !0;
@@ -38275,6 +38394,7 @@ var u = function() {};
                 b.Init(f.CT_REAPER_PNG());
                 b.a4 = 2;
                 b._1 = "Green Reaper Mask";
+                h.O29(b);
                 b.h3("green");
                 h.p23(b);
                 b.c9 = !0;
@@ -38285,6 +38405,7 @@ var u = function() {};
                 b.Init(f.CT_REAPER_PNG());
                 b.a4 = 2;
                 b._1 = "Blue Reaper Mask";
+                h.O29(b);
                 b.h3("blue");
                 h.p23(b);
                 b.c9 = !0;
@@ -38295,6 +38416,7 @@ var u = function() {};
                 b.Init(f.CT_REAPER_PNG());
                 b.a4 = 2;
                 b._1 = "Yellow Reaper Mask";
+                h.O29(b);
                 b.h3("yellow");
                 h.p23(b);
                 b.c9 = !0;
@@ -38305,6 +38427,7 @@ var u = function() {};
                 b.Init(f.CT_REAPER_PNG());
                 b.a4 = 2;
                 b._1 = "Purple Reaper Mask";
+                h.O29(b);
                 b.h3("purple");
                 h.p23(b);
                 b.c9 = !0;
@@ -38315,6 +38438,7 @@ var u = function() {};
                 b.Init(f.CT_REAPER_PNG());
                 b.a4 = 2;
                 b._1 = "Pink Reaper Mask";
+                h.O29(b);
                 b.h3("pink");
                 h.p23(b);
                 b.c9 = !0;
@@ -38325,6 +38449,7 @@ var u = function() {};
                 b.Init(f.CT_REAPER_PNG());
                 b.a4 = 2;
                 b._1 = "Orange Reaper Mask";
+                h.O29(b);
                 b.h3("orange");
                 h.p23(b);
                 b.c9 = !0;
@@ -38335,6 +38460,7 @@ var u = function() {};
                 b.Init(f.CT_LARRY_PNG());
                 b.a4 = 2;
                 b._1 = "Larry Mask";
+                h.O29(b);
                 h.O27(b, 3, -15, 1);
                 h.p23(b);
                 b.c9 = !0;
@@ -38344,6 +38470,7 @@ var u = function() {};
                 b.Init(f.CT_DEVILMASK_PNG());
                 b.a4 = 2;
                 b._1 = "Devil Mask";
+                h.O29(b);
                 h.O27(b, -7, -3, 1);
                 h.p23(b);
                 b.c9 = !0;
@@ -38367,6 +38494,7 @@ var u = function() {};
                 b.Init(f.CT_FACELESSMASK_PNG());
                 b.a4 = 2;
                 b._1 = "White Faceless Mask";
+                h.O29(b);
                 b.h3("white");
                 h.p23(b);
                 b.c9 = !0;
@@ -38377,6 +38505,7 @@ var u = function() {};
                 b.Init(f.CT_FACELESSMASK_PNG());
                 b.a4 = 2;
                 b._1 = "Black Faceless Mask";
+                h.O29(b);
                 b.h3("black");
                 h.p23(b);
                 b.c9 = !0;
@@ -38387,6 +38516,7 @@ var u = function() {};
                 b.Init(f.CT_FACELESSMASK_PNG());
                 b.a4 = 2;
                 b._1 = "Red Faceless Mask";
+                h.O29(b);
                 b.h3("red");
                 h.p23(b);
                 b.c9 = !0;
@@ -38397,6 +38527,7 @@ var u = function() {};
                 b.Init(f.CT_FACELESSMASK_PNG());
                 b.a4 = 2;
                 b._1 = "Green Faceless Mask";
+                h.O29(b);
                 b.h3("green");
                 h.p23(b);
                 b.c9 = !0;
@@ -38407,6 +38538,7 @@ var u = function() {};
                 b.Init(f.CT_FACELESSMASK_PNG());
                 b.a4 = 2;
                 b._1 = "Blue Faceless Mask";
+                h.O29(b);
                 b.h3("blue");
                 h.p23(b);
                 b.c9 = !0;
@@ -38417,6 +38549,7 @@ var u = function() {};
                 b.Init(f.CT_FACELESSMASK_PNG());
                 b.a4 = 2;
                 b._1 = "Yellow Faceless Mask";
+                h.O29(b);
                 b.h3("yellow");
                 h.p23(b);
                 b.c9 = !0;
@@ -38427,6 +38560,7 @@ var u = function() {};
                 b.Init(f.CT_FACELESSMASK_PNG());
                 b.a4 = 2;
                 b._1 = "Purple Faceless Mask";
+                h.O29(b);
                 b.h3("purple");
                 h.p23(b);
                 b.c9 = !0;
@@ -38437,6 +38571,7 @@ var u = function() {};
                 b.Init(f.CT_FACELESSMASK_PNG());
                 b.a4 = 2;
                 b._1 = "Pink Faceless Mask";
+                h.O29(b);
                 b.h3("pink");
                 h.p23(b);
                 b.c9 = !0;
@@ -38447,6 +38582,7 @@ var u = function() {};
                 b.Init(f.CT_FACELESSMASK_PNG());
                 b.a4 = 2;
                 b._1 = "Orange Faceless Mask";
+                h.O29(b);
                 b.h3("orange");
                 h.p23(b);
                 b.c9 = !0;
@@ -38719,6 +38855,7 @@ var u = function() {};
                 b.Init(f.CT_FROSTY_PNG());
                 b.a4 = 2;
                 b._1 = "Mr Frosty";
+                h.O29(b);
                 h.O27(b, -2, -1, 1);
                 h.p23(b);
                 b.c9 = !0;
@@ -53715,7 +53852,7 @@ function __normalizeWearableScales(skel) {
                         break;
                     case 1: // hat
                         putOnBone("head", 2, false);
-                        // Some hats hide the head mesh
+                        // Build-15: only T41 (factory O29) hides head
                         try {
                             if (f.T41) {
                                 var hd = skel.f2("head");
@@ -53725,6 +53862,7 @@ function __normalizeWearableScales(skel) {
                                     if (hd._9) for (var hi = 0; hi < hd._9.length; hi++)
                                         try { if (hd._9[hi] && hd._9[hi]._1 !== "wear") hd._9[hi].C2 = !0; } catch (eH) {}
                                 }
+                                try { if (!skel.__dzSkinFlags) skel.__dzSkinFlags = {}; skel.__dzSkinFlags.hideHead = !0; } catch (eFl) {}
                             }
                         } catch (eMask) {}
                         break;
@@ -54882,6 +55020,7 @@ function __normalizeWearableScales(skel) {
                                 if (typeof q.diggerzService.markDirty === "function")
                                     q.diggerzService.markDirty();
                             }
+                            try { if (typeof window.__diggerzApplySkinToLivePlayer === "function") window.__diggerzApplySkinToLivePlayer(tone); } catch (eLiveS) {}
                         } catch (eToneS) {}
                         // Strip any items no longer owned before saving
                         try { app = __sanitizeAppearance(app); __equippedNow = app.slice(); } catch (eSan2) {}
@@ -55403,6 +55542,8 @@ function __normalizeWearableScales(skel) {
                 window.localStorage.setItem("diggerz.profile.v1", JSON.stringify(_pr));
             } catch (eProf) {}
             try { q.SaveGlobals(); } catch (eSG) {}
+            // Push tone onto the live in-world player mesh (RGB + m38 rebuild)
+            try { if (typeof window.__diggerzApplySkinToLivePlayer === "function") window.__diggerzApplySkinToLivePlayer(q.player.l9); } catch (eLive) {}
             return ja.prototype.e0.call(this)
         },
         C39: function() {
@@ -93166,7 +93307,8 @@ e50: function(a) {
             }
         },
         C40: function(a) {
-            null != this.i33 && (this.h56 && "hop" != this.i33.Z28 ? this.i33._38("hop", !1, 100, 1) : .6 > Math.abs(a) && "idle" != this.i33.Z28 ? this.i33._38("idle", !0, 100, .3) : .6 <= Math.abs(a) && "hoppyrun" != this.i33.Z28 && this.i33._38("hoppyrun", !0, 100, .3))
+            // Match Coaster Town pet movement anim switch (thresholds + rates)
+            null != this.i33 && (this.h56 && "hop" != this.i33.Z28 ? this.i33._38("hop", !1, 100, 1) : 1 > Math.abs(a) && "idle" != this.i33.Z28 ? this.i33._38("idle", !0, 100, .5) : 1 <= Math.abs(a) && "hoppyrun" != this.i33.Z28 && this.i33._38("hoppyrun", !0, 100, .7))
         },
         h58: null,
         e0: function() {
@@ -121888,7 +122030,64 @@ e50: function(a) {
     setInterval(countdownUi,100);
 
     window.DiggerzBattlePlayAgain=function(){resetBattleUi();P.battle.resultsShown=false;P.battle.localEliminated=false;P.intentionalClose=true;P.requested=false;try{if(P.socket)P.socket.close(1000,'play again')}catch(e){}P.socket=null;P.connected=false;P.joined=false;P.room='';P.connectionId='';P.service=null;P.queue=[];P.nativeQueue=[];P.mode='pvp';try{l.A45=false;l.A46=false;q.diggerzPvpRequested=true;q.diggerzPeerMode='pvp';q.diggerzDigTradeRequested=false;q.diggerzShopRequested=false;q.InitMainGame()}catch(e){q.InitTitleScreen()}};
-    window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.requested=false;try{if(P.socket)P.socket.close(1000,'equip')}catch(e){}P.socket=null;P.connected=false;P.joined=false;P.service=null;try{l.A45=true;l.A46=false;q.diggerzPvpRequested=false;q.diggerzShopRequested=true;q.InitMainGame()}catch(e){q.InitTitleScreen()}};
+    
+  // --- Skin tone: pure Build-15 style ---
+  // q.player.l9 = slider 0..100
+  // entity.l9   = RGB  (.45 + 1.1 * slider / 100)
+  // m35/m36 paint head + lower arms from entity.l9
+  window.__diggerzSkinSlider = function(v){
+    v = Number(v);
+    if (!isFinite(v) || v <= 0) return 90;
+    // Accidentally got RGB from a packet? Convert back to slider.
+    if (v > 0 && v <= 2.5)
+      return Math.max(0, Math.min(100, (v - 0.45) / 1.1 * 100));
+    return Math.max(0, Math.min(100, v));
+  };
+  window.__diggerzSkinRgb = function(tone){
+    return 0.45 + 1.1 * window.__diggerzSkinSlider(tone) / 100;
+  };
+  // Build-15 path: set entity.l9 then re-run m38 so m35/m36 pick up the color.
+  window.__diggerzApplySkinToLivePlayer = function(tone){
+    try{
+      var slider = window.__diggerzSkinSlider(tone != null ? tone : (q.player && q.player.l9));
+      try{ if (q && q.player){ q.player.l9 = slider; q.player.skinTone = slider; } }catch(e){}
+      try{
+        if (q && q.diggerzService && q.diggerzService.state){
+          q.diggerzService.state.skin_tone = slider;
+          if (typeof q.diggerzService.markDirty === "function") q.diggerzService.markDirty();
+        }
+      }catch(e){}
+      try{ window.localStorage.setItem("diggerz.skinTone.v1", String(slider)); }catch(e){}
+      var guy = null;
+      try{ if (typeof l !== "undefined" && l.z39) guy = l.z39; }catch(e){}
+      if (!guy) return window.__diggerzSkinRgb(slider);
+      var rgb = window.__diggerzSkinRgb(slider);
+      try{ guy.l9 = rgb; }catch(e){}
+      try{
+        var app = (guy.J33 && guy.J33.slice) ? guy.J33.slice() : null;
+        if (!app || !app.length){
+          try{
+            if (q.diggerzService && q.diggerzService.state && q.diggerzService.state.appearance)
+              app = q.diggerzService.state.appearance.slice(0, 11);
+          }catch(e2){}
+        }
+        if (!app) app = [0,0,0,0,0,0,0,0,0,0,0];
+        while (app.length < 11) app.push(0);
+        var text = "";
+        try{ text = (q.diggerzService && q.diggerzService.state && q.diggerzService.state.appearanceText) || ""; }catch(e){}
+        try{ guy.J33 = []; }catch(e3){}
+        if (typeof guy.m38 === "function") guy.m38(app, text);
+      }catch(e4){}
+      return rgb;
+    }catch(err){
+      try{ console.warn("[Diggerz] skin apply failed", err); }catch(e){}
+      return null;
+    }
+  };
+  // Head hide: only native T41 from h.O29 in item factory (build 15)
+
+
+window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.requested=false;try{if(P.socket)P.socket.close(1000,'equip')}catch(e){}P.socket=null;P.connected=false;P.joined=false;P.service=null;try{l.A45=true;l.A46=false;q.diggerzPvpRequested=false;q.diggerzShopRequested=true;q.InitMainGame()}catch(e){q.InitTitleScreen()}};
     window.DiggerzBattleExit=function(){resetBattleUi();P.intentionalClose=true;P.requested=false;try{if(P.socket)P.socket.close(1000,'exit')}catch(e){}P.socket=null;P.connected=false;P.joined=false;P.service=null;q.InitTitleScreen()};
     try{var Io=window.DiggerzRuntime&&window.DiggerzRuntime.getIo();if(Io&&Io.prototype){var oldEquip=Io.prototype.a53;Io.prototype.a53=function(){if(P.mode==='pvp'&&window.DiggerzBattleEquip)return window.DiggerzBattleEquip();return oldEquip.call(this)}}}catch(e){}
   }
@@ -123232,6 +123431,8 @@ e50: function(a) {
     } catch (e) {}
     return state;
   }
+
+
 
   function collectLocalSave() {
     var inv = localInventoryCandidate().raw, profile = {};
