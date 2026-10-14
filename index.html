@@ -28234,18 +28234,6 @@ var u = function() {};
     v.n19 = h;
     h.__name__ = "n19";
     h.N21 = function(a, b) {
-        // ensure CT pet textures are on nameMap
-        try {
-            var _petTex = ["TIGER_BODY","TIGER_HEAD","TIGER_BACKLEG","TIGER_BACKLEGZ","TIGER_FRONTLEG","TIGER_FRONTLEGZ","REINDEER_BODY","REINDEER_HEAD","REINDEER_EAR","REINDEER_SEAR","REINDEER_TAIL","TURKEY_HEAD","TURKEY_TAIL","TURKEY_FOOT","TURKEY_LEG","TURKEY_WING","UGLYDOG_HEAD","UGLYDOG_EYE","UGLYDOG_SEAR","CAT_EAR","DRAGON_EAR","DRAGON_BACKLEG","DRAGON_BACKLEGZ","DRAGON_FRONTLEG","DRAGON_FRONTLEGZ","DRAGON_EYE"];
-            if (f.nameMap) {
-                for (var _i = 0; _i < _petTex.length; _i++) {
-                    var _k = _petTex[_i] + "_PNG";
-                    var _fn = f[_k];
-                    if (_fn && !f.nameMap.h[_k]) f.nameMap.h[_k] = _fn;
-                }
-            }
-        } catch (_e) {}
-
         if (!(null == b || 10 > b.length)) {
             var c = a.f4(Pl);
             null == c && (c = a.G2("pet_anims", "pet_1", f, Td.M39, q.player.l2, !0));
@@ -28263,92 +28251,72 @@ var u = function() {};
                 b.push(p);
                 null == h.n26[g] && (h.n26[g] = h.n27.G2("pet_anims", "pet_" + g, f, Td.M39, q.player.l2, !0))
             }
-            // Coaster-Town-faithful pet part copy (texture + local transforms).
-            // Do NOT copy screen A7/A8 from template skins — that shifted parts and made rigs look messy.
-            function __dzCopyPetPart(src, dst, frame) {
-                if (!src || !dst) return;
-                try {
-                    dst._3 = src._3;
-                    if (src._5 && typeof src._5.clone === "function") dst._5 = src._5.clone();
-                    else dst._5 = src._5;
-                } catch (e0) {}
-                try {
-                    if (src.b1) {
-                        dst.b6 = src.b6;
-                        dst.b7 = src.b7;
-                        dst.set_local_rot(src.b3);
-                        dst.set_local_alp(src.B1);
-                        dst.set_local_xScale(src.b4);
-                        dst.set_local_yScale(src.b5);
-                        dst.set_local_r(src.b8);
-                        dst.set_local_g(src.b9);
-                        dst.set_local_b(src.B0);
-                    }
-                } catch (e1) {}
-                try {
-                    if (src.a6 != null) dst.set_rot(src.a6);
-                    if (src.a7 != null) dst.set_alp(src.a7);
-                    if (src.a8 != null) dst.set_xScale(src.a8);
-                    if (src.a9 != null) dst.set_yScale(src.a9);
-                    if (src.A1 != null) dst.set_r(src.A1);
-                    if (src.A2 != null) dst.set_g(src.A2);
-                    if (src.A3 != null) dst.set_b(src.A3);
-                } catch (e2) {}
-                try { dst.c9 = src.c9; } catch (e3) {}
-                try { dst.C0 = src.C0; } catch (e4) {}
-                if (frame != null && frame !== void 0) {
-                    try { dst.h4(frame, !0); } catch (e5) {}
-                }
-            }
-            function __dzPetSrc(skinIdx, part) {
-                try {
-                    var sk = h.n26[skinIdx];
-                    return sk && sk.f2 ? sk.f2(part) : null;
-                } catch (e) { return null; }
-            }
-            // wing — CT only when skin index < 7
+            // Build-15 placement: D6 + h4 (not custom copy — D6 keeps ear/leg offsets)
+            d = h.n26[c[8]] && h.n26[c[8]].f2("wing");
+            null != d && (e = a.f2("wing"),
+            null != e && (d.D6(e),
+            e.h4(b[8], !0)));
             try {
-                if (7 > c[8]) __dzCopyPetPart(__dzPetSrc(c[8], "wing"), a.f2("wing"), b[8]);
-            } catch (eW) {}
-            __dzCopyPetPart(__dzPetSrc(c[0], "head"), a.f2("head"), b[0]);
-            __dzCopyPetPart(__dzPetSrc(c[1], "body"), a.f2("body"), b[1]);
+                h.n26[c[0]].f2("head").D6(a.f2("head"));
+                a.f2("head").h4(b[0], !0);
+            } catch (eH) {}
             try {
-                var __col = __dzPetSrc(c[2], "collar"), __colD = a.f2("collar");
-                if (__col && __colD) __dzCopyPetPart(__col, __colD, b[2]);
-            } catch (eC) {}
-            __dzCopyPetPart(__dzPetSrc(c[3], "backleg"), a.f2("backleg"), b[3]);
-            __dzCopyPetPart(__dzPetSrc(c[3], "backleg2"), a.f2("backleg2"), b[3]);
-            __dzCopyPetPart(__dzPetSrc(c[3], "frontleg"), a.f2("frontleg"), b[3]);
-            __dzCopyPetPart(__dzPetSrc(c[3], "frontleg2"), a.f2("frontleg2"), b[3]);
-            __dzCopyPetPart(__dzPetSrc(c[4], "backpaw"), a.f2("backpaw"), b[4]);
-            __dzCopyPetPart(__dzPetSrc(c[4], "backpaw2"), a.f2("backpaw2"), b[4]);
-            __dzCopyPetPart(__dzPetSrc(c[4], "frontpaw"), a.f2("frontpaw"), b[4]);
-            __dzCopyPetPart(__dzPetSrc(c[4], "frontpaw2"), a.f2("frontpaw2"), b[4]);
+                h.n26[c[1]].f2("body").D6(a.f2("body"));
+                a.f2("body").h4(b[1], !0);
+            } catch (eB) {}
+            d = h.n26[c[2]] && h.n26[c[2]].f2("collar");
+            null != d && (e = a.f2("collar"),
+            null != e && (d.D6(e),
+            e.h4(b[2], !0)));
             try {
-                var __ear = __dzPetSrc(c[5], "ear"), __earD = a.f2("ear");
-                if (__ear && __earD) __dzCopyPetPart(__ear, __earD, b[5]);
-            } catch (eE) {}
+                h.n26[c[3]].f2("backleg").D6(a.f2("backleg"));
+                a.f2("backleg").h4(b[3], !0);
+                h.n26[c[3]].f2("backleg2").D6(a.f2("backleg2"));
+                a.f2("backleg2").h4(b[3], !0);
+                h.n26[c[3]].f2("frontleg").D6(a.f2("frontleg"));
+                a.f2("frontleg").h4(b[3], !0);
+                h.n26[c[3]].f2("frontleg2").D6(a.f2("frontleg2"));
+                a.f2("frontleg2").h4(b[3], !0);
+            } catch (eL) {}
             try {
-                var __pe = __dzPetSrc(c[5], "prickear"), __peD = a.f2("prickear");
-                if (__pe && __peD) __dzCopyPetPart(__pe, __peD, b[5]);
+                h.n26[c[4]].f2("backpaw").D6(a.f2("backpaw"));
+                a.f2("backpaw").h4(b[4], !0);
+                h.n26[c[4]].f2("backpaw2").D6(a.f2("backpaw2"));
+                a.f2("backpaw2").h4(b[4], !0);
+                h.n26[c[4]].f2("frontpaw").D6(a.f2("frontpaw"));
+                a.f2("frontpaw").h4(b[4], !0);
+                h.n26[c[4]].f2("frontpaw2").D6(a.f2("frontpaw2"));
+                a.f2("frontpaw2").h4(b[4], !0);
             } catch (eP) {}
-            __dzCopyPetPart(__dzPetSrc(c[6], "eye"), a.f2("eye"), b[6]);
+            // Ears — same as build 15 (D6 keeps correct local offsets)
+            d = h.n26[c[5]] && h.n26[c[5]].f2("ear");
+            null != d && (e = a.f2("ear"),
+            null != e && (d.D6(e),
+            e.h4(b[5], !0)));
+            d = h.n26[c[5]] && h.n26[c[5]].f2("prickear");
+            null != d && (e = a.f2("prickear"),
+            null != e && (d.D6(e),
+            e.h4(b[5], !0)));
             try {
-                var __tl = __dzPetSrc(c[7], "tail"), __tlD = a.f2("tail");
-                if (__tl && __tlD) __dzCopyPetPart(__tl, __tlD, b[7]);
-            } catch (eT) {}
-            try {
-                var __lb = __dzPetSrc(c[7], "longtail_base"), __lbD = a.f2("longtail_base");
-                if (__lb && __lbD) __dzCopyPetPart(__lb, __lbD, b[7]);
-            } catch (eLb) {}
-            try {
-                var __lm = __dzPetSrc(c[7], "longtail_mid"), __lmD = a.f2("longtail_mid");
-                if (__lm && __lmD) __dzCopyPetPart(__lm, __lmD, b[7]);
-            } catch (eLm) {}
-            try {
-                var __le = __dzPetSrc(c[7], "longtail_end"), __leD = a.f2("longtail_end");
-                if (__le && __leD) __dzCopyPetPart(__le, __leD, b[7]);
-            } catch (eLe) {}
+                h.n26[c[6]].f2("eye").D6(a.f2("eye"));
+                a.f2("eye").h4(b[6], !0);
+            } catch (eE) {}
+            d = h.n26[c[7]] && h.n26[c[7]].f2("tail");
+            null != d && (e = a.f2("tail"),
+            null != e && (d.D6(e),
+            e.h4(b[7], !0)));
+            d = h.n26[c[7]] && h.n26[c[7]].f2("longtail_base");
+            null != d && (e = a.f2("longtail_base"),
+            null != e && (d.D6(e),
+            e.h4(b[7], !0)));
+            d = h.n26[c[7]] && h.n26[c[7]].f2("longtail_mid");
+            null != d && (e = a.f2("longtail_mid"),
+            null != e && (d.D6(e),
+            e.h4(b[7], !0)));
+            d = h.n26[c[7]] && h.n26[c[7]].f2("longtail_end");
+            null != d && (e = a.f2("longtail_end"),
+            null != e && (d.D6(e),
+            e.h4(b[7], !0)));
             a instanceof Td && a.set_local_xScale(a.set_local_yScale(c[9] / 100))
         }
     }
@@ -93357,7 +93325,7 @@ e50: function(a) {
         this.F6(4, this.b4, this.b4, 1E3, !0);
         null != this.i33 && (this.i33.b7 = this.i33.b7 - 4 * this.b4 + 14 * (1 - this.b4),
         this._9.push(this.i33),
-        this.i33._38("idle", !0, 100, .5))
+        this.i33._38(this.__dzPetIdleAnim(), !0, 100, .5))
     };
     v.h52 = Td;
     Td.__name__ = "h52";
@@ -93377,9 +93345,26 @@ e50: function(a) {
                     this.B34.push(new et(this.h54.b6,this.h54.b7,this.h54.b3,0,1))
             }
         },
+        // Turkey (pet_9) / Reindeer (pet_10) / other CT skins use Sit_idle — it drives wing + ear bones.
+        __dzIsSpecialPet: function() {
+            if (this.__dzSpecialPet != null) return this.__dzSpecialPet;
+            var special = !1;
+            try {
+                var s = String(this.g39 || "");
+                // skin index 9 = turkey, 10 = reindeer in pet_anims
+                if (/(?:^|\|)(9|10),/.test(s)) special = !0;
+            } catch (e) {}
+            this.__dzSpecialPet = special;
+            return special;
+        },
+        __dzPetIdleAnim: function() {
+            return this.__dzIsSpecialPet() ? "Sit_idle" : "idle";
+        },
         C40: function(a) {
-            // Match Coaster Town pet movement anim switch (thresholds + rates)
-            null != this.i33 && (this.h56 && "hop" != this.i33.Z28 ? this.i33._38("hop", !1, 100, 1) : 1 > Math.abs(a) && "idle" != this.i33.Z28 ? this.i33._38("idle", !0, 100, .5) : 1 <= Math.abs(a) && "hoppyrun" != this.i33.Z28 && this.i33._38("hoppyrun", !0, 100, .7))
+            if (null == this.i33) return;
+            var idleAnim = this.__dzPetIdleAnim();
+            // hop on jump; Sit_idle/idle when still; hoppyrun when moving
+            this.h56 && "hop" != this.i33.Z28 ? this.i33._38("hop", !1, 100, 1) : .6 > Math.abs(a) && idleAnim != this.i33.Z28 ? this.i33._38(idleAnim, !0, 100, .3) : .6 <= Math.abs(a) && "hoppyrun" != this.i33.Z28 && this.i33._38("hoppyrun", !0, 100, .3)
         },
         h58: null,
         e0: function() {
