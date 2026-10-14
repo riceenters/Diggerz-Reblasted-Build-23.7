@@ -403,13 +403,6 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       results.appendChild(box);document.body.appendChild(results);
     }
   }
-  // Race vehicles are non-combat: suppress client-side weapon firing as well
-  // as the corresponding server-side attack packets.
-  document.addEventListener('mousedown',function(ev){
-    if(raceActive()&&ev.button===0&&!ev.target.closest('button,input,textarea,select,[role="button"]')){
-      ev.preventDefault();ev.stopImmediatePropagation();
-    }
-  },true);
   // Native C key remains responsible for toggling cart state.
   // Prevent inventory-selection ejections from persisting, but respect C exits.
   document.addEventListener('keydown',function(ev){
