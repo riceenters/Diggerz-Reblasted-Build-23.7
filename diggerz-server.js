@@ -507,6 +507,36 @@ function patchGameHtmlForBuild239(input) {
     html=html.replace(from,to);
   }
 
+  // Build 25 real race-mode integration. Every anchor exists in the original
+  // native game HTML; do not abort serving the game if a future build differs.
+  const raceMapFixes = [
+    [
+      "if(m.map&&(self.mode==='pvp'||self.mode==='digtrade'))self.pvpApplyBaseMap(m.map);",
+      "if(m.map&&(self.mode==='pvp'||self.mode==='digtrade'||self.mode==='race'))self.pvpApplyBaseMap(m.map);"
+    ],
+    [
+      "(this.mode!=='pvp'&&this.mode!=='digtrade')||!map",
+      "(this.mode!=='pvp'&&this.mode!=='digtrade'&&this.mode!=='race')||!map"
+    ],
+    [
+      'new DiggerzService(this, "pvp")',
+      'new DiggerzService(this, (window.DiggerzPvp22 && window.DiggerzPvp22.mode==="race")?"race":"pvp")'
+    ],
+    [
+      "q.diggerzPvpRequested=(P.mode==='pvp');",
+      "q.diggerzPvpRequested=(P.mode==='pvp'||P.mode==='race');"
+    ],
+    [
+      "window.DiggerzIsMultiplayer||function(service){return !!(service&&(service.mode==='pvp'||service.mode==='digtrade'))}",
+      "window.DiggerzIsMultiplayer||function(service){return !!(service&&(service.mode==='pvp'||service.mode==='digtrade'||service.mode==='race'))}"
+    ]
+  ];
+  for(const [before,after] of raceMapFixes){
+    if(html.includes(after))continue;
+    if(html.includes(before))html=html.replace(before,after);
+    else console.warn('[Cart Racing] Missing optional runtime patch:',before.slice(0,80));
+  }
+
   // Hybrid prototype: Coaster Town's Bat Cart visual for race riders only.
   // Leave every existing Basic Cart instance outside Cart Racing untouched.
   const normalCartSprite='k.Init(f.BASIC_CART_PNG());';
