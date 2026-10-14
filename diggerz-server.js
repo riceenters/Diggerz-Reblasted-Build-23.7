@@ -568,9 +568,14 @@ function patchGameHtmlForBuild239(input) {
   // The old _8[3] guard can remain set after joining, trapping the splash.
   const welcomeDismissOld = 'C39: function() {\n            null != this._8[3] || this.d34.E7() || (this.a0 = 1,\n            E.u4(this, 0, 300, 1, .5, 0, 1, 0))';
   const welcomeDismissNew = 'C39: function() {\n            if(this.a0===0){this.a0=1;E.u4(this,0,300,1,.5,0,1,0)}';
-  if(html.includes(welcomeDismissOld))html=html.replace(welcomeDismissOld,welcomeDismissNew);
-  else if(!html.includes(welcomeDismissNew))console.warn('[Diggerz] Native welcome splash click anchor missing');
-
+  const welcomeClassStart=html.indexOf('wk.prototype = D(ja.prototype, {');
+  const welcomeClassEnd=welcomeClassStart>=0?html.indexOf('__class__: wk',welcomeClassStart):-1;
+  if(welcomeClassStart>=0&&welcomeClassEnd>welcomeClassStart){
+    const welcomeClass=html.slice(welcomeClassStart,welcomeClassEnd);
+    if(welcomeClass.includes(welcomeDismissOld)){
+      html=html.slice(0,welcomeClassStart)+welcomeClass.replace(welcomeDismissOld,welcomeDismissNew)+html.slice(welcomeClassEnd);
+    } else if(!welcomeClass.includes(welcomeDismissNew))console.warn('[Diggerz] Native welcome splash click anchor missing');
+  }else console.warn('[Diggerz] Welcome panel class missing');
   return Buffer.from(html, 'utf8');
 }
 
