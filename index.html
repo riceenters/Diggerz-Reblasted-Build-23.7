@@ -4800,8 +4800,15 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         q.thisMain.userUniqueID = String(prof.userUniqueID);
                     if ((q.player.L0 == null || q.player.L0 === 0 || isNaN(q.player.L0)) && prof.country_flag != null)
                         q.player.L0 = prof.country_flag | 0;
-                    if (prof.skin_tone != null && (q.player.l9 == null || q.player.l9 === 0))
-                        q.player.l9 = Number(prof.skin_tone) || 1;
+                    if (prof.skin_tone != null && isFinite(Number(prof.skin_tone))) {
+                        q.player.l9 = Math.max(0, Math.min(100, Number(prof.skin_tone)));
+                        try { q.player.skinTone = q.player.l9; } catch (eST) {}
+                        try { window.localStorage.setItem("diggerz.skinTone.v1", String(q.player.l9)); } catch (eLS) {}
+                        try {
+                            if (q.diggerzService && q.diggerzService.state)
+                                q.diggerzService.state.skin_tone = q.player.l9;
+                        } catch (eSvc) {}
+                    }
                     if (prof.music_volume != null) q.player.k7 = prof.music_volume | 0;
                     if (prof.sound_volume != null) q.player.k8 = prof.sound_volume | 0;
                 }
@@ -17873,8 +17880,14 @@ var u = function() {};
                 E.u4(d, 0, 400, 0, 1.6, 1);
                 d.F6(0, 0, 2 * Math.PI, 400);
                 this._9.push(d);
-                a = q.mX - this.A7;
-                this.k33 = 0 < a ? 1 : 0 > a ? -1 : 0;
+                try {
+                    var __cam2 = l.z38;
+                    if (__cam2 && isFinite(__cam2.A7) && isFinite(__cam2.a8) && __cam2.a8)
+                        a = (q.mX - __cam2.A7) / __cam2.a8 - this.b6;
+                    else
+                        a = q.mX - this.A7;
+                } catch (__e2) { a = q.mX - this.A7; }
+                this.k33 = 0 < a ? 1 : 0 > a ? -1 : (this.k33 || 1);
                 this.i33.set_local_xScale(this.k33);
                 d._1 = "fx";
                 d.a0 = 0
@@ -18188,12 +18201,30 @@ var u = function() {};
             this.i33.Z28 == this.I32 && this.N30++;
             if (.01 < Math.abs(this.B32) || .01 < Math.abs(this.B33))
                 this.N30 = 0;
-            c = q.mX - this.A7;
-            this.k33 = 0 < c ? 1 : 0 > c ? -1 : 0;
-            this.k33 != this.i33.b4 && (this.i33.set_local_xScale(this.k33),
-            this.i33.e0(),
-            this.i33.e0(),
-            this.X7());
+            // Face mouse using camera-space coords (matches weapon aim).
+            // Using this.A7 alone breaks when A7 is world/local X or camera-centered,
+            // which made characters appear to face walk direction instead of the cursor.
+            try {
+                var __cam = l.z38;
+                var __mx = q.mX, __my = q.mY;
+                if (__cam && isFinite(__cam.A7) && isFinite(__cam.a8) && __cam.a8) {
+                    var __mouseWorldX = (__mx - __cam.A7) / __cam.a8;
+                    c = __mouseWorldX - this.b6;
+                } else {
+                    c = __mx - this.A7;
+                }
+            } catch (__faceErr) {
+                c = q.mX - this.A7;
+            }
+            if (0 < c) this.k33 = 1;
+            else if (0 > c) this.k33 = -1;
+            // Keep previous facing when mouse is exactly on the player
+            if (this.k33 != this.i33.b4 && this.k33 != 0) {
+                this.i33.set_local_xScale(this.k33);
+                this.i33.e0();
+                this.i33.e0();
+                this.X7();
+            }
             this.p33() ? (c = this.b33,
             null == c.tBJ.wrap_pos && c.tBJ.setupPosition(),
             c = c.tBJ.wrap_pos,
@@ -23141,10 +23172,28 @@ var u = function() {};
             // Expand older saves up to the full 95-slot visual grid
             while (this.state.slots.length < 95) this.state.slots.push(this.emptyItem());
             if (this.state.slots.length > 95) this.state.slots = this.state.slots.slice(0, 95);
-            if (this.state.skin_tone == null || !isFinite(Number(this.state.skin_tone)))
-                this.state.skin_tone = 90;
+            if (this.state.skin_tone == null || !isFinite(Number(this.state.skin_tone))) {
+                var _fallback = 90;
+                try {
+                    if (q.player && q.player.l9 != null && isFinite(Number(q.player.l9)))
+                        _fallback = Number(q.player.l9);
+                    else {
+                        var _ls = window.localStorage.getItem("diggerz.skinTone.v1");
+                        if (_ls != null && isFinite(Number(_ls))) _fallback = Number(_ls);
+                        else {
+                            var _pr = JSON.parse(window.localStorage.getItem("diggerz.profile.v1") || "{}");
+                            if (_pr.skin_tone != null && isFinite(Number(_pr.skin_tone)))
+                                _fallback = Number(_pr.skin_tone);
+                        }
+                    }
+                } catch (eFb) {}
+                this.state.skin_tone = Math.max(0, Math.min(100, _fallback));
+            }
             try {
-                if (q.player) q.player.l9 = Number(this.state.skin_tone);
+                if (q.player) {
+                    q.player.l9 = Number(this.state.skin_tone);
+                    q.player.skinTone = q.player.l9;
+                }
             } catch (eSkL) {}
             this.state.appearance = (saved.appearance || []).slice(0, 11);
             this.state.appearanceText = saved.appearanceText || "";
@@ -55338,6 +55387,7 @@ function __normalizeWearableScales(skel) {
         e0: function() {
             this.y42.set_local_r(this.y42.set_local_g(this.y42.set_local_b(.45 + 1.1 * this.y42.D43 / 100)));
             q.player.l9 = Math.max(0, Math.min(100, this.y42.D43));
+            try { q.player.skinTone = q.player.l9; } catch (eST) {}
             try {
                 if (q.diggerzService && q.diggerzService.state) {
                     q.diggerzService.state.skin_tone = q.player.l9;
@@ -55345,6 +55395,14 @@ function __normalizeWearableScales(skel) {
                         q.diggerzService.markDirty();
                 }
             } catch (eSkinSave) {}
+            try { window.localStorage.setItem("diggerz.skinTone.v1", String(q.player.l9)); } catch (eLS) {}
+            try {
+                var _pr = {};
+                try { _pr = JSON.parse(window.localStorage.getItem("diggerz.profile.v1") || "{}"); } catch (eP) {}
+                _pr.skin_tone = q.player.l9;
+                window.localStorage.setItem("diggerz.profile.v1", JSON.stringify(_pr));
+            } catch (eProf) {}
+            try { q.SaveGlobals(); } catch (eSG) {}
             return ja.prototype.e0.call(this)
         },
         C39: function() {
@@ -121129,7 +121187,10 @@ e50: function(a) {
         spr.set_local_xScale=function(v){
           var m=Number(ent._diggerzSizeModifier);
           if(!isFinite(m)||m<=0)m=1;
-          return orig.call(this,(Number(v)||0)*m);
+          // Preserve facing sign from the requested scale (mouse-face uses ±1).
+          var n=Number(v)||0;
+          var sign=n<0?-1:n>0?1:(this.b4<0?-1:1);
+          return orig.call(this, sign*Math.abs(m));
         };
         spr.__diggerzSizeHook=true;
       }catch(_e){}
@@ -123176,21 +123237,29 @@ e50: function(a) {
     var inv = localInventoryCandidate().raw, profile = {};
     try {
       if (window.q && q.player) {
-        var storedSkin = lsGet("diggerz.skinTone.v1", null);
-        if ((q.player.skinTone === undefined || q.player.skinTone === null) && storedSkin !== null && isFinite(Number(storedSkin))) {
-          q.player.skinTone = Number(storedSkin);
+        // Prefer live game property l9, then skinTone, then localStorage
+        var skin = null;
+        if (q.player.l9 != null && isFinite(Number(q.player.l9))) skin = Number(q.player.l9);
+        if (skin === null && q.player.skinTone != null && isFinite(Number(q.player.skinTone))) skin = Number(q.player.skinTone);
+        if (skin === null) {
+          var storedSkin = lsGet("diggerz.skinTone.v1", null);
+          if (storedSkin !== null && isFinite(Number(storedSkin))) skin = Number(storedSkin);
+        }
+        if (skin !== null && isFinite(Number(skin))) {
+          skin = Math.max(0, Math.min(100, Number(skin)));
+          profile.skin = skin;
+          lsSet("diggerz.skinTone.v1", String(skin));
+          try { q.player.l9 = skin; } catch (eL9) {}
+          try { q.player.skinTone = skin; } catch (eST) {}
+          try {
+            if (q.diggerzService && q.diggerzService.state) {
+              q.diggerzService.state.skin_tone = skin;
+              if (typeof q.diggerzService.markDirty === "function") q.diggerzService.markDirty();
+            }
+          } catch (eSvc) {}
         }
         var name = q.player.l7 || (q.thisMain && q.thisMain.userName);
         var country = q.player.L0;
-        var skin = q.player.skinTone;
-        if (skin === undefined || skin === null) {
-          var savedTone = lsGet("diggerz.skinTone.v1", null);
-          if (savedTone !== null && isFinite(Number(savedTone))) skin = Number(savedTone);
-        }
-        if (skin !== undefined && skin !== null && isFinite(Number(skin))) {
-          profile.skin = Number(skin);
-          lsSet("diggerz.skinTone.v1", String(Number(skin)));
-        }
         if (name !== undefined && name !== null) profile.name = String(name);
         if (country !== undefined && country !== null) profile.country = country;
       }
@@ -123280,14 +123349,25 @@ e50: function(a) {
         // Restore skin tone to the live player as well as retaining it in the cloud profile.
         // Missing/legacy skin fields must never force a default white skin over a valid local tone.
         if (data.profile.skin !== undefined && data.profile.skin !== null && isFinite(Number(data.profile.skin))) {
-          var cloudSkin = Number(data.profile.skin);
+          var cloudSkin = Math.max(0, Math.min(100, Number(data.profile.skin)));
           lsSet("diggerz.skinTone.v1", String(cloudSkin));
           try {
             if (window.q && q.player) {
+              q.player.l9 = cloudSkin;
               q.player.skinTone = cloudSkin;
               if (typeof q.player.setSkinTone === "function") q.player.setSkinTone(cloudSkin);
               if (typeof q.player.updateSkinTone === "function") q.player.updateSkinTone(cloudSkin);
             }
+            if (q.diggerzService && q.diggerzService.state) {
+              q.diggerzService.state.skin_tone = cloudSkin;
+              if (typeof q.diggerzService.markDirty === "function") q.diggerzService.markDirty();
+            }
+            try {
+              window.localStorage.setItem("diggerz.profile.v1", JSON.stringify(Object.assign(
+                JSON.parse(window.localStorage.getItem("diggerz.profile.v1") || "{}"),
+                { skin_tone: cloudSkin }
+              )));
+            } catch (eProf) {}
           } catch (skinApplyError) {}
         }
       }
