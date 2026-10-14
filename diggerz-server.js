@@ -564,6 +564,13 @@ function patchGameHtmlForBuild239(input) {
     console.warn('[Build 25] Native player facing anchor not found.');
   }
 
+  // Native main-menu Cart Racing tile: same REDBUTTON_PNG/z/ob UI as Dig+Trade.
+  // Insert directly after Donate in the menu constructor. Never append a DOM tile.
+  const nativeRaceMenuAnchor = '            c = new xa(0,-70,"Support Diggerz");\\n            c.D7(b, !0);\\n            c.set_local_xScale(c.set_local_yScale(1.25));\\n            this._9.push(c)\\n        },\\n        d59: null,';
+  const nativeRaceMenuReplacement = '            c = new xa(0,-70,"Support Diggerz");\\n            c.D7(b, !0);\\n            c.set_local_xScale(c.set_local_yScale(1.25));\\n            this._9.push(c);\\n            // Cart Racing reuses the original red native menu button.\\n            b = new z;\\n            b.Init(u.REDBUTTON_PNG());\\n            b.D7(this);\\n            b.b7 = d;\\n            d += 80;\\n            b.b6 = q.SCREENWIDTH / 2 - 150;\\n            b.set_local_xScale(b.set_local_yScale(.5));\\n            b._1 = "welcome message";\\n            b.F6(5, 0, 1, 500);\\n            this._9.push(b);\\n            this.d51 = new ob(0,0,"",q.MAIN_FONT_BIG);\\n            this.d51.D7(b);\\n            this.d51.E37("Cart Racing");\\n            this.d51.b7 = 2;\\n            this.d51.C33 = function() { if(window.DiggerzLaunchCartRace)window.DiggerzLaunchCartRace(); };\\n            this.d51._1 = "welcome message";\\n            this._9.push(this.d51);\\n            c = new xa(0,-70,"^1NEW  Race to the finish!",q.MAIN_FONT);\\n            c.D7(b, !0);\\n            c.set_local_xScale(c.set_local_yScale(1.15));\\n            this._9.push(c)\\n        },\\n        d59: null,';
+  if(html.includes(nativeRaceMenuAnchor))html=html.replace(nativeRaceMenuAnchor,nativeRaceMenuReplacement);
+  else if(!html.includes('this.d51.E37("Cart Racing");'))console.warn('[Cart Racing] Native Donate menu anchor missing');
+
   return Buffer.from(html, 'utf8');
 }
 
