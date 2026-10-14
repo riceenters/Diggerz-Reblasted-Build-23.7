@@ -164,8 +164,16 @@
             if (!sessionStorage.getItem("diggerz.authMenuReload") && document.body) {
               sessionStorage.setItem("diggerz.authMenuReload", "1");
               setTimeout(function() {
-                if (window.q && q.thisMain && q.thisMain.userPW === "SESSION_AUTHENTICATED")
+                if (!(window.q && q.thisMain && q.thisMain.userPW === "SESSION_AUTHENTICATED")) return;
+                var localStamp = Number(lsGet("diggerz.localSaveUpdatedAt.v1", "0")) || 0;
+                pullCloudSave(false).then(function(cloud) {
+                  var cloudStamp = Number(cloud && cloud.updatedAt) || 0;
+                  if (cloud && localStamp > cloudStamp) {
+                    return pushCloudSave(true).then(function() { location.reload(); });
+                  }
+                  if (cloud) applyCloudData(cloud);
                   location.reload();
+                }).catch(function() { location.reload(); });
               }, 300);
             }
           } catch (eR) {}
@@ -194,56 +202,136 @@
     }
   }
 
-  function collectLocalSave() {
-    var inv = null, profile = {};
+  function safeObject(value) {
+    if (value === undefined) return undefined;
+    if (value === null || typeof value === "string" || typeof value === "boolean") return value;
+    if (typeof value === "number") return isFinite(value) ? value : null;
+    if (Array.isArray(value)) {
+      var arr = [];
+      for (var i = 0; i < value.length; i++) {
+        var v = safeObject(value[i]);
+        arr.push(v === undefined ? null : v);
+      }
+      return arr;
+    }
+    if (typeof value === "object") {
+      var out = {};
+      Object.keys(value).forEach(function(k) {
+        var v = safeObject(value[k]);
+        if (v !== undefined) out[k] = v;
+      });
+      return out;
+    }
+    return undefined;
+  }
+
+  function localInventoryCandidate() {
+    var keys = [
+      "diggerz.digtrade.rebuild.v3",
+      "diggerz.digtrade.v1",
+      "diggerz.inventory.v1",
+      "digtrade_save"
+    ];
+    var best = null, bestScore = -1, bestKey = "";
+    keys.forEach(function(key) {
+      try {
+        var raw = localStorage.getItem(key);
+        if (!raw) return;
+        var parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") return;
+        var score = 0;
+        var slots = Array.isArray(parsed.slots) ? parsed.slots : [];
+        for (var i = 0; i < slots.length; i++) {
+          if (slots[i] && (Number(slots[i].id) || 0) && (Number(slots[i].count) || 0)) score++;
+        }
+        if (parsed.appearance) score += 1;
+        // Prefer the richest save, then the modern rebuild key on ties.
+        if (score > bestScore || (score === bestScore && key === keys[0])) {
+          best = raw; bestScore = score; bestKey = key;
+        }
+      } catch (e) {}
+    });
+    return { raw: best, score: bestScore, key: bestKey };
+  }
+
+  function collectLocalState() {
+    var state = {};
     try {
-      var raw = localStorage.getItem("diggerz.digtrade.v1") || localStorage.getItem("digtrade_save") || "";
-      if (raw) inv = raw;
+      for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
+        if (!key) continue;
+        // Only sync game state/preferences; never auth/session/admin secrets.
+        if (/^(diggerz\.(digtrade|inventory|shirtColor|menuBg|player|pet|clothes|appearance|progress|settings)|digtrade_save$)/i.test(key)) {
+          if (/^(diggerz\.(digtrade|inventory)|digtrade_save$)/i.test(key)) continue;
+          if (/firebase|auth|email|admin|session|token|resurrection|boundEmail/i.test(key)) continue;
+          var value = localStorage.getItem(key);
+          if (value != null && value.length < 900000) state[key] = value;
+        }
+      }
     } catch (e) {}
+    return state;
+  }
+
+  function collectLocalSave() {
+    var inv = localInventoryCandidate().raw, profile = {};
     try {
       if (window.q && q.player) {
-        profile.name = q.player.l7 || q.thisMain && q.thisMain.userName || "";
-        profile.country = q.player.L0;
-        profile.skin = q.player.skinTone;
+        var name = q.player.l7 || (q.thisMain && q.thisMain.userName);
+        var country = q.player.L0;
+        var skin = q.player.skinTone;
+        if (name !== undefined && name !== null) profile.name = String(name);
+        if (country !== undefined && country !== null) profile.country = country;
+        if (skin !== undefined && skin !== null && isFinite(Number(skin))) profile.skin = Number(skin);
       }
     } catch (e) {}
     profile.shirtColor = ensureShirtColor();
     profile.menuBg = lsGet("diggerz.menuBg.v1", "0");
-    return { inventoryJson: inv, profile: profile, updatedAt: Date.now() };
+    profile = safeObject(profile) || {};
+    return {
+      inventoryJson: inv,
+      localState: collectLocalState(),
+      profile: profile,
+      updatedAt: Date.now(),
+      schemaVersion: 2
+    };
+  }
+
+  function inventorySlotCount(raw) {
+    try {
+      var p = typeof raw === "string" ? JSON.parse(raw) : raw;
+      var slots = (p && Array.isArray(p.slots)) ? p.slots : [];
+      var n = 0;
+      for (var i = 0; i < slots.length; i++) if (slots[i] && (Number(slots[i].id)||0) && (Number(slots[i].count)||0)) n++;
+      return n;
+    } catch (e) { return 0; }
   }
 
   function pushCloudSave(force) {
     if (!ready || !auth || !auth.currentUser) return Promise.resolve({ ok: false, reason: "not-logged" });
     var data = collectLocalSave();
-    // refuse empty wipe unless force
-    var slots = 0;
-    try {
-      if (data.inventoryJson) {
-        var p = JSON.parse(data.inventoryJson);
-        slots = (p && p.slots && p.slots.length) || (p && p.items && p.items.length) || 0;
-      }
-    } catch (e) {}
+    var slots = inventorySlotCount(data.inventoryJson);
     var ref = db.collection("users").doc(auth.currentUser.uid);
     return ref.get().then(function(snap) {
       var existing = snap.exists ? snap.data() : null;
-      var existingSlots = 0;
-      try {
-        if (existing && existing.inventoryJson) {
-          var ep = JSON.parse(existing.inventoryJson);
-          existingSlots = (ep && ep.slots && ep.slots.length) || 0;
-        }
-      } catch (e) {}
+      var existingSlots = inventorySlotCount(existing && existing.inventoryJson);
       if (!force && slots === 0 && existingSlots > 0)
         return { ok: false, reason: "refuse-empty-wipe" };
-      return ref.set({
-        inventoryJson: data.inventoryJson || (existing && existing.inventoryJson) || null,
-        profile: data.profile,
+      // Omit absent fields instead of sending undefined to Firestore.
+      var payload = {
         email: auth.currentUser.email || "",
         updatedAt: Date.now(),
-        itemCount: slots || existingSlots
-      }, { merge: true }).then(function() {
+        itemCount: slots || existingSlots,
+        schemaVersion: 2
+      };
+      if (data.inventoryJson) payload.inventoryJson = data.inventoryJson;
+      else if (existing && existing.inventoryJson) payload.inventoryJson = existing.inventoryJson;
+      if (data.localState && Object.keys(data.localState).length) payload.localState = data.localState;
+      if (data.profile && Object.keys(data.profile).length) payload.profile = data.profile;
+      payload = safeObject(payload);
+      return ref.set(payload, { merge: true }).then(function() {
+        lsSet("diggerz.cloudLocalUpdatedAt.v1", String(payload.updatedAt));
         console.log("[Diggerz Cloud] SAVED ok slots~", slots || existingSlots);
-        return { ok: true, slots: slots || existingSlots };
+        return { ok: true, slots: slots || existingSlots, updatedAt: payload.updatedAt };
       });
     }).catch(function(err) {
       console.warn("[Diggerz Cloud] push failed", err);
@@ -257,20 +345,38 @@
     });
   }
 
+  function applyCloudData(data) {
+    if (!data) return;
+    try {
+      if (data.inventoryJson) {
+        ["diggerz.digtrade.rebuild.v3", "diggerz.digtrade.v1", "diggerz.inventory.v1", "digtrade_save"].forEach(function(key) {
+          try { localStorage.setItem(key, data.inventoryJson); } catch (e) {}
+        });
+      }
+      if (data.localState && typeof data.localState === "object") {
+        Object.keys(data.localState).forEach(function(key) {
+          if (!/^(diggerz\.(digtrade|inventory|shirtColor|menuBg|player|pet|clothes|appearance|progress|settings)|digtrade_save$)/i.test(key)) return;
+          if (/^(diggerz\.(digtrade|inventory)|digtrade_save$)/i.test(key)) return;
+          if (/firebase|auth|email|admin|session|token|resurrection|boundEmail/i.test(key)) return;
+          if (typeof data.localState[key] === "string") {
+            try { localStorage.setItem(key, data.localState[key]); } catch (e) {}
+          }
+        });
+      }
+      if (data.profile) {
+        if (data.profile.shirtColor != null) lsSet("diggerz.shirtColor.v1", String(data.profile.shirtColor));
+        if (data.profile.menuBg != null) lsSet("diggerz.menuBg.v1", String(data.profile.menuBg));
+      }
+      if (data.updatedAt) lsSet("diggerz.cloudLocalUpdatedAt.v1", String(data.updatedAt));
+    } catch (e) {}
+  }
+
   function pullCloudSave(apply) {
     if (!ready || !auth || !auth.currentUser) return Promise.resolve(null);
     return db.collection("users").doc(auth.currentUser.uid).get().then(function(snap) {
       if (!snap.exists) return null;
       var data = snap.data();
-      if (apply && data) {
-        try {
-          if (data.inventoryJson) localStorage.setItem("diggerz.digtrade.v1", data.inventoryJson);
-          if (data.profile) {
-            if (data.profile.shirtColor != null) lsSet("diggerz.shirtColor.v1", String(data.profile.shirtColor));
-            if (data.profile.menuBg != null) lsSet("diggerz.menuBg.v1", String(data.profile.menuBg));
-          }
-        } catch (e) {}
-      }
+      if (apply && data) applyCloudData(data);
       return data;
     }).catch(function(err) {
       console.warn("[Diggerz Cloud] pull failed", err);
@@ -365,6 +471,7 @@
   var saveTimer = null;
   function dirtySave(reason) {
     if (!state.authenticated) return;
+    lsSet("diggerz.localSaveUpdatedAt.v1", String(Date.now()));
     console.log("[Diggerz Cloud] dirty:", reason);
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(function() { pushCloudSave(false); }, 800);
@@ -374,6 +481,13 @@
   // beforeunload / pagehide → save
   window.addEventListener("pagehide", function() { if (state.authenticated) pushCloudSave(false); });
   window.addEventListener("beforeunload", function() { if (state.authenticated) pushCloudSave(false); });
+  // Periodic background sync protects progress if the player closes the tab unexpectedly.
+  setInterval(function() {
+    if (!state.authenticated || !ready || !auth || !auth.currentUser) return;
+    pushCloudSave(false).then(function(r) {
+      if (r && r.ok) lsSet("diggerz.lastSuccessfulCloudSave.v1", String(Date.now()));
+    });
+  }, 30000);
 
   // Mobile walk parity + chat enter
   (function mobileFixes() {
