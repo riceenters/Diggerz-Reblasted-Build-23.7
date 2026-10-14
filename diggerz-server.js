@@ -1904,7 +1904,7 @@ function respawnRaceClient(client) {
 function advanceCartRace(client) {
   const room=client && client.room, race=room && room.race;
   if(!race || room.mode!=='race'||!room.map||!client.position||client.raceFinished)return;
-  if(race.phase==='waiting'||race.phase==='countdown')return;
+  if(race.phase==='waiting')return;
   if(race.phase==='countdown'&&Date.now()>=race.startAt){race.phase='racing';broadcastRoom(room,{t:'race-start',at:race.startAt});}
   if(race.phase!=='racing')return;
   const now=Date.now(), pos=client.position, previous=client.raceLastPosition;
@@ -2220,7 +2220,7 @@ function addClientToRoom(client, room, mode, name) {
     tiles: [...room.tiles.values()], backgroundTiles: [...room.backgroundTiles.values()], drops: [...room.drops.values()], coins: [...room.coins.values()], speaker: room.speaker ? {...room.speaker} : null, serverNow: Date.now()
   });
   if (mode === 'pvp') sendBattleState(client);
-  if(mode==='race'){sendJson(client,{t:'race-setup',spawn:client.position,mapName:room.map.name,lockedCart:true}); if(room.race.phase==='waiting'&&room.clients.size>=3){room.race.phase='countdown';room.race.startAt=Date.now()+4500;room.race.deadline=room.race.startAt+360000;broadcastRoom(room,{t:'race-countdown',startsAt:room.race.startAt});}}
+  if(mode==='race'){sendJson(client,{t:'race-setup',spawn:client.position,mapName:room.map.name,lockedCart:true}); broadcastRoom(room,{t:'race-waiting',count:room.clients.size,minimum:3}); if(room.race.phase==='waiting'&&room.clients.size>=3){room.race.phase='countdown';room.race.startAt=Date.now()+4500;room.race.deadline=room.race.startAt+360000;broadcastRoom(room,{t:'race-countdown',startsAt:room.race.startAt});}}
   // Fake players are real native player entities on every browser. Send the same
   // recovered opcode-5 spawn packet used by an actual connected player.
   if (room.fakePlayers) for (const fake of room.fakePlayers.values()) sendFakeNativeSpawn(room,fake,client);
