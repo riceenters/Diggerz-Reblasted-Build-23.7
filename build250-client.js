@@ -357,6 +357,14 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     var hud=document.getElementById('build25-race-place');if(hud)hud.remove();
     var cd=document.getElementById('build25-race-countdown');if(cd)cd.remove();
   }
+  function raceLobbyNotice(message){
+    var hud=document.getElementById('build25-race-lobby');
+    if(!hud){hud=document.createElement('div');hud.id='build25-race-lobby';
+      hud.style.cssText='position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:2147482000;background:#18151cdd;border:2px solid #e94b42;border-radius:10px;padding:12px 22px;color:white;font:bold 21px Arial;text-align:center;pointer-events:none;white-space:nowrap';
+      document.body.appendChild(hud)}
+    hud.textContent=message;
+  }
+  function clearRaceLobby(){var el=document.getElementById('build25-race-lobby');if(el)el.remove();}
   function handleRacePacket(ev){
     if(!raceActive()||typeof ev.data!=='string')return;
     var m;try{m=JSON.parse(ev.data)}catch(e){return}
@@ -368,11 +376,11 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       if(m.mapName && m.mapName!=='Coaster Racing Park!')console.error('[Cart Racing] Wrong map:',m.mapName);
       setTimeout(function(){applyRaceSpawn();ensureCart()},250);playRaceTheme();return
     }
-    if(m.t==='race-countdown'){startCountdown(Number(m.startsAt));return}
-    if(m.t==='race-waiting'){racePhase='waiting';clearInterval(countdownTimer);return}
-    if(m.t==='race-start'){racePhase='racing';pendingCart=true;showCountdown('GO!');playRaceTheme();return}
+    if(m.t==='race-countdown'){clearRaceLobby();startCountdown(Number(m.startsAt));return}
+    if(m.t==='race-waiting'){racePhase='waiting';clearInterval(countdownTimer);raceLobbyNotice('WAITING FOR RACERS  '+(m.count||1)+' / '+(m.minimum||3));return}
+    if(m.t==='race-start'){clearRaceLobby();racePhase='racing';pendingCart=true;showCountdown('GO!');playRaceTheme();return}
     if(m.t==='race-kill-all'){
-      stopRaceTheme();racePhase='finished';removeRaceHud();
+      stopRaceTheme();racePhase='finished';clearRaceLobby();removeRaceHud();
       var impact=document.createElement('div');impact.style.cssText='position:fixed;inset:0;background:#d20b18;opacity:.8;z-index:2147482998;pointer-events:none;transition:opacity .55s ease';
       document.body.appendChild(impact);
       requestAnimationFrame(function(){impact.style.opacity='0'});
@@ -388,7 +396,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       hud.textContent=(me?'#'+me.place:'--')+' / '+standings.length+' PLACE';
       return;
     }
-    if(m.t==='race-checkpoint'){console.info('[Cart Racing] checkpoint',m.number,m.total);return}
+    if(m.t==='race-checkpoint'){raceLobbyNotice('CHECKPOINT '+(m.number||'?')+' / '+(m.total||'?'));setTimeout(clearRaceLobby,1200);return}
     if(m.t==='race-results'){
       stopRaceTheme();racePhase='finished';removeRaceHud();if(results)results.remove();
       results=document.createElement('div');results.id='build25-race-results';
@@ -423,7 +431,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(raceActive()&&!manualExit){applyRaceSpawn();pendingCart=true;if(ensureCart())pendingCart=false;}
     if(raceActive()&&p.joined&&racePhase!=='finished'&&!raceAudio)playRaceTheme();
     if(!raceActive() || !p.joined){
-      removeRaceHud();
+      clearRaceLobby();removeRaceHud();
       if(raceAudio)stopRaceTheme();
       if(!raceActive()){raceSpawnPending=null;racePhase='waiting';}
     }
