@@ -283,7 +283,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   'use strict';
   if(window.__diggerzCartRaceInstalled)return;
   window.__diggerzCartRaceInstalled=true;
-  var button=null, raceRoom='', hookedSocket=null, pendingCart=false, results=null,manualExit=false,lastC=0,racePhase='waiting',raceAudio=null,countdownTimer=null;
+  var button=null, raceRoom='', hookedSocket=null, pendingCart=false, results=null,manualExit=false,lastC=0,racePhase='waiting',raceAudio=null,countdownTimer=null,raceSpawnPending=null;
   function raceActive(){var p=window.DiggerzPvp22;return !!(p&&p.mode==='race'&&(p.requested||p.joined));}
   function ensureCart(){
     if(!raceActive()||manualExit)return false;
@@ -342,20 +342,37 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     function tick(){var ms=startsAt-Date.now();var shown=ms<=0?'GO!':String(Math.ceil(ms/1000));if(shown!==last&&(['3','2','1','GO!'].indexOf(shown)>=0)){last=shown;showCountdown(shown)}if(ms<=-800){clearInterval(countdownTimer);racePhase='racing';playRaceTheme()}}
     countdownTimer=setInterval(tick,60);tick();
   }
+  function applyRaceSpawn(){
+    if(!raceActive()||!raceSpawnPending)return false;
+    try{
+      var pos=raceSpawnPending, service=window.DiggerzPvp22&&window.DiggerzPvp22.service;
+      if(!service||!service.state||typeof l==='undefined'||!l.z39)return false;
+      service.state.x=pos.x;service.state.y=pos.y;
+      if(typeof l.z39.l38==='function')l.z39.l38(pos.x*l._44,pos.y*l._44);
+      else {l.z39.b6=pos.x*l._44;l.z39.b7=pos.y*l._44;}
+      raceSpawnPending=null;return true;
+    }catch(e){console.warn('[Cart Racing] spawn marker positioning:',e);return false}
+  }
+  function removeRaceHud(){
+    var hud=document.getElementById('build25-race-place');if(hud)hud.remove();
+    var cd=document.getElementById('build25-race-countdown');if(cd)cd.remove();
+  }
   function handleRacePacket(ev){
     if(!raceActive()||typeof ev.data!=='string')return;
     var m;try{m=JSON.parse(ev.data)}catch(e){return}
     if(!m||!m.t)return;
     if(m.t==='race-setup'||m.t==='race-respawn'){
       manualExit=false;pendingCart=true;
+      var pos=m.spawn||((Number.isFinite(+m.x)&&Number.isFinite(+m.y))?{x:+m.x,y:+m.y}:null);
+      if(pos&&Number.isFinite(+pos.x)&&Number.isFinite(+pos.y))raceSpawnPending={x:+pos.x,y:+pos.y};
       if(m.mapName && m.mapName!=='Coaster Racing Park!')console.error('[Cart Racing] Wrong map:',m.mapName);
-      setTimeout(ensureCart,150);playRaceTheme();return
+      setTimeout(function(){applyRaceSpawn();ensureCart()},250);playRaceTheme();return
     }
     if(m.t==='race-countdown'){startCountdown(Number(m.startsAt));return}
     if(m.t==='race-waiting'){racePhase='waiting';clearInterval(countdownTimer);return}
     if(m.t==='race-start'){racePhase='racing';pendingCart=true;showCountdown('GO!');playRaceTheme();return}
     if(m.t==='race-kill-all'){
-      stopRaceTheme();racePhase='finished';
+      stopRaceTheme();racePhase='finished';removeRaceHud();
       var impact=document.createElement('div');impact.style.cssText='position:fixed;inset:0;background:#d20b18;opacity:.8;z-index:2147482998;pointer-events:none;transition:opacity .55s ease';
       document.body.appendChild(impact);
       requestAnimationFrame(function(){impact.style.opacity='0'});
@@ -373,7 +390,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     }
     if(m.t==='race-checkpoint'){console.info('[Cart Racing] checkpoint',m.number,m.total);return}
     if(m.t==='race-results'){
-      stopRaceTheme();racePhase='finished';if(results)results.remove();
+      stopRaceTheme();racePhase='finished';removeRaceHud();if(results)results.remove();
       results=document.createElement('div');results.id='build25-race-results';
       results.style.cssText='position:fixed;inset:0;z-index:2147483000;background:#000c;color:#fff;display:flex;align-items:center;justify-content:center;font:18px Arial';
       var box=document.createElement('div');box.style.cssText='padding:30px;background:#172332;border:2px solid #f7c76b;border-radius:14px;text-align:center;max-width:440px';
@@ -386,6 +403,13 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       results.appendChild(box);document.body.appendChild(results);
     }
   }
+  // Race vehicles are non-combat: suppress client-side weapon firing as well
+  // as the corresponding server-side attack packets.
+  document.addEventListener('mousedown',function(ev){
+    if(raceActive()&&ev.button===0&&!ev.target.closest('button,input,textarea,select,[role="button"]')){
+      ev.preventDefault();ev.stopImmediatePropagation();
+    }
+  },true);
   // Native C key remains responsible for toggling cart state.
   // Prevent inventory-selection ejections from persisting, but respect C exits.
   document.addEventListener('keydown',function(ev){
@@ -403,9 +427,13 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     var p=window.DiggerzPvp22;
     if(!p)return;
     if(p.socket&&p.socket!==hookedSocket){hookedSocket=p.socket;hookedSocket.addEventListener('message',handleRacePacket)}
-    if(raceActive()&&!manualExit){pendingCart=true;if(ensureCart())pendingCart=false;}
+    if(raceActive()&&!manualExit){applyRaceSpawn();pendingCart=true;if(ensureCart())pendingCart=false;}
     if(raceActive()&&p.joined&&racePhase!=='finished'&&!raceAudio)playRaceTheme();
-    if(!raceActive()&&raceAudio)stopRaceTheme();
+    if(!raceActive() || !p.joined){
+      removeRaceHud();
+      if(raceAudio)stopRaceTheme();
+      if(!raceActive()){raceSpawnPending=null;racePhase='waiting';}
+    }
     if(window.__diggerzBuild25IntroFinished&&!p.joined&&!p.starting){
       installButton();if(button)button.style.display=raceActive()?'none':'flex';
       try{if(sessionStorage.getItem('build25-auto-race')==='1'){sessionStorage.removeItem('build25-auto-race');launch()}}catch(e){}
