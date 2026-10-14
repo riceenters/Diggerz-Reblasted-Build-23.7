@@ -507,28 +507,6 @@ function patchGameHtmlForBuild239(input) {
     html=html.replace(from,to);
   }
 
-  // Cart Racing: make the native game client use its dedicated race service and
-  // apply the race map instead of falling back to the default Dig & Trade world.
-  const raceWorldPatches=[
-    [
-      'if(m.map&&(self.mode===\'pvp\'||self.mode===\'digtrade\'))self.pvpApplyBaseMap(m.map);',
-      'if(m.map&&(self.mode===\'pvp\'||self.mode===\'digtrade\'||self.mode===\'race\'))self.pvpApplyBaseMap(m.map);'
-    ],
-    [
-      "if((this.mode!=='pvp'&&this.mode!=='digtrade')||!map",
-      "if((this.mode!=='pvp'&&this.mode!=='digtrade'&&this.mode!=='race')||!map"
-    ],
-    [
-      'this.R36 = usePvpTest ? new DiggerzService(this, "pvp")',
-      'this.R36 = usePvpTest ? new DiggerzService(this, (window.DiggerzPvp22 && window.DiggerzPvp22.mode==="race")?"race":"pvp")'
-    ]
-  ];
-  for(const [from,to] of raceWorldPatches){
-    if(html.includes(to))continue;
-    if(!html.includes(from))throw new Error('[Cart Racing] Critical game anchor not found: '+from);
-    html=html.replace(from,to);
-  }
-
   // Hybrid prototype: Coaster Town's Bat Cart visual for race riders only.
   // Leave every existing Basic Cart instance outside Cart Racing untouched.
   const normalCartSprite='k.Init(f.BASIC_CART_PNG());';
