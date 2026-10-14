@@ -2221,7 +2221,7 @@ function addClientToRoom(client, room, mode, name) {
     tiles: [...room.tiles.values()], backgroundTiles: [...room.backgroundTiles.values()], drops: [...room.drops.values()], coins: [...room.coins.values()], speaker: room.speaker ? {...room.speaker} : null, serverNow: Date.now()
   });
   if (mode === 'pvp') sendBattleState(client);
-  if(mode==='race'){sendJson(client,{t:'race-setup',spawn:client.position,mapName:room.map.name,lockedCart:true}); broadcastRoom(room,{t:'race-waiting',count:room.clients.size,minimum:3}); if(room.race.phase==='waiting'&&room.clients.size>=3){room.race.phase='countdown';room.race.startAt=Date.now()+4500;room.race.deadline=room.race.startAt+360000;broadcastRoom(room,{t:'race-countdown',startsAt:room.race.startAt});log('Race '+room.code+': three players joined; countdown started');}}
+  if(mode==='race'){sendJson(client,{t:'race-setup',spawn:client.position,mapName:room.map.name,lockedCart:true}); broadcastRoom(room,{t:'race-waiting',count:room.clients.size,minimum:2}); if(room.race.phase==='waiting'&&room.clients.size>=2){room.race.phase='countdown';room.race.startAt=Date.now()+4500;room.race.deadline=room.race.startAt+360000;broadcastRoom(room,{t:'race-countdown',startsAt:room.race.startAt});log('Race '+room.code+': two players joined; countdown started');}}
   // Fake players are real native player entities on every browser. Send the same
   // recovered opcode-5 spawn packet used by an actual connected player.
   if (room.fakePlayers) for (const fake of room.fakePlayers.values()) sendFakeNativeSpawn(room,fake,client);
@@ -3220,7 +3220,7 @@ function leaveRoom(client) {
 
   log(`${client.connectionId} left ${room.code}. ${room.clients.size}/${MAX_ROOM_PLAYERS}`);
 
-  if (room.mode === 'race' && room.race && room.race.phase==='countdown' && room.clients.size<3) {room.race.phase='waiting';room.race.startAt=0;broadcastRoom(room,{t:'race-waiting',count:room.clients.size,minimum:3});}
+  if (room.mode === 'race' && room.race && room.race.phase==='countdown' && room.clients.size<2) {room.race.phase='waiting';room.race.startAt=0;broadcastRoom(room,{t:'race-waiting',count:room.clients.size,minimum:2});}
   if (room.mode === 'pvp' && room.battle && room.battle.elimination) { broadcastRemaining(room); finishBattleIfNeeded(room); }
 
   if (room.clients.size === 0) {
