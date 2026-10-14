@@ -537,6 +537,13 @@ function patchGameHtmlForBuild239(input) {
     else console.warn('[Cart Racing] Missing optional runtime patch:',before.slice(0,80));
   }
 
+  // The DiggerzService constructor starts matchmaking only for pvp/digtrade
+  // in the original game; include race so its room and map arrive correctly.
+  const raceAutoMatchBefore='if (this.mode === "pvp" || this.mode === "digtrade") {';
+  const raceAutoMatchAfter='if (this.mode === "pvp" || this.mode === "digtrade" || this.mode === "race") {';
+  if(html.includes(raceAutoMatchBefore))html=html.replace(raceAutoMatchBefore,raceAutoMatchAfter);
+  else if(!html.includes(raceAutoMatchAfter))console.warn('[Cart Racing] Matchmaking constructor anchor not found');
+
   // Hybrid prototype: Coaster Town's Bat Cart visual for race riders only.
   // Leave every existing Basic Cart instance outside Cart Racing untouched.
   const normalCartSprite='k.Init(f.BASIC_CART_PNG());';
