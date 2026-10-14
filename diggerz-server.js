@@ -1334,7 +1334,11 @@ function relayBinary(client, payload) {
     try {
       const x = readNativeFixedBE(payload, 2);
       const y = readNativeFixedBE(payload, 18);
-      if (Number.isFinite(x) && Number.isFinite(y)) { client.position = {x,y}; if (client.room && client.room.mode==='race') advanceCartRace(client); }
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        if(client.room && client.room.mode==='race' && client.room.race && client.room.race.phase!=='racing'){
+          client.position=client.raceStartPosition||client.position;
+        } else {client.position={x,y}; if(client.room && client.room.mode==='race')advanceCartRace(client);}
+      }
     } catch {}
   }
 
@@ -1860,9 +1864,11 @@ function respawnRaceClient(client) {
 function advanceCartRace(client) {
   const room=client && client.room, race=room && room.race;
   if(!race || room.mode!=='race'||!room.map||!client.position||client.raceFinished)return;
+  if(race.phase==='waiting'||race.phase==='countdown')return;
   if(race.phase==='countdown'&&Date.now()>=race.startAt){race.phase='racing';broadcastRoom(room,{t:'race-start',at:race.startAt});}
   if(race.phase!=='racing')return;
   const now=Date.now(), pos=client.position, previous=client.raceLastPosition;
+  if(now-race.startAt<500)return;
   // Prevent a client from teleporting directly to the finish to claim coins.
   if(previous && now-previous.at<1000 && Math.hypot(pos.x-previous.x,pos.y-previous.y)>25)return;
   client.raceLastPosition={x:pos.x,y:pos.y,at:now};
@@ -2150,7 +2156,7 @@ function addClientToRoom(client, room, mode, name) {
   client.shots = 0;
   client.hits = 0;
   client.position = mode==='race' && room.map && room.map.race && room.map.race.spawn.length ? (()=>{const a=room.map.race.spawn[room.clients.size%room.map.race.spawn.length];return {x:a.x+.5,y:a.y-.9};})() : { x: randomSpawnX(room), y: 2 };
-  if(mode==='race'){client.raceCheckpoint=null;client.raceCheckpointKey='';client.raceCheckpointIndex=0;client.raceLastPosition=null;client.raceFinished=false;}
+  if(mode==='race'){client.raceCheckpoint=null;client.raceCheckpointKey='';client.raceCheckpointIndex=0;client.raceLastPosition=null;client.raceFinished=false;client.raceStartPosition={...client.position};}
   room.clients.add(client);
 
   sendJson(client, {
@@ -3819,6 +3825,23 @@ const battleClock = setInterval(() => {
       const race=room.race;
       if(race.phase==='countdown' && now>=race.startAt){race.phase='racing';broadcastRoom(room,{t:'race-start',at:race.startAt});}
       if(race.phase==='racing' && now>=race.deadline)endCartRace(room);
+      if(race.phase==='waiting'||race.phase==='countdown'||race.phase==='racing'){
+        if(!race.lastRankBroadcast || now-race.lastRankBroadcast>=500){
+          race.lastRankBroadcast=now;
+          const start=room.map?.race?.spawn?.[0]||{x:11,y:39};
+          const finish=room.map?.race?.finish?.[0]||{x:7,y:58};
+          const checkpoints=room.map?.race?.checkpoints||[];
+          const pts=[start,...checkpoints,finish];
+          const racers=[...room.clients].map(c=>{
+            const idx=Math.min(checkpoints.length,c.raceCheckpointIndex||0);
+            const p=c.position||start;
+            const next=pts[idx+1]||finish;
+            const dist=Math.hypot(p.x-next.x,p.y-next.y);
+            return {connectionId:c.connectionId,name:c.name,progress:idx,dist};
+          }).sort((a,b)=>b.progress-a.progress||a.dist-b.dist);
+          broadcastRoom(room,{t:'race-standings',standings:racers.map((c,i)=>({connectionId:c.connectionId,name:c.name,place:i+1}))},true);
+        }
+      }
     }
   }
 }, 200);
