@@ -564,6 +564,13 @@ function patchGameHtmlForBuild239(input) {
     console.warn('[Build 25] Native player facing anchor not found.');
   }
 
+  // Welcome splash: native C39 mouse/touch click should always dismiss.
+  // The old _8[3] guard can remain set after joining, trapping the splash.
+  const welcomeDismissOld = 'C39: function() {\n            null != this._8[3] || this.d34.E7() || (this.a0 = 1,\n            E.u4(this, 0, 300, 1, .5, 0, 1, 0))';
+  const welcomeDismissNew = 'C39: function() {\n            if(this.a0===0){this.a0=1;E.u4(this,0,300,1,.5,0,1,0)}';
+  if(html.includes(welcomeDismissOld))html=html.replace(welcomeDismissOld,welcomeDismissNew);
+  else if(!html.includes(welcomeDismissNew))console.warn('[Diggerz] Native welcome splash click anchor missing');
+
   return Buffer.from(html, 'utf8');
 }
 
