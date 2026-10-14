@@ -303,7 +303,10 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     try{
       var p=window.DiggerzPvp22;
       if(!p||typeof q==='undefined'||typeof l==='undefined'||!q.InitMainGame)return;
+      // Select the dedicated race room BEFORE constructing the native service.
+      // The service now starts its own race matchmaking after InitMainGame().
       p.mode='race';p.requested=true;p.intentionalClose=false;
+      p.joined=false;p.connected=false;p.starting=false;
       q.diggerzPvpRequested=true;q.diggerzPeerMode='race';q.diggerzDigTradeRequested=false;q.diggerzShopRequested=false;
       l.A45=false;l.A46=false;l.A47=false;l.A48=false;l.A40=null;
       q.player.l7=false;q.mClicked=false;
@@ -343,7 +346,11 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(!raceActive()||typeof ev.data!=='string')return;
     var m;try{m=JSON.parse(ev.data)}catch(e){return}
     if(!m||!m.t)return;
-    if(m.t==='race-setup'||m.t==='race-respawn'){manualExit=false;pendingCart=true;setTimeout(ensureCart,150);playRaceTheme();return}
+    if(m.t==='race-setup'||m.t==='race-respawn'){
+      manualExit=false;pendingCart=true;
+      if(m.mapName && m.mapName!=='Coaster Racing Park!')console.error('[Cart Racing] Wrong map:',m.mapName);
+      setTimeout(ensureCart,150);playRaceTheme();return
+    }
     if(m.t==='race-countdown'){startCountdown(Number(m.startsAt));return}
     if(m.t==='race-waiting'){racePhase='waiting';clearInterval(countdownTimer);return}
     if(m.t==='race-start'){racePhase='racing';pendingCart=true;showCountdown('GO!');playRaceTheme();return}
