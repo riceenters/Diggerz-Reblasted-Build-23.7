@@ -440,3 +440,70 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     }else if(button)button.style.display='none';
   },300);
 }());
+
+
+/* Build 25 admin convenience: use Basic/Coaster carts in any game world. */
+(function(){
+  'use strict';
+  if(window.__diggerzAdminAnywhereCarts)return;
+  window.__diggerzAdminAnywhereCarts=true;
+  var enabled=false, originalPermission=null, button=null;
+  function service(){return (window.Main&&window.Main.diggerzService)||(window.q&&window.q.diggerzService)||null}
+  function authorized(){
+    var t=window.DiggerzAdminSessionToken;
+    var s=service();
+    return !!(t&&s&&((typeof s.adminIsOwnerAuthorized==='function'&&s.adminIsOwnerAuthorized())||
+      (typeof s.adminIsLimeAuthorized==='function'&&s.adminIsLimeAuthorized())));
+  }
+  function currentPlayer(){return (typeof l!=='undefined'&&l.z39)||null}
+  function setButton(){
+    if(!button)return;
+    button.textContent=enabled?'Disable Carts Anywhere':'Enable Carts Anywhere';
+    button.style.background=enabled?'#236345':'#34475c';
+  }
+  function setEnabled(value){
+    if(!authorized()){enabled=false;setButton();return}
+    enabled=!!value;
+    var p=currentPlayer();
+    if(p){
+      if(enabled){
+        if(originalPermission===null)originalPermission=p.J31|0;
+        p.J31|=1;
+      }else if(originalPermission!==null){
+        p.J31=(p.J31&~1)|(originalPermission&1);
+        originalPermission=null;
+      }
+    }
+    setButton();
+  }
+  function install(){
+    var panel=document.getElementById('diggerz-admin-panel');
+    if(!panel)return;
+    if(!button){
+      var wrap=document.createElement('div');wrap.id='diggerz-admin-cart-control';
+      var head=document.createElement('h3');head.textContent='Carts Anywhere';
+      var help=document.createElement('p');help.textContent='Allow your character to use carts outside Cart Racing. Press C near a cart to enter, or use the button below to ride immediately.';
+      button=document.createElement('button');button.type='button';button.id='admin-carts-anywhere';
+      button.onclick=function(){setEnabled(!enabled)};
+      var ride=document.createElement('button');ride.type='button';ride.textContent='Ride a Cart Now';
+      ride.style.marginLeft='7px';
+      ride.onclick=function(){
+        if(!authorized())return;
+        setEnabled(true);
+        var p=currentPlayer();
+        if(!p||typeof p.L31!=='function'||typeof oa==='undefined')return;
+        if(p.i32!==oa.MODE_CART)p.L31([109],[0],[0],[0],[0],[0],[0]);
+      };
+      wrap.appendChild(head);wrap.appendChild(help);wrap.appendChild(button);wrap.appendChild(ride);
+      panel.appendChild(wrap);setButton();
+    }
+    var valid=authorized();
+    var wrap=button.parentElement;
+    if(wrap)wrap.style.display=valid?'block':'none';
+    if(enabled){
+      if(!valid){enabled=false;originalPermission=null;setButton()}
+      else {var p=currentPlayer();if(p)p.J31|=1}
+    }
+  }
+  setInterval(install,500);
+}());
