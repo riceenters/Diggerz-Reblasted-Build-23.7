@@ -3696,6 +3696,11 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (urlPath === '/levelup.ogg') { serveBuffer(res,levelupOgg,'audio/ogg'); return; }
+  if (urlPath === '/cart-racing-theme.mp3') {
+    try { serveBuffer(res,fs.readFileSync(path.join(__dirname,'Pinapple Rag Techno Remake.mp3')),'audio/mpeg'); }
+    catch(e){ res.writeHead(404,{'Content-Type':'text/plain'});res.end('Cart Racing theme missing'); }
+    return;
+  }
   if (urlPath === '/build25-menu.mp3') { proxyRemoteAudio(res,BUILD25_MENU_REMOTE_URL); return; }
   if (urlPath === '/build25-lime.png') { try { const b=fs.readFileSync(path.join(__dirname,'build25-lime.png')); serveBuffer(res,b,'image/png'); } catch(e) { res.writeHead(404); res.end(); } return; }
   if (urlPath === '/build25-heufancy.png') { try { const b=fs.readFileSync(path.join(__dirname,'build25-heufancy.png')); serveBuffer(res,b,'image/png'); } catch(e) { res.writeHead(404); res.end(); } return; }
