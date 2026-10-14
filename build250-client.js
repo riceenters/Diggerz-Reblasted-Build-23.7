@@ -348,6 +348,15 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(m.t==='race-waiting'){racePhase='waiting';clearInterval(countdownTimer);return}
     if(m.t==='race-start'){racePhase='racing';pendingCart=true;showCountdown('GO!');playRaceTheme();return}
     if(m.t==='race-kill-all'){stopRaceTheme();racePhase='finished';return}
+    if(m.t==='race-standings'){
+      var self=window.DiggerzPvp22, cid=self&&self.connectionId;
+      var standings=m.standings||[];
+      var me=standings.find(function(x){return x.connectionId===cid});
+      var hud=document.getElementById('build25-race-place');
+      if(!hud){hud=document.createElement('div');hud.id='build25-race-place';hud.style.cssText='position:fixed;top:16px;right:20px;z-index:9998;padding:10px 16px;background:#7c0f12dd;border:2px solid #fff5;border-radius:10px;color:#fff;font:bold 22px Arial';document.body.appendChild(hud)}
+      hud.textContent=(me?'#'+me.place:'--')+' / '+standings.length+' PLACE';
+      return;
+    }
     if(m.t==='race-checkpoint'){console.info('[Cart Racing] checkpoint',m.number,m.total);return}
     if(m.t==='race-results'){
       stopRaceTheme();racePhase='finished';if(results)results.remove();
