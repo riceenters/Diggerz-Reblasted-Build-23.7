@@ -285,6 +285,28 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   window.__diggerzCartRaceInstalled=true;
   var button=null, raceRoom='', hookedSocket=null, pendingCart=false, results=null,manualExit=false,lastC=0,racePhase='waiting',raceAudio=null,countdownTimer=null,raceSpawnPending=null;
   function raceActive(){var p=window.DiggerzPvp22;return !!(p&&p.mode==='race'&&(p.requested||p.joined));}
+  // Race peers have their sit pose synchronized, but the native cart sprite is
+  // created only for the local rider. Attach a visual-only cart to peer entities.
+  // This does not alter their physics, inventory, permissions or hitboxes.
+  function showPeerRaceCarts(){
+    if(!raceActive())return;
+    try{
+      var game=typeof q!=='undefined'&&q.thisMain, service=game&&game.R36;
+      if(!service||!service.pvpPeers||typeof service.pvpEntityForPeer!=='function'||
+         typeof zd==='undefined'||typeof f==='undefined')return;
+      var peers=service.pvpPeers;
+      for(var key in peers){
+        if(!Object.prototype.hasOwnProperty.call(peers,key))continue;
+        var entity=service.pvpEntityForPeer(peers[key]);
+        if(!entity||!entity._9||typeof entity.f0!=='function')continue;
+        if(entity.f0('cart'))continue;
+        var cart=new zd(entity,109,true);
+        cart.Init(f.BATCART_PNG());cart.D7(entity);
+        cart.b6=0;cart._1='cart';
+        entity._9.push(cart);
+      }
+    }catch(e){if(!showPeerRaceCarts.warned){console.warn('[Cart Racing] Remote cart visual error',e);showPeerRaceCarts.warned=true}}
+  }
   function ensureCart(){
     if(!raceActive()||manualExit)return false;
     try{
@@ -429,6 +451,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(!p)return;
     if(p.socket&&p.socket!==hookedSocket){hookedSocket=p.socket;hookedSocket.addEventListener('message',handleRacePacket)}
     if(raceActive()&&!manualExit){applyRaceSpawn();pendingCart=true;if(ensureCart())pendingCart=false;}
+    if(raceActive()&&p.joined)showPeerRaceCarts();
     if(raceActive()&&p.joined&&racePhase!=='finished'&&!raceAudio)playRaceTheme();
     if(!raceActive() || !p.joined){
       clearRaceLobby();removeRaceHud();
