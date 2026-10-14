@@ -399,7 +399,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       setTimeout(function(){applyRaceSpawn();ensureCart()},250);playRaceTheme();return
     }
     if(m.t==='race-countdown'){clearRaceLobby();startCountdown(Number(m.startsAt));return}
-    if(m.t==='race-waiting'){racePhase='waiting';clearInterval(countdownTimer);raceLobbyNotice('WAITING FOR RACERS  '+(m.count||1)+' / '+(m.minimum||3));return}
+    if(m.t==='race-waiting'){racePhase='waiting';clearInterval(countdownTimer);raceLobbyNotice('WAITING FOR RACERS  '+(m.count||1)+' / '+(m.minimum||2));return}
     if(m.t==='race-start'){clearRaceLobby();racePhase='racing';pendingCart=true;showCountdown('GO!');playRaceTheme();return}
     if(m.t==='race-kill-all'){
       stopRaceTheme();racePhase='finished';clearRaceLobby();removeRaceHud();
