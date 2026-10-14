@@ -343,7 +343,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(!raceActive()||typeof ev.data!=='string')return;
     var m;try{m=JSON.parse(ev.data)}catch(e){return}
     if(!m||!m.t)return;
-    if(m.t==='race-setup'||m.t==='race-respawn'){manualExit=false;pendingCart=true;setTimeout(ensureCart,150);return}
+    if(m.t==='race-setup'||m.t==='race-respawn'){manualExit=false;pendingCart=true;setTimeout(ensureCart,150);playRaceTheme();return}
     if(m.t==='race-countdown'){startCountdown(Number(m.startsAt));return}
     if(m.t==='race-waiting'){racePhase='waiting';clearInterval(countdownTimer);return}
     if(m.t==='race-start'){racePhase='racing';pendingCart=true;showCountdown('GO!');playRaceTheme();return}
@@ -397,6 +397,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(!p)return;
     if(p.socket&&p.socket!==hookedSocket){hookedSocket=p.socket;hookedSocket.addEventListener('message',handleRacePacket)}
     if(raceActive()&&!manualExit){pendingCart=true;if(ensureCart())pendingCart=false;}
+    if(raceActive()&&p.joined&&racePhase!=='finished'&&!raceAudio)playRaceTheme();
+    if(!raceActive()&&raceAudio)stopRaceTheme();
     if(window.__diggerzBuild25IntroFinished&&!p.joined&&!p.starting){
       installButton();if(button)button.style.display=raceActive()?'none':'flex';
       try{if(sessionStorage.getItem('build25-auto-race')==='1'){sessionStorage.removeItem('build25-auto-race');launch()}}catch(e){}
