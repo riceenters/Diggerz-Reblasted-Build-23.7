@@ -2738,8 +2738,7 @@ function relayGameMessage(client, message, rawLength) {
       const now = Date.now();
       if (now - (client.lastHazardNoticeAt || 0) > 1800) {
         client.lastHazardNoticeAt = now;
-        const text = room.mode === 'digtrade' ? '^3Damage blocks are disabled in Dig + Trade.' : '^3Damage blocks are disabled until PvP starts.';
-        sendJson(client, {t:'chat', text, _serverFrom:'SERVER', _serverName:'Server', systemPresence:true});
+        sendJson(client, {t:'damage-blocked'});
       }
       sendJson(client, {t:'force-respawn', x:client.position.x, y:client.position.y, health:3, protectedFromHazard:true});
       return;
@@ -2910,7 +2909,7 @@ function relayGameMessage(client, message, rawLength) {
       if (room.mode === 'pvp' && room.battle && room.battle.phase !== 'fight' && room.battle.phase !== 'elimination') {
         if (Date.now() - (client.lastMineBlockNoticeAt || 0) > 1400) {
           client.lastMineBlockNoticeAt = Date.now();
-          sendJson(client, {t:'chat', text:'^3You cannot mine before PvP starts.', _serverFrom:'SERVER', _serverName:'Server', systemPresence:true});
+          sendJson(client, {t:'mine-blocked'});
         }
         return;
       }

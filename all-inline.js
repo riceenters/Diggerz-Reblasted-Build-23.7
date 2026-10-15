@@ -119009,7 +119009,7 @@ e50: function(a) {
     var oldSetTile=proto.setTile;proto.setTile=function(x,y,id,variant,layer){layer=layer==null?0:(layer|0);var r=oldSetTile.call(this,x,y,id,variant,layer);if(r&&window.DiggerzIsMultiplayer(this)&&!this._pvpApplyingTile){var actor=this._diggerzPlacementActor||null;this.pvpSend({t:'tile',x:x,y:y,id:id,variant:variant||0,layer:layer,px:actor&&isFinite(actor.x)?actor.x:null,py:actor&&isFinite(actor.y)?actor.y:null});this._diggerzPlacementActor=null}return r};
     var oldDirect=proto.weaponDirectHit;proto.weaponDirectHit=function(fromX,fromY,toX,toY,attackType){var r=oldDirect.call(this,fromX,fromY,toX,toY,attackType);if((this.mode==='pvp'&&P.mode==='pvp')||(this.mode==='digtrade'&&P.mode==='digtrade'&&(this.adminPvpEnabled||(typeof q!=='undefined'&&q.diggerzAdminPvpEnabled)))){var peer=this.pvpRemoteHitLine(fromX,fromY,toX,toY);if(peer)this.pvpSend({t:'damage',targetConnectionId:peer.connectionId,amount:1,source:'weapon'})}return r};
     var oldImpact=proto.weaponImpactDamage;proto.weaponImpactDamage=function(x,y,impactType){var r=oldImpact.call(this,x,y,impactType);if((this.mode==='pvp'&&P.mode==='pvp')||(this.mode==='digtrade'&&P.mode==='digtrade'&&(this.adminPvpEnabled||(typeof q!=='undefined'&&q.diggerzAdminPvpEnabled)))){var peers=this.pvpEnsurePeers();for(var k in peers){var peer=peers[k],e=this.pvpEntityForPeer(peer);if(!e||!e.a2)continue;var px=e.b6/l._44,py=e.b7/l._44,dx=px-x,dy=py-y,hit=false;if(impactType===36)hit=Math.hypot(dx,dy)<=.95;else if(impactType===30)hit=Math.abs(dx)<=.9&&Math.abs(dy)<=.9;else if(impactType===24)hit=Math.abs(dx)<=1.7&&Math.abs(dy)<=1.7;else if(impactType===38)hit=Math.abs(dx)<=2.8&&Math.abs(dy)<=2.8;else if(impactType===40)hit=(Math.abs(dx)<=.8&&dy>=0&&dy<=3.4)||(Math.abs(dx)<=1.7&&Math.abs(dy-3)<=1.7);else hit=Math.hypot(dx,dy)<=2.35;if(hit)this.pvpSend({t:'damage',targetConnectionId:peer.connectionId,amount:1,source:'weapon'})}}return r};
-    var oldHurt=proto.hurtLocalPlayer;proto.hurtLocalPlayer=function(amount,source){if(this.adminEffects&&this.adminEffects.god)return;var wasDead=!!this.localDead,r=oldHurt.call(this,amount,source);if(this.mode==='pvp'&&P.mode==='pvp'){var max=l.z39&&l.z39.N34||3,current=this.localHealth==null?(l.z39&&l.z39.N33||max):this.localHealth;this.pvpSend({t:'health',current:current,maximum:max});if(!wasDead&&this.localDead){var x=l.z39?l.z39.b6/l._44:this.state.x,y=l.z39?l.z39.b7/l._44:this.state.y;this.pvpSend({t:'death',x:x,y:y})}}return r};
+    var oldHurt=proto.hurtLocalPlayer;proto.hurtLocalPlayer=function(amount,source){if(this.adminEffects&&this.adminEffects.god)return;var battlePhase=P.battle&&P.battle.phase||'waiting';var battleProtected=this.mode==='pvp'&&P.mode==='pvp'&&battlePhase!=='fight'&&battlePhase!=='elimination';var digtradeProtected=this.mode==='digtrade'&&P.mode==='digtrade'&&!(this.adminPvpEnabled||(typeof q!=='undefined'&&q.diggerzAdminPvpEnabled));if(battleProtected||digtradeProtected){var now=Date.now();if(now-(this._damageBlockedNoticeAt||0)>1400){this._damageBlockedNoticeAt=now;try{if(this.message)this.message('^7You can\'t get hurt until the match starts.')}catch(_noticeError){}}return}var wasDead=!!this.localDead,r=oldHurt.call(this,amount,source);if(this.mode==='pvp'&&P.mode==='pvp'){var max=l.z39&&l.z39.N34||3,current=this.localHealth==null?(l.z39&&l.z39.N33||max):this.localHealth;this.pvpSend({t:'health',current:current,maximum:max});if(!wasDead&&this.localDead){var x=l.z39?l.z39.b6/l._44:this.state.x,y=l.z39?l.z39.b7/l._44:this.state.y;this.pvpSend({t:'death',x:x,y:y})}}return r};
     var oldRespawn=proto.respawnLocalPlayer;proto.respawnLocalPlayer=function(){var r=oldRespawn.call(this);if(this.mode==='pvp'&&P.mode==='pvp'){var x=l.z39?l.z39.b6/l._44:this.state.x,y=l.z39?l.z39.b7/l._44:this.state.y;this.pvpSend({t:'respawn',x:x,y:y});this.pvpSendHello();if(P.connected)this.pvpSendNativeSpawn()}return r};
     var oldAdminPlayers=proto.adminPlayers;proto.adminPlayers=function(){if(!window.DiggerzIsMultiplayer(this))return oldAdminPlayers.call(this);var out=[{name:this.playerName(),local:true}],seen={};seen[this.playerName()]=1;var peers=this.pvpEnsurePeers();for(var k in peers){var name=String(peers[k].name||'Player');if(!seen[name]){seen[name]=1;out.push({name:name,local:false})}}return out};
     proto.adminSpawnItem=function(category,id,count,targetName){if(!this.adminIsAdminAuthorized()||!window.DiggerzAdminSessionToken)return {ok:false,message:'Server admin authentication required.'};category|=0;id|=0;count=Math.max(1,Math.min(999,count|0));if((category!==1&&category!==2)||id<=0||id>2047)return {ok:false,message:'Invalid item.'};if(!P.joined||!P.connectionId)return {ok:false,message:'Admin item grants require the multiplayer server.'};var name=this.itemName(category,id),targetConnectionId='',displayName=String(targetName||'').trim();if(!displayName||displayName===this.playerName()){targetConnectionId=P.connectionId;displayName=this.playerName()}else{var peer=this.pvpFindPeerByName(displayName);if(!peer)return {ok:false,message:'Player not found.'};targetConnectionId=peer.connectionId}this.pvpSend({t:'admin-item',adminToken:window.DiggerzAdminSessionToken,targetConnectionId:targetConnectionId,category:category,id:id,count:count});return {ok:true,message:'Requested '+count+' × '+name+' for '+displayName+'.'}};
@@ -119079,7 +119079,23 @@ e50: function(a) {
     function serverNow(){return Date.now()+(P.battle.serverOffset||0)}
     function chat(s){try{if(P.service&&P.service.message)P.service.message(s)}catch(e){}}
     function bannerText(text,color){if(!banner)return;if(!text){banner.style.display='none';return}banner.textContent=text;banner.style.color=color||'#39e7ff';banner.style.display='block'}
-    function popText(text,color){if(!pop)return;pop.classList.remove('go');void pop.offsetWidth;pop.textContent=text;pop.style.color=color||'#ffe52e';pop.classList.add('go')}
+    function popText(text,color){
+      // Use the game's native large-text layer, separate from the announcement banner.
+      // The number fades in while settling from oversized, then shrinks and fades away.
+      try{
+        var game=P.service&&(P.service.game||l.z38)||l.z38;
+        if(game&&game._9&&typeof xa==='function'){
+          for(var i=0;i<game._9.length;i++){var old=game._9[i];if(old&&old._1==='BattleCountdownText'){old.a0=1;try{old.e3()}catch(_e){}}}
+          var raw=(color==='#ff2f39'?'^1':'^3')+String(text);
+          var a=new xa(q.CENTERX,Math.round(q.SCREENHEIGHT*.40),raw,q.MAIN_FONT_BIG);
+          a._1='BattleCountdownText';a.set_alp(0);a.set_local_xScale(a.set_local_yScale(1.85));
+          a.F6(5,0,1,160);a.F6(3,1.85,1.02,260);a.F6(4,1.85,1.02,260);
+          a.F6(3,1.02,.62,320,!1,390);a.F6(4,1.02,.62,320,!1,390);a.F6(5,1,0,320,!1,390);
+          game._9.push(a);setTimeout(function(){try{a.a0=1}catch(_e){}},780);return;
+        }
+      }catch(_nativePop){}
+      if(pop){pop.style.setProperty('visibility','visible','important');pop.style.setProperty('display','block','important');pop.classList.remove('go');void pop.offsetWidth;pop.textContent=text;pop.style.color=color||'#ffe52e';pop.classList.add('go')}
+    }
     function winText(name){if(!winner)return;var text=String(name||'Player')+' wins!';winner.querySelector('.front').textContent=text;winner.querySelector('.shadow').textContent=text;winner.style.display='block';setTimeout(function(){winner.style.display='none'},2600)}
     function resetBattleUi(){bannerText('');if(winner)winner.style.display='none';if(leftBar)leftBar.style.display='none';if(rightBar)rightBar.style.display='none'}
     function stats(service){if(!service.battleStats)service.battleStats={shots:0,hits:0,kills:0};return service.battleStats}
@@ -119115,7 +119131,9 @@ e50: function(a) {
         else if(m.kind==='elimination'){P.battle.elimination=true;P.battle.phase='elimination';chat('^6ELIMINATION HAS BEGUN!')}
         return
       }
-      if(m.t==='fire-blocked'){chat("^9You can't shoot until the match starts!");return}
+      if(m.t==='fire-blocked'){chat("^3You can't dig or shoot yet!");return}
+      if(m.t==='mine-blocked'){chat("^3You can't dig or shoot yet!");return}
+      if(m.t==='damage-blocked'){chat("^7You can't get hurt until the match starts.");return}
       if(m.t==='freedig-fire-blocked'){chat("^9PvP is off in free dig! No fighting!");return}
       if(m.t==='aim'){var peer=this.pvpPeerForConnection(m._serverFrom),e=peer&&this.pvpEntityForPeer(peer);if(e&&e.M37)try{e.M37((+m.x||0)*l._44,(+m.y||0)*l._44);e.e0()}catch(_e){}return}
       if(m.t==='hit-confirm'){stats(this).hits++;return}
@@ -119182,7 +119200,7 @@ e50: function(a) {
           }
         }
         if(P.mode==='pvp'&&!mining&&(P.battle.phase!=='fight'&&P.battle.phase!=='elimination')){
-          if(!this._fireBlockAt||Date.now()-this._fireBlockAt>700){this._fireBlockAt=Date.now();chat("^9You can't shoot until the match starts!")}
+          if(!this._fireBlockAt||Date.now()-this._fireBlockAt>700){this._fireBlockAt=Date.now();chat("^3You can't dig or shoot yet!")}
           return
         }
         if(P.mode==='pvp'&&!mining)stats(this).shots++
