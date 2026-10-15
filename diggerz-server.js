@@ -1022,12 +1022,12 @@ try {
 } catch(error) { console.warn('[Diggerz] skipped digtrade.json:',error.message); digTradeMap=null; }
 
 function pickBattleMap() {
-  const rotation=[null,...customBattleMaps];
-  if (rotation.length === 1) return null;
-  let index=0,key='Default Map';
+  const rotation=customBattleMaps;
+  if (!rotation.length) return null;
+  let index=0,key='';
   for (let tries=0; tries<8; tries++) {
     index=Math.floor(Math.random()*rotation.length);
-    key=rotation[index] ? rotation[index].name : 'Default Map';
+    key=rotation[index].name;
     if (key!==lastBattleMapKey) break;
   }
   lastBattleMapKey=key;
@@ -1035,7 +1035,7 @@ function pickBattleMap() {
 }
 
 function battleMapName(room) {
-  return room && room.map ? room.map.name : 'Default Map';
+  return room && room.map ? room.map.name : 'No PvP Map';
 }
 
 const BATTLE_MAP_META = Object.freeze({
@@ -1662,17 +1662,8 @@ function tickFakePlayers(room, now) {
 }
 
 function makeDefaultMap() {
-  const tiles=[];
-  for(let x=0;x<128;x++) for(let y=0;y<80;y++) {
-    let id=0,v=0;
-    if(y===79){id=222;v=25;}
-    else if(y===18){id=222;v=25;}
-    else if(y>18){const depth=y-18,cave=depth>7&&y<77&&Math.sin(x*.31+y*.17)+Math.sin(x*.09-y*.37)>1.25;if(!cave){id=222;v=25;}}
-    if(id) tiles.push([x,y,id,v]);
-  }
-  const objs=[[5,256,0],[12,244,0],[19,256,1],[27,242,0],[34,242,1],[41,242,2],[49,256,0],[56,244,1],[63,233,0],[70,256,1],[78,242,0],[85,242,1],[92,242,2],[100,244,2],[108,256,0],[116,256,1],[123,244,0]];
-  for(const [x,id,v] of objs) tiles.push([x,17,id,v]);
-  return {format:'diggerz-pvp-map-v1',name:'Default Map',width:128,height:80,background:0,tiles,backgroundTiles:[]};
+  // Empty administrative fallback only; the official Dig & Trade layout is loaded from maps/digtrade.json.
+  return { format:'diggerz-pvp-map-v1', name:'Fallback Map', width:128, height:80, background:0, tiles:[], backgroundTiles:[], race:{spawn:[],finish:[],checkpoints:[]} };
 }
 
 function roomSnapshot(room) {
@@ -3474,7 +3465,7 @@ async function handleAdminApi(req, res, urlPath) {
   if (urlPath === '/api/admin/maps' && req.method === 'GET') {
     const session=adminSessionForRequest(req); if(!session){sendApiJson(res,401,{ok:false,error:'admin-auth'});return true;}
     const mapsOnDisk=loadCustomMaps();
-    const maps=[{name:'Default Map',map:makeDefaultMap()}].concat(mapsOnDisk.map(m=>({name:m.name,map:m})));
+    const maps=mapsOnDisk.map(m=>({name:m.name,map:m}));
     sendApiJson(res,200,{ok:true,maps}); return true;
   }
   if (urlPath === '/api/admin/map/apply' && req.method === 'POST') {
@@ -3802,7 +3793,7 @@ const server = http.createServer(async (req, res) => {
       maxPlayersPerRoom: MAX_ROOM_PLAYERS,
       activeBans: bans.filter(b=>b.permanent||b.expiresAt>Date.now()).length,
       transientPacketsDropped: [...rooms.values()].reduce((sum,room)=>sum+[...room.clients].reduce((n,c)=>n+(c.droppedTransient||0),0),0),
-      battleMaps: ['Default Map',...customBattleMaps.map(m=>m.name)],
+      battleMaps: customBattleMaps.map(m=>m.name),
       time: nowIso()
     }, null, 2);
     res.writeHead(200, {
@@ -3945,7 +3936,7 @@ server.listen(PORT, HOST, () => {
     }
   }
   log(`Health check: http://127.0.0.1:${PORT}/health`);
-  log(`Battle map pool (random per new room): Default Map${customBattleMaps.length ? ' + ' + customBattleMaps.map(m=>m.name).join(' + ') : ''}`);
+  log(`Battle map pool (random per new room): ${customBattleMaps.length ? customBattleMaps.map(m=>m.name).join(' + ') : '(none configured)'}`);
 });
 
 function shutdown(signal) {

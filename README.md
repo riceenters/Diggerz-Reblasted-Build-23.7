@@ -1,3 +1,5 @@
+- Replaced the generated PvP **Default Map** with the supplied **Dig & Trade** map, including its foreground tiles, backdrop tiles, and race metadata.
+
 Diggerz Build 24.0.22
 
 Fake players now use the same native player spawn/movement/despawn packets as connected players.
@@ -243,3 +245,10 @@ Diggerz.io and Coaster Town were originally created by **MeanDean**. Diggerz.io 
 - Server tile placement, replacement, and block-variant actions now self-correct legacy wrong-layer tiles.
 - Mining/removal requests fall back to the actual layer when a block was stranded on the opposite layer.
 - Clients clear stale opposite-layer copies before applying an authoritative corrected tile, restoring mining and block modification behavior.
+
+
+### Build 23.11 — Dig & Trade map separation
+
+- Removed `Default Map` from the PvP battle map rotation and admin map list. PvP now rotates only through configured custom battle maps.
+- Installed the supplied `dig-trade (4).json` layout as `maps/digtrade.json`, which is loaded only for Dig & Trade rooms.
+- The generic default generator is now an empty administrative fallback, not a PvP map.
