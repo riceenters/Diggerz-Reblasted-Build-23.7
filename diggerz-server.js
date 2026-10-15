@@ -356,19 +356,6 @@ function patchGameHtmlForBuild239(input) {
   if (html.includes(shopDataImageOld240)) html = html.replace(shopDataImageOld240,shopDataImageNew240);
   else console.warn('[Diggerz 24.0] shop data-image renderer target was not found.');
 
-  // Fanmade Roblox collab: keep the native Bazooka missile artwork/physics,
-  // but attach the Roblox launch/impact audio lifecycle to launcher 604.
-  const robloxRocketCtorOld240 = "        this.Init(f.MISSILE_PNG());\n        this.O23(b, c, d, e);\n        a = this.b33;";
-  const robloxRocketCtorNew240 = "        this.Init(f.MISSILE_PNG());\n        this.O23(b, c, d, e);\n        if(window.DiggerzBuild240&&window.DiggerzBuild240.isRobloxLauncherEntity&&window.DiggerzBuild240.isRobloxLauncherEntity(p)){this._build240RobloxRocket=true;try{window.DiggerzBuild240.registerRobloxRocketProjectile(this,p,b,c,d,e)}catch(_e){}}\n        a = this.b33;";
-  if (html.includes(robloxRocketCtorOld240)) html = html.replace(robloxRocketCtorOld240, robloxRocketCtorNew240);
-  else console.warn('[Diggerz 24.0] Roblox Rocket projectile constructor target was not found.');
-
-  // Do not hook e0 for the Roblox explosion sound: the recovered client calls
-  // this lifecycle method at launch time as well. build240-client.js now waits
-  // for the launched projectile to move and then become inactive/destroyed.
-  const robloxRocketImpactOld240 = "        e0: function() {\n            this.A59();\n            this.a2 && E.V0(l.z38, this.b6, this.b7, 1, 1, 1, -1, 1, -1, 1, 1, 1, 1, .5, 1, 1, .25, .5);";
-  if (!html.includes(robloxRocketImpactOld240)) console.warn('[Diggerz 24.0] Roblox Rocket projectile lifecycle target was not found.');
-
   // Final Build 24.0 mining patch: breaking terrain destroys that block.
   // The player only receives a randomized mining reward, not a free copy of
   // the exact block that was just mined.
@@ -1976,7 +1963,7 @@ function eliminateOrRespawn(victim, attacker, source) {
   if (attacker && attacker !== victim && attacker.room === room) {
     attacker.kills = (attacker.kills|0) + 1;
     sendJson(attacker, { t:'kill-confirm', victimName:victim.name, kills:attacker.kills });
-    broadcastRoom(room, { t:'kill-feed', killerName:attacker.name, killerConnectionId:attacker.connectionId, victimName:victim.name, victimConnectionId:victim.connectionId, kills:attacker.kills, source:String(source||'weapon') });
+    broadcastRoom(room, { t:'kill-feed', killerName:attacker.name, killerConnectionId:attacker.connectionId, killerWins:Math.max(0,attacker.wins|0), victimName:victim.name, victimConnectionId:victim.connectionId, victimWins:Math.max(0,victim.wins|0), kills:attacker.kills, source:String(source||'weapon') });
     spawnKillCoin(room, pos.x, pos.y - .35, attacker);
   }
 
@@ -2017,7 +2004,7 @@ function dealPvpDamage(attacker, victim, amount, source) {
       const sx=attacker&&attacker.position?attacker.position.x:randomSpawnX(room), sy=attacker&&attacker.position?attacker.position.y-1:2;
       victim.pvpHealth=0;victim.alive=false;victim.eliminated=false;
       setTimeout(()=>{if(!victim.closed&&victim.room===room){victim.pvpHealth=3;victim.alive=true;victim.position={x:sx,y:sy};sendJson(victim,{t:'force-respawn',x:sx,y:sy,health:3});broadcastRoom(room,{t:'respawn',x:sx,y:sy,_serverFrom:victim.connectionId,_serverName:victim.name},victim);}},1850).unref?.();
-      broadcastRoom(room,{t:'kill-feed',killerName:attacker&&attacker.name||'Player',killerConnectionId:attacker&&attacker.connectionId||'',victimName:victim.name,victimConnectionId:victim.connectionId,kills:attacker?((attacker.kills|0)):0,source:String(source||'weapon')});
+      broadcastRoom(room,{t:'kill-feed',killerName:attacker&&attacker.name||'Player',killerConnectionId:attacker&&attacker.connectionId||'',killerWins:Math.max(0,attacker&&attacker.wins|0),victimName:victim.name,victimConnectionId:victim.connectionId,victimWins:Math.max(0,victim.wins|0),kills:attacker?((attacker.kills|0)):0,source:String(source||'weapon')});
     }
   }
   return true;
@@ -2745,6 +2732,18 @@ function relayGameMessage(client, message, rawLength) {
   }
 
   if (message.t==='death') {
+    // Build 24.1: environmental damage blocks are inert in Dig+Trade and during PvP build/countdown.
+    const pvpFightLive = room.mode === 'pvp' && room.battle && (room.battle.phase === 'fight' || room.battle.phase === 'elimination');
+    if ((room.mode === 'digtrade' && !room.adminPvpOverride) || (room.mode === 'pvp' && !pvpFightLive)) {
+      const now = Date.now();
+      if (now - (client.lastHazardNoticeAt || 0) > 1800) {
+        client.lastHazardNoticeAt = now;
+        const text = room.mode === 'digtrade' ? '^3Damage blocks are disabled in Dig + Trade.' : '^3Damage blocks are disabled until PvP starts.';
+        sendJson(client, {t:'chat', text, _serverFrom:'SERVER', _serverName:'Server', systemPresence:true});
+      }
+      sendJson(client, {t:'force-respawn', x:client.position.x, y:client.position.y, health:3, protectedFromHazard:true});
+      return;
+    }
     if (room.mode==='pvp') {
       if (client.alive) {
         let attacker=null, source=message.source||'hazard';
@@ -2907,6 +2906,14 @@ function relayGameMessage(client, message, rawLength) {
     const key = `${x},${y}`;
 
     if (id === 0) {
+      // Build 24.1: no mining until the PvP build/countdown phase has ended.
+      if (room.mode === 'pvp' && room.battle && room.battle.phase !== 'fight' && room.battle.phase !== 'elimination') {
+        if (Date.now() - (client.lastMineBlockNoticeAt || 0) > 1400) {
+          client.lastMineBlockNoticeAt = Date.now();
+          sendJson(client, {t:'chat', text:'^3You cannot mine before PvP starts.', _serverFrom:'SERVER', _serverName:'Server', systemPresence:true});
+        }
+        return;
+      }
       // ---- MINE (already working) ----
       let actualLayer = requestedLayer;
       let prior = (requestedLayer === 2 ? room.backgroundTiles : room.tiles).get(key) || null;

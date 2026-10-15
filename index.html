@@ -23936,6 +23936,18 @@ var u = function() {};
         },
         hurtLocalPlayer: function(amount, source) {
             if (!l.z39 || this.localDead) return;
+            // Build 24.1 safety rule: Dig+Trade and the PvP build/countdown
+            // phase are safe zones for every environmental damage block.
+            var pvpState=window.DiggerzPvp22;
+            var pvpPhase=pvpState&&pvpState.battle&&pvpState.battle.phase;
+            if(this.mode==="digtrade" || (this.mode==="pvp" && pvpPhase!=="fight" && pvpPhase!=="elimination")){
+                var now=Date.now();
+                if(!this._build241SafeZoneNoticeAt || now-this._build241SafeZoneNoticeAt>2500){
+                    this._build241SafeZoneNoticeAt=now;
+                    try{this.centerMessage(this.mode==="digtrade"?"^2DAMAGE BLOCKS ARE DISABLED IN DIG + TRADE":"^2DAMAGE BLOCKS ARE DISABLED UNTIL PVP STARTS")}catch(_e){}
+                }
+                return;
+            }
             var max = l.z39.N34 || 3;
             var observed = l.z39.N33;
             if (this.localHealth == null || this.localHealth > max)
@@ -24465,6 +24477,18 @@ var u = function() {};
             var isMining = !!(heldRendered && heldRendered.T40) || attackType === 25 || attackType === 21 || attackType === 36 || attackType === 40;
             var heldId = heldItem && heldItem.category === 2 ? (heldItem.id | 0) : 0;
             var isToolWeapon = heldId === 239 || (heldId >= 379 && heldId <= 394) || (window.DiggerzBuild240 && window.DiggerzBuild240.isRgbWeaponId && window.DiggerzBuild240.isRgbWeaponId(heldId));
+            // Mining is locked during the Battle Royale build/countdown phase.
+            // Weapon-tools are excluded here; their attacks are governed by PvP rules.
+            var minePvpState=window.DiggerzPvp22;
+            var minePvpPhase=minePvpState&&minePvpState.battle&&minePvpState.battle.phase;
+            if(isMining && !isToolWeapon && this.mode==="pvp" && minePvpPhase!=="fight" && minePvpPhase!=="elimination"){
+                var mineNow=Date.now();
+                if(!this._build241MineNoticeAt || mineNow-this._build241MineNoticeAt>1800){
+                    this._build241MineNoticeAt=mineNow;
+                    try{this.centerMessage("^3YOU CAN'T MINE BEFORE PVP STARTS!")}catch(_e){}
+                }
+                return;
+            }
             // Excalibur and Lightswords keep their recovered tool/mining behavior, but
             // during active Battle Royale they also count as melee PvP attacks. They
             // never send PvP damage in Dig+Trade.
@@ -91363,7 +91387,6 @@ Ro.prototype = D(rj.prototype, {
         Jb.call(this, a, b, c, d, e, g, p);
         this.Init(f.MISSILE_PNG());
         this.O23(b, c, d, e);
-        if(window.DiggerzBuild240&&window.DiggerzBuild240.isRobloxLauncherEntity&&window.DiggerzBuild240.isRobloxLauncherEntity(p)){this._build240RobloxRocket=true;try{window.DiggerzBuild240.registerRobloxRocketProjectile(this,p,b,c,d,e)}catch(_e){}}
         a = this.b33;
         a.tBJ.immutable_midstep("Body::gravMass");
         a.tBJ.gravMassMode = 1;
@@ -121202,21 +121225,29 @@ e50: function(a) {
   };
 
   P.sendNative=function(packet){return sendNativePacket(packet)};
+  // Wait briefly after the room's tile state is applied so the world has a chance
+  // to materialize before the local player is spawned into it.
+  function queueSpawnAfterWorldSettles(service){
+    if(!service||service._pvpSpawnScheduled||service._pvpSpawnSent)return;
+    service._pvpSpawnScheduled=true;
+    setTimeout(function(){
+      service._pvpSpawnScheduled=false;
+      if(P.service!==service||!service._pvpWorldSynced)return;
+      if(service.pvpSendHello)try{service.pvpSendHello()}catch(_e){}
+      if(P.connected&&service.pvpSendNativeSpawn){try{service.pvpSendNativeSpawn();service._pvpSpawnSent=true}catch(_e){}}
+    },2200);
+  }
   P.attach=function(service){P.service=service;dbg('MP-070','game service attached: '+serviceName()+'; local/offline service='+(service&&service.constructor===DiggerzService?'YES':'NO'));while(P.queue.length)service.pvpReceive(P.queue.shift());while(P.nativeQueue.length)service.pvpReceiveNative(P.nativeQueue.shift());
     // Defer hello/spawn until room-state has applied map+items+peers, so the
     // local player does not appear in an empty/default world first.
     if(service._pvpWorldSynced){
-      if(service.pvpSendHello)service.pvpSendHello();
-      if(P.connected&&service.pvpSendNativeSpawn)service.pvpSendNativeSpawn();
+      queueSpawnAfterWorldSettles(service);
     }else{
       var waits=0;
       (function waitSync(){
         waits++;
-        if(service._pvpWorldSynced||waits>40){
-          try{if(service.pvpSendHello)service.pvpSendHello()}catch(_e){}
-          try{if(P.connected&&service.pvpSendNativeSpawn)service.pvpSendNativeSpawn()}catch(_e){}
-          return;
-        }
+        if(service._pvpWorldSynced){queueSpawnAfterWorldSettles(service);return}
+        if(waits>40){queueSpawnAfterWorldSettles(service);return}
         setTimeout(waitSync,100);
       })();
     }
@@ -121249,7 +121280,7 @@ e50: function(a) {
       if(m.t==='player-count'){dbg('MP-022','player-count room='+(m.room||P.room||'?')+' '+m.count+'/'+m.max);P.connected=(m.count>=2);return}
       if(m.t==='room-ready'){dbg('MP-023','ROOM READY room='+(m.room||P.room||'?')+' mode='+(m.mode||'?'));if(m.mode&&m.mode!==P.mode){setStatus('Server mode mismatch.');return}P.connected=true;setStatus('Native Diggerz packet link ready.');
         // Only announce ourselves once world sync finished — do not mass-hello.
-        if(P.service&&P.service._pvpWorldSynced){try{if(P.service.pvpSendHello)P.service.pvpSendHello()}catch(_e){}try{if(P.service.pvpSendNativeSpawn)P.service.pvpSendNativeSpawn()}catch(_e){}}
+        if(P.service&&P.service._pvpWorldSynced){queueSpawnAfterWorldSettles(P.service)}
         return}
       if(m.t==='server-error'){dbg('MP-050','server-error code='+(m.code||'?')+' message='+(m.message||'?'));P.connected=false;setStatus('Multiplayer server error: '+String(m.message||m.code||'Unknown error.'));return}
       if(m.t==='peer-left'){dbg('MP-040','peer-left '+String(m.connectionId||'?'));P.connected=((m.count||0)>=2);routeGameMessage(m);if(!P.starting&&!P.connected)setStatus('Waiting for more players…');return}
@@ -121752,7 +121783,7 @@ e50: function(a) {
       if(m.t==='aim'){var peer=this.pvpPeerForConnection(m._serverFrom),e=peer&&this.pvpEntityForPeer(peer);if(e&&e.M37)try{e.M37((+m.x||0)*l._44,(+m.y||0)*l._44);e.e0()}catch(_e){}return}
       if(m.t==='hit-confirm'){stats(this).hits++;return}
       if(m.t==='kill-confirm'){stats(this).kills=Math.max(stats(this).kills,m.kills|0);return}
-      if(m.t==='kill-feed'){chat('^7'+String(m.killerName||'Player')+' ^9['+(m.kills|0)+'] ^1> ^7'+String(m.victimName||'Player'));return}
+      if(m.t==='kill-feed'){var kn=String(m.killerName||'Player'),vn=String(m.victimName||'Player'),kw=Math.max(0,m.killerWins|0),vw=Math.max(0,m.victimWins|0);if(kw>=vw)chat('^2('+kw+')^7'+kn+' > ^3('+vw+')^7'+vn);else chat('^2('+vw+')^7'+vn+' > ^3('+kw+')^7'+kn);return}
       if(m.t==='players-remaining'){chat('^3Players remaining: ^2'+Math.max(0,m.count|0));return}
       if(m.t==='force-respawn'){P.battle.localEliminated=false;P.battle.resultsShown=false;skySpawn(this,+m.x,+m.y);return}
       if(m.t==='eliminated'){P.battle.localEliminated=true;P.battle.elimination=true;var self=this;setTimeout(function(){showResults(self,'^1Eliminated!')},1700);return}
@@ -122212,7 +122243,10 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
       function queueLayer(service,cells,layer,ids,vars){for(var start=0;start<cells.length;start+=300){(function(batch){service.enqueue(11,1,function(packet){packet.R2(batch.length);for(var j=0;j<batch.length;j++){var n=batch[j],tx=n%128,ty=(n/128)|0;packet.R0(tx);packet.R0(layer);packet.R0(ty);packet.R2((ids[n]&2047)|((vars[n]&31)<<11))}})})(cells.slice(start,start+300))}}
       queueLayer(this,changedBg,2,bgTiles,bgVariants);queueLayer(this,changed,0,tiles,variants);
       var theme=Math.max(0,Math.min(9,map.background|0));this.enqueue(102,1,function(packet){packet.R2(theme)});
-      var self=this;[0,80,220,600,1200].forEach(function(delay){setTimeout(function(){if(self&&self.pvpApplyMapTransforms)self.pvpApplyMapTransforms(map)},delay)});
+      // Left/right rotations must be reapplied after the server's batched tile
+      // packets have actually materialized the block entities. Large maps can
+      // take longer than the old 1.2s retry window, which made rotations vanish.
+      var self=this;[0,80,220,600,1200,1800,2600,3800,5200,7500,10000].forEach(function(delay){setTimeout(function(){if(self&&self.pvpApplyMapTransforms)self.pvpApplyMapTransforms(map)},delay)});
       this.markDirty();return true
     };
     var releaseRoomState=proto.pvpApplyRoomState;proto.pvpApplyRoomState=function(m){if(m&&m.map&&(this.mode==='pvp'||this.mode==='digtrade'))this.pvpApplyBaseMap(m.map);return releaseRoomState.call(this,m)};
@@ -122542,30 +122576,40 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
 
     // --- Build 23.3 rarity tables (KaiRotten recovered list) ---
     // Counts are the number of items in the spawned stack, not probability weights.
-    DS.NORMAL_BLOCK_POOL=[184,117,334];
-    DS.RARE_COSMETICS=[110,111,112];
+    DS.NORMAL_BLOCK_POOL=[108,117]; // Dirt and Lava/Magma are the common natural block rewards.
+    DS.RARE_COSMETICS=[70,71,72,73,74,110,111,112]; // Muscle shirts lead the clothing drops; caps stay rarer.
     DS.RARE_WEAPONS=[79,80,276];
     DS.RARE_DROPS=DS.RARE_COSMETICS.concat(DS.RARE_WEAPONS);
     DS.SHOP_ONLY_RARES=[107];
     DS.RARE_ITEMS=DS.RARE_DROPS.concat(DS.SHOP_ONLY_RARES);
     DS.WEAPON_GROUPS=[[328],[370],[93],[139],[329],[248]];
     DS.COMMON_REWARDS=[
-      {category:1,id:184,count:50}, // Wood Panels / Wood
-      {category:1,id:117,count:50}, // Lava
-      {category:2,id:328,count:1},  // Blue launcher / Homing Mortar
-      {category:2,id:370,count:1},  // Yellow launcher / Homing Mortar
-      {category:2,id:93,count:3},   // Grenade Launcher
-      {category:2,id:139,count:3},  // Bazooka
-      {category:2,id:329,count:1},  // Blade, recovered weapon equivalent of Saw
-      {category:2,id:248,count:3},  // Shotgun
-      {category:1,id:334,count:2}   // Bomb, recovered block equivalent of TNT
+      // Weighted naturally by repeating entries: Dirt and Lava/Magma are the
+      // most common; Bazookas and the weaker Homing Mortar follow. The stronger
+      // yellow mortar is deliberately the rarest common-pool weapon. Remote
+      // Mortar is intentionally not included in any drop pool.
+      {category:1,id:108,count:50}, {category:1,id:108,count:50},
+      {category:1,id:108,count:50}, {category:1,id:108,count:50},
+      {category:1,id:108,count:50}, {category:1,id:117,count:50},
+      {category:1,id:117,count:50}, {category:1,id:117,count:50},
+      {category:1,id:117,count:50}, {category:1,id:117,count:50},
+      {category:2,id:139,count:3}, {category:2,id:139,count:3},
+      {category:2,id:139,count:3},
+      {category:2,id:328,count:1}, {category:2,id:328,count:1},
+      {category:2,id:370,count:1},
+      {category:2,id:93,count:3}, {category:2,id:329,count:1},
+      {category:2,id:248,count:3}, {category:1,id:334,count:2}
     ];
     DS.RARE_REWARDS=[
       {category:2,id:79,count:2},   // Blue Ray Gun
       {category:2,id:80,count:2},   // Red Ray Gun
-      {category:2,id:110,count:1},  // Red Ball Cap
-      {category:2,id:111,count:1},  // Blue Ball Cap
-      {category:2,id:112,count:1},  // Black Ball Cap
+      // Three weighted entries per cap put each cap around a ~15-minute grind
+      // at typical mining pace, while muscle shirts remain the commonest shirts.
+      {category:2,id:110,count:1}, {category:2,id:110,count:1}, {category:2,id:110,count:1},
+      {category:2,id:111,count:1}, {category:2,id:111,count:1}, {category:2,id:111,count:1},
+      {category:2,id:112,count:1}, {category:2,id:112,count:1}, {category:2,id:112,count:1},
+      {category:2,id:70,count:1}, {category:2,id:71,count:1}, {category:2,id:72,count:1},
+      {category:2,id:73,count:1}, {category:2,id:74,count:1},
       {category:1,id:138,count:25}, // Water
       {category:1,id:121,count:50}, // Color Ladder
       {category:1,id:134,count:25}, // Desert / Sand
