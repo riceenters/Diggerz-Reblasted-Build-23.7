@@ -27456,6 +27456,16 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             null != d && (e = a.f2("prickear"),
             null != e && (d.D6(e),
             e.h4(b[5], !0)));
+            // Build 23.12 pet attachment correction: keep both ear anchors distinct,
+            // but route dragon/reindeer horn-like parts to a dedicated horn anchor.
+            try {
+                var __petSkin = c[5] | 0, __petRig = h.n26[__petSkin], __petHornTarget = a.f2("horn");
+                if (__petHornTarget && (__petSkin === 4 || __petSkin === 10)) {
+                    var __petHornSource = __petRig && (__petRig.f2("horn") || __petRig.f2("prickear"));
+                    if (__petHornSource) { __petHornSource.D6(__petHornTarget); __petHornTarget.h4(b[5], !0); var __oldPrickear = a.f2("prickear"); if (__oldPrickear && __oldPrickear !== __petHornTarget) __oldPrickear.set_local_alp(0); }
+                }
+                if (__petSkin !== 9 && __petSkin !== 4 && __petSkin !== 10) { var __earA=a.f2("ear"),__earB=a.f2("prickear"); if(__earA)__earA.set_local_alp(1); if(__earB)__earB.set_local_alp(1); }
+            } catch (__petAttachFix) {}
             h.n26[c[6]].f2("eye").D6(a.f2("eye"));
             a.f2("eye").h4(b[6], !0);
             d = h.n26[c[7]].f2("tail");
@@ -51934,13 +51944,28 @@ function __normalizeWearableScales(skel) {
                 if (!prev || !petId) return;
                 try {
                     // Map cosmetic id → pet skin key (pet_1, pet_2, …)
-                    var skin = "pet_1";
+                    var skin = "pet_1", petSpec = null;
                     try {
-                        // Common pet item ids from shop / digtrade
-                        if (petId === 120) skin = "pet_1"; // cat-ish
-                        else if (petId === 94) skin = "pet_2";
-                        else if (petId === 126) skin = "pet_3";
-                        else skin = "pet_" + Math.max(1, Math.min(20, petId % 20 || 1));
+                        var petDefs = {
+                            901:{skin:"pet_6",spec:"6,14|6,14|6,2|6,14|6,5|6,14|1,7|6,14|6,14|120,120"},
+                            94:{skin:"pet_1",spec:"1,12|1,12|1,4|1,12|1,12|1,12|1,7|1,12|1,12|90,90"},
+                            120:{skin:"pet_2",spec:"2,5|2,5|2,1|2,5|2,5|2,5|2,7|2,5|2,12|80,80"},
+                            121:{skin:"pet_3",spec:"3,12|3,12|3,2|3,12|3,12|3,12|3,7|3,7|3,12|50,50"},
+                            122:{skin:"pet_4",spec:"4,13|4,13|4,13|4,13|4,5|4,0|4,9|4,13|4,10|120,120"},
+                            123:{skin:"pet_2",spec:"2,12|2,12|2,3|2,5|2,5|2,5|2,3|2,5|2,12|70,70"},
+                            124:{skin:"pet_4",spec:"4,1|4,1|4,9|4,1|4,9|4,9|4,9|4,9|4,1|120,120"},
+                            125:{skin:"pet_1",spec:"1,10|1,10|1,10|1,10|1,10|1,10|1,9|1,10|1,10|100,100"},
+                            126:{skin:"pet_3",spec:"3,11|3,11|3,6|3,11|3,7|3,11|3,7|3,7|3,11|60,60"},
+                            140:{skin:"pet_1",spec:"1,7|1,7|1,5|1,7|1,5|1,7|1,7|1,7|1,7|40,40"},
+                            215:{skin:"pet_4",spec:"4,4|4,4|4,8|4,4|4,8|4,8|4,7|4,8|4,4|120,120"},
+                            416:{skin:"pet_10",spec:"10,12|10,12|10,4|10,12|10,12|10,12|10,7|10,12|10,12|110,110"},
+                            929:{skin:"pet_7",spec:"7,8|7,8|7,4|7,8|7,8|7,8|7,7|7,8|7,8|120,120"},
+                            930:{skin:"pet_7",spec:"7,7|7,7|7,1|7,7|7,7|7,7|7,7|7,7|7,7|60,60"},
+                            931:{skin:"pet_8",spec:"8,20|8,20|8,2|8,20|8,20|8,20|8,7|8,20|8,20|80,80"},
+                            951:{skin:"pet_3",spec:"3,6|3,6|3,9|3,6|3,9|3,6|3,9|3,9|3,6|90,90"},
+                            981:{skin:"pet_9",spec:"9,7|9,7|9,1|9,7|9,5|9,7|9,7|9,7|9,7|70,70"}
+                        };
+                        var pd=petDefs[petId|0];if(pd){skin=pd.skin;petSpec=pd.spec||null;}
                     } catch (eSk) {}
                     var maker = new z;
                     // Load pet_anims if needed
@@ -51956,6 +51981,7 @@ function __normalizeWearableScales(skel) {
                         try { pet = maker.G2("pet_anims", "pet_1", f, null, null, !0); } catch (eP2) {}
                     }
                     if (!pet) return;
+                    try { if (petSpec && typeof h.N21 === "function") h.N21(pet, petSpec); } catch (ePetSpec) {}
                     pet.__dzPetPreview = !0;
                     pet.D7(prev, !0);
                     // Beside the player, slightly forward, drawn behind the guy
@@ -119080,6 +119106,8 @@ e50: function(a) {
     function chat(s){try{if(P.service&&P.service.message)P.service.message(s)}catch(e){}}
     function bannerText(text,color){if(!banner)return;if(!text){banner.style.display='none';return}banner.textContent=text;banner.style.color=color||'#39e7ff';banner.style.display='block'}
     function popText(text,color){
+      // FIGHT uses the shared native announcement helper so its shake eases to stillness.
+      if(String(text).toUpperCase()==='FIGHT!'&&window.DiggerzNativePrompt){try{window.DiggerzNativePrompt(P.service,'^1FIGHT!');return}catch(_fightPromptErr){}}
       // Use the game's native large-text layer, separate from the announcement banner.
       // The number fades in while settling from oversized, then shrinks and fades away.
       try{
@@ -119094,7 +119122,8 @@ e50: function(a) {
           game._9.push(a);setTimeout(function(){try{a.a0=1}catch(_e){}},780);return;
         }
       }catch(_nativePop){}
-      if(pop){pop.style.setProperty('visibility','visible','important');pop.style.setProperty('display','block','important');pop.classList.remove('go');void pop.offsetWidth;pop.textContent=text;pop.style.color=color||'#ffe52e';pop.classList.add('go')}
+      try{if(window.DiggerzNativePrompt){window.DiggerzNativePrompt(P.service,(color==='#ff2f39'?'^1':'^3')+String(text));return}}catch(_nativePromptErr){}
+      try{if(P.service&&P.service.centerMessage)P.service.centerMessage((color==='#ff2f39'?'^1':'^3')+String(text))}catch(_centerErr){}
     }
     function winText(name){if(!winner)return;var text=String(name||'Player')+' wins!';winner.querySelector('.front').textContent=text;winner.querySelector('.shadow').textContent=text;winner.style.display='block';setTimeout(function(){winner.style.display='none'},2600)}
     function resetBattleUi(){bannerText('');if(winner)winner.style.display='none';if(leftBar)leftBar.style.display='none';if(rightBar)rightBar.style.display='none'}
@@ -119213,7 +119242,8 @@ e50: function(a) {
       if(this.mode==='pvp'&&P.mode==='pvp'){
         try{if(l.z39)l.z39.l34()}catch(e){}
         this.deathReadyAt=Date.now()+1700;
-        if(P.battle.elimination){var self=this;setTimeout(function(){showResults(self,'^1Eliminated!')},1650)}
+        var self=this;setTimeout(function(){try{var Io=window.DiggerzRuntime&&window.DiggerzRuntime.getIo();if(Io&&q&&q.children){var old=q.GetChildByType(Io);if(old)old.a0=1;q.children.push(new Io(0,0,0,'^1You Died!'))}else if(self.centerMessage)self.centerMessage('^1You Died!')}catch(_e){try{if(self.centerMessage)self.centerMessage('^1You Died!')}catch(_e2){}}},650);
+        if(P.battle.elimination){setTimeout(function(){showResults(self,'^1Eliminated!')},1650)}
         return
       }
       return normalShowDeath.call(this,source)
@@ -119452,15 +119482,15 @@ e50: function(a) {
       if(P.mode!=='pvp'){resetBattleUi();return}
       if(b.phase==='build'&&b.fightAt){
         var rem=Math.max(0,Math.ceil((b.fightAt-now)/1000));
-        if(rem>3){bannerText('Match begins in '+rem+' seconds. Build your defence now!','#39e7ff');b.lastCountdown=-1}
-        else if(rem>0){bannerText('');if(rem!==b.lastCountdown){b.lastCountdown=rem;popText(String(rem),'#ffe52e')}}
-        else bannerText('');
+        // Countdown numbers are native in-game big text (never a DOM overlay).
+        bannerText('');
+        if(rem>0&&rem!==b.lastCountdown){b.lastCountdown=rem;popText(String(rem),'#ffe52e')}
       }
       if(b.shrinkAt){
         var sr=Math.max(0,Math.ceil((b.shrinkAt-now)/1000));
-        if(sr>3)bannerText('World Shrink Coming!','#39e7ff');
+        if(sr>3){bannerText('');if(b._nativeShrinkNoticeFor!==b.shrinkAt){b._nativeShrinkNoticeFor=b.shrinkAt;popText('WORLD SHRINK','#ffe52e')}}
         else if(sr>0){
-          bannerText('World Shrink Coming!','#39e7ff');
+          bannerText('');
           if(sr!==b.lastCountdown){b.lastCountdown=sr;popText(String(sr),'#ffe52e')}
           // Flash the real world-edge columns white during 3-2-1.
           try{flashWorldEdge(service,b.left,b.right,true)}catch(e){}
@@ -119508,7 +119538,7 @@ e50: function(a) {
     var proto=DS.prototype;if(proto.__release230)return;proto.__release230=true;
     var review=document.getElementById('diggerz-trade-review'),reviewList=document.getElementById('diggerz-trade-receive'),confirmBtn=document.getElementById('diggerz-trade-confirm'),backBtn=document.getElementById('diggerz-trade-back');
     function chat(s){try{if(P.service&&P.service.message)P.service.message(s)}catch(e){}}
-    function nativePrompt(service,text){if(!service||!text)return;var raw=String(text);var isBattle=/FIGHT!|ELIMINATION HAS BEGUN!|SHRINK!| wins!$/i.test(raw)||/^\^[0-9][123]$/.test(raw);if(!isBattle){try{service.centerMessage(raw)}catch(e){}return}try{var game=service.game||l.z38;if(!game||!game._9){service.centerMessage(raw);return}for(var i=0;i<game._9.length;i++){var old=game._9[i];if(old&&old._1==='BattleBigText'){old.a0=1;try{old.e3()}catch(_e){}}}var winner=/ wins!$/i.test(raw),y=winner?Math.round(q.SCREENHEIGHT*.31):Math.round(q.SCREENHEIGHT*.40),a=new xa(q.CENTERX,y,raw,q.MAIN_FONT_BIG);a._1='BattleBigText';var start=winner?1.8:2.15,end=winner?1.45:1.15;a.set_alp(0);a.set_local_xScale(a.set_local_yScale(start));a.F6(5,0,1,120);a.F6(3,start,end,260);a.F6(4,start,end,260);a.F6(5,1,0,320,!1,winner?2250:620);game._9.push(a);setTimeout(function(){try{a.a0=1}catch(_e){}},winner?2700:1100)}catch(e){try{service.centerMessage(raw)}catch(_e){}}}
+    function nativePrompt(service,text){if(!service||!text)return;var raw=String(text);var isBattle=/FIGHT!|ELIMINATION HAS BEGUN!|SHRINK!| wins!$/i.test(raw)||/^\^[0-9][123]$/.test(raw);if(!isBattle){try{service.centerMessage(raw)}catch(e){}return}try{var game=service.game||l.z38;if(!game||!game._9){service.centerMessage(raw);return}for(var i=0;i<game._9.length;i++){var old=game._9[i];if(old&&old._1==='BattleBigText'){old.a0=1;try{old.e3()}catch(_e){}}}var winner=/ wins!$/i.test(raw),isFight=/FIGHT!/i.test(raw),y=winner?Math.round(q.SCREENHEIGHT*.31):Math.round(q.SCREENHEIGHT*.40),a=new xa(q.CENTERX,y,raw,q.MAIN_FONT_BIG);a._1='BattleBigText';var start=winner?1.8:2.15,end=winner?1.45:1.15;a.set_alp(0);a.set_local_xScale(a.set_local_yScale(start));a.F6(5,0,1,120);a.F6(3,start,end,260);a.F6(4,start,end,260);a.F6(5,1,0,320,!1,winner?2250:620);game._9.push(a);if(isFight){var sx=a.b6,shakeAt=Date.now(),shakeTimer=setInterval(function(){var elapsed=Date.now()-shakeAt;if(elapsed>=900){clearInterval(shakeTimer);try{a.b6=sx}catch(_e){}return}try{a.b6=sx+Math.sin(elapsed/19)*7*(1-elapsed/900)}catch(_e){clearInterval(shakeTimer)}},16)}setTimeout(function(){try{a.a0=1}catch(_e){}},winner?2700:1100)}catch(e){try{service.centerMessage(raw)}catch(_e){}}}window.DiggerzNativePrompt=nativePrompt;
     function smallPrompt(service,text){if(!service||!text)return;var raw=String(text);if(/^\^[0-9][123]$/.test(raw)){nativePrompt(service,raw);return}try{var game=service.game||l.z38;if(!game||!game._9){nativePrompt(service,raw);return}for(var i=0;i<game._9.length;i++){var old=game._9[i];if(old&&old._1==='BattleSmallText'){old.a0=1;try{old.e3()}catch(_e){}}}var a=new xa(q.CENTERX,Math.round(q.SCREENHEIGHT*.14),raw,q.MAIN_FONT_SMALL);a._1='BattleSmallText';a.set_local_xScale(a.set_local_yScale(1.05));a.F6(5,1,0,1450);game._9.push(a)}catch(e){nativePrompt(service,raw)}}
     // Build 23 map files are sparse on disk. Rebuild a complete 128x80 world locally,
     // then send only changed cells through the recovered native tile packet in manageable batches.
@@ -120960,3 +120990,67 @@ e50: function(a) {
   function retry(){if(!boot())setTimeout(retry,250)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',retry);else retry();
 })();
+
+;
+(function(){
+  function installBuild232(){
+    var P=window.DiggerzPvp22,DS=window.DiggerzService,q=window.q,l=window.l;
+    if(!P||!DS||!DS.prototype||!P.hooksInstalled||!q||!l||!l.z38){setTimeout(installBuild232,50);return}
+    var proto=DS.prototype;if(proto.__build232)return;proto.__build232=true;
+    function playHit(entity){
+      try{
+        var anim=entity&&entity.i33;
+        if(!anim||typeof anim._38!=='function')return;
+        // Force a restart on consecutive hits. The false loop flag makes it one-shot;
+        // normal walk/attack animations can replace it naturally on the next action.
+        if(anim.Z28==='hit')anim.Z28='';
+        anim._38('hit',false,100,1);
+      }catch(_hitAnimErr){}
+    }
+    var oldHurt=proto.hurtLocalPlayer;
+    if(typeof oldHurt==='function')proto.hurtLocalPlayer=function(amount,source){
+      var before=this.localHealth,wasDead=!!this.localDead;if(before==null)before=l.z39&&(l.z39.N34||l.z39.N33);
+      var result=oldHurt.apply(this,arguments);
+      var after=this.localHealth;
+      if(!wasDead&&!this.localDead&&after!=null&&(before==null||after<before)){this._build232HitUntil=Date.now()+430;playHit(l.z39)}
+      return result;
+    };
+    // The legacy dig animation fixer also clears the shared "hit" animation after
+    // a few ticks. Preserve a damage-hit briefly, but let any new action replace it.
+    var oldFixAnimations=proto.fixLocalAnimations;
+    if(typeof oldFixAnimations==='function')proto.fixLocalAnimations=function(){
+      var p=l.z39,anim=p&&p.i33,preserve=!!(anim&&anim.Z28==='hit'&&Date.now()<(this._build232HitUntil||0)&&q.mState===0),oldDig=this.lastDigTick;
+      if(preserve)this.lastDigTick=this.ticks;
+      try{return oldFixAnimations.apply(this,arguments)}finally{if(preserve)this.lastDigTick=oldDig}
+    };
+    // Remote players also play their one-shot hit animation when the server confirms damage.
+    var oldReceive=proto.pvpReceive;
+    if(typeof oldReceive==='function')proto.pvpReceive=function(m){
+      if(m&&m.t==='hit-animation'){
+        var peer=this.pvpPeerForConnection&&this.pvpPeerForConnection(String(m.targetConnectionId||''));
+        var entity=peer&&this.pvpEntityForPeer&&this.pvpEntityForPeer(peer);
+        if(entity)playHit(entity);
+        return;
+      }
+      return oldReceive.apply(this,arguments);
+    };
+    // If a short/zero-length click attack happens while touching another hitbox,
+    // apply a small server-authoritative tap hit as well as the normal ray check.
+    var oldDirect=proto.weaponDirectHit;
+    if(typeof oldDirect==='function')proto.weaponDirectHit=function(fromX,fromY,toX,toY,attackType){
+      var result=oldDirect.apply(this,arguments);
+      var allowed=(this.mode==='pvp'&&P.mode==='pvp')||(this.mode==='digtrade'&&P.mode==='digtrade'&&(this.adminPvpEnabled||(q.diggerzAdminPvpEnabled)));
+      if(!allowed||!this.pvpSend||!this.pvpEnsurePeers||!l.z39)return result;
+      var linePeer=null;try{linePeer=this.pvpRemoteHitLine(fromX,fromY,toX,toY)}catch(_lineErr){}
+      if(linePeer)return result;
+      var px=l.z39.b6/l._44,py=l.z39.b7/l._44;
+      var seg=Math.hypot((+toX||0)-(+fromX||0),(+toY||0)-(+fromY||0));
+      if(seg>1.5)return result;
+      var peers=this.pvpEnsurePeers(),best=null,bestD=1.25;
+      for(var k in peers){var peer=peers[k],e=this.pvpEntityForPeer(peer);if(!e||!e.a2||!peer.connectionId)continue;var dx=e.b6/l._44-px,dy=e.b7/l._44-py,d=Math.hypot(dx,dy);if(d<=bestD){best=peer;bestD=d}}
+      if(best){var now=Date.now(),key=String(best.connectionId);this._build232TouchHits=this._build232TouchHits||{};if(now-(this._build232TouchHits[key]||0)>280){this._build232TouchHits[key]=now;this.pvpSend({t:'touch-hit',targetConnectionId:best.connectionId})}}
+      return result;
+    };
+  }
+  installBuild232();
+}());

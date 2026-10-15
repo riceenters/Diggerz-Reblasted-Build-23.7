@@ -1985,6 +1985,7 @@ function dealPvpDamage(attacker, victim, amount, source) {
   victim.pvpHealth = Math.max(0, (victim.pvpHealth == null ? 3 : victim.pvpHealth) - damage);
   attacker.hits = (attacker.hits|0) + 1;
   sendJson(victim, { t:'damage', amount:damage, source:String(source||'weapon'), attackerConnectionId:attacker.connectionId, attackerName:attacker.name });
+  broadcastRoom(room, { t:'hit-animation', targetConnectionId:victim.connectionId }, victim);
   sendJson(attacker, { t:'hit-confirm', targetConnectionId:victim.connectionId, targetName:victim.name, health:victim.pvpHealth });
   broadcastRoom(room, { t:'health', current:victim.pvpHealth, maximum:3, _serverFrom:victim.connectionId, _serverName:victim.name }, victim);
   if (victim.pvpHealth <= 0) {
@@ -2014,6 +2015,17 @@ function lineHitTarget(attacker, message) {
     if (t<0 || t>1) continue;
     const cx=fx+vx*t, cy=fy+vy*t;
     if (Math.hypot(px-cx,py-cy)<=1.2 && t<bestT) {best=target;bestT=t;}
+  }
+  // A click can produce a zero-length attack segment when the player is already
+  // touching an opponent. In that case, allow a tiny melee tap using server-known positions.
+  if (!best && attacker.position && Math.hypot(tx-fx,ty-fy) <= 1.5) {
+    let touchBest=null, touchDistance=1.25;
+    for (const target of room.clients) {
+      if (target===attacker || !target.alive || target.eliminated || target.hidden || !target.position || (target.adminEffects&&target.adminEffects.invis)) continue;
+      const d=Math.hypot(target.position.x-attacker.position.x,target.position.y-attacker.position.y);
+      if (d<=touchDistance) { touchBest=target; touchDistance=d; }
+    }
+    if (touchBest) return touchBest;
   }
   return best;
 }
@@ -2708,6 +2720,19 @@ function relayGameMessage(client, message, rawLength) {
     const target=lineHitTarget(client,clipped);
     if(target)dealPvpDamage(client,target,1,itemId===239?'excalibur':'lightsword');
     broadcastRoom(room,{t:'tool-attack',fromX:clipped.fromX,fromY:clipped.fromY,toX:clipped.toX,toY:clipped.toY,itemId,attackType:Number(message.attackType)|0,_serverFrom:client.connectionId,_serverName:client.name},client);
+    return;
+  }
+
+  if (message.t==='touch-hit') {
+    // Close-contact clicks are a tiny melee tap. The server checks the current
+    // positions so clients cannot use this message for ranged damage.
+    if ((room.mode!=='pvp' && !(room.mode==='digtrade'&&room.adminPvpOverride)) ||
+        (room.mode==='pvp' && (!room.battle || (room.battle.phase!=='fight'&&room.battle.phase!=='elimination'))) ||
+        !client.alive || client.eliminated || !client.position) return;
+    const target=findRoomClient(room,String(message.targetConnectionId||''));
+    if(!target || target===client || !target.alive || target.eliminated || !target.position || (target.adminEffects&&target.adminEffects.invis)) return;
+    if(Math.hypot(target.position.x-client.position.x,target.position.y-client.position.y)>1.35) return;
+    dealPvpDamage(client,target,1,'touch');
     return;
   }
 
