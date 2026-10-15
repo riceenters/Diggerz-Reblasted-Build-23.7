@@ -336,15 +336,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       manualExit=false;pendingCart=true;
     }catch(e){console.error('[Cart Racing] launch failed:',e)}
   }
-  function installButton(){
-    if(button||!document.body)return;
-    button=document.createElement('button');button.id='build25-cart-race-launch';
-    button.innerHTML='<span class="build25-new">NEW</span><span>CART RACING</span>';
-    button.style.cssText='position:fixed;right:14px;bottom:16px;z-index:900;color:#fff;background:linear-gradient(145deg,#f34335,#8f0b12);border:3px solid #ff9c90;border-radius:12px;padding:12px 22px;font:bold 17px Arial;cursor:pointer;box-shadow:0 4px 20px #0008;display:flex;flex-direction:column;gap:2px;align-items:center';
-    button.onclick=launch;
-    if(!document.getElementById('build25-cart-race-style')){var st=document.createElement('style');st.id='build25-cart-race-style';st.textContent='@keyframes raceNewPop{0%,100%{transform:scale(.7)}50%{transform:scale(1.16)}}.build25-new{font:900 12px Arial;color:#ffff33;letter-spacing:2px;animation:raceNewPop 1.3s ease-in-out infinite;text-shadow:0 2px #740000}#build25-race-countdown{position:fixed;inset:0;z-index:2147482999;pointer-events:none;display:flex;align-items:center;justify-content:center;font:1000 clamp(110px,23vw,360px) Impact,Arial Black,sans-serif;text-shadow:8px 12px 0 #400;animation:raceSmash .62s cubic-bezier(.11,1.2,.38,1) both}@keyframes raceSmash{from{transform:scale(4) rotate(-12deg);opacity:0}45%{transform:scale(.84);opacity:1}to{transform:scale(1);opacity:1}}';document.head.appendChild(st)}
-    document.body.appendChild(button);
-  }
+  // The main menu creates the Cart Racing sprite button natively.
+  window.DiggerzLaunchCartRace=launch;
   function showCountdown(value){
     var el=document.getElementById('build25-race-countdown');if(el)el.remove();
     el=document.createElement('div');el.id='build25-race-countdown';
@@ -399,7 +392,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       setTimeout(function(){applyRaceSpawn();ensureCart()},250);playRaceTheme();return
     }
     if(m.t==='race-countdown'){clearRaceLobby();startCountdown(Number(m.startsAt));return}
-    if(m.t==='race-waiting'){racePhase='waiting';clearInterval(countdownTimer);raceLobbyNotice('WAITING FOR RACERS  '+(m.count||1)+' / '+(m.minimum||3));return}
+    if(m.t==='race-waiting'){racePhase='waiting';clearInterval(countdownTimer);raceLobbyNotice('WAITING FOR RACERS  '+(m.count||1)+' / '+(m.minimum||2));return}
     if(m.t==='race-start'){clearRaceLobby();racePhase='racing';pendingCart=true;showCountdown('GO!');playRaceTheme();return}
     if(m.t==='race-kill-all'){
       stopRaceTheme();racePhase='finished';clearRaceLobby();removeRaceHud();
@@ -459,8 +452,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       if(!raceActive()){raceSpawnPending=null;racePhase='waiting';}
     }
     if(window.__diggerzBuild25IntroFinished&&!p.joined&&!p.starting){
-      installButton();if(button)button.style.display=raceActive()?'none':'flex';
+      // Native main menu owns its button lifecycle.
       try{if(sessionStorage.getItem('build25-auto-race')==='1'){sessionStorage.removeItem('build25-auto-race');launch()}}catch(e){}
-    }else if(button)button.style.display='none';
+    }
   },300);
 }());
