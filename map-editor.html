@@ -24,7 +24,7 @@ button,input,select{font:inherit}.app{height:100%;display:grid;grid-template-row
     <button id="new-default">Default Base</button><button id="new-blank">Blank</button>
     <button id="save-draft">Save Draft</button><button id="load-draft">Load Draft</button>
     <button id="import">Import</button><button id="export" class="primary">Export for PvP Rotation</button>
-    <div class="spacer"></div><div class="hint">128 × 80 world · right-click erases</div>
+    <div class="spacer"></div><div class="hint">128 × 80 world · right-click erases · Pick Block samples a placed tile and opens its available variants</div>
     <input id="file" type="file" accept="application/json,.json" hidden>
   </div>
   <div class="workspace">
@@ -34,7 +34,7 @@ button,input,select{font:inherit}.app{height:100%;display:grid;grid-template-row
       <div class="list" id="list"></div>
     </aside>
     <main class="stageWrap">
-      <div class="tools"><button id="paint" class="active">Paint</button><button id="erase">Erase</button><button id="fill">Fill</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="layer-fg" class="active">Foreground</button><button id="layer-back">Backdrop Layer</button><label>Zoom <input id="zoom" type="range" min="12" max="48" step="4" value="24"></label><span id="zoom-label">24px</span><span class="coord" id="coord">x: -- y: --</span></div>
+      <div class="tools"><button id="paint" class="active">Paint</button><button id="sample">Pick Block / Variants</button><button id="erase">Erase</button><button id="fill">Fill</button><button id="undo">Undo</button><button id="redo">Redo</button><button id="layer-fg" class="active">Foreground</button><button id="layer-back">Backdrop Layer</button><label>Zoom <input id="zoom" type="range" min="12" max="48" step="4" value="24"></label><span id="zoom-label">24px</span><span class="coord" id="coord">x: -- y: --</span></div>
       <div class="scroll" id="scroll"><div class="boardFrame" id="frame"><canvas id="map"></canvas><div class="mapLabel" id="map-label"></div></div></div>
     </main>
   </div>
@@ -131,10 +131,30 @@ function renderPalette(){list.innerHTML='';if(paletteMode==='backgrounds'){list.
 search.oninput=renderPalette;document.getElementById('tab-blocks').onclick=()=>{paletteMode='blocks';document.getElementById('tab-blocks').classList.add('active');document.getElementById('tab-bg').classList.remove('active');renderPalette()};document.getElementById('tab-bg').onclick=()=>{paletteMode='backgrounds';document.getElementById('tab-bg').classList.add('active');document.getElementById('tab-blocks').classList.remove('active');renderPalette()};
 function selectOrientationShortcut(mode){setOrientationMode(mode);if(selected){selected.flags=((selected.flags||0)&1)|orientationFlags(mode);const base=catalogByKey.get(selected.id+':'+selected.variant)||selected;selected.flipX=Boolean(base.flipX)!==Boolean(selected.flags&1);selected.flipY=Boolean(base.flipY)!==Boolean(selected.flags&2);selected.rotate90=Boolean(selected.flags&4);selected.rotateLeft=Boolean(selected.flags&8);selectedEl.textContent=selected.name+' · block '+selected.id+' · variant '+selected.variant+' · '+orientationLabel(selected.flags)+' · Double-click for orientation · '+(activeLayer==='backdrop'?'Backdrop layer':'Foreground layer')}renderPalette()}
 document.getElementById('orient-up').onclick=()=>selectOrientationShortcut('upright');document.getElementById('orient-right').onclick=()=>selectOrientationShortcut('right');document.getElementById('orient-left').onclick=()=>selectOrientationShortcut('left');document.getElementById('orient-down').onclick=()=>selectOrientationShortcut('down');
-function syncTools(){for(const id of ['paint','erase','fill'])document.getElementById(id).classList.toggle('active',tool===id)};for(const id of ['paint','erase','fill'])document.getElementById(id).onclick=()=>{tool=id;syncTools()};
+function syncTools(){for(const id of ['paint','sample','erase','fill'])document.getElementById(id).classList.toggle('active',tool===id)};for(const id of ['paint','sample','erase','fill'])document.getElementById(id).onclick=()=>{tool=id;syncTools()};
 function point(ev){const r=canvas.getBoundingClientRect(),x=Math.floor((ev.clientX-r.left)/r.width*canvas.width/tileSize),y=Math.floor((ev.clientY-r.top)/r.height*canvas.height/tileSize);return {x,y}}
 function flood(x,y){if(!selected&&tool!=='erase')return;const a=arraysFor(),ta=a[0],va=a[1],fa=a[2],i=idx(x,y),oldId=ta[i],oldV=va[i],oldF=fa[i],newId=tool==='erase'?0:selected.id,newV=tool==='erase'?0:selected.variant,newF=tool==='erase'?0:(selected.flags||0);if(oldId===newId&&oldV===newV&&oldF===newF)return;const changes=[],stack=[[x,y]],seen=new Uint8Array(W*H);while(stack.length){const [cx,cy]=stack.pop();if(!inBounds(cx,cy))continue;const ci=idx(cx,cy);if(seen[ci]||ta[ci]!==oldId||va[ci]!==oldV||fa[ci]!==oldF)continue;seen[ci]=1;setCell(cx,cy,newId,newV,newF,changes);stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1])}pushUndo(changes)}
-function paintAt(ev,record){const p=point(ev);coord.textContent='x: '+p.x+' y: '+p.y;if(!inBounds(p.x,p.y))return;if((ev.buttons&2)||tool==='erase'){if(lastCell===idx(p.x,p.y)&&drawing)return;const ch=[];setCell(p.x,p.y,0,0,0,ch);if(record)pushUndo(ch);else if(ch.length)currentStroke.push(...ch)}else if(tool==='fill'){if(record)flood(p.x,p.y)}else if(selected){if(lastCell===idx(p.x,p.y)&&drawing)return;const ch=[];setCell(p.x,p.y,selected.id,selected.variant,selected.flags||0,ch);if(record)pushUndo(ch);else if(ch.length)currentStroke.push(...ch)}lastCell=idx(p.x,p.y)}
+function sampleAt(x,y){
+  if(!inBounds(x,y))return false;
+  const i=idx(x,y);
+  // Sample the visible foreground first, then the backdrop layer.
+  let id=tiles[i],variant=variants[i],flags=tileFlags[i],layer='foreground';
+  if(!id){id=backgroundTiles[i];variant=backgroundVariants[i];flags=backgroundFlags[i];layer='backdrop'}
+  if(!id){toast('There is no block in this cell to sample.');return false}
+  const base=catalogByKey.get(id+':'+variant)||catalogByKey.get(id+':0');
+  const name=(base&&base.name)||('Block '+id);
+  selected={id,name,variant,flags,rect:base?.rect||null,asset:base?.asset||null,flipX:!!(flags&1),flipY:!!(flags&2),rotate90:!!(flags&4),rotateLeft:!!(flags&8)};
+  if(layer==='backdrop'||BACKDROP_BLOCKS.has(id))setLayer('backdrop');else setLayer('foreground');
+  tool='paint';syncTools();
+  search.value=String(id);
+  renderPalette();
+  // Keep the selected block's whole family visible when its name is shared by another ID.
+  search.value=name.toLowerCase();renderPalette();
+  selectedEl.textContent=name+' · block '+id+' · variant '+variant+' · '+orientationLabel(flags)+' · sampled from map; palette filtered to this block family';
+  toast('Picked '+name+' v'+variant+'. Available variants are shown in the palette.');
+  return true;
+}
+function paintAt(ev,record){const p=point(ev);coord.textContent='x: '+p.x+' y: '+p.y;if(!inBounds(p.x,p.y))return;if(tool==='sample'){sampleAt(p.x,p.y);drawing=false;return}if((ev.buttons&2)||tool==='erase'){if(lastCell===idx(p.x,p.y)&&drawing)return;const ch=[];setCell(p.x,p.y,0,0,0,ch);if(record)pushUndo(ch);else if(ch.length)currentStroke.push(...ch)}else if(tool==='fill'){if(record)flood(p.x,p.y)}else if(selected){if(lastCell===idx(p.x,p.y)&&drawing)return;const ch=[];setCell(p.x,p.y,selected.id,selected.variant,selected.flags||0,ch);if(record)pushUndo(ch);else if(ch.length)currentStroke.push(...ch)}lastCell=idx(p.x,p.y)}
 let currentStroke=[];canvas.oncontextmenu=e=>e.preventDefault();canvas.onmousedown=e=>{e.preventDefault();drawing=true;lastCell=-1;currentStroke=[];if(tool==='fill'){paintAt(e,true);drawing=false}else paintAt(e,false)};canvas.onmousemove=e=>{const p=point(e);coord.textContent='x: '+p.x+' y: '+p.y;if(drawing)paintAt(e,false)};window.addEventListener('mouseup',()=>{if(drawing){drawing=false;pushUndo(currentStroke);currentStroke=[];lastCell=-1}});canvas.onmouseleave=()=>{};
 document.getElementById('undo').onclick=()=>{const ch=undoStack.pop();if(!ch)return;const redo=[];for(let k=ch.length-1;k>=0;k--){const c=ch[k],a=arraysFor(c.layer||'foreground'),ta=a[0],va=a[1],fa=a[2],i=idx(c.x,c.y);redo.push({x:c.x,y:c.y,oldId:ta[i],oldVariant:va[i],oldFlags:fa[i],id:c.oldId,variant:c.oldVariant,flags:c.oldFlags||0,layer:c.layer||'foreground'});ta[i]=c.oldId;va[i]=c.oldVariant;fa[i]=c.oldFlags||0;drawCell(c.x,c.y)}redoStack.push(redo)};document.getElementById('redo').onclick=()=>{const ch=redoStack.pop();if(!ch)return;const undo=[];for(const c of ch){const a=arraysFor(c.layer||'foreground'),ta=a[0],va=a[1],fa=a[2],i=idx(c.x,c.y);undo.push({x:c.x,y:c.y,oldId:ta[i],oldVariant:va[i],oldFlags:fa[i],id:c.id,variant:c.variant,flags:c.flags||0,layer:c.layer||'foreground'});ta[i]=c.id;va[i]=c.variant;fa[i]=c.flags||0;drawCell(c.x,c.y)}undoStack.push(undo)};
 document.getElementById('zoom').oninput=e=>{tileSize=+e.target.value;document.getElementById('zoom-label').textContent=tileSize+'px';redraw()};document.getElementById('map-name').oninput=()=>document.getElementById('map-label').textContent=document.getElementById('map-name').value+' · Background '+bg+' · '+(activeLayer==='backdrop'?'Backdrop Layer':'Foreground');
