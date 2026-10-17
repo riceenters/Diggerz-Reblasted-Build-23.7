@@ -18035,7 +18035,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.Q31 && q.thisMain.stage.set_focus(this.Q30);
             if (null != this._2 && !this._2.a2)
                 return xa.prototype.e0.call(this);
+            // Track whether soft-keyboard/IME already supplied characters this frame.
+            // If it did, skip mKeyQueue printables to avoid double-insert (one key → two chars).
+            var __fromSoft = !1;
             if ("" != this.Q30.get_text()) {
+                __fromSoft = !0;
                 if (this.q35.length < this.q31) {
                     for (var a = 0, b = this.Q30.get_length(); a < b; ) {
                         var c = a++;
@@ -18056,7 +18060,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 a = !0;
                 // Every key that changes the field (printable or backspace) plays type.ogg
                 if (8 == d || 46 == d) {
-                    if (0 < this.q35.length) {
+                    // Prefer soft-keyboard backspace when it already handled input this frame
+                    if (!__fromSoft && 0 < this.q35.length) {
                         this.q35 = T.substr(this.q35, 0, this.q35.length - 1);
                         this.a1 = 0;
                         E.v2(Pj.n7());
@@ -18071,9 +18076,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         this.q38();
                         this.a0 = 1;
                     }
-                } else if (this.q35.length < this.q31) {
-                    // Desktop / physical keyboard: insert printable chars from mKeyQueue.
-                    // (Q30 soft-keyboard path above still handles IME/mobile.)
+                } else if (!__fromSoft && this.q35.length < this.q31) {
+                    // Fallback for environments where Q30 soft-keyboard does not receive keys.
+                    // Skipped when __fromSoft to prevent double typing.
                     var __ch = "";
                     try { __ch = String.fromCodePoint(d); } catch (__e) { __ch = ""; }
                     if (__ch) {
@@ -22475,6 +22480,14 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
     // Version 3 starts clean so unrestricted catalog rewards from the earlier
     // reconstruction cannot carry into the corrected rarity economy.
     DiggerzService.STORAGE_KEY = "diggerz.digtrade.rebuild.v3";
+    DiggerzService.resolveStorageKey = function() {
+        try {
+            var auth = window.DiggerzAuth237 && window.DiggerzAuth237.state;
+            if (auth && auth.authenticated && auth.uid)
+                return "diggerz.digtrade.rebuild.v3." + String(auth.uid);
+        } catch (e) {}
+        return DiggerzService.STORAGE_KEY;
+    };
     DiggerzService.ITEM_POOL = [3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,25,26,27,30,31,33,34,35,36,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,78,79,80,81,82,83,84,85,86,87,92,93,94,96,97,99,100,101,102,103,105,106,107,108,109,110,111,112,113,114,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,163,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255,256,257,258,275,276,277,278,279,280,326,327,328,329,355,356,357,358,359,360,370,371,379,380,381,382,383,384,385,386,387,388,389,390,391,392,393,394];
     // Build 21.15 loot economy. Normal weapon/block finds are noticeably more
     // common than Build 18, while the rare and super-rare rates stay unchanged.
@@ -22718,7 +22731,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         loadState: function() {
             try {
                 if (!window.localStorage) throw new Error("Local storage unavailable");
-                var raw = window.localStorage.getItem(DiggerzService.STORAGE_KEY);
+                var raw = window.localStorage.getItem((DiggerzService.resolveStorageKey&&DiggerzService.resolveStorageKey())||DiggerzService.STORAGE_KEY);
                 if (!raw) return null;
                 var parsed = JSON.parse(raw);
                 if (this.validState(parsed)) return parsed;
@@ -22738,7 +22751,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     this.state.x = Math.max(1, Math.min(this.state.width - 2, l.z39.b6 / l._44));
                     this.state.y = Math.max(1, Math.min(this.state.height - 2, l.z39.b7 / l._44))
                 }
-                window.localStorage.setItem(DiggerzService.STORAGE_KEY, JSON.stringify(this.state));
+                window.localStorage.setItem((DiggerzService.resolveStorageKey&&DiggerzService.resolveStorageKey())||DiggerzService.STORAGE_KEY, JSON.stringify(this.state));
                 this.dirty = false;
                 q.diggerzLastSave = Date.now()
             } catch (error) {
@@ -23483,7 +23496,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 this.state.coins = beforeCoins - item.price;
                 this.dirty = true;
                 if (!window.localStorage) throw new Error("Local storage unavailable");
-                window.localStorage.setItem(DiggerzService.STORAGE_KEY, JSON.stringify(this.state));
+                window.localStorage.setItem((DiggerzService.resolveStorageKey&&DiggerzService.resolveStorageKey())||DiggerzService.STORAGE_KEY, JSON.stringify(this.state));
                 this.dirty = false; this.saveAvailable = true;
                 q.diggerzSaveAvailable = true; q.diggerzLastSave = Date.now()
             } catch (error) {
@@ -121343,6 +121356,7 @@ e50: function(a) {
     ready = false;
     auth = null;
     db = null;
+    __dzFirebaseInitDone = false; // allow re-init on new backend
     try {
       // Delete default app so we can re-init with new config
       if (firebase.apps && firebase.apps.length) {
@@ -121362,6 +121376,8 @@ e50: function(a) {
     return Promise.resolve(true);
   }
 
+  var __dzFirebaseInitDone = false;
+  var __dzEmailLinkHandled = false;
   function initFirebase() {
     try {
       if (typeof firebase === "undefined") {
@@ -121381,6 +121397,12 @@ e50: function(a) {
       db = firebase.firestore();
       ready = true;
       state.backend = cfg.projectId || cfg.name || String(configIndex);
+      // Only attach listeners / complete email-link once (DOMContentLoaded + setTimeout both call init)
+      if (__dzFirebaseInitDone) {
+        console.log("[Diggerz Auth] Already initialized, skipping duplicate setup");
+        return;
+      }
+      __dzFirebaseInitDone = true;
       console.log("[Diggerz Auth] Using backend", state.backend, "(index", configIndex + ")");
       auth.onAuthStateChanged(function(user) {
         if (user) {
@@ -121419,15 +121441,40 @@ e50: function(a) {
           try { sessionStorage.removeItem("diggerz.authMenuReload"); } catch (e3) {}
         }
       });
-      // Complete email link sign-in if landing with link
+      // Complete email link sign-in if landing with link (once only)
       if (auth.isSignInWithEmailLink(window.location.href)) {
-        var email = lsGet("diggerz.emailForSignIn", "") || window.prompt("Confirm your email for sign-in");
-        if (email) {
-          auth.signInWithEmailLink(email, window.location.href).then(function() {
-            lsSet("diggerz.emailForSignIn", "");
-            try { history.replaceState(null, "", location.pathname); } catch (e) {}
-            location.reload();
-          }).catch(function(err) { console.warn("[Diggerz Auth] email link", err); alert("Sign-in link failed: " + (err.message || err)); });
+        if (__dzEmailLinkHandled) {
+          // Already processing or already used this code — strip stale params quietly
+          try { history.replaceState(null, "", location.pathname + location.search.replace(/[?&](apiKey|oobCode|mode|lang)=[^&]*/g, "").replace(/^&/, "?").replace(/\?$/, "") || location.pathname); } catch (eStrip0) {}
+        } else {
+          __dzEmailLinkHandled = true;
+          var email = lsGet("diggerz.emailForSignIn", "") || window.prompt("Confirm your email for sign-in");
+          if (email) {
+            var linkHref = window.location.href;
+            auth.signInWithEmailLink(email, linkHref).then(function() {
+              lsSet("diggerz.emailForSignIn", "");
+              try { history.replaceState(null, "", location.pathname); } catch (e) {}
+              location.reload();
+            }).catch(function(err) {
+              console.warn("[Diggerz Auth] email link", err);
+              var code = (err && err.code) ? String(err.code) : "";
+              var msg = (err && err.message) ? String(err.message) : String(err);
+              // If already signed in (or code already consumed), do not scare the user
+              try {
+                if (auth.currentUser || code.indexOf("invalid-action-code") >= 0) {
+                  try { history.replaceState(null, "", location.pathname); } catch (e2) {}
+                  if (auth.currentUser) {
+                    console.log("[Diggerz Auth] Link already used but session is active — continuing");
+                    return;
+                  }
+                }
+              } catch (e3) {}
+              alert("Sign-in link failed: " + msg);
+              try { history.replaceState(null, "", location.pathname); } catch (e4) {}
+            });
+          } else {
+            try { history.replaceState(null, "", location.pathname); } catch (e5) {}
+          }
         }
       }
     } catch (e) {

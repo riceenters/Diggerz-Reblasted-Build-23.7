@@ -18636,7 +18636,11 @@ var u = function() {};
             this.Q31 && q.thisMain.stage.set_focus(this.Q30);
             if (null != this._2 && !this._2.a2)
                 return xa.prototype.e0.call(this);
+            // Track whether soft-keyboard/IME already supplied characters this frame.
+            // If it did, skip mKeyQueue printables to avoid double-insert (one key → two chars).
+            var __fromSoft = !1;
             if ("" != this.Q30.get_text()) {
+                __fromSoft = !0;
                 if (this.q35.length < this.q31) {
                     for (var a = 0, b = this.Q30.get_length(); a < b; ) {
                         var c = a++;
@@ -18657,7 +18661,8 @@ var u = function() {};
                 a = !0;
                 // Every key that changes the field (printable or backspace) plays type.ogg
                 if (8 == d || 46 == d) {
-                    if (0 < this.q35.length) {
+                    // Prefer soft-keyboard backspace when it already handled input this frame
+                    if (!__fromSoft && 0 < this.q35.length) {
                         this.q35 = T.substr(this.q35, 0, this.q35.length - 1);
                         this.a1 = 0;
                         E.v2(Pj.n7());
@@ -18672,9 +18677,9 @@ var u = function() {};
                         this.q38();
                         this.a0 = 1;
                     }
-                } else if (this.q35.length < this.q31) {
-                    // Desktop / physical keyboard: insert printable chars from mKeyQueue.
-                    // (Q30 soft-keyboard path above still handles IME/mobile.)
+                } else if (!__fromSoft && this.q35.length < this.q31) {
+                    // Fallback for environments where Q30 soft-keyboard does not receive keys.
+                    // Skipped when __fromSoft to prevent double typing.
                     var __ch = "";
                     try { __ch = String.fromCodePoint(d); } catch (__e) { __ch = ""; }
                     if (__ch) {
@@ -23092,6 +23097,16 @@ var u = function() {};
     // Version 3 starts clean so unrestricted catalog rewards from the earlier
     // reconstruction cannot carry into the corrected rarity economy.
     DiggerzService.STORAGE_KEY = "diggerz.digtrade.rebuild.v3";
+    // Anti-dupe: separate inventory saves per signed-in account so two logins
+    // on the same browser cannot share / clobber one localStorage bag of items.
+    DiggerzService.resolveStorageKey = function() {
+        try {
+            var auth = window.DiggerzAuth237 && window.DiggerzAuth237.state;
+            if (auth && auth.authenticated && auth.uid)
+                return "diggerz.digtrade.rebuild.v3." + String(auth.uid);
+        } catch (e) {}
+        return DiggerzService.STORAGE_KEY;
+    };
     DiggerzService.ITEM_POOL = [3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,25,26,27,30,31,33,34,35,36,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,78,79,80,81,82,83,84,85,86,87,92,93,94,96,97,99,100,101,102,103,105,106,107,108,109,110,111,112,113,114,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,163,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255,256,257,258,275,276,277,278,279,280,326,327,328,329,355,356,357,358,359,360,370,371,379,380,381,382,383,384,385,386,387,388,389,390,391,392,393,394];
     // Build 21.15 loot economy. Normal weapon/block finds are noticeably more
     // common than Build 18, while the rare and super-rare rates stay unchanged.
@@ -23368,7 +23383,7 @@ var u = function() {};
         loadState: function() {
             try {
                 if (!window.localStorage) throw new Error("Local storage unavailable");
-                var raw = window.localStorage.getItem(DiggerzService.STORAGE_KEY);
+                var raw = window.localStorage.getItem((DiggerzService.resolveStorageKey&&DiggerzService.resolveStorageKey())||DiggerzService.STORAGE_KEY);
                 if (!raw) return null;
                 var parsed = JSON.parse(raw);
                 if (this.validState(parsed)) return parsed;
@@ -23383,14 +23398,27 @@ var u = function() {};
         },
         save: function(force) {
             if (!this.saveAvailable || !this.state || !this.dirty && !force) return;
+            // Anti-dupe (same account, two tabs): a stale/secondary tab must not
+            // write an older inventory over the tab that just completed a trade.
+            try {
+                if (window.__dzIsInventoryLeader && !window.__dzIsInventoryLeader()) {
+                    console.warn('[Diggerz Anti-Dupe] Blocked local inventory save from stale tab');
+                    this.dirty = false;
+                    return;
+                }
+            } catch (eLead) {}
             try {
                 if (l.z39) {
                     this.state.x = Math.max(1, Math.min(this.state.width - 2, l.z39.b6 / l._44));
                     this.state.y = Math.max(1, Math.min(this.state.height - 2, l.z39.b7 / l._44))
                 }
-                window.localStorage.setItem(DiggerzService.STORAGE_KEY, JSON.stringify(this.state));
+                window.localStorage.setItem((DiggerzService.resolveStorageKey&&DiggerzService.resolveStorageKey())||DiggerzService.STORAGE_KEY, JSON.stringify(this.state));
                 this.dirty = false;
-                q.diggerzLastSave = Date.now()
+                q.diggerzLastSave = Date.now();
+                try {
+                    if (window.__dzBumpInventoryGen && force) window.__dzBumpInventoryGen();
+                    if (window.__dzClearInventoryStale) window.__dzClearInventoryStale();
+                } catch (eG2) {}
             } catch (error) {
                 this.saveAvailable = false;
                 q.diggerzSaveAvailable = false;
@@ -23420,7 +23448,9 @@ var u = function() {};
                     this.state.y = l.z39.b7 / l._44;
                     this.dirty = true
                 }
-                this.save(false)
+                // Anti-dupe: never persist inventory while a trade is open
+                // (offered items are held out of slots; saving mid-trade enables self-dupe).
+                if (!this.pvpTrade) this.save(false)
             }
             return this.incoming.length ? this.incoming.shift() : null
         },
@@ -24150,7 +24180,7 @@ var u = function() {};
                 this.state.coins = beforeCoins - item.price;
                 this.dirty = true;
                 if (!window.localStorage) throw new Error("Local storage unavailable");
-                window.localStorage.setItem(DiggerzService.STORAGE_KEY, JSON.stringify(this.state));
+                window.localStorage.setItem((DiggerzService.resolveStorageKey&&DiggerzService.resolveStorageKey())||DiggerzService.STORAGE_KEY, JSON.stringify(this.state));
                 this.dirty = false; this.saveAvailable = true;
                 q.diggerzSaveAvailable = true; q.diggerzLastSave = Date.now()
             } catch (error) {
@@ -121418,7 +121448,7 @@ e50: function(a) {
     proto.pvpSendHello=function(){
       if(!window.DiggerzIsMultiplayer(this)||!this.playerId)return;
       var p=l.z39,skin=q.player&&q.player.l9?(.45+1.1*q.player.l9/100):1.44;
-      this.pvpSend({t:'hello',id:guidParts(this.playerId),name:this.playerName(),appearance:this.state.appearance.slice(0,11),appearanceText:this.state.appearanceText||'',x:p?p.b6/l._44:this.state.x,y:p?p.b7/l._44:this.state.y,skin:skin,wins:Math.max(0,this.state.wins|0),mode:P.mode,adminEffects:this.adminEffects||{god:false,fly:false,noclip:false,invis:false}})
+      this.pvpSend({t:'hello',id:guidParts(this.playerId),name:this.playerName(),appearance:this.state.appearance.slice(0,11),appearanceText:this.state.appearanceText||'',x:p?p.b6/l._44:this.state.x,y:p?p.b7/l._44:this.state.y,skin:skin,wins:Math.max(0,this.state.wins|0),mode:P.mode,adminEffects:this.adminEffects||{god:false,fly:false,noclip:false,invis:false},playerGuid:(function(){try{return localStorage.getItem('diggerz.playerGuid.v1')||''}catch(e){return ''}})(),authUid:(function(){try{var a=window.DiggerzAuth237&&window.DiggerzAuth237.state;return(a&&a.uid)||''}catch(e){return ''}})()})
     };
     proto.pvpSendNativeSpawn=function(){
       if(!window.DiggerzIsMultiplayer(this)||!this.playerId||!P.connected||this.localDead)return false;
@@ -121448,8 +121478,8 @@ e50: function(a) {
     proto.pvpTradeOffer=function(){var tr=this.pvpTrade;if(!tr)return;this.pvpWriteContainer(tr.localGuid,tr.localSlots);this.pvpSend({t:'trade-offer',tradeId:tr.id,offer:tr.localSlots.map(itemCopy)})};
     proto.pvpRestoreTradeItems=function(){var tr=this.pvpTrade;if(!tr)return;for(var i=0;i<tr.localSlots.length;i++){var item=tr.localSlots[i];if(item&&item.category&&item.count>0){if(this.addItem(item.category,item.id,item.variant,item.count,item.extra,item.text)<0){var x=l.z39?l.z39.b6/l._44:this.state.x,y=l.z39?l.z39.b7/l._44-.5:this.state.y;this.spawnDrop(item.category,item.id,item.count,x,y,item.text,'trade')}}}this.sendInventory()};
     proto.pvpCloseTradeWindow=function(cancelled){var tr=this.pvpTrade;if(!tr)return;var id=tr.sessionGuid;if(cancelled)this.enqueue(171,1,function(packet){packet.R8(id)});else this.enqueue(172,1,function(packet){packet.R8(id);packet.R9('')})};
-    proto.pvpCancelTradeLocal=function(reason){if(!this.pvpTrade)return;this.pvpRestoreTradeItems();this.pvpCloseTradeWindow(true);this.pvpTrade=null;if(reason)this.message('^1Trade cancelled: ^7'+String(reason))};
-    proto.pvpCompleteTrade=function(receive){var tr=this.pvpTrade;if(!tr)return;var items=Array.isArray(receive)?receive:[];for(var i=0;i<items.length;i++){var item=itemCopy(items[i]);if(item.category&&item.count>0&&this.addItem(item.category,item.id,item.variant,item.count,item.extra,item.text)<0){var x=l.z39?l.z39.b6/l._44:this.state.x,y=l.z39?l.z39.b7/l._44-.5:this.state.y;this.spawnDrop(item.category,item.id,item.count,x,y,item.text,'trade')}}this.pvpCloseTradeWindow(false);this.pvpTrade=null;this.sendInventory();this.markDirty();this.save(true);this.message('^2Trade complete.')};
+    proto.pvpCancelTradeLocal=function(reason){if(!this.pvpTrade)return;this.pvpRestoreTradeItems();this.pvpCloseTradeWindow(true);this.pvpTrade=null;this.markDirty();this.save(true);try{if(window.DiggerzAuth237&&window.DiggerzAuth237.pushCloudSave)window.DiggerzAuth237.pushCloudSave(true);}catch(e){}if(reason)this.message('^1Trade cancelled: ^7'+String(reason))};
+    proto.pvpCompleteTrade=function(receive){var tr=this.pvpTrade;if(!tr)return;var items=Array.isArray(receive)?receive:[];for(var i=0;i<items.length;i++){var item=itemCopy(items[i]);if(item.category&&item.count>0&&this.addItem(item.category,item.id,item.variant,item.count,item.extra,item.text)<0){var x=l.z39?l.z39.b6/l._44:this.state.x,y=l.z39?l.z39.b7/l._44-.5:this.state.y;this.spawnDrop(item.category,item.id,item.count,x,y,item.text,'trade')}}this.pvpCloseTradeWindow(false);this.pvpTrade=null;this.sendInventory();this.markDirty();this.save(true);try{if(window.__dzBumpInventoryGen)window.__dzBumpInventoryGen();else{var __g=Number(localStorage.getItem('diggerz.inventoryGen.v1')||'0')||0;localStorage.setItem('diggerz.inventoryGen.v1',String(__g+1));localStorage.setItem('diggerz.localSaveUpdatedAt.v1',String(Date.now()));}if(window.__dzClaimPlayLock)window.__dzClaimPlayLock('trade-complete');if(window.__dzClearInventoryStale)window.__dzClearInventoryStale();}catch(eG){}try{if(window.DiggerzAuth237&&window.DiggerzAuth237.pushCloudSave)window.DiggerzAuth237.pushCloudSave(true);}catch(eC){}try{if(window.DiggerzDirtySave)window.DiggerzDirtySave('trade-complete');}catch(eD){}this.message('^2Trade complete.')};
     proto.pvpDropKey=function(parts){return Array.isArray(parts)?parts.map(function(v){return v|0}).join(':'):''};
     proto.pvpAddSharedDrop=function(d){if(!d||!Array.isArray(d.guid))return;var guid=this.guidFromParts(d.guid),key=this.pvpGuidKey(guid);if(this.drops[key])return;var drop={guid:guid,category:d.category|0,id:d.id|0,count:Math.max(1,d.count|0),x:+d.x||0,y:+d.y||0,text:String(d.text||''),tier:String(d.tier||'')};this.drops[key]=drop;this.enqueue(15,1,function(packet){packet.R8(guid);packet.R4(drop.category);packet.r8(drop.x);packet.r8(0);packet.r8(drop.y);packet.r8(drop.x);packet.r8(0);packet.r8(drop.y-.35);packet.R2(drop.id);packet.R2(drop.count);packet.R0(0);packet.s0(true);packet.R9(drop.text)})};
     proto.pvpRemoveSharedDrop=function(parts){var guid=this.guidFromParts(parts),key=this.pvpGuidKey(guid),drop=this.drops[key];if(!drop)return;delete this.drops[key];this.removeDrop(drop)};
@@ -123494,6 +123524,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
     ready = false;
     auth = null;
     db = null;
+    __dzFirebaseInitDone = false; // allow re-init on new backend
     try {
       // Delete default app so we can re-init with new config
       if (firebase.apps && firebase.apps.length) {
@@ -123513,6 +123544,8 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
     return Promise.resolve(true);
   }
 
+  var __dzFirebaseInitDone = false;
+  var __dzEmailLinkHandled = false;
   function initFirebase() {
     try {
       if (typeof firebase === "undefined") {
@@ -123532,6 +123565,12 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
       db = firebase.firestore();
       ready = true;
       state.backend = cfg.projectId || cfg.name || String(configIndex);
+      // Only attach listeners / complete email-link once (DOMContentLoaded + setTimeout both call init)
+      if (__dzFirebaseInitDone) {
+        console.log("[Diggerz Auth] Already initialized, skipping duplicate setup");
+        return;
+      }
+      __dzFirebaseInitDone = true;
       console.log("[Diggerz Auth] Using backend", state.backend, "(index", configIndex + ")");
       auth.onAuthStateChanged(function(user) {
         if (user) {
@@ -123578,15 +123617,40 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
           try { sessionStorage.removeItem("diggerz.authMenuReload"); } catch (e3) {}
         }
       });
-      // Complete email link sign-in if landing with link
+      // Complete email link sign-in if landing with link (once only)
       if (auth.isSignInWithEmailLink(window.location.href)) {
-        var email = lsGet("diggerz.emailForSignIn", "") || window.prompt("Confirm your email for sign-in");
-        if (email) {
-          auth.signInWithEmailLink(email, window.location.href).then(function() {
-            lsSet("diggerz.emailForSignIn", "");
-            try { history.replaceState(null, "", location.pathname); } catch (e) {}
-            location.reload();
-          }).catch(function(err) { console.warn("[Diggerz Auth] email link", err); alert("Sign-in link failed: " + (err.message || err)); });
+        if (__dzEmailLinkHandled) {
+          // Already processing or already used this code — strip stale params quietly
+          try { history.replaceState(null, "", location.pathname + location.search.replace(/[?&](apiKey|oobCode|mode|lang)=[^&]*/g, "").replace(/^&/, "?").replace(/\?$/, "") || location.pathname); } catch (eStrip0) {}
+        } else {
+          __dzEmailLinkHandled = true;
+          var email = lsGet("diggerz.emailForSignIn", "") || window.prompt("Confirm your email for sign-in");
+          if (email) {
+            var linkHref = window.location.href;
+            auth.signInWithEmailLink(email, linkHref).then(function() {
+              lsSet("diggerz.emailForSignIn", "");
+              try { history.replaceState(null, "", location.pathname); } catch (e) {}
+              location.reload();
+            }).catch(function(err) {
+              console.warn("[Diggerz Auth] email link", err);
+              var code = (err && err.code) ? String(err.code) : "";
+              var msg = (err && err.message) ? String(err.message) : String(err);
+              // If already signed in (or code already consumed), do not scare the user
+              try {
+                if (auth.currentUser || code.indexOf("invalid-action-code") >= 0) {
+                  try { history.replaceState(null, "", location.pathname); } catch (e2) {}
+                  if (auth.currentUser) {
+                    console.log("[Diggerz Auth] Link already used but session is active — continuing");
+                    return;
+                  }
+                }
+              } catch (e3) {}
+              alert("Sign-in link failed: " + msg);
+              try { history.replaceState(null, "", location.pathname); } catch (e4) {}
+            });
+          } else {
+            try { history.replaceState(null, "", location.pathname); } catch (e5) {}
+          }
         }
       }
     } catch (e) {
@@ -124048,6 +124112,173 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
   },ms);});
 })();
 </script>
+
+<script id="diggerz-anti-dupe-tabs">
+(function(){
+  // Same-account, two-tabs dupe protection.
+  // Problem: both tabs load the same inventory into memory. Tab A trades items
+  // away and saves. Tab B still holds the pre-trade inventory and overwrites
+  // local/cloud storage → items exist on the trade partner AND on the account.
+  var TAB_ID = 'tab_' + Math.random().toString(36).slice(2) + '_' + Date.now().toString(36);
+  var LOCK_KEY = 'diggerz.sessionLock.v1';
+  var GEN_KEY = 'diggerz.inventoryGen.v1';
+  var STALE_KEY = 'diggerz.inventoryStale.v1';
+  var LOCK_MS = 5 * 60 * 1000;
+
+  function lsGet(k, d){ try { var v = localStorage.getItem(k); return v == null ? d : v; } catch(e){ return d; } }
+  function lsSet(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
+  function lsDel(k){ try { localStorage.removeItem(k); } catch(e){} }
+
+  function readLock(){
+    try { return JSON.parse(lsGet(LOCK_KEY, 'null')); } catch(e){ return null; }
+  }
+  function claimLock(reason){
+    var now = Date.now();
+    var lock = { tabId: TAB_ID, at: now, reason: String(reason||'play') };
+    lsSet(LOCK_KEY, JSON.stringify(lock));
+    return lock;
+  }
+  function releaseLock(){
+    var lock = readLock();
+    if (lock && lock.tabId === TAB_ID) lsDel(LOCK_KEY);
+  }
+  function hasForeignLock(){
+    var lock = readLock();
+    if (!lock || !lock.tabId) return false;
+    if (lock.tabId === TAB_ID) return false;
+    if ((Date.now() - (lock.at|0)) > LOCK_MS) return false;
+    return true;
+  }
+  function isLeader(){
+    var lock = readLock();
+    if (!lock || !lock.tabId) return true; // no lock yet
+    if ((Date.now() - (lock.at|0)) > LOCK_MS) return true;
+    return lock.tabId === TAB_ID;
+  }
+  function bumpGen(){
+    var g = (Number(lsGet(GEN_KEY, '0')) || 0) + 1;
+    lsSet(GEN_KEY, String(g));
+    lsSet('diggerz.localSaveUpdatedAt.v1', String(Date.now()));
+    return g;
+  }
+  function currentGen(){ return Number(lsGet(GEN_KEY, '0')) || 0; }
+
+  // This tab's view of inventory generation when it last loaded/saved
+  window.__dzInvGenSeen = currentGen();
+  window.__dzTabId = TAB_ID;
+  window.__dzIsInventoryLeader = function(){ return isLeader() && !lsGet(STALE_KEY, ''); };
+  window.__dzClaimPlayLock = function(reason){
+    if (hasForeignLock()) return false;
+    claimLock(reason || 'digtrade');
+    return true;
+  };
+  window.__dzReleasePlayLock = releaseLock;
+  window.__dzBumpInventoryGen = bumpGen;
+  window.__dzMarkInventoryStale = function(why){
+    lsSet(STALE_KEY, String(why || 'stale') + '@' + Date.now());
+    window.__dzInvGenSeen = -1;
+  };
+  window.__dzClearInventoryStale = function(){
+    lsDel(STALE_KEY);
+    window.__dzInvGenSeen = currentGen();
+  };
+
+  // Other tab changed inventory / lock → this tab must not push a stale bag
+  window.addEventListener('storage', function(ev){
+    if (!ev) return;
+    if (ev.key === GEN_KEY || ev.key === LOCK_KEY || (ev.key && ev.key.indexOf('diggerz.digtrade') === 0)) {
+      var g = currentGen();
+      if (g > (window.__dzInvGenSeen|0)) {
+        window.__dzMarkInventoryStale('peer-tab-save');
+        try {
+          if (window.q && q.diggerzService && q.diggerzService.pvpTrade) {
+            // Mid-trade on a stale tab is dangerous — cancel local trade UI
+            try { q.diggerzService.pvpCancelTradeLocal('Another tab updated your inventory.'); } catch(e){}
+          }
+        } catch(e2){}
+        console.warn('[Diggerz Anti-Dupe] Inventory changed in another tab. This tab will not overwrite cloud/local saves.');
+      }
+    }
+  });
+
+  // Wrap cloud push so a stale/secondary tab cannot restore traded-away items
+  function wrapCloudPush(){
+    var auth = window.DiggerzAuth237;
+    if (!auth || !auth.pushCloudSave || auth.__dzAntiDupeWrapped) return false;
+    var orig = auth.pushCloudSave.bind(auth);
+    auth.pushCloudSave = function(force){
+      if (!window.__dzIsInventoryLeader()) {
+        console.warn('[Diggerz Anti-Dupe] Blocked cloud save from non-leader/stale tab');
+        return Promise.resolve({ ok:false, blocked:'stale-tab' });
+      }
+      // Refresh seen gen after a successful leader save
+      return Promise.resolve(orig(force)).then(function(r){
+        try { window.__dzInvGenSeen = currentGen(); window.__dzClearInventoryStale(); } catch(e){}
+        return r;
+      });
+    };
+    auth.__dzAntiDupeWrapped = true;
+    return true;
+  }
+  var tries = 0;
+  var t = setInterval(function(){
+    tries++;
+    if (wrapCloudPush() || tries > 40) clearInterval(t);
+  }, 250);
+
+  // Claim leadership when this tab starts multiplayer matchmaking
+  function wrapMatchmake(){
+    try {
+      if (!window.DiggerzPvp22 || window.DiggerzPvp22.__dzLockWrapped) return false;
+      var P = window.DiggerzPvp22;
+      var prevConnect = P.connect || P.start || null;
+      // Hook send path used at matchmake
+      var origSendRaw = null;
+      // Intercept at websocket send of matchmake by patching after connect
+      P.__dzLockWrapped = true;
+      var prevInstall = P.installRuntimeHooks;
+      // Claim lock whenever joined becomes true
+      var lastJoined = false;
+      setInterval(function(){
+        try {
+          if (P.joined && !lastJoined) {
+            if (!window.__dzClaimPlayLock('digtrade-joined')) {
+              console.warn('[Diggerz Anti-Dupe] Another tab is already playing on this account.');
+              try {
+                if (P.socket) P.socket.close();
+              } catch(e){}
+              P.joined = false;
+              try {
+                if (window.q && q.diggerzService && q.diggerzService.message)
+                  q.diggerzService.message('^1Another tab is already using this account. Close other tabs to avoid item duplication.');
+              } catch(e2){}
+            } else {
+              window.__dzClearInventoryStale();
+            }
+          }
+          if (!P.joined && lastJoined) {
+            releaseLock();
+          }
+          lastJoined = !!P.joined;
+        } catch(e){}
+      }, 400);
+      return true;
+    } catch(e){ return false; }
+  }
+  var tries2 = 0;
+  var t2 = setInterval(function(){
+    tries2++;
+    if (wrapMatchmake() || tries2 > 80) clearInterval(t2);
+  }, 250);
+
+  // On trade-complete / cancel, leader bumps gen (also done in pvpCompleteTrade)
+  window.addEventListener('beforeunload', function(){ releaseLock(); });
+  window.addEventListener('pagehide', function(){ releaseLock(); });
+
+  console.log('[Diggerz Anti-Dupe] multi-tab protection active', TAB_ID);
+})();
+</script>
+
 <script src="/build239-client.js"></script><script src="/build240-client.js"></script>
 <script id="diggerz-purple-plaid-colorize">
 (function () {

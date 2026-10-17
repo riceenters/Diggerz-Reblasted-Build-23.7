@@ -17958,7 +17958,11 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             this.Q31 && q.thisMain.stage.set_focus(this.Q30);
             if (null != this._2 && !this._2.a2)
                 return xa.prototype.e0.call(this);
+            // Track whether soft-keyboard/IME already supplied characters this frame.
+            // If it did, skip mKeyQueue printables to avoid double-insert (one key → two chars).
+            var __fromSoft = !1;
             if ("" != this.Q30.get_text()) {
+                __fromSoft = !0;
                 if (this.q35.length < this.q31) {
                     for (var a = 0, b = this.Q30.get_length(); a < b; ) {
                         var c = a++;
@@ -17979,7 +17983,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 a = !0;
                 // Every key that changes the field (printable or backspace) plays type.ogg
                 if (8 == d || 46 == d) {
-                    if (0 < this.q35.length) {
+                    // Prefer soft-keyboard backspace when it already handled input this frame
+                    if (!__fromSoft && 0 < this.q35.length) {
                         this.q35 = T.substr(this.q35, 0, this.q35.length - 1);
                         this.a1 = 0;
                         E.v2(Pj.n7());
@@ -17994,9 +17999,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         this.q38();
                         this.a0 = 1;
                     }
-                } else if (this.q35.length < this.q31) {
-                    // Desktop / physical keyboard: insert printable chars from mKeyQueue.
-                    // (Q30 soft-keyboard path above still handles IME/mobile.)
+                } else if (!__fromSoft && this.q35.length < this.q31) {
+                    // Fallback for environments where Q30 soft-keyboard does not receive keys.
+                    // Skipped when __fromSoft to prevent double typing.
                     var __ch = "";
                     try { __ch = String.fromCodePoint(d); } catch (__e) { __ch = ""; }
                     if (__ch) {
@@ -120247,6 +120252,7 @@ e50: function(a) {
     ready = false;
     auth = null;
     db = null;
+    __dzFirebaseInitDone = false; // allow re-init on new backend
     try {
       // Delete default app so we can re-init with new config
       if (firebase.apps && firebase.apps.length) {
@@ -120266,6 +120272,8 @@ e50: function(a) {
     return Promise.resolve(true);
   }
 
+  var __dzFirebaseInitDone = false;
+  var __dzEmailLinkHandled = false;
   function initFirebase() {
     try {
       if (typeof firebase === "undefined") {
@@ -120285,6 +120293,12 @@ e50: function(a) {
       db = firebase.firestore();
       ready = true;
       state.backend = cfg.projectId || cfg.name || String(configIndex);
+      // Only attach listeners / complete email-link once (DOMContentLoaded + setTimeout both call init)
+      if (__dzFirebaseInitDone) {
+        console.log("[Diggerz Auth] Already initialized, skipping duplicate setup");
+        return;
+      }
+      __dzFirebaseInitDone = true;
       console.log("[Diggerz Auth] Using backend", state.backend, "(index", configIndex + ")");
       auth.onAuthStateChanged(function(user) {
         if (user) {
@@ -120323,15 +120337,40 @@ e50: function(a) {
           try { sessionStorage.removeItem("diggerz.authMenuReload"); } catch (e3) {}
         }
       });
-      // Complete email link sign-in if landing with link
+      // Complete email link sign-in if landing with link (once only)
       if (auth.isSignInWithEmailLink(window.location.href)) {
-        var email = lsGet("diggerz.emailForSignIn", "") || window.prompt("Confirm your email for sign-in");
-        if (email) {
-          auth.signInWithEmailLink(email, window.location.href).then(function() {
-            lsSet("diggerz.emailForSignIn", "");
-            try { history.replaceState(null, "", location.pathname); } catch (e) {}
-            location.reload();
-          }).catch(function(err) { console.warn("[Diggerz Auth] email link", err); alert("Sign-in link failed: " + (err.message || err)); });
+        if (__dzEmailLinkHandled) {
+          // Already processing or already used this code — strip stale params quietly
+          try { history.replaceState(null, "", location.pathname + location.search.replace(/[?&](apiKey|oobCode|mode|lang)=[^&]*/g, "").replace(/^&/, "?").replace(/\?$/, "") || location.pathname); } catch (eStrip0) {}
+        } else {
+          __dzEmailLinkHandled = true;
+          var email = lsGet("diggerz.emailForSignIn", "") || window.prompt("Confirm your email for sign-in");
+          if (email) {
+            var linkHref = window.location.href;
+            auth.signInWithEmailLink(email, linkHref).then(function() {
+              lsSet("diggerz.emailForSignIn", "");
+              try { history.replaceState(null, "", location.pathname); } catch (e) {}
+              location.reload();
+            }).catch(function(err) {
+              console.warn("[Diggerz Auth] email link", err);
+              var code = (err && err.code) ? String(err.code) : "";
+              var msg = (err && err.message) ? String(err.message) : String(err);
+              // If already signed in (or code already consumed), do not scare the user
+              try {
+                if (auth.currentUser || code.indexOf("invalid-action-code") >= 0) {
+                  try { history.replaceState(null, "", location.pathname); } catch (e2) {}
+                  if (auth.currentUser) {
+                    console.log("[Diggerz Auth] Link already used but session is active — continuing");
+                    return;
+                  }
+                }
+              } catch (e3) {}
+              alert("Sign-in link failed: " + msg);
+              try { history.replaceState(null, "", location.pathname); } catch (e4) {}
+            });
+          } else {
+            try { history.replaceState(null, "", location.pathname); } catch (e5) {}
+          }
         }
       }
     } catch (e) {

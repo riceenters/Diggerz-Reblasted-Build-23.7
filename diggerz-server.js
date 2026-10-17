@@ -2408,6 +2408,17 @@ function cancelTrade(client, reason = 'Cancelled.') {
 
 function beginTrade(client, target) {
   if (!client.room || !target || target === client || client.room.mode !== 'digtrade') return;
+  // Anti-dupe: reject trades between the same account or same browser device id.
+  // (Two different accounts on one WiFi can still trade; cloud force-save handles that case.)
+  try {
+    const sameGuid = client.playerGuid && target.playerGuid && String(client.playerGuid) === String(target.playerGuid);
+    const sameAuth = client.authUid && target.authUid && String(client.authUid) === String(target.authUid);
+    if (sameGuid || sameAuth) {
+      sendJson(client, { t:'server-error', code:'trade-self', message:'You cannot trade with yourself (same account/device).' });
+      sendJson(target, { t:'server-error', code:'trade-self', message:'You cannot trade with yourself (same account/device).' });
+      return;
+    }
+  } catch (e) {}
   if (client.trade) cancelTrade(client, 'A new trade started.');
   if (target.trade) cancelTrade(target, 'A new trade started.');
   const id = `TR${(nextTradeNumber++).toString(36).toUpperCase().padStart(6,'0')}`;
@@ -2455,8 +2466,13 @@ function completeTrade(client, partner) {
   if (!client || !partner || !client.trade || !partner.trade || client.trade.id!==partner.trade.id) return;
   const id=client.trade.id,aOffer=client.trade.offer,bOffer=partner.trade.offer;
   client.trade=null; partner.trade=null;
-  sendJson(client,{t:'trade-complete',tradeId:id,receive:bOffer});
-  sendJson(partner,{t:'trade-complete',tradeId:id,receive:aOffer});
+  sendJson(client,{t:'trade-complete',tradeId:id,receive:bOffer,forceSave:true});
+  sendJson(partner,{t:'trade-complete',tradeId:id,receive:aOffer,forceSave:true});
+  try {
+    console.log('[Diggerz] trade-complete', id,
+      client.name, '->', JSON.stringify(aOffer.filter(i=>i&&i.count>0)),
+      '|', partner.name, '->', JSON.stringify(bOffer.filter(i=>i&&i.count>0)));
+  } catch (e) {}
 }
 
 function relayGameMessage(client, message, rawLength) {
@@ -2476,6 +2492,10 @@ function relayGameMessage(client, message, rawLength) {
 
 
   if (message.t==='hello') {
+    try {
+      if (message.playerGuid) client.playerGuid = String(message.playerGuid).slice(0, 80);
+      if (message.authUid) client.authUid = String(message.authUid).slice(0, 128);
+    } catch (e) {}
     const newName=normalizeName(message.name||client.name), changed=newName!==client.name;
     client.name=newName;
     client.appearance=Array.isArray(message.appearance)?message.appearance.slice(0,11):client.appearance||[0,247,0,0,326,0,0,0,0,0,0];
