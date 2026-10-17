@@ -22309,6 +22309,27 @@ var u = function() {};
         B40: null,
         e0: function() {
             this.set_local_rot(-this._2.b3);
+            // Keep admin big font + RGB plate even when idle (game often resets name label)
+            try {
+                if (this.__dzPal && this.E32) {
+                    var lab = this.E32;
+                    var scale = lab.__dzBaseScale || 0.32;
+                    if (q.MAIN_FONT_BIG && lab.E31 !== q.MAIN_FONT_BIG) {
+                        lab.E31 = q.MAIN_FONT_BIG;
+                        var txt = String(lab.E32 || "");
+                        lab.E37(txt);
+                    }
+                    try {
+                        lab.set_local_xScale(scale);
+                        lab.set_local_yScale(scale);
+                        lab.b7 = -132;
+                    } catch (_s) {}
+                    if (this.b48) {
+                        this.b48.__dzRgbPlate = true;
+                        this.b48.b7 = -134;
+                    }
+                }
+            } catch (_ad) {}
             return z.prototype.e0.call(this)
         },
         p39: function(a, b) {
@@ -121748,7 +121769,7 @@ e50: function(a) {
         if(P.connected)this.pvpSendNativeSpawn();return}
       if(m.t==='admin-effect'){if(String(m.connectionId||'')===String(P.connectionId||''))this.adminApplyEffects(m.effects||{});else{var ep=this.pvpPeerForConnection(m.connectionId);if(ep){ep.adminEffects=Object.assign({god:false,fly:false,noclip:false,invis:false},m.effects||{});this.adminApplyPeerEffects(ep)}}return}
       if(m.t==='admin-modifiers'){var mods=Object.assign({speed:1,jump:1,size:1,breakSpeed:1},m.modifiers||{});if(String(m.connectionId||'')===String(P.connectionId||'')){this.adminModifiers=mods;this.adminApplyModifiers(mods)}else{var mp=this.pvpPeerForConnection(m.connectionId);if(mp){mp.adminModifiers=mods;this.adminApplyPeerModifiers(mp)}}return}
-      if(m.t==='peer-rename'){var rp=this.pvpPeerForConnection(m.connectionId);var renamed=String(m.name||'Player').slice(0,24);if(rp){rp.name=renamed;if(rp.info)rp.info.name=renamed;var re=this.pvpEntityForPeer(rp);if(re){try{re._1=renamed}catch(_e){}try{if(re.J30&&re.J30.E32)re.J30.E32.E37(renamed)}catch(_e){}}}if(String(m.connectionId||'')===String(P.connectionId||'')){this._adminDisplayName=renamed;try{q.thisMain.userName=renamed;q.SaveGlobals()}catch(_e){}try{if(l.z39){l.z39._1=renamed;if(l.z39.J30&&l.z39.J30.E32)l.z39.J30.E32.E37(renamed)}}catch(_e){}try{this.pvpSendHello();if(P.connected)this.pvpSendNativeSpawn()}catch(_e){}}return}
+      if(m.t==='peer-rename'){var rp=this.pvpPeerForConnection(m.connectionId);var renamed=String(m.name||'Player').slice(0,24);if(rp){rp.name=renamed;if(rp.info)rp.info.name=renamed;var re=this.pvpEntityForPeer(rp);if(re){try{re._1=renamed}catch(_e){}try{if(re.J30&&re.J30.E32)re.J30.E32.E37(renamed)}catch(_e){}try{if(rp&&rp.isAdmin&&re.J30){var _s=window.q&&q.diggerzService;if(_s&&_s.adminApplyRoleTag)_s.adminApplyRoleTag(re,'owner',rp.adminPal||'harlan')}}catch(_e2){}}}if(String(m.connectionId||'')===String(P.connectionId||'')){this._adminDisplayName=renamed;try{q.thisMain.userName=renamed;q.SaveGlobals()}catch(_e){}try{if(l.z39){l.z39._1=renamed;if(l.z39.J30&&l.z39.J30.E32)l.z39.J30.E32.E37(renamed)}}catch(_e){}try{this.pvpSendHello();if(P.connected)this.pvpSendNativeSpawn()}catch(_e){}}return}
       if(m.t==='admin-rename'){this._adminDisplayName=String(m.name||'Player').slice(0,24);try{q.thisMain.userName=this._adminDisplayName;q.SaveGlobals()}catch(_e){}try{if(l.z39){l.z39._1=this._adminDisplayName;if(l.z39.J30&&l.z39.J30.E32)l.z39.J30.E32.E37(this._adminDisplayName)}}catch(_e){};this.pvpSendHello();if(P.connected)this.pvpSendNativeSpawn();return}
       if(m.t==='admin-pvp-state'){this.adminPvpEnabled=!!m.enabled;try{q.diggerzAdminPvpEnabled=!!m.enabled}catch(_e){};return}
       if(m.t==='admin-background'){this.adminApplyBackgroundLocal(m.background|0);return}
@@ -122536,7 +122557,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
     };
     var releaseRoomState=proto.pvpApplyRoomState;proto.pvpApplyRoomState=function(m){if(m&&m.map&&(this.mode==='pvp'||this.mode==='digtrade'))this.pvpApplyBaseMap(m.map);return releaseRoomState.call(this,m)};
     function refreshBoard(service){try{if(l.z38&&l.z38.R37&&l.z38.R37.Z44)l.z38.R37.Z44()}catch(e){}}
-    function setNameWins(e,w){try{if(e&&e.J30&&e.J30.E32)e.J30.E32.E37(String(e._1||'Player')+' ^9'+Math.max(0,w|0))}catch(_e){}} function resetScores(service){try{if(l.z39){l.z39.k31=0;setNameWins(l.z39,service&&service.state?service.state.wins|0:0)}var peers=service&&service.pvpEnsurePeers?service.pvpEnsurePeers():{};for(var k in peers){var peer=peers[k],e=service.pvpEntityForPeer(peer);if(e){e.k31=0;setNameWins(e,peer&&peer.info?peer.info.wins|0:0)}}refreshBoard(service)}catch(e){}}
+    function setNameWins(e,w){try{if(e&&e.J30&&e.J30.E32){e.J30.E32.E37(String(e._1||'Player')+' ^9'+Math.max(0,w|0));if(e.J30.__dzPal){var s=window.q&&q.diggerzService;if(s&&s.adminApplyRoleTag)s.adminApplyRoleTag(e,'owner',e.J30.__dzPal)}}}catch(_e){}} function resetScores(service){try{if(l.z39){l.z39.k31=0;setNameWins(l.z39,service&&service.state?service.state.wins|0:0)}var peers=service&&service.pvpEnsurePeers?service.pvpEnsurePeers():{};for(var k in peers){var peer=peers[k],e=service.pvpEntityForPeer(peer);if(e){e.k31=0;setNameWins(e,peer&&peer.info?peer.info.wins|0:0)}}refreshBoard(service)}catch(e){}}
     function setScore(service,cid,kills){try{var e=String(cid||'')===String(P.connectionId||'')?l.z39:(service.pvpPeerForConnection(cid)&&service.pvpEntityForPeer(service.pvpPeerForConnection(cid)));if(e)e.k31=Math.max(0,kills|0);refreshBoard(service)}catch(_e){}}
     function itemLine(service,item){item=item||{};if(!item.category||!item.count)return null;return (item.count>1?item.count+' × ':'')+service.itemName(item.category|0,item.id|0)}
     function closeReview(){if(review)review.style.display='none'}
@@ -122629,7 +122650,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
 
     function chat(service,text){try{service.message(text)}catch(e){}}
     function refreshBoard(service){try{var board=service&&service.game&&service.game.f4?service.game.f4(window.Ao):null;if(board&&board.Z44)board.Z44()}catch(e){}}
-    function nameWins(e,w){try{if(e&&e.J30&&e.J30.E32)e.J30.E32.E37(String(e._1||'Player')+' ^9'+Math.max(0,w|0))}catch(_e){}} function applyWins(service){try{if(service&&l.z39)nameWins(l.z39,service.state.wins|0);refreshBoard(service)}catch(e){}}
+    function nameWins(e,w){try{if(e&&e.J30&&e.J30.E32){e.J30.E32.E37(String(e._1||'Player')+' ^9'+Math.max(0,w|0));if(e.J30.__dzPal){var s=window.q&&q.diggerzService;if(s&&s.adminApplyRoleTag)s.adminApplyRoleTag(e,'owner',e.J30.__dzPal)}}}catch(_e){}} function applyWins(service){try{if(service&&l.z39)nameWins(l.z39,service.state.wins|0);refreshBoard(service)}catch(e){}}
     function setRemoteWins(service,cid,wins){try{var peer=service.pvpPeerForConnection(cid),e=peer&&service.pvpEntityForPeer(peer);if(peer&&peer.info)peer.info.wins=Math.max(0,wins|0);if(e)nameWins(e,wins);refreshBoard(service)}catch(err){}}
     function smallPrompt(service,text){
       if(!service||!text)return;
