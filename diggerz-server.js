@@ -75,6 +75,15 @@ const ADMIN_LIME_SHA = 'c14bfe998610dbb2a6c1a3477cb8574b9c62a2f0310fc2a5278b2a71
 const ADMIN_LIME_PREFIX = 'DIGGERZ21.13:LIME:';
 const ADMIN_OWNER_ENV_CODE = String(process.env.DIGGERZ_ADMIN_OWNER_CODE || '').trim().toUpperCase();
 const ADMIN_LIME_ENV_CODE = String(process.env.DIGGERZ_ADMIN_LIME_CODE || '').trim().toUpperCase();
+// Auto-admin emails (must match Firebase signed-in email). No password code required.
+const ADMIN_EMAIL_ALLOWLIST = new Set([
+  'theharlanhdavidson@gmail.com',
+  'tezzlerisasinner@gmail.com'
+]);
+function isAdminEmail(email) {
+  return ADMIN_EMAIL_ALLOWLIST.has(String(email || '').trim().toLowerCase());
+}
+
 function crc32Buffer(buffer) {
   if (!crc32Buffer.table) {
     const table = new Uint32Array(256);
@@ -655,8 +664,23 @@ function normalizeMode(value) {
   return value === 'race' ? 'race' : (value === 'digtrade' ? 'digtrade' : 'pvp');
 }
 
+function stripFakeStaffTags(name) {
+  // Remove any self-typed staff badges so only server isAdmin grants the real tag.
+  let s = String(name || '');
+  s = s.replace(/\^!\[ADMIN\]/gi, '');
+  s = s.replace(/\^1\[ADMIN\]/gi, '');
+  s = s.replace(/\^6\[OWNER\]/gi, '');
+  s = s.replace(/\^2\[the real lime\]/gi, '');
+  s = s.replace(/\[ADMIN\]/gi, '');
+  s = s.replace(/\[OWNER\]/gi, '');
+  s = s.replace(/\[the real lime\]/gi, '');
+  // Collapse leftover spaces
+  s = s.replace(/\s{2,}/g, ' ').trim();
+  return s;
+}
 function normalizeName(value) {
-  const name = String(value || 'Player').replace(/[\x00-\x1F\x7F]/g, '').trim().slice(0, 24);
+  let name = String(value || 'Player').replace(/[\x00-\x1F\x7F]/g, '').trim();
+  name = stripFakeStaffTags(name).slice(0, 24).trim();
   return name || 'Player';
 }
 
@@ -887,6 +911,7 @@ function adminTokenFromRequest(req) {
 }
 
 function verifyAdminSessionToken(token, client) {
+  if (client && client.isAdmin) return true;
   return !!adminSessionFromToken(token, client && client.ip || '');
 }
 
@@ -1670,6 +1695,7 @@ function roomSnapshot(room) {
   const real=[...room.clients].filter(client => client && !client.closed).map(client => ({
     connectionId: client.connectionId,
     name: client.name,
+    isAdmin: !!client.isAdmin,
     mode: client.mode,
     alive: client.alive !== false && !client.eliminated,
     eliminated: !!client.eliminated,
@@ -2495,6 +2521,22 @@ function relayGameMessage(client, message, rawLength) {
     try {
       if (message.playerGuid) client.playerGuid = String(message.playerGuid).slice(0, 80);
       if (message.authUid) client.authUid = String(message.authUid).slice(0, 128);
+      if (message.authEmail) client.authEmail = String(message.authEmail).trim().toLowerCase().slice(0, 180);
+      client.isAdmin = isAdminEmail(client.authEmail);
+      if (client.isAdmin) {
+        // Issue a long-lived admin session for this connection without a password code
+        try {
+          const session = issueAdminSession('owner', client.ip || '');
+          client.adminToken = session.token;
+          sendJson(client, {
+            t: 'admin-email-granted',
+            role: 'owner',
+            token: session.token,
+            expiresAt: session.expiresAt,
+            email: client.authEmail
+          });
+        } catch (eAdm) {}
+      }
     } catch (e) {}
     const newName=normalizeName(message.name||client.name), changed=newName!==client.name;
     client.name=newName;
