@@ -2135,6 +2135,18 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 b = .35;
                 c = .2;
                 break;
+            case 96:
+                // Admin ^@ harlan — animated in Ef.e0 / E4
+                a = .25;
+                b = .7;
+                c = .15;
+                break;
+            case 97:
+                // Admin ^# tezzler — animated in Ef.e0 / E4
+                a = .15;
+                b = .35;
+                c = .9;
+                break;
             case 98:
                 // Purple (for Purple Plaid Pants/Shirt — same atlas as normal plaid)
                 a = .72;
@@ -18892,28 +18904,52 @@ var u = function() {};
             Ef.R30.push(this)
         },
         e0: function() {
-            // Rainbow / admin gradient text (^! / C5===99)
-            if (99 == this.C5) {
+            // ^@ (96) harlan L→R, ^# (97) tezzler L→R, ^! (99) rainbow
+            if (96 == this.C5 || 97 == this.C5 || 99 == this.C5) {
                 var r, g, b;
-                var pal = this.__dzPal || (this._2 && this._2.__dzPal) || null;
-                // Walk up a couple parents for name-card palette
-                if (!pal) {
-                    try {
-                        var p = this._2;
-                        for (var wi = 0; wi < 4 && p; wi++) {
-                            if (p.__dzPal) { pal = p.__dzPal; break; }
-                            p = p._2;
-                        }
-                    } catch (_w) {}
+                var pal = null;
+                if (96 == this.C5) pal = "harlan";
+                else if (97 == this.C5) pal = "tezzler";
+                else {
+                    pal = this.__dzPal || (this._2 && this._2.__dzPal) || null;
+                    if (!pal) {
+                        try {
+                            var p = this._2;
+                            for (var wi = 0; wi < 4 && p; wi++) {
+                                if (p.__dzPal) { pal = p.__dzPal; break; }
+                                p = p._2;
+                            }
+                        } catch (_w) {}
+                    }
                 }
-                if (pal && window.__dzAdminGradientColor) {
-                    var col = window.__dzAdminGradientColor(pal, this.__dzGlyphI || 0);
-                    r = col.r; g = col.g; b = col.b;
+                if ((96 == this.C5 || 97 == this.C5 || pal) && window.__dzAdminGradientColor && (96 == this.C5 || 97 == this.C5 || pal)) {
+                    // Prefer true L→R admin gradient for 96/97 (and 99 if pal set)
+                    if (96 == this.C5 || 97 == this.C5 || (99 == this.C5 && pal)) {
+                        var gn = (this._2 && this._2.__dzGlyphN) || 12;
+                        var col = window.__dzAdminGradientColor(pal || (96 == this.C5 ? "harlan" : "tezzler"), this.__dzGlyphI || 0, gn);
+                        r = col.r; g = col.g; b = col.b;
+                    } else {
+                        var t0 = (Date.now() % 3000) / 3000 * 6.28318530718;
+                        r = .5 + .5 * Math.sin(t0);
+                        g = .5 + .5 * Math.sin(t0 + 2.09439510239);
+                        b = .5 + .5 * Math.sin(t0 + 4.18879020479);
+                    }
+                } else if (96 == this.C5) {
+                    // Fallback harlan without helper: green→purple by glyph index
+                    var t1 = Math.min(1, (this.__dzGlyphI || 0) / 10);
+                    r = 0.18 + (0.38 - 0.18) * t1;
+                    g = 0.55 + (0.08 - 0.55) * t1;
+                    b = 0.08 + (0.58 - 0.08) * t1;
+                } else if (97 == this.C5) {
+                    var t2 = Math.min(1, (this.__dzGlyphI || 0) / 10);
+                    r = 0.08 + (0.72 - 0.08) * t2;
+                    g = 0.20 + (0.55 - 0.20) * t2;
+                    b = 0.70 + (0.06 - 0.70) * t2;
                 } else {
-                    var t = (Date.now() % 3000) / 3000 * 6.28318530718;
-                    r = .5 + .5 * Math.sin(t);
-                    g = .5 + .5 * Math.sin(t + 2.09439510239);
-                    b = .5 + .5 * Math.sin(t + 4.18879020479);
+                    var t3 = (Date.now() % 3000) / 3000 * 6.28318530718;
+                    r = .5 + .5 * Math.sin(t3);
+                    g = .5 + .5 * Math.sin(t3 + 2.09439510239);
+                    b = .5 + .5 * Math.sin(t3 + 4.18879020479);
                 }
                 try {
                     if (this.b1) {
@@ -18948,13 +18984,19 @@ var u = function() {};
                         b = .55 + .45 * Math.sin(t);
                         c = .55 + .45 * Math.sin(t + 2.09439510239);
                         d = .55 + .45 * Math.sin(t + 4.18879020479);
-                    } else if (96 == this.C5 || 97 == this.C5 || this.__dzPal || (this._2 && this._2.__dzPal)) {
+                    } else {
                         var pal = 96 == this.C5 ? "harlan" : (97 == this.C5 ? "tezzler" : (this.__dzPal || (this._2 && this._2.__dzPal) || "harlan"));
                         var gi = this.__dzGlyphI || 0;
                         var gn = (this._2 && this._2.__dzGlyphN) || 12;
                         if (window.__dzAdminGradientColor) {
                             var col = window.__dzAdminGradientColor(pal, gi, gn);
                             b = col.r; c = col.g; d = col.b;
+                        } else if (96 == this.C5 || pal === "harlan") {
+                            var u = Math.min(1, gi / Math.max(1, gn));
+                            b = 0.18 + 0.20 * u; c = 0.55 - 0.47 * u; d = 0.08 + 0.50 * u;
+                        } else {
+                            var u2 = Math.min(1, gi / Math.max(1, gn));
+                            b = 0.08 + 0.64 * u2; c = 0.20 + 0.35 * u2; d = 0.70 - 0.64 * u2;
                         }
                     }
                 }
@@ -56306,34 +56348,8 @@ function __normalizeWearableScales(skel) {
                 }
                 this._9.push(g);
                 var __nm = String(e._1 || "Player");
-                var __code = __pal === "tezzler" ? "^#" : (__isAd ? "^@" : "");
-                var __font = (__isAd && q.MAIN_FONT_BIG) ? q.MAIN_FONT_BIG : q.MAIN_FONT_SMALL;
-                g = new xa(q.SCREENWIDTH - 190,a,__code + __nm,__font,2);
-                if (__isAd) {
-                    try {
-                        var __bigH = (q.MAIN_FONT_BIG && q.MAIN_FONT_BIG.M17 && q.MAIN_FONT_BIG.M17.lineHeight) || 32;
-                        var __smallH = (q.MAIN_FONT_SMALL && q.MAIN_FONT_SMALL.M17 && q.MAIN_FONT_SMALL.M17.lineHeight) || 16;
-                        var __bs = __smallH / __bigH;
-                        if (!(__bs > 0.15 && __bs < 1)) __bs = 0.4;
-                        g.__dzBaseScale = __bs;
-                        g.__dzPal = __pal;
-                        g.set_local_xScale(__bs);
-                        g.set_local_yScale(__bs);
-                        var __gs = g._9 || [], __idx = 0, __cnt = 0;
-                        for (var __gi = 0; __gi < __gs.length; __gi++) if (__gs[__gi]) __cnt++;
-                        g.__dzGlyphN = Math.max(1, __cnt - 1);
-                        for (var __gi = 0; __gi < __gs.length; __gi++) {
-                            if (!__gs[__gi]) continue;
-                            __gs[__gi].__dzPal = __pal;
-                            __gs[__gi].__dzGlyphI = __idx++;
-                            try {
-                                var __c5 = __pal === "tezzler" ? 97 : 96;
-                                __gs[__gi].C5 = __c5;
-                                if (__gs[__gi].h4) __gs[__gi].h4(__c5);
-                            } catch (_c) {}
-                        }
-                    } catch (_ad) {}
-                }
+                // Default leaderboard font + size for everyone
+                g = new xa(q.SCREENWIDTH - 190,a,__nm,q.MAIN_FONT_SMALL,2);
                 this._9.push(g);
                 g = new xa(q.SCREENWIDTH - 34,a,"" + e.k31,q.MAIN_FONT_SMALL);
                 g.e38 = Pc.RIGHT;
