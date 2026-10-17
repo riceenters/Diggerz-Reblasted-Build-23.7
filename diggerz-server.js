@@ -667,6 +667,8 @@ function normalizeMode(value) {
 function stripFakeStaffTags(name) {
   // Remove any self-typed staff badges so only server isAdmin grants the real tag.
   let s = String(name || '');
+  s = s.replace(/\^@/g, '');
+  s = s.replace(/\^#/g, '');
   s = s.replace(/\^!\[ADMIN\]/gi, '');
   s = s.replace(/\^1\[ADMIN\]/gi, '');
   s = s.replace(/\^6\[OWNER\]/gi, '');
@@ -1696,6 +1698,7 @@ function roomSnapshot(room) {
     connectionId: client.connectionId,
     name: client.name,
     isAdmin: !!client.isAdmin,
+    adminPal: client.isAdmin ? (String(client.authEmail||'').indexOf('tezzler')>=0 ? 'tezzler' : 'harlan') : '',
     mode: client.mode,
     alive: client.alive !== false && !client.eliminated,
     eliminated: !!client.eliminated,
@@ -2873,8 +2876,15 @@ function relayGameMessage(client, message, rawLength) {
   if (ALLOWED_RELAY_TYPES.has(message.t)) {
     if (message.t==='chat') {
       ensureRoomState(room);
+      let chatText = String(message.text||'').slice(0,180);
+      // ^@ and ^# are admin-only gradient codes. Non-admins cannot use them in chat.
+      if (!client.isAdmin) {
+        chatText = chatText.replace(/\^@/g, '').replace(/\^#/g, '');
+      }
+      message.text = chatText;
+      envelope.text = chatText;
       if (!room.chatLog) room.chatLog = [];
-      room.chatLog.push({at:Date.now(), name:client.name||'Player', connectionId:client.connectionId, text:String(message.text||'').slice(0,180)});
+      room.chatLog.push({at:Date.now(), name:client.name||'Player', connectionId:client.connectionId, text:chatText});
       if (room.chatLog.length > 100) room.chatLog.splice(0, room.chatLog.length - 100);
     }
     broadcastRoom(room,envelope,client); return;

@@ -2141,6 +2141,18 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 b = .18;
                 c = 1;
                 break;
+            case 96:
+                // Admin gradient ^@ (harlan) — animated in Ef.e0
+                a = .55;
+                b = 1;
+                c = .25;
+                break;
+            case 97:
+                // Admin gradient ^# (tezzler) — animated in Ef.e0
+                a = .2;
+                b = .45;
+                c = 1;
+                break;
             case 99:
                 // Rainbow text (^!) — hue cycles in Ef.e0
                 a = 1;
@@ -6896,8 +6908,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 if ("^" == J && this.E35)
                     e = !0,
                     k = null;
-                else if (e && ("!" == J || "0" == J || "1" == J || "2" == J || "3" == J || "4" == J || "5" == J || "6" == J || "7" == J || "8" == J || "9" == J))
-                    d = "!" == J ? 99 : H.parseInt(this.E32.charAt(f)),
+                else if (e && ("!" == J || "@" == J || "#" == J || "0" == J || "1" == J || "2" == J || "3" == J || "4" == J || "5" == J || "6" == J || "7" == J || "8" == J || "9" == J))
+                    d = "!" == J ? 99 : "@" == J ? 96 : "#" == J ? 97 : H.parseInt(this.E32.charAt(f)),
                     k = null,
                     e = !1;
                 else if (null != k) {
@@ -18892,22 +18904,26 @@ var u = function() {};
             Ef.R30.push(this)
         },
         e0: function() {
-            // Rainbow / admin gradient text (^! / C5===99)
-            if (99 == this.C5) {
+            // ^@ (96)=harlan gradient, ^# (97)=tezzler gradient, ^! (99)=rainbow
+            if (96 == this.C5 || 97 == this.C5 || 99 == this.C5) {
                 var r, g, b;
-                var pal = this.__dzPal || (this._2 && this._2.__dzPal) || null;
-                // Walk up a couple parents for name-card palette
-                if (!pal) {
-                    try {
-                        var p = this._2;
-                        for (var wi = 0; wi < 4 && p; wi++) {
-                            if (p.__dzPal) { pal = p.__dzPal; break; }
-                            p = p._2;
-                        }
-                    } catch (_w) {}
+                var pal = null;
+                if (96 == this.C5) pal = "harlan";
+                else if (97 == this.C5) pal = "tezzler";
+                else {
+                    pal = this.__dzPal || (this._2 && this._2.__dzPal) || null;
+                    if (!pal) {
+                        try {
+                            var p = this._2;
+                            for (var wi = 0; wi < 4 && p; wi++) {
+                                if (p.__dzPal) { pal = p.__dzPal; break; }
+                                p = p._2;
+                            }
+                        } catch (_w) {}
+                    }
                 }
-                if (pal && window.__dzAdminGradientColor) {
-                    var col = window.__dzAdminGradientColor(pal, this.__dzGlyphI || 0);
+                if ((96 == this.C5 || 97 == this.C5 || pal) && window.__dzAdminGradientColor) {
+                    var col = window.__dzAdminGradientColor(pal || (96 == this.C5 ? "harlan" : "tezzler"), this.__dzGlyphI || 0);
                     r = col.r; g = col.g; b = col.b;
                 } else {
                     var t = (Date.now() % 3000) / 3000 * 6.28318530718;
@@ -24256,11 +24272,11 @@ var u = function() {};
             window.setTimeout(function() { self.respawnLocalPlayer() }, 900);
             return {ok:true, message:"Access denied."}
         },
-        adminApplyRoleTag: function(target, role) {
+        adminApplyRoleTag: function(target, role, forcedPal) {
             if (!target || !target.J30 || !target.J30.E32) return false;
             var card = target.J30, label = card.E32;
             var current = String(label.E32 || "");
-            // Strip any typed staff tags / color codes from the base name
+            // Strip staff tags / color codes from base name
             current = current.replace(/^\^6\[OWNER\]\n\^7/, "");
             current = current.replace(/^\^1\[ADMIN\]\n\^7/, "");
             current = current.replace(/^\^2\[the real lime\]\n\^7/, "");
@@ -24272,36 +24288,59 @@ var u = function() {};
             current = current.replace(/\s*\[OWNER\]/gi, "");
             current = current.replace(/\^\d/g, "");
             current = current.replace(/\^!/g, "");
+            // Keep level suffix like " 11" if present at end after strip
             current = current.replace(/\s{2,}/g, " ").trim();
-            // Pick palette from signed-in email (server-verified path only calls this)
-            var pal = "harlan";
-            try {
-                var em = "";
-                var a = window.DiggerzAuth237 && window.DiggerzAuth237.state;
-                if (a && a.email) em = String(a.email).toLowerCase();
-                if (em.indexOf("tezzler") >= 0 || em === "tezzlerisasinner@gmail.com") pal = "tezzler";
-                else if (em.indexOf("harlan") >= 0 || em === "theharlanhdavidson@gmail.com") pal = "harlan";
-                else if (role === "lime") pal = "tezzler";
-            } catch (ePal) {}
-            // Swap to BIG font, then shrink so it matches normal name height
+            // Remove trailing pure number that we will re-add from original if needed
+            // Palette
+            var pal = forcedPal || "harlan";
+            if (!forcedPal) {
+                try {
+                    var em = "";
+                    var a = window.DiggerzAuth237 && window.DiggerzAuth237.state;
+                    if (a && a.email) em = String(a.email).toLowerCase();
+                    if (em.indexOf("tezzler") >= 0) pal = "tezzler";
+                    else if (em.indexOf("harlan") >= 0) pal = "harlan";
+                    else if (role === "lime") pal = "tezzler";
+                } catch (ePal) {}
+            }
+            // BIG font, shrunk to normal name size
             try {
                 if (q.MAIN_FONT_BIG) {
                     label.E31 = q.MAIN_FONT_BIG;
                     var bigH = (q.MAIN_FONT_BIG.M17 && q.MAIN_FONT_BIG.M17.lineHeight) || 32;
                     var smallH = (q.MAIN_FONT && q.MAIN_FONT.M17 && q.MAIN_FONT.M17.lineHeight) || 16;
-                    var scale = Math.max(0.35, Math.min(1, (smallH / bigH) * 0.95));
+                    var scale = Math.max(0.4, Math.min(1, smallH / bigH));
                     label.set_local_xScale(scale);
                     label.set_local_yScale(scale);
                 }
             } catch (eFont) {}
-            // Mark card + label so glyph colors use admin gradient (not generic rainbow)
             card.__dzPal = pal;
             label.__dzPal = pal;
-            // Whole name in animated gradient — no separate [ADMIN] text needed
-            // (font + palette is the anti-fake signal; fakers can't switch MAIN_FONT_BIG)
-            label.E37("^!" + current);
-            try { if (label.b7 < -80) label.b7 = -70; } catch (eY) {}
-            // Tag each glyph with palette + index for left→right gradient
+            label.__dzAdminStyled = true;
+            // Gradient via ^! — name only, no badge text
+            label.E37((pal === "tezzler" ? "^#" : "^@") + current);
+            // ORIGINAL nameplate positions (do not move the flag / country)
+            try {
+                label.b7 = -132;
+                if (card.b48) {
+                    card.b48.b7 = -134;
+                    card.b48.set_local_yScale(1);
+                    if (card.b48._5) {
+                        var w = 0;
+                        try { w = label.E38() || 0; } catch (eW) { w = 80; }
+                        var sx = 1;
+                        try { sx = Math.abs(label.b4) || 1; } catch (eS) {}
+                        card.b48.set_local_xScale((w * sx + 48) / card.b48._5.width);
+                    }
+                }
+                // Keep name text to the right of the flag, same as stock layout
+                if (card.b49 && card.b49._5) {
+                    try {
+                        label.b6 = card.b49.b6 + card.b49._5.width + 4;
+                    } catch (eF) {}
+                }
+            } catch (ePos) {}
+            // Tag glyphs for per-letter gradient
             try {
                 var glyphs = label._9 || [];
                 var gi = 0;
@@ -24310,18 +24349,10 @@ var u = function() {};
                     if (!g) continue;
                     g.__dzPal = pal;
                     g.__dzGlyphI = gi++;
+                    // Force rainbow channel if color code didn't stick
+                    try { g.C5 = (pal === "tezzler" ? 97 : 96); if (g.h4) g.h4(g.C5); } catch (eC) {}
                 }
             } catch (eG) {}
-            if (card.b48 && card.b48._5) {
-                try {
-                    card.b48.b7 = (label.b7 != null ? label.b7 : -70) + 8;
-                    card.b48.set_local_yScale(1);
-                    var w = label.E38 ? label.E38() : 80;
-                    // Account for local scale on the label
-                    var sx = Math.abs(label.b4 || label.get_local_xScale && label.get_local_xScale() || 1) || 1;
-                    card.b48.set_local_xScale((w * sx + 56) / card.b48._5.width);
-                } catch (eB) {}
-            }
             return true
         },
                 adminApplyOwnerTag: function() {
@@ -124189,6 +124220,10 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
   // when the server has marked the player as a real email-admin.
   function stripFake(s){
     s = String(s || "");
+    // Admin-only gradient codes — strip from everyone; real admins get them
+    // re-applied via adminApplyRoleTag after server isAdmin check.
+    s = s.replace(/\^@/g, "");
+    s = s.replace(/\^#/g, "");
     s = s.replace(/\^!\[ADMIN\]/gi, "");
     s = s.replace(/\^1\[ADMIN\]/gi, "");
     s = s.replace(/\^6\[OWNER\]/gi, "");
@@ -124354,7 +124389,11 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
     } catch(e){ return ""; }
   }
   function isAllowed(){ return !!ALLOW[email()]; }
-
+  function myPal(){
+    var e = email();
+    if (e.indexOf("tezzler") >= 0) return "tezzler";
+    return "harlan";
+  }
   window.DiggerzIsEmailAdmin = isAllowed;
 
   function grantLocalAdmin(token, expiresAt){
@@ -124364,71 +124403,94 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
       if (!s) return;
       s.ownerAdminAuthorized = true;
       s.adminSessionExpiresAt = expiresAt || (Date.now() + 8*60*60*1000);
-      if (s.adminApplyRoleTag && window.l && l.z39)
-        s.adminApplyRoleTag(l.z39, "owner");
-      else if (s.adminApplyOwnerTag)
-        s.adminApplyOwnerTag();
+      applyLocalStyle(true);
     } catch(e){}
   }
 
-  // Poll until auth + player exist
+  function applyLocalStyle(force){
+    try {
+      var s = window.q && q.diggerzService;
+      if (!s || !s.adminApplyRoleTag || !window.l || !l.z39) return;
+      var card = l.z39.J30, lab = card && card.E32;
+      if (!lab) return;
+      if (!force && lab.__dzAdminStyled) return;
+      s.adminApplyRoleTag(l.z39, "owner", myPal());
+    } catch(e){}
+  }
+
+  function applyPeerStyle(peer, entity){
+    try {
+      if (!peer || !peer.isAdmin) return;
+      var s = window.q && q.diggerzService;
+      if (!s || !s.adminApplyRoleTag) return;
+      var ent = entity || (s.pvpEntityForPeer && s.pvpEntityForPeer(peer));
+      if (!ent || !ent.J30 || !ent.J30.E32) return;
+      if (ent.J30.E32.__dzAdminStyled) return;
+      var pal = peer.adminPal || "harlan";
+      s.adminApplyRoleTag(ent, "owner", pal);
+    } catch(e){}
+  }
+
+  // Local admin poll — only style once until card is rebuilt
   setInterval(function(){
     try {
       if (!isAllowed()) return;
       var s = window.q && q.diggerzService;
       if (!s) return;
       if (!s.ownerAdminAuthorized) grantLocalAdmin(null, null);
-      // Keep badge on local player if name card refreshed
-      if (window.l && l.z39 && s.adminApplyRoleTag) {
-        var card = l.z39.J30, lab = card && card.E32;
-        var t = lab && String(lab.E32 || "");
-        if (t && t.indexOf("[ADMIN]") < 0 && t.indexOf("[OWNER]") < 0)
-          s.adminApplyRoleTag(l.z39, "owner");
-      }
+      else applyLocalStyle(false);
     } catch(e){}
-  }, 1000);
+  }, 800);
 
-  // Handle server grant
+  // Peer admin styling from roster + entity scan
+  setInterval(function(){
+    try {
+      var s = window.q && q.diggerzService;
+      if (!s || !s.pvpEnsurePeers) return;
+      var peers = s.pvpEnsurePeers();
+      if (!peers) return;
+      Object.keys(peers).forEach(function(cid){
+        var peer = peers[cid];
+        if (peer && peer.isAdmin) applyPeerStyle(peer);
+      });
+    } catch(e){}
+  }, 1200);
+
   function wrapReceive(){
     try {
-      var P = window.DiggerzPvp22;
-      if (!P || P.__dzEmailAdminWrapped) return false;
-      P.__dzEmailAdminWrapped = true;
-      var prev = null;
-      setInterval(function(){
-        try {
-          var s = window.q && q.diggerzService;
-          if (!s || !s.pvpReceive || s.__dzEmailAdminRecv) return;
-          s.__dzEmailAdminRecv = true;
-          var old = s.pvpReceive.bind(s);
-          s.pvpReceive = function(m){
-            if (m && m.t === "admin-email-granted") {
-              grantLocalAdmin(m.token, m.expiresAt);
-              return;
-            }
-            // Server-flagged peer admin: apply badge only when isAdmin is true
-            if (m && m.t === "room-roster" && Array.isArray(m.players)) {
-              try {
-                var peers = s.pvpEnsurePeers && s.pvpEnsurePeers();
-                if (peers) {
-                  for (var i = 0; i < m.players.length; i++) {
-                    var p = m.players[i];
-                    if (!p || !p.connectionId) continue;
-                    if (peers[p.connectionId]) peers[p.connectionId].isAdmin = !!p.isAdmin;
-                  }
+      var s = window.q && q.diggerzService;
+      if (!s || !s.pvpReceive || s.__dzEmailAdminRecv) return !!s;
+      s.__dzEmailAdminRecv = true;
+      var old = s.pvpReceive.bind(s);
+      s.pvpReceive = function(m){
+        if (m && m.t === "admin-email-granted") {
+          grantLocalAdmin(m.token, m.expiresAt);
+          return;
+        }
+        if (m && m.t === "room-roster" && Array.isArray(m.players)) {
+          try {
+            var peers = s.pvpEnsurePeers && s.pvpEnsurePeers();
+            if (peers) {
+              for (var i = 0; i < m.players.length; i++) {
+                var p = m.players[i];
+                if (!p || !p.connectionId) continue;
+                if (!peers[p.connectionId]) peers[p.connectionId] = peers[p.connectionId] || {};
+                if (peers[p.connectionId]) {
+                  peers[p.connectionId].isAdmin = !!p.isAdmin;
+                  peers[p.connectionId].adminPal = p.adminPal || "";
                 }
-              } catch(eR){}
+                if (p.isAdmin) applyPeerStyle(peers[p.connectionId] || p);
+              }
             }
-            return old(m);
-          };
-        } catch(e){}
-      }, 200);
+          } catch(eR){}
+        }
+        return old(m);
+      };
       return true;
     } catch(e){ return false; }
   }
-  var t = 0, iv = setInterval(function(){ if (wrapReceive() || ++t > 50) clearInterval(iv); }, 300);
+  var t=0, iv=setInterval(function(){ if(wrapReceive()||++t>80) clearInterval(iv); }, 250);
 
-  // Override adminIsAdminAuthorized to accept email admins without password panel
   function wrapAuthCheck(){
     try {
       var s = window.q && q.diggerzService;
@@ -124447,9 +124509,9 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
       return true;
     } catch(e){ return false; }
   }
-  var t2 = 0, iv2 = setInterval(function(){ if (wrapAuthCheck() || ++t2 > 80) clearInterval(iv2); }, 250);
+  var t2=0, iv2=setInterval(function(){ if(wrapAuthCheck()||++t2>80) clearInterval(iv2); }, 250);
 
-  console.log("[Diggerz] email-admin auto-grant active");
+  console.log("[Diggerz] email-admin + peer style active");
 })();
 </script>
 
