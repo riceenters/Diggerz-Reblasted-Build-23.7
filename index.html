@@ -18904,32 +18904,42 @@ var u = function() {};
             Ef.R30.push(this)
         },
         e0: function() {
-            // ^@ (96)=harlan gradient, ^# (97)=tezzler gradient, ^! (99)=rainbow
+            // ^@ (96)=harlan L→R, ^# (97)=tezzler L→R, ^! (99)=rainbow/RGB
             if (96 == this.C5 || 97 == this.C5 || 99 == this.C5) {
                 var r, g, b;
-                var pal = null;
-                if (96 == this.C5) pal = "harlan";
-                else if (97 == this.C5) pal = "tezzler";
-                else {
-                    pal = this.__dzPal || (this._2 && this._2.__dzPal) || null;
-                    if (!pal) {
-                        try {
-                            var p = this._2;
-                            for (var wi = 0; wi < 4 && p; wi++) {
-                                if (p.__dzPal) { pal = p.__dzPal; break; }
-                                p = p._2;
-                            }
-                        } catch (_w) {}
-                    }
-                }
-                if ((96 == this.C5 || 97 == this.C5 || pal) && window.__dzAdminGradientColor) {
-                    var col = window.__dzAdminGradientColor(pal || (96 == this.C5 ? "harlan" : "tezzler"), this.__dzGlyphI || 0);
-                    r = col.r; g = col.g; b = col.b;
-                } else {
-                    var t = (Date.now() % 3000) / 3000 * 6.28318530718;
+                var wantRgb = !!(this.__dzRgb || (this._2 && this._2.__dzRgb));
+                if (wantRgb || (99 == this.C5 && !this.__dzPal && !(this._2 && this._2.__dzPal))) {
+                    // Full RGB: each letter offset in the hue cycle (True-RGB style)
+                    var gi = this.__dzGlyphI || 0;
+                    var t = (Date.now() / 1200) + gi * 0.45;
                     r = .5 + .5 * Math.sin(t);
                     g = .5 + .5 * Math.sin(t + 2.09439510239);
                     b = .5 + .5 * Math.sin(t + 4.18879020479);
+                } else {
+                    var pal = null;
+                    if (96 == this.C5) pal = "harlan";
+                    else if (97 == this.C5) pal = "tezzler";
+                    else {
+                        pal = this.__dzPal || (this._2 && this._2.__dzPal) || null;
+                        if (!pal) {
+                            try {
+                                var p = this._2;
+                                for (var wi = 0; wi < 4 && p; wi++) {
+                                    if (p.__dzPal) { pal = p.__dzPal; break; }
+                                    p = p._2;
+                                }
+                            } catch (_w) {}
+                        }
+                    }
+                    if ((96 == this.C5 || 97 == this.C5 || pal) && window.__dzAdminGradientColor) {
+                        var col = window.__dzAdminGradientColor(pal || (96 == this.C5 ? "harlan" : "tezzler"), this.__dzGlyphI || 0);
+                        r = col.r; g = col.g; b = col.b;
+                    } else {
+                        var t2 = (Date.now() % 3000) / 3000 * 6.28318530718;
+                        r = .5 + .5 * Math.sin(t2);
+                        g = .5 + .5 * Math.sin(t2 + 2.09439510239);
+                        b = .5 + .5 * Math.sin(t2 + 4.18879020479);
+                    }
                 }
                 try {
                     if (this.b1) {
@@ -24310,6 +24320,7 @@ var u = function() {};
                     var bigH = (q.MAIN_FONT_BIG.M17 && q.MAIN_FONT_BIG.M17.lineHeight) || 32;
                     var smallH = (q.MAIN_FONT && q.MAIN_FONT.M17 && q.MAIN_FONT.M17.lineHeight) || 16;
                     var scale = Math.max(0.4, Math.min(1, smallH / bigH));
+                    label.__dzBaseScale = scale;
                     label.set_local_xScale(scale);
                     label.set_local_yScale(scale);
                 }
@@ -56283,6 +56294,8 @@ function __normalizeWearableScales(skel) {
             for (var d = this.Z43; c < d.length; ) {
                 var e = d[c];
                 ++c;
+                var __isAd = !!(e.J30 && e.J30.__dzPal);
+                var __pal = __isAd ? e.J30.__dzPal : "";
                 var g = z.I9();
                 g.Init(f.SPARK_PNG());
                 g.set_r(g.set_g(g.set_b(0)));
@@ -56291,8 +56304,41 @@ function __normalizeWearableScales(skel) {
                 g.set_yScale(12);
                 g.A7 = q.SCREENWIDTH - 104;
                 g.A8 = a - 3;
+                // Admin leaderboard nameplate bar: RGB-cycle the black box (not the letters)
+                if (__isAd) {
+                    g.__dzRgbPlate = true;
+                    g.__dzPal = __pal;
+                    g.set_alp(.55);
+                }
                 this._9.push(g);
-                g = new xa(q.SCREENWIDTH - 190,a,e._1,q.MAIN_FONT_SMALL,2);
+                var __nm = String(e._1 || "Player");
+                // Letters: normal admin gradient codes only (no RGB on glyphs)
+                var __code = __pal === "tezzler" ? "^#" : (__isAd ? "^@" : "");
+                var __font = (__isAd && q.MAIN_FONT_BIG) ? q.MAIN_FONT_BIG : q.MAIN_FONT_SMALL;
+                g = new xa(q.SCREENWIDTH - 190,a,__code + __nm,__font,2);
+                if (__isAd) {
+                    try {
+                        var __bs = 0.55;
+                        g.__dzBaseScale = __bs;
+                        g.__dzPal = __pal;
+                        g.__dzRgb = false;
+                        g.set_local_xScale(__bs);
+                        g.set_local_yScale(__bs);
+                        var __gs = g._9 || [];
+                        for (var __gi = 0; __gi < __gs.length; __gi++) {
+                            if (__gs[__gi]) {
+                                __gs[__gi].__dzPal = __pal;
+                                __gs[__gi].__dzGlyphI = __gi;
+                                __gs[__gi].__dzRgb = false;
+                                try {
+                                    var __c5 = __pal === "tezzler" ? 97 : 96;
+                                    __gs[__gi].C5 = __c5;
+                                    if (__gs[__gi].h4) __gs[__gi].h4(__c5);
+                                } catch(_c){}
+                            }
+                        }
+                    } catch(_ad){}
+                }
                 this._9.push(g);
                 g = new xa(q.SCREENWIDTH - 34,a,"" + e.k31,q.MAIN_FONT_SMALL);
                 g.e38 = Pc.RIGHT;
@@ -122497,7 +122543,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
     };
     var releaseRoomState=proto.pvpApplyRoomState;proto.pvpApplyRoomState=function(m){if(m&&m.map&&(this.mode==='pvp'||this.mode==='digtrade'))this.pvpApplyBaseMap(m.map);return releaseRoomState.call(this,m)};
     function refreshBoard(service){try{if(l.z38&&l.z38.R37&&l.z38.R37.Z44)l.z38.R37.Z44()}catch(e){}}
-    function setNameWins(e,w){try{if(e&&e.J30&&e.J30.E32)e.J30.E32.E37(String(e._1||'Player')+' ^9'+Math.max(0,w|0))}catch(_e){}} function resetScores(service){try{if(l.z39){l.z39.k31=0;setNameWins(l.z39,service&&service.state?service.state.wins|0:0)}var peers=service&&service.pvpEnsurePeers?service.pvpEnsurePeers():{};for(var k in peers){var peer=peers[k],e=service.pvpEntityForPeer(peer);if(e){e.k31=0;setNameWins(e,peer&&peer.info?peer.info.wins|0:0)}}refreshBoard(service)}catch(e){}}
+    function setNameWins(e,w){try{if(e&&e.J30&&e.J30.E32){var wins=Math.max(0,w|0);var base=String(e._1||'Player');if(e.J30.__dzPal&&window.q&&q.diggerzService&&q.diggerzService.adminApplyRoleTag){e.J30.E32.__dzAdminStyled=false;q.diggerzService.adminApplyRoleTag(e,"owner",e.J30.__dzPal);}else{e.J30.E32.E37(base+" ^9"+wins);}}}catch(_e){}} function resetScores(service){try{if(l.z39){l.z39.k31=0;setNameWins(l.z39,service&&service.state?service.state.wins|0:0)}var peers=service&&service.pvpEnsurePeers?service.pvpEnsurePeers():{};for(var k in peers){var peer=peers[k],e=service.pvpEntityForPeer(peer);if(e){e.k31=0;setNameWins(e,peer&&peer.info?peer.info.wins|0:0)}}refreshBoard(service)}catch(e){}}
     function setScore(service,cid,kills){try{var e=String(cid||'')===String(P.connectionId||'')?l.z39:(service.pvpPeerForConnection(cid)&&service.pvpEntityForPeer(service.pvpPeerForConnection(cid)));if(e)e.k31=Math.max(0,kills|0);refreshBoard(service)}catch(_e){}}
     function itemLine(service,item){item=item||{};if(!item.category||!item.count)return null;return (item.count>1?item.count+' × ':'')+service.itemName(item.category|0,item.id|0)}
     function closeReview(){if(review)review.style.display='none'}
@@ -122590,7 +122636,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
 
     function chat(service,text){try{service.message(text)}catch(e){}}
     function refreshBoard(service){try{var board=service&&service.game&&service.game.f4?service.game.f4(window.Ao):null;if(board&&board.Z44)board.Z44()}catch(e){}}
-    function nameWins(e,w){try{if(e&&e.J30&&e.J30.E32)e.J30.E32.E37(String(e._1||'Player')+' ^9'+Math.max(0,w|0))}catch(_e){}} function applyWins(service){try{if(service&&l.z39)nameWins(l.z39,service.state.wins|0);refreshBoard(service)}catch(e){}}
+    function nameWins(e,w){try{if(e&&e.J30&&e.J30.E32){var wins=Math.max(0,w|0);var base=String(e._1||'Player');if(e.J30.__dzPal&&window.q&&q.diggerzService&&q.diggerzService.adminApplyRoleTag){e.J30.E32.__dzAdminStyled=false;q.diggerzService.adminApplyRoleTag(e,"owner",e.J30.__dzPal);try{var t=String(e.J30.E32.E32||base);if(t.indexOf("^9")<0)e.J30.E32.E37(t+" ^9"+wins);}catch(_w){}}else{e.J30.E32.E37(base+" ^9"+wins);}}}catch(_e){}} function applyWins(service){try{if(service&&l.z39)nameWins(l.z39,service.state.wins|0);refreshBoard(service)}catch(e){}}
     function setRemoteWins(service,cid,wins){try{var peer=service.pvpPeerForConnection(cid),e=peer&&service.pvpEntityForPeer(peer);if(peer&&peer.info)peer.info.wins=Math.max(0,wins|0);if(e)nameWins(e,wins);refreshBoard(service)}catch(err){}}
     function smallPrompt(service,text){
       if(!service||!text)return;
@@ -124286,95 +124332,122 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
 
 <script id="diggerz-admin-gradient">
 (function(){
-  // Smooth, slowly drifting gradients for real admins.
-  // harlan: lime/purple family (mint, lavender, green, etc.)
-  // tezzler: blue/yellow family (sky, banana, etc.)
-  // Colors wander so pairings aren't locked (e.g. green can pair with lavender).
-
-  function lerp(a,b,t){ return a + (b-a)*t; }
+  // Fixed 2-color left→right gradients (darker). No multi-color drifting.
+  // harlan: dark lime → dark purple
+  // tezzler: dark blue → dark gold/yellow
   function clamp01(x){ return x < 0 ? 0 : x > 1 ? 1 : x; }
-  function rgb(r,g,b){ return {r:clamp01(r), g:clamp01(g), b:clamp01(b)}; }
+  function lerp(a,b,t){ return a + (b - a) * t; }
 
-  // Palette corner colors (0-1 RGB)
-  var PALETTES = {
-    harlan: [
-      rgb(0.55, 1.00, 0.25), // lime
-      rgb(0.55, 0.20, 0.95), // purple
-      rgb(0.55, 1.00, 0.75), // mint
-      rgb(0.75, 0.55, 1.00), // lavender
-      rgb(0.25, 0.90, 0.40), // green
-      rgb(0.85, 0.45, 0.95)  // soft violet
-    ],
-    tezzler: [
-      rgb(0.20, 0.45, 1.00), // blue
-      rgb(1.00, 0.90, 0.15), // yellow
-      rgb(0.45, 0.80, 1.00), // sky
-      rgb(1.00, 0.95, 0.45), // banana
-      rgb(0.15, 0.70, 0.95), // cyan-blue
-      rgb(1.00, 0.80, 0.20)  // gold-yellow
-    ]
-  };
-
-  // Per-palette drifting state: two endpoints that slowly move in color space
-  var state = {
-    harlan:  { a: 0, b: 2, aT: 0, bT: 2, blend: 0, nextAt: 0 },
-    tezzler: { a: 0, b: 1, aT: 1, bT: 3, blend: 0, nextAt: 0 }
-  };
-
-  function pickNewTargets(st, n){
-    st.aT = (st.aT + 1 + Math.floor(Math.random() * (n - 1))) % n;
-    st.bT = (st.bT + 1 + Math.floor(Math.random() * (n - 1))) % n;
-    if (st.bT === st.aT) st.bT = (st.bT + 1) % n;
-    st.blend = 0;
-    st.nextAt = Date.now() + 4000 + Math.random() * 5000; // 4–9s per drift
-  }
-
-  function updateState(name){
-    var colors = PALETTES[name];
-    if (!colors) return null;
-    var st = state[name];
-    var now = Date.now();
-    if (!st.nextAt) pickNewTargets(st, colors.length);
-    // Smooth blend toward target indices
-    st.blend = clamp01(st.blend + 0.004);
-    if (st.blend >= 1 || now > st.nextAt) {
-      st.a = st.aT;
-      st.b = st.bT;
-      pickNewTargets(st, colors.length);
+  var PAL = {
+    harlan: {
+      left:  { r: 0.25, g: 0.72, b: 0.12 }, // darker lime/green
+      right: { r: 0.45, g: 0.12, b: 0.72 }  // darker purple
+    },
+    tezzler: {
+      left:  { r: 0.12, g: 0.28, b: 0.85 }, // darker blue
+      right: { r: 0.85, g: 0.70, b: 0.10 }  // darker yellow/gold
     }
-    var ca0 = colors[st.a], ca1 = colors[st.aT];
-    var cb0 = colors[st.b], cb1 = colors[st.bT];
-    var t = st.blend;
-    // Smoothstep
-    t = t * t * (3 - 2 * t);
-    return {
-      left:  rgb(lerp(ca0.r, ca1.r, t), lerp(ca0.g, ca1.g, t), lerp(ca0.b, ca1.b, t)),
-      right: rgb(lerp(cb0.r, cb1.r, t), lerp(cb0.g, cb1.g, t), lerp(cb0.b, cb1.b, t))
-    };
-  }
+  };
 
   window.__dzAdminGradientColor = function(pal, glyphIndex){
-    var ends = updateState(pal || "harlan");
-    if (!ends) {
-      var t = (Date.now() % 3000) / 3000 * 6.28318530718;
-      return rgb(.5+.5*Math.sin(t), .5+.5*Math.sin(t+2.09), .5+.5*Math.sin(t+4.18));
-    }
-    // Left→right gradient across glyphs, plus a slow wave so it shimmers
-    var wave = 0.5 + 0.5 * Math.sin(Date.now() / 1800 + (glyphIndex || 0) * 0.35);
-    var u = clamp01(0.25 + 0.5 * wave); // bias mid so both colors show
-    // Mix endpoints; glyph index nudges position along the name
-    var along = clamp01(((glyphIndex || 0) % 12) / 11);
-    var mix = clamp01(along * 0.7 + u * 0.3);
-    return rgb(
-      lerp(ends.left.r, ends.right.r, mix),
-      lerp(ends.left.g, ends.right.g, mix),
-      lerp(ends.left.b, ends.right.b, mix)
-    );
+    var p = PAL[pal] || PAL.harlan;
+    // Pure left→right across the name (glyph index)
+    var t = clamp01((Number(glyphIndex) || 0) / 10);
+    // Slight soft wave so it isn't completely static
+    var wave = 0.04 * Math.sin(Date.now() / 900 + (glyphIndex || 0) * 0.4);
+    t = clamp01(t + wave);
+    return {
+      r: clamp01(lerp(p.left.r, p.right.r, t)),
+      g: clamp01(lerp(p.left.g, p.right.g, t)),
+      b: clamp01(lerp(p.left.b, p.right.b, t))
+    };
   };
 
-  console.log("[Diggerz] admin gradient engine ready");
+  // Healing-Area-style pulse: gentle scale breathe on admin name labels
+  window.__dzAdminPulseTick = function(label, baseScale){
+    if (!label) return;
+    baseScale = baseScale || label.__dzBaseScale || 1;
+    label.__dzBaseScale = baseScale;
+    // ~same cadence as Healing Area F6(..., 500ms): 1.0 → 1.12 → 1.0
+    var pulse = 1 + 0.12 * Math.sin(Date.now() / 500 * Math.PI);
+    try {
+      label.set_local_xScale(baseScale * pulse);
+      label.set_local_yScale(baseScale * pulse);
+    } catch(e){}
+  };
+
+  console.log("[Diggerz] admin 2-color L→R gradient + pulse ready");
 })();
 </script>
+
+<script id="diggerz-admin-pulse">
+(function(){
+  function pulseAll(){
+    try {
+      // Local player
+      if (window.l && l.z39 && l.z39.J30 && l.z39.J30.E32 && l.z39.J30.__dzPal) {
+        var lab = l.z39.J30.E32;
+        var base = lab.__dzBaseScale;
+        if (!base) {
+          try {
+            var bigH = (q.MAIN_FONT_BIG && q.MAIN_FONT_BIG.M17 && q.MAIN_FONT_BIG.M17.lineHeight) || 32;
+            var smallH = (q.MAIN_FONT && q.MAIN_FONT.M17 && q.MAIN_FONT.M17.lineHeight) || 16;
+            base = Math.max(0.4, Math.min(1, smallH / bigH));
+          } catch(e){ base = 0.55; }
+          lab.__dzBaseScale = base;
+        }
+        if (window.__dzAdminPulseTick) window.__dzAdminPulseTick(lab, base);
+      }
+      // Peers
+      var s = window.q && q.diggerzService;
+      if (s && s.pvpEnsurePeers) {
+        var peers = s.pvpEnsurePeers();
+        Object.keys(peers || {}).forEach(function(cid){
+          var peer = peers[cid];
+          if (!peer || !peer.isAdmin) return;
+          var ent = s.pvpEntityForPeer && s.pvpEntityForPeer(peer);
+          if (!ent || !ent.J30 || !ent.J30.E32 || !ent.J30.__dzPal) return;
+          var lab2 = ent.J30.E32;
+          var b2 = lab2.__dzBaseScale || 0.55;
+          lab2.__dzBaseScale = b2;
+          if (window.__dzAdminPulseTick) window.__dzAdminPulseTick(lab2, b2);
+        });
+      }
+      // Leaderboard rows (xa objects with __dzPal)
+      try {
+        if (l.z38 && l.z38.R37 && l.z38.R37._9) {
+          var rows = l.z38.R37._9;
+          for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            if (row && row.__dzPal && window.__dzAdminPulseTick)
+              window.__dzAdminPulseTick(row, row.__dzBaseScale || 0.55);
+          }
+        }
+      } catch(eLB){}
+      // RGB-cycle admin leaderboard nameplate BARS (black boxes)
+      try {
+        if (l.z38 && l.z38.R37 && l.z38.R37._9) {
+          var rows = l.z38.R37._9;
+          var t = Date.now() / 900;
+          for (var i = 0; i < rows.length; i++) {
+            var bar = rows[i];
+            if (!bar || !bar.__dzRgbPlate) continue;
+            var r = .5 + .5 * Math.sin(t);
+            var g = .5 + .5 * Math.sin(t + 2.09439510239);
+            var b = .5 + .5 * Math.sin(t + 4.18879020479);
+            try {
+              if (bar.set_r) { bar.set_r(r); bar.set_g(g); bar.set_b(b); }
+              else if (bar.set_local_r) { bar.set_local_r(r); bar.set_local_g(g); bar.set_local_b(b); }
+            } catch(eC){}
+          }
+        }
+      } catch(ePlate){}
+    } catch(e){}
+  }
+  setInterval(pulseAll, 50);
+})();
+</script>
+
 
 <script id="diggerz-email-admin">
 (function(){
