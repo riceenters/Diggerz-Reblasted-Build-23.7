@@ -124348,64 +124348,56 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
       if (!s) return;
       s.ownerAdminAuthorized = true;
       s.adminSessionExpiresAt = expiresAt || (Date.now() + 8*60*60*1000);
-      applyLocalStyle(true);
+      applyLocalStyle();
     } catch(e){}
   }
 
-  function applyLocalStyle(force){
+  // Always re-apply. The game rebuilds nameplates often and wipes big font / RGB.
+  function applyLocalStyle(){
     try {
       var s = window.q && q.diggerzService;
       if (!s || !s.adminApplyRoleTag || !window.l || !l.z39) return;
-      var card = l.z39.J30, lab = card && card.E32;
-      if (!lab) return;
-      // Re-apply periodically so big font + RGB plate stick after UI rebuilds
-      if (!force && lab.__dzAdminStyled && card.b48 && card.b48.__dzRgbPlate) return;
+      if (!l.z39.J30 || !l.z39.J30.E32) return;
       s.adminApplyRoleTag(l.z39, "owner", myPal());
     } catch(e){}
   }
 
-  function applyPeerStyle(peer, entity){
+  function applyPeerStyle(peer){
     try {
       if (!peer || !peer.isAdmin) return;
       var s = window.q && q.diggerzService;
       if (!s || !s.adminApplyRoleTag) return;
-      var ent = entity || (s.pvpEntityForPeer && s.pvpEntityForPeer(peer));
+      var ent = s.pvpEntityForPeer && s.pvpEntityForPeer(peer);
       if (!ent || !ent.J30 || !ent.J30.E32) return;
-      // Force style for others so they always see admin big font + RGB plate
-      var pal = peer.adminPal || "harlan";
-      var need = !ent.J30.E32.__dzAdminStyled || !(ent.J30.b48 && ent.J30.b48.__dzRgbPlate);
-      if (need) s.adminApplyRoleTag(ent, "owner", pal);
-      else {
-        // Keep RGB flag alive even if style was applied earlier
-        try { if (ent.J30.b48) ent.J30.b48.__dzRgbPlate = true; } catch(_r){}
-      }
+      s.adminApplyRoleTag(ent, "owner", peer.adminPal || "harlan");
     } catch(e){}
   }
 
-  // Local admin — re-check often
-  setInterval(function(){
+  function styleAllAdmins(){
     try {
-      if (!isAllowed()) return;
-      var s = window.q && q.diggerzService;
-      if (!s) return;
-      if (!s.ownerAdminAuthorized) grantLocalAdmin(null, null);
-      else applyLocalStyle(false);
+      if (isAllowed()) {
+        var s = window.q && q.diggerzService;
+        if (s && !s.ownerAdminAuthorized) grantLocalAdmin(null, null);
+        else applyLocalStyle();
+      }
     } catch(e){}
-  }, 500);
-
-  // Peers: force big font + RGB nameplate for anyone marked isAdmin on roster
-  setInterval(function(){
     try {
-      var s = window.q && q.diggerzService;
-      if (!s || !s.pvpEnsurePeers) return;
-      var peers = s.pvpEnsurePeers();
+      var s2 = window.q && q.diggerzService;
+      if (!s2 || !s2.pvpEnsurePeers) return;
+      var peers = s2.pvpEnsurePeers();
       if (!peers) return;
       Object.keys(peers).forEach(function(cid){
-        var peer = peers[cid];
-        if (peer && peer.isAdmin) applyPeerStyle(peer);
+        if (peers[cid] && peers[cid].isAdmin) applyPeerStyle(peers[cid]);
       });
-    } catch(e){}
-  }, 600);
+    } catch(e2){}
+  }
+
+  // Re-apply often so peers keep seeing big font + RGB without you focusing the tab
+  setInterval(styleAllAdmins, 200);
+  try {
+    document.addEventListener("visibilitychange", function(){ if (!document.hidden) styleAllAdmins(); });
+    window.addEventListener("focus", styleAllAdmins);
+  } catch(_ev){}
 
   function wrapReceive(){
     try {
@@ -124425,15 +124417,17 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
               for (var i = 0; i < m.players.length; i++) {
                 var p = m.players[i];
                 if (!p || !p.connectionId) continue;
-                if (!peers[p.connectionId]) peers[p.connectionId] = peers[p.connectionId] || {};
-                if (peers[p.connectionId]) {
-                  peers[p.connectionId].isAdmin = !!p.isAdmin;
-                  peers[p.connectionId].adminPal = p.adminPal || "";
-                }
-                if (p.isAdmin) applyPeerStyle(peers[p.connectionId] || p);
+                peers[p.connectionId] = peers[p.connectionId] || {};
+                peers[p.connectionId].isAdmin = !!p.isAdmin;
+                peers[p.connectionId].adminPal = p.adminPal || "";
+                if (p.isAdmin) applyPeerStyle(peers[p.connectionId]);
               }
             }
           } catch(eR){}
+          // Style on next frames too — entity may not exist yet on first roster
+          setTimeout(styleAllAdmins, 50);
+          setTimeout(styleAllAdmins, 300);
+          setTimeout(styleAllAdmins, 1000);
         }
         return old(m);
       };
@@ -124462,7 +124456,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
   }
   var t2=0, iv2=setInterval(function(){ if(wrapAuthCheck()||++t2>80) clearInterval(iv2); }, 250);
 
-  console.log("[Diggerz] email-admin + peer style active");
+  console.log("[Diggerz] email-admin force restyle active");
 })();
 </script>
 
