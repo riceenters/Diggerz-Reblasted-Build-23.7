@@ -18968,16 +18968,6 @@ var u = function() {};
                 this.set_b(this._2.A3));
                 this.set_xScale(this._2.a8);
                 this.set_yScale(this._2.a9);
-                // Healing Area pulse (j48): F6(3/4, 1.15, 1.15, 500, loop) + F7(1, 0.1, 0.5)
-                // Must run HERE — E4 resets scale from parent every frame, which kills F6 on glyphs.
-                // Only admin name letters (C5 96/97 or __dzHealPulse). Wins (^9 → C5 9) are skipped.
-                if (this.__dzHealPulse || 96 == this.C5 || 97 == this.C5) {
-                    var ht = Date.now() / 1000;
-                    // same formula as F7 type 1: sin(progress * 2pi * freq) * amp
-                    var hPulse = 1.15 + 0.1 * Math.sin(ht * Math.PI * 2 * 0.5);
-                    this.set_xScale(this._2.a8 * hPulse);
-                    this.set_yScale(this._2.a9 * hPulse);
-                }
                 z.prototype.E4.call(this, a);
                 // Admin gradients (^@=96, ^#=97) and rainbow (^!=99): recompute every draw
                 // so parent white does not wipe the colors set in e0.
@@ -24308,22 +24298,19 @@ var u = function() {};
         adminApplyRoleTag: function(target, role, forcedPal) {
             if (!target || !target.J30 || !target.J30.E32) return false;
             var card = target.J30, label = card.E32;
-            // ALWAYS use the clean entity name — never re-parse the styled label text
-            // (that was stacking ^@ codes and win digits, stretching the black bar forever)
+            // Clean entity name only (never re-parse styled label — that stretched the bar)
             var baseName = String(target._1 || "Player");
             baseName = baseName.replace(/\^[@#!0-9]/g, "");
             baseName = baseName.replace(/\[ADMIN\]/gi, "");
             baseName = baseName.replace(/\[OWNER\]/gi, "");
             baseName = baseName.replace(/\s{2,}/g, " ").trim();
             if (!baseName) baseName = "Player";
-            // Wins number (yellow) if present on the nameplate already
             var winsSuffix = "";
             try {
                 var prev = String(label.E32 || "");
                 var wm = prev.match(/\^9\s*(\d+)\s*$/);
                 if (wm) winsSuffix = " ^9" + wm[1];
             } catch (eW) {}
-            // Palette
             var pal = forcedPal || "harlan";
             if (!forcedPal) {
                 try {
@@ -24335,8 +24322,8 @@ var u = function() {};
                     else if (role === "lime") pal = "tezzler";
                 } catch (ePal) {}
             }
-            // BIG font at fixed 0.5 scale (matches normal name size)
             var scale = 0.5;
+            var code = pal === "tezzler" ? "^#" : "^@";
             try {
                 if (q.MAIN_FONT_BIG) label.E31 = q.MAIN_FONT_BIG;
             } catch (eFont) {}
@@ -24344,13 +24331,32 @@ var u = function() {};
             card.__dzPal = pal;
             label.__dzPal = pal;
             label.__dzAdminStyled = true;
-            // Build text once from clean name
-            label.E37((pal === "tezzler" ? "^#" : "^@") + baseName + winsSuffix);
+            // Main name + wins (no pulse on these letters)
+            label.E37(code + baseName + winsSuffix);
             try {
                 label.set_local_xScale(scale);
                 label.set_local_yScale(scale);
             } catch (eSc) {}
-            // Nameplate bar: size once from clean glyph width * scale — never accumulate
+            // Tag name glyphs for gradient only (skip wins C5==9)
+            try {
+                var glyphs = label._9 || [];
+                var count = 0, gi = 0;
+                for (var i = 0; i < glyphs.length; i++) if (glyphs[i]) count++;
+                label.__dzGlyphN = Math.max(1, count - 1);
+                for (var i = 0; i < glyphs.length; i++) {
+                    var g = glyphs[i];
+                    if (!g || g.C5 === 9) continue;
+                    g.__dzPal = pal;
+                    g.__dzGlyphI = gi++;
+                    g.__dzRgb = false;
+                    g.__dzHealPulse = false;
+                    try {
+                        g.C5 = (pal === "tezzler" ? 97 : 96);
+                        if (g.h4) g.h4(g.C5);
+                    } catch (eC) {}
+                }
+            } catch (eG) {}
+            // Nameplate bar + positions
             try {
                 label.b7 = -132;
                 if (card.b48 && card.b48._5) {
@@ -24359,7 +24365,6 @@ var u = function() {};
                     var w = 0;
                     try { w = label.E38() || 0; } catch (eW2) { w = 80; }
                     var barScale = (w * scale + 48) / card.b48._5.width;
-                    // Clamp so a bad width can never explode the bar
                     if (!(barScale > 0) || barScale > 20) barScale = 2;
                     card.b48.set_local_xScale(barScale);
                     card.b48.__dzPlateLocked = true;
@@ -24370,42 +24375,71 @@ var u = function() {};
                     } catch (eF) {}
                 }
             } catch (ePos) {}
-            // Tag glyphs for L→R gradient + Healing Area pulse on NAME letters only (not wins)
+            // --- Healing Area style ghost: duplicate NAME only (no wins), alpha ~0.7, pulses ---
+            // Same idea as j48(): H46 is a copy that scales; main sprite stays put.
             try {
-                var glyphs = label._9 || [];
-                var count = 0;
-                for (var i = 0; i < glyphs.length; i++) if (glyphs[i]) count++;
-                label.__dzGlyphN = Math.max(1, count - 1);
-                var gi = 0;
-                for (var i = 0; i < glyphs.length; i++) {
-                    var g = glyphs[i];
-                    if (!g) continue;
-                    // Wins digits use color 9 (yellow from ^9) — skip pulse on those
-                    var isWinsGlyph = (g.C5 === 9 || g.C5 === "9");
-                    if (!isWinsGlyph) {
-                        g.__dzPal = pal;
-                        g.__dzGlyphI = gi++;
-                        g.__dzRgb = false;
-                        try {
-                            g.C5 = (pal === "tezzler" ? 97 : 96);
-                            if (g.h4) g.h4(g.C5);
-                        } catch (eC) {}
-                        // Same effect as Healing Area j48(): F6 scale + F7 oscillation, looping
-                        // Applied per letter so the name breathes; wins stay still
-                        try {
-                            if (!g.__dzHealPulse && g.F6 && g.F7) {
-                                g.__dzHealPulse = true;
-                                // Match j48: F6(3, 1.15, 1.15, 500, true) + F7(1, 0.1, 0.5)
-                                // Use 1.0 base so parent 0.5 scale keeps normal size; pulse is the F7 wobble
-                                g.F6(3, 1.15, 1.15, 500, true);
-                                g.F7(1, 0.1, 0.5);
-                                g.F6(4, 1.15, 1.15, 500, true);
-                                g.F7(1, 0.1, 0.5);
-                            }
-                        } catch (eP) {}
-                    }
+                // Remove old ghost if restyling
+                if (card.__dzNameGhost) {
+                    try {
+                        card.__dzNameGhost.a0 = 1;
+                        var ix = card._9 ? card._9.indexOf(card.__dzNameGhost) : -1;
+                        if (ix >= 0) card._9.splice(ix, 1);
+                    } catch (eRm) {}
+                    card.__dzNameGhost = null;
                 }
-            } catch (eG) {}
+                var font = q.MAIN_FONT_BIG || q.MAIN_FONT;
+                var ghost = new xa(0, -132, code + baseName, font);
+                ghost._1 = "__dzNameGhost";
+                ghost.e38 = Pc.CENTER; // scale expands from name center
+                ghost.E37(code + baseName);
+                ghost.__dzPal = pal;
+                ghost.__dzBaseScale = scale;
+                // Tag ghost glyphs for gradient
+                try {
+                    var gg = ghost._9 || [];
+                    var gcount = 0;
+                    for (var i = 0; i < gg.length; i++) if (gg[i]) gcount++;
+                    ghost.__dzGlyphN = Math.max(1, gcount - 1);
+                    var gii = 0;
+                    for (var i = 0; i < gg.length; i++) {
+                        var gl = gg[i];
+                        if (!gl) continue;
+                        gl.__dzPal = pal;
+                        gl.__dzGlyphI = gii++;
+                        try {
+                            gl.C5 = (pal === "tezzler" ? 97 : 96);
+                            if (gl.h4) gl.h4(gl.C5);
+                        } catch (eCg) {}
+                    }
+                } catch (eTg) {}
+                // Center ghost on the name portion of the main label
+                var nameW = 0;
+                try { nameW = ghost.E38() || 0; } catch (eNw) { nameW = 80; }
+                ghost.b6 = label.b6 + (nameW * scale) / 2;
+                ghost.b7 = label.b7;
+                ghost.D7(card);
+                try {
+                    ghost.set_local_xScale(scale);
+                    ghost.set_local_yScale(scale);
+                    ghost.set_local_alp(0.7);
+                } catch (eAl) {}
+                // j48 pulse on the ghost only (main name + wins stay still)
+                try {
+                    if (ghost.F6 && ghost.F7) {
+                        // base 0.5 * 1.15 = 0.575 center, amp 0.05 ≈ j48's 0.1 at half scale
+                        ghost.F6(3, scale * 1.15, scale * 1.15, 500, true);
+                        ghost.F7(1, scale * 0.1, 0.5);
+                        ghost.F6(4, scale * 1.15, scale * 1.15, 500, true);
+                        ghost.F7(1, scale * 0.1, 0.5);
+                    }
+                } catch (eF6) {}
+                // Draw behind main name label
+                if (!card._9) card._9 = [];
+                var li = card._9.indexOf(label);
+                if (li >= 0) card._9.splice(li, 0, ghost);
+                else card._9.push(ghost);
+                card.__dzNameGhost = ghost;
+            } catch (eGhost) {}
             try {
                 label.set_local_xScale(scale);
                 label.set_local_yScale(scale);
@@ -56360,8 +56394,33 @@ function __normalizeWearableScales(skel) {
             for (var d = this.Z43; c < d.length; ) {
                 var e = d[c];
                 ++c;
+                // Detect admin even if nameplate style has not run yet (avoids needing a tab switch)
                 var __isAd = !!(e.J30 && e.J30.__dzPal);
                 var __pal = __isAd ? e.J30.__dzPal : "";
+                if (!__isAd) {
+                    try {
+                        var __svc = window.q && q.diggerzService;
+                        if (__svc && __svc.pvpEnsurePeers) {
+                            var __peers = __svc.pvpEnsurePeers();
+                            for (var __pk in __peers) {
+                                var __pr = __peers[__pk];
+                                if (__pr && __pr.isAdmin && __svc.pvpEntityForPeer && __svc.pvpEntityForPeer(__pr) === e) {
+                                    __isAd = true;
+                                    __pal = __pr.adminPal || "harlan";
+                                    break;
+                                }
+                            }
+                        }
+                        // Local player email admin
+                        if (!__isAd && e === l.z39 && window.DiggerzIsEmailAdmin && window.DiggerzIsEmailAdmin()) {
+                            __isAd = true;
+                            try {
+                                var __em = String((window.DiggerzAuth237 && window.DiggerzAuth237.state && window.DiggerzAuth237.state.email) || "").toLowerCase();
+                                __pal = __em.indexOf("tezzler") >= 0 ? "tezzler" : "harlan";
+                            } catch (_e2) { __pal = "harlan"; }
+                        }
+                    } catch (_det) {}
+                }
                 var g = z.I9();
                 g.Init(f.SPARK_PNG());
                 g.set_r(g.set_g(g.set_b(0)));
@@ -56378,13 +56437,18 @@ function __normalizeWearableScales(skel) {
                 }
                 this._9.push(g);
                 var __nm = String(e._1 || "Player");
-                // Letters: normal admin gradient codes only (no RGB on glyphs)
+                // Admin: BIG font glyphs, scaled to match MAIN_FONT_SMALL height
+                // Non-admin: normal MAIN_FONT_SMALL
                 var __code = __pal === "tezzler" ? "^#" : (__isAd ? "^@" : "");
                 var __font = (__isAd && q.MAIN_FONT_BIG) ? q.MAIN_FONT_BIG : q.MAIN_FONT_SMALL;
                 g = new xa(q.SCREENWIDTH - 190,a,__code + __nm,__font,2);
                 if (__isAd) {
                     try {
-                        var __bs = 0.5;
+                        // Match visual size of normal leaderboard text
+                        var __bigH = (q.MAIN_FONT_BIG && q.MAIN_FONT_BIG.M17 && q.MAIN_FONT_BIG.M17.lineHeight) || 32;
+                        var __smallH = (q.MAIN_FONT_SMALL && q.MAIN_FONT_SMALL.M17 && q.MAIN_FONT_SMALL.M17.lineHeight) || 16;
+                        var __bs = __smallH / __bigH;
+                        if (!(__bs > 0.15 && __bs < 1)) __bs = 0.4;
                         g.__dzBaseScale = __bs;
                         g.__dzPal = __pal;
                         g.__dzRgb = false;
@@ -56404,14 +56468,6 @@ function __normalizeWearableScales(skel) {
                                     var __c5 = __pal === "tezzler" ? 97 : 96;
                                     __gs[__gi].C5 = __c5;
                                     if (__gs[__gi].h4) __gs[__gi].h4(__c5);
-                                    // Healing Area letter pulse (same as nameplate)
-                                    if (!__gs[__gi].__dzHealPulse && __gs[__gi].F6 && __gs[__gi].F7) {
-                                        __gs[__gi].__dzHealPulse = true;
-                                        __gs[__gi].F6(3, 1.15, 1.15, 500, true);
-                                        __gs[__gi].F7(1, 0.1, 0.5);
-                                        __gs[__gi].F6(4, 1.15, 1.15, 500, true);
-                                        __gs[__gi].F7(1, 0.1, 0.5);
-                                    }
                                 } catch(_c){}
                             }
                         }
@@ -124442,13 +124498,15 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
     };
   };
 
-  // Whole-label scale is FIXED at 0.5 — pulse lives on each letter via F6/F7 (Healing Area j48)
+  // Keep label at its stored base scale (nameplate ~0.5, leaderboard = small/big height ratio)
+  // Ghost pulse is handled by F6/F7 on the ghost, not here.
   window.__dzAdminPulseTick = function(label, baseScale){
     if (!label) return;
+    var s = baseScale || label.__dzBaseScale || 0.5;
+    label.__dzBaseScale = s;
     try {
-      label.__dzBaseScale = 0.5;
-      label.set_local_xScale(0.5);
-      label.set_local_yScale(0.5);
+      label.set_local_xScale(s);
+      label.set_local_yScale(s);
     } catch(e){}
   };
 
@@ -124497,7 +124555,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
             var row = rows[i];
             // Pulse text labels only — never the black bar (__dzRgbPlate)
             if (row && row.__dzPal && !row.__dzRgbPlate && window.__dzAdminPulseTick)
-              window.__dzAdminPulseTick(row, 0.5);
+              window.__dzAdminPulseTick(row, row.__dzBaseScale || 0.4);
           }
         }
       } catch(eLB){}
@@ -124519,6 +124577,16 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
           }
         }
       } catch(ePlate){}
+      // Keep leaderboard in sync so RGB plate + admin name show without tab-switching
+      try {
+        if (l.z38 && l.z38.R37 && l.z38.R37.Z44) {
+          var now = Date.now();
+          if (!window.__dzLbLast || now - window.__dzLbLast > 800) {
+            window.__dzLbLast = now;
+            l.z38.R37.Z44();
+          }
+        }
+      } catch(eLb){}
     } catch(e){}
   }
   setInterval(pulseAll, 50);
