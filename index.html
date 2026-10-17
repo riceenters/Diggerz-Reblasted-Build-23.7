@@ -18968,6 +18968,16 @@ var u = function() {};
                 this.set_b(this._2.A3));
                 this.set_xScale(this._2.a8);
                 this.set_yScale(this._2.a9);
+                // Healing Area pulse (j48): F6(3/4, 1.15, 1.15, 500, loop) + F7(1, 0.1, 0.5)
+                // Must run HERE — E4 resets scale from parent every frame, which kills F6 on glyphs.
+                // Only admin name letters (C5 96/97 or __dzHealPulse). Wins (^9 → C5 9) are skipped.
+                if (this.__dzHealPulse || 96 == this.C5 || 97 == this.C5) {
+                    var ht = Date.now() / 1000;
+                    // same formula as F7 type 1: sin(progress * 2pi * freq) * amp
+                    var hPulse = 1.15 + 0.1 * Math.sin(ht * Math.PI * 2 * 0.5);
+                    this.set_xScale(this._2.a8 * hPulse);
+                    this.set_yScale(this._2.a9 * hPulse);
+                }
                 z.prototype.E4.call(this, a);
                 // Admin gradients (^@=96, ^#=97) and rainbow (^!=99): recompute every draw
                 // so parent white does not wipe the colors set in e0.
