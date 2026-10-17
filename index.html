@@ -24331,7 +24331,7 @@ var u = function() {};
                     else if (role === "lime") pal = "tezzler";
                 } catch (ePal) {}
             }
-            // BIG font scaled down to ~normal name size
+            // BIG font, scaled to roughly normal name height
             var scale = 0.32;
             try {
                 var bigH = (q.MAIN_FONT_BIG && q.MAIN_FONT_BIG.M17 && q.MAIN_FONT_BIG.M17.lineHeight) || 32;
@@ -24339,40 +24339,23 @@ var u = function() {};
                 var ratio = smallH / bigH;
                 if (ratio > 0.15 && ratio < 0.9) scale = ratio * 0.92;
             } catch (eR) {}
-            var code = (pal === "tezzler") ? "^#" : "^@";
             try { if (q.MAIN_FONT_BIG) label.E31 = q.MAIN_FONT_BIG; } catch (eFont) {}
             label.__dzBaseScale = scale;
             card.__dzPal = pal;
             label.__dzPal = pal;
             label.__dzAdminStyled = true;
-            // Gradient codes on name; wins stay yellow
-            label.E37(code + baseName + winsSuffix);
+            // Plain name (no gradient codes) + yellow wins
+            label.E37(baseName + winsSuffix);
             try {
                 label.set_local_xScale(scale);
                 label.set_local_yScale(scale);
             } catch (eSc) {}
             try {
-                var glyphs = label._9 || [], gi = 0, count = 0;
-                for (var i = 0; i < glyphs.length; i++) if (glyphs[i]) count++;
-                label.__dzGlyphN = Math.max(1, count - 1);
-                for (var i = 0; i < glyphs.length; i++) {
-                    var g = glyphs[i];
-                    if (!g || g.C5 === 9) continue;
-                    g.__dzPal = pal;
-                    g.__dzGlyphI = gi++;
-                    try {
-                        g.C5 = (pal === "tezzler" ? 97 : 96);
-                        if (g.h4) g.h4(g.C5);
-                    } catch (eC) {}
-                }
-            } catch (eG) {}
-            try {
                 label.b7 = -132;
                 if (card.b48 && card.b48._5) {
                     card.b48.b7 = -134;
                     card.b48.set_local_yScale(1);
-                    // RGB nameplate bar (cycled in diggerz-admin-rgb script)
-                    card.b48.__dzRgbPlate = true;
+                    card.b48.__dzRgbPlate = true; // force RGB nameplate
                     var w = 0;
                     try { w = label.E38() || 0; } catch (eW2) { w = 80; }
                     var barScale = (w * scale + 48) / card.b48._5.width;
@@ -24383,7 +24366,6 @@ var u = function() {};
                     try { label.b6 = card.b49.b6 + card.b49._5.width + 4; } catch (eF) {}
                 }
             } catch (ePos) {}
-            // Remove any old ghost if present
             try {
                 if (card.__dzNameGhost) {
                     card.__dzNameGhost.a0 = 1;
@@ -124376,7 +124358,8 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
       if (!s || !s.adminApplyRoleTag || !window.l || !l.z39) return;
       var card = l.z39.J30, lab = card && card.E32;
       if (!lab) return;
-      if (!force && lab.__dzAdminStyled) return;
+      // Re-apply periodically so big font + RGB plate stick after UI rebuilds
+      if (!force && lab.__dzAdminStyled && card.b48 && card.b48.__dzRgbPlate) return;
       s.adminApplyRoleTag(l.z39, "owner", myPal());
     } catch(e){}
   }
@@ -124388,13 +124371,18 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
       if (!s || !s.adminApplyRoleTag) return;
       var ent = entity || (s.pvpEntityForPeer && s.pvpEntityForPeer(peer));
       if (!ent || !ent.J30 || !ent.J30.E32) return;
-      if (ent.J30.E32.__dzAdminStyled) return;
+      // Force style for others so they always see admin big font + RGB plate
       var pal = peer.adminPal || "harlan";
-      s.adminApplyRoleTag(ent, "owner", pal);
+      var need = !ent.J30.E32.__dzAdminStyled || !(ent.J30.b48 && ent.J30.b48.__dzRgbPlate);
+      if (need) s.adminApplyRoleTag(ent, "owner", pal);
+      else {
+        // Keep RGB flag alive even if style was applied earlier
+        try { if (ent.J30.b48) ent.J30.b48.__dzRgbPlate = true; } catch(_r){}
+      }
     } catch(e){}
   }
 
-  // Local admin poll — only style once until card is rebuilt
+  // Local admin — re-check often
   setInterval(function(){
     try {
       if (!isAllowed()) return;
@@ -124403,9 +124391,9 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
       if (!s.ownerAdminAuthorized) grantLocalAdmin(null, null);
       else applyLocalStyle(false);
     } catch(e){}
-  }, 800);
+  }, 500);
 
-  // Peer admin styling from roster + entity scan
+  // Peers: force big font + RGB nameplate for anyone marked isAdmin on roster
   setInterval(function(){
     try {
       var s = window.q && q.diggerzService;
@@ -124417,7 +124405,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
         if (peer && peer.isAdmin) applyPeerStyle(peer);
       });
     } catch(e){}
-  }, 1200);
+  }, 600);
 
   function wrapReceive(){
     try {
@@ -125127,7 +125115,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
 </script>
 <script id="diggerz-admin-rgb">
 (function(){
-  // RGB-cycle admin nameplate bars only (overhead + leaderboard). No pulse/ghost.
+  // RGB-cycle every admin nameplate bar (local + peers + leaderboard)
   function tick(){
     try {
       var t = Date.now() / 900;
@@ -125141,23 +125129,25 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
           else if (bar.set_local_r) { bar.set_local_r(r); bar.set_local_g(g); bar.set_local_b(b); }
         } catch(e){}
       }
-      // Overhead nameplates
-      if (window.l && l.z39 && l.z39.J30 && l.z39.J30.b48) colorBar(l.z39.J30.b48);
-      var s = window.q && q.diggerzService;
-      if (s && s.pvpEnsurePeers) {
-        var peers = s.pvpEnsurePeers();
-        Object.keys(peers || {}).forEach(function(cid){
-          var peer = peers[cid];
-          if (!peer || !peer.isAdmin) return;
-          var ent = s.pvpEntityForPeer && s.pvpEntityForPeer(peer);
-          if (ent && ent.J30 && ent.J30.b48) colorBar(ent.J30.b48);
-        });
-      }
+      // All player entities currently in the world
+      try {
+        if (window.l && l.z38 && l.z38._9) {
+          for (var i = 0; i < l.z38._9.length; i++) {
+            var e = l.z38._9[i];
+            if (e && e.J30) {
+              if (e.J30.__dzPal && e.J30.b48) e.J30.b48.__dzRgbPlate = true;
+              colorBar(e.J30.b48);
+            }
+          }
+        }
+      } catch(_w){}
       // Leaderboard bars
-      if (l.z38 && l.z38.R37 && l.z38.R37._9) {
-        var rows = l.z38.R37._9;
-        for (var i = 0; i < rows.length; i++) colorBar(rows[i]);
-      }
+      try {
+        if (l.z38 && l.z38.R37 && l.z38.R37._9) {
+          var rows = l.z38.R37._9;
+          for (var i = 0; i < rows.length; i++) colorBar(rows[i]);
+        }
+      } catch(_lb){}
     } catch(e){}
   }
   setInterval(tick, 50);
