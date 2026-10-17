@@ -24289,6 +24289,7 @@ var u = function() {};
                     else if (role === "lime") pal = "tezzler";
                 } catch (ePal) {}
             }
+            // BIG font scaled down to ~normal name size
             var scale = 0.32;
             try {
                 var bigH = (q.MAIN_FONT_BIG && q.MAIN_FONT_BIG.M17 && q.MAIN_FONT_BIG.M17.lineHeight) || 32;
@@ -24302,8 +24303,12 @@ var u = function() {};
             card.__dzPal = pal;
             label.__dzPal = pal;
             label.__dzAdminStyled = true;
+            // Gradient codes on name; wins stay yellow
             label.E37(code + baseName + winsSuffix);
-            try { label.set_local_xScale(scale); label.set_local_yScale(scale); } catch (eSc) {}
+            try {
+                label.set_local_xScale(scale);
+                label.set_local_yScale(scale);
+            } catch (eSc) {}
             try {
                 var glyphs = label._9 || [], gi = 0, count = 0;
                 for (var i = 0; i < glyphs.length; i++) if (glyphs[i]) count++;
@@ -24313,7 +24318,10 @@ var u = function() {};
                     if (!g || g.C5 === 9) continue;
                     g.__dzPal = pal;
                     g.__dzGlyphI = gi++;
-                    try { g.C5 = (pal === "tezzler" ? 97 : 96); if (g.h4) g.h4(g.C5); } catch (eC) {}
+                    try {
+                        g.C5 = (pal === "tezzler" ? 97 : 96);
+                        if (g.h4) g.h4(g.C5);
+                    } catch (eC) {}
                 }
             } catch (eG) {}
             try {
@@ -24321,6 +24329,8 @@ var u = function() {};
                 if (card.b48 && card.b48._5) {
                     card.b48.b7 = -134;
                     card.b48.set_local_yScale(1);
+                    // RGB nameplate bar (cycled in diggerz-admin-rgb script)
+                    card.b48.__dzRgbPlate = true;
                     var w = 0;
                     try { w = label.E38() || 0; } catch (eW2) { w = 80; }
                     var barScale = (w * scale + 48) / card.b48._5.width;
@@ -24331,52 +24341,15 @@ var u = function() {};
                     try { label.b6 = card.b49.b6 + card.b49._5.width + 4; } catch (eF) {}
                 }
             } catch (ePos) {}
-            // Ghost behind name (Healing Area style). D7 resets pos — set b6/b7 AFTER D7.
+            // Remove any old ghost if present
             try {
                 if (card.__dzNameGhost) {
-                    try {
-                        card.__dzNameGhost.a0 = 1;
-                        var oix = card._9 ? card._9.indexOf(card.__dzNameGhost) : -1;
-                        if (oix >= 0) card._9.splice(oix, 1);
-                    } catch (eRm) {}
+                    card.__dzNameGhost.a0 = 1;
+                    var oix = card._9 ? card._9.indexOf(card.__dzNameGhost) : -1;
+                    if (oix >= 0) card._9.splice(oix, 1);
                     card.__dzNameGhost = null;
                 }
-                var font = q.MAIN_FONT_BIG || q.MAIN_FONT;
-                var ghost = new xa(0, 0, code + baseName, font, 0);
-                ghost._1 = "__dzNameGhost";
-                ghost.E37(code + baseName);
-                ghost.__dzPal = pal;
-                ghost.__dzBaseScale = scale;
-                ghost.__dzIsGhost = true;
-                try {
-                    var gg = ghost._9 || [], gii = 0, gc = 0;
-                    for (var i = 0; i < gg.length; i++) if (gg[i]) gc++;
-                    ghost.__dzGlyphN = Math.max(1, gc - 1);
-                    for (var i = 0; i < gg.length; i++) {
-                        var gl = gg[i];
-                        if (!gl) continue;
-                        gl.__dzPal = pal;
-                        gl.__dzGlyphI = gii++;
-                        try { gl.C5 = (pal === "tezzler" ? 97 : 96); if (gl.h4) gl.h4(gl.C5); } catch (eCg) {}
-                    }
-                } catch (eTg) {}
-                ghost.D7(card);
-                var nameW = 0;
-                try { nameW = ghost.E38() || 0; } catch (eNw) { nameW = 80; }
-                ghost.b6 = (label.b6 || 0) + (nameW * scale) / 2;
-                ghost.b7 = label.b7 || -132;
-                try {
-                    ghost.set_local_xScale(scale);
-                    ghost.set_local_yScale(scale);
-                    ghost.set_local_alp(0.7);
-                } catch (eAl) {}
-                if (!card._9) card._9 = [];
-                var li = card._9.indexOf(label);
-                if (li >= 0) card._9.splice(li, 0, ghost);
-                else card._9.unshift(ghost);
-                card.__dzNameGhost = ghost;
-            } catch (eGhost) {}
-            try { label.set_local_xScale(scale); label.set_local_yScale(scale); } catch (eSc2) {}
+            } catch (eRm) {}
             return true
         },
                 adminApplyOwnerTag: function() {
@@ -56307,6 +56280,17 @@ function __normalizeWearableScales(skel) {
             for (var d = this.Z43; c < d.length; ) {
                 var e = d[c];
                 ++c;
+                var __isAd = !!(e.J30 && e.J30.__dzPal);
+                var __pal = __isAd ? e.J30.__dzPal : "";
+                if (!__isAd) {
+                    try {
+                        if (e === l.z39 && window.DiggerzIsEmailAdmin && window.DiggerzIsEmailAdmin()) {
+                            __isAd = true;
+                            var __em = String((window.DiggerzAuth237 && window.DiggerzAuth237.state && window.DiggerzAuth237.state.email) || "").toLowerCase();
+                            __pal = __em.indexOf("tezzler") >= 0 ? "tezzler" : "harlan";
+                        }
+                    } catch (_d) {}
+                }
                 var g = z.I9();
                 g.Init(f.SPARK_PNG());
                 g.set_r(g.set_g(g.set_b(0)));
@@ -56315,8 +56299,41 @@ function __normalizeWearableScales(skel) {
                 g.set_yScale(12);
                 g.A7 = q.SCREENWIDTH - 104;
                 g.A8 = a - 3;
+                if (__isAd) {
+                    g.__dzRgbPlate = true;
+                    g.__dzPal = __pal;
+                    g.set_alp(.55);
+                }
                 this._9.push(g);
-                g = new xa(q.SCREENWIDTH - 190,a,e._1,q.MAIN_FONT_SMALL,2);
+                var __nm = String(e._1 || "Player");
+                var __code = __pal === "tezzler" ? "^#" : (__isAd ? "^@" : "");
+                var __font = (__isAd && q.MAIN_FONT_BIG) ? q.MAIN_FONT_BIG : q.MAIN_FONT_SMALL;
+                g = new xa(q.SCREENWIDTH - 190,a,__code + __nm,__font,2);
+                if (__isAd) {
+                    try {
+                        var __bigH = (q.MAIN_FONT_BIG && q.MAIN_FONT_BIG.M17 && q.MAIN_FONT_BIG.M17.lineHeight) || 32;
+                        var __smallH = (q.MAIN_FONT_SMALL && q.MAIN_FONT_SMALL.M17 && q.MAIN_FONT_SMALL.M17.lineHeight) || 16;
+                        var __bs = __smallH / __bigH;
+                        if (!(__bs > 0.15 && __bs < 1)) __bs = 0.4;
+                        g.__dzBaseScale = __bs;
+                        g.__dzPal = __pal;
+                        g.set_local_xScale(__bs);
+                        g.set_local_yScale(__bs);
+                        var __gs = g._9 || [], __idx = 0, __cnt = 0;
+                        for (var __gi = 0; __gi < __gs.length; __gi++) if (__gs[__gi]) __cnt++;
+                        g.__dzGlyphN = Math.max(1, __cnt - 1);
+                        for (var __gi = 0; __gi < __gs.length; __gi++) {
+                            if (!__gs[__gi]) continue;
+                            __gs[__gi].__dzPal = __pal;
+                            __gs[__gi].__dzGlyphI = __idx++;
+                            try {
+                                var __c5 = __pal === "tezzler" ? 97 : 96;
+                                __gs[__gi].C5 = __c5;
+                                if (__gs[__gi].h4) __gs[__gi].h4(__c5);
+                            } catch (_c) {}
+                        }
+                    } catch (_ad) {}
+                }
                 this._9.push(g);
                 g = new xa(q.SCREENWIDTH - 34,a,"" + e.k31,q.MAIN_FONT_SMALL);
                 g.e38 = Pc.RIGHT;
@@ -125067,6 +125084,10 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
 
 </script>
 
+
+
+
+
 <script id="diggerz-admin-gradient">
 (function(){
   function clamp01(x){ return x < 0 ? 0 : x > 1 ? 1 : x; }
@@ -125080,35 +125101,32 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
     var n = Math.max(1, Number(glyphCount) || 10);
     var t = clamp01((Number(glyphIndex) || 0) / n);
     t = clamp01(t + 0.03 * Math.sin(Date.now() / 1100 + (glyphIndex || 0) * 0.35));
-    return { r: clamp01(lerp(p.left.r, p.right.r, t)), g: clamp01(lerp(p.left.g, p.right.g, t)), b: clamp01(lerp(p.left.b, p.right.b, t)) };
+    return {
+      r: clamp01(lerp(p.left.r, p.right.r, t)),
+      g: clamp01(lerp(p.left.g, p.right.g, t)),
+      b: clamp01(lerp(p.left.b, p.right.b, t))
+    };
   };
 })();
 </script>
-<script id="diggerz-admin-pulse">
+<script id="diggerz-admin-rgb">
 (function(){
-  function tickGhost(ghost){
-    if (!ghost || !ghost.__dzIsGhost) return;
-    var base = ghost.__dzBaseScale || 0.32;
-    var ht = Date.now() / 1000;
-    var pulse = base * (1.15 + 0.12 * Math.sin(ht * Math.PI * 2 * 0.5));
+  // RGB-cycle admin nameplate bars only (overhead + leaderboard). No pulse/ghost.
+  function tick(){
     try {
-      ghost.set_local_xScale(pulse);
-      ghost.set_local_yScale(pulse);
-      if (ghost.set_local_alp) ghost.set_local_alp(0.7);
-    } catch(e){}
-  }
-  function pulseAll(){
-    try {
-      if (window.l && l.z39 && l.z39.J30 && l.z39.J30.__dzPal) {
-        var card = l.z39.J30;
-        if (card.E32 && card.E32.__dzBaseScale) {
-          try {
-            card.E32.set_local_xScale(card.E32.__dzBaseScale);
-            card.E32.set_local_yScale(card.E32.__dzBaseScale);
-          } catch(e){}
-        }
-        tickGhost(card.__dzNameGhost);
+      var t = Date.now() / 900;
+      var r = .5 + .5 * Math.sin(t);
+      var g = .5 + .5 * Math.sin(t + 2.09439510239);
+      var b = .5 + .5 * Math.sin(t + 4.18879020479);
+      function colorBar(bar){
+        if (!bar || !bar.__dzRgbPlate) return;
+        try {
+          if (bar.set_r) { bar.set_r(r); bar.set_g(g); bar.set_b(b); }
+          else if (bar.set_local_r) { bar.set_local_r(r); bar.set_local_g(g); bar.set_local_b(b); }
+        } catch(e){}
       }
+      // Overhead nameplates
+      if (window.l && l.z39 && l.z39.J30 && l.z39.J30.b48) colorBar(l.z39.J30.b48);
       var s = window.q && q.diggerzService;
       if (s && s.pvpEnsurePeers) {
         var peers = s.pvpEnsurePeers();
@@ -125116,29 +125134,17 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
           var peer = peers[cid];
           if (!peer || !peer.isAdmin) return;
           var ent = s.pvpEntityForPeer && s.pvpEntityForPeer(peer);
-          if (!ent || !ent.J30) return;
-          tickGhost(ent.J30.__dzNameGhost);
+          if (ent && ent.J30 && ent.J30.b48) colorBar(ent.J30.b48);
         });
       }
-      // RGB leaderboard bars
-      try {
-        if (l.z38 && l.z38.R37 && l.z38.R37._9) {
-          var rows = l.z38.R37._9, t = Date.now() / 900;
-          for (var i = 0; i < rows.length; i++) {
-            var bar = rows[i];
-            if (!bar || !bar.__dzRgbPlate) continue;
-            var r = .5 + .5 * Math.sin(t);
-            var g = .5 + .5 * Math.sin(t + 2.09439510239);
-            var b = .5 + .5 * Math.sin(t + 4.18879020479);
-            try {
-              if (bar.set_r) { bar.set_r(r); bar.set_g(g); bar.set_b(b); }
-            } catch(eC){}
-          }
-        }
-      } catch(ePlate){}
+      // Leaderboard bars
+      if (l.z38 && l.z38.R37 && l.z38.R37._9) {
+        var rows = l.z38.R37._9;
+        for (var i = 0; i < rows.length; i++) colorBar(rows[i]);
+      }
     } catch(e){}
   }
-  setInterval(pulseAll, 50);
+  setInterval(tick, 50);
 })();
 </script>
 
