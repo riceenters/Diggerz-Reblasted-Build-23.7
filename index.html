@@ -18932,7 +18932,8 @@ var u = function() {};
                         }
                     }
                     if ((96 == this.C5 || 97 == this.C5 || pal) && window.__dzAdminGradientColor) {
-                        var col = window.__dzAdminGradientColor(pal || (96 == this.C5 ? "harlan" : "tezzler"), this.__dzGlyphI || 0);
+                        var gn = (this._2 && this._2.__dzGlyphN) || 12;
+                        var col = window.__dzAdminGradientColor(pal || (96 == this.C5 ? "harlan" : "tezzler"), this.__dzGlyphI || 0, gn);
                         r = col.r; g = col.g; b = col.b;
                     } else {
                         var t2 = (Date.now() % 3000) / 3000 * 6.28318530718;
@@ -18968,12 +18969,24 @@ var u = function() {};
                 this.set_xScale(this._2.a8);
                 this.set_yScale(this._2.a9);
                 z.prototype.E4.call(this, a);
-                // Rainbow (^! / C5===99): recompute every draw so chat lines animate.
-                if (99 == this.C5) {
-                    var t = (Date.now() % 2400) / 2400 * 6.28318530718;
-                    b = .55 + .45 * Math.sin(t);
-                    c = .55 + .45 * Math.sin(t + 2.09439510239);
-                    d = .55 + .45 * Math.sin(t + 4.18879020479);
+                // Admin gradients (^@=96, ^#=97) and rainbow (^!=99): recompute every draw
+                // so parent white does not wipe the colors set in e0.
+                if (96 == this.C5 || 97 == this.C5 || 99 == this.C5) {
+                    if (99 == this.C5 && !this.__dzPal && !(this._2 && this._2.__dzPal)) {
+                        var t = (Date.now() % 2400) / 2400 * 6.28318530718;
+                        b = .55 + .45 * Math.sin(t);
+                        c = .55 + .45 * Math.sin(t + 2.09439510239);
+                        d = .55 + .45 * Math.sin(t + 4.18879020479);
+                    } else if (96 == this.C5 || 97 == this.C5 || this.__dzPal || (this._2 && this._2.__dzPal)) {
+                        var pal = 96 == this.C5 ? "harlan" : (97 == this.C5 ? "tezzler" : null);
+                        if (!pal) pal = this.__dzPal || (this._2 && this._2.__dzPal) || "harlan";
+                        var gi = this.__dzGlyphI || 0;
+                        var gn = (this._2 && this._2.__dzGlyphN) || 12;
+                        if (window.__dzAdminGradientColor) {
+                            var col = window.__dzAdminGradientColor(pal, gi, gn);
+                            b = col.r; c = col.g; d = col.b;
+                        }
+                    }
                 }
                 this.set_r(b);
                 this.set_g(c);
@@ -20470,7 +20483,7 @@ var u = function() {};
             b = this.V31(b);
             null != b && (b.l30(!1),
             !(0 <= l.A42.indexOf(b._1)) && (a = a.r5(),
-            "/me " == T.substr(a, 0, 4) ? this.R35.C46("^1*^7" + b._1 + " " + T.substr(a, 4, null) + "^1*") : this.R35.C46("[^3" + b._1 + "^7] " + a),
+            "/me " == T.substr(a, 0, 4) ? this.R35.C46("^1*^7" + b._1 + " " + T.substr(a, 4, null) + "^1*") : this.R35.C46("[" + (function(__p){try{var __pal=__p&&__p.J30&&__p.J30.__dzPal;if(__pal==="tezzler")return"^#"+__p._1+"^7";if(__pal)return"^@"+__p._1+"^7";}catch(_e){}return"^3"+b._1+"^7";})(b) + "] " + a),
             b instanceof pa || I.__cast(b, ai).B48)) && (a = new mj(a,0,b,2400,!1,!0,!1),
             this.R39[l.a40]._9.push(a))
         },
@@ -24285,22 +24298,21 @@ var u = function() {};
         adminApplyRoleTag: function(target, role, forcedPal) {
             if (!target || !target.J30 || !target.J30.E32) return false;
             var card = target.J30, label = card.E32;
-            var current = String(label.E32 || "");
-            // Strip staff tags / color codes from base name
-            current = current.replace(/^\^6\[OWNER\]\n\^7/, "");
-            current = current.replace(/^\^1\[ADMIN\]\n\^7/, "");
-            current = current.replace(/^\^2\[the real lime\]\n\^7/, "");
-            current = current.replace(/\s*\^!\[ADMIN\]/gi, "");
-            current = current.replace(/\s*\^6\[OWNER\]/gi, "");
-            current = current.replace(/\s*\^1\[ADMIN\]/gi, "");
-            current = current.replace(/\s*\^2\[the real lime\]/gi, "");
-            current = current.replace(/\s*\[ADMIN\]/gi, "");
-            current = current.replace(/\s*\[OWNER\]/gi, "");
-            current = current.replace(/\^\d/g, "");
-            current = current.replace(/\^!/g, "");
-            // Keep level suffix like " 11" if present at end after strip
-            current = current.replace(/\s{2,}/g, " ").trim();
-            // Remove trailing pure number that we will re-add from original if needed
+            // ALWAYS use the clean entity name — never re-parse the styled label text
+            // (that was stacking ^@ codes and win digits, stretching the black bar forever)
+            var baseName = String(target._1 || "Player");
+            baseName = baseName.replace(/\^[@#!0-9]/g, "");
+            baseName = baseName.replace(/\[ADMIN\]/gi, "");
+            baseName = baseName.replace(/\[OWNER\]/gi, "");
+            baseName = baseName.replace(/\s{2,}/g, " ").trim();
+            if (!baseName) baseName = "Player";
+            // Wins number (yellow) if present on the nameplate already
+            var winsSuffix = "";
+            try {
+                var prev = String(label.E32 || "");
+                var wm = prev.match(/\^9\s*(\d+)\s*$/);
+                if (wm) winsSuffix = " ^9" + wm[1];
+            } catch (eW) {}
             // Palette
             var pal = forcedPal || "harlan";
             if (!forcedPal) {
@@ -24313,57 +24325,81 @@ var u = function() {};
                     else if (role === "lime") pal = "tezzler";
                 } catch (ePal) {}
             }
-            // BIG font, shrunk to normal name size
+            // BIG font at fixed 0.5 scale (matches normal name size)
+            var scale = 0.5;
             try {
-                if (q.MAIN_FONT_BIG) {
-                    label.E31 = q.MAIN_FONT_BIG;
-                    var bigH = (q.MAIN_FONT_BIG.M17 && q.MAIN_FONT_BIG.M17.lineHeight) || 32;
-                    var smallH = (q.MAIN_FONT && q.MAIN_FONT.M17 && q.MAIN_FONT.M17.lineHeight) || 16;
-                    var scale = Math.max(0.4, Math.min(1, smallH / bigH));
-                    label.__dzBaseScale = scale;
-                    label.set_local_xScale(scale);
-                    label.set_local_yScale(scale);
-                }
+                if (q.MAIN_FONT_BIG) label.E31 = q.MAIN_FONT_BIG;
             } catch (eFont) {}
+            label.__dzBaseScale = scale;
             card.__dzPal = pal;
             label.__dzPal = pal;
             label.__dzAdminStyled = true;
-            // Gradient via ^! — name only, no badge text
-            label.E37((pal === "tezzler" ? "^#" : "^@") + current);
-            // ORIGINAL nameplate positions (do not move the flag / country)
+            // Build text once from clean name
+            label.E37((pal === "tezzler" ? "^#" : "^@") + baseName + winsSuffix);
+            try {
+                label.set_local_xScale(scale);
+                label.set_local_yScale(scale);
+            } catch (eSc) {}
+            // Nameplate bar: size once from clean glyph width * scale — never accumulate
             try {
                 label.b7 = -132;
-                if (card.b48) {
+                if (card.b48 && card.b48._5) {
                     card.b48.b7 = -134;
                     card.b48.set_local_yScale(1);
-                    if (card.b48._5) {
-                        var w = 0;
-                        try { w = label.E38() || 0; } catch (eW) { w = 80; }
-                        var sx = 1;
-                        try { sx = Math.abs(label.b4) || 1; } catch (eS) {}
-                        card.b48.set_local_xScale((w * sx + 48) / card.b48._5.width);
-                    }
+                    var w = 0;
+                    try { w = label.E38() || 0; } catch (eW2) { w = 80; }
+                    var barScale = (w * scale + 48) / card.b48._5.width;
+                    // Clamp so a bad width can never explode the bar
+                    if (!(barScale > 0) || barScale > 20) barScale = 2;
+                    card.b48.set_local_xScale(barScale);
+                    card.b48.__dzPlateLocked = true;
                 }
-                // Keep name text to the right of the flag, same as stock layout
                 if (card.b49 && card.b49._5) {
                     try {
                         label.b6 = card.b49.b6 + card.b49._5.width + 4;
                     } catch (eF) {}
                 }
             } catch (ePos) {}
-            // Tag glyphs for per-letter gradient
+            // Tag glyphs for L→R gradient + Healing Area pulse on NAME letters only (not wins)
             try {
                 var glyphs = label._9 || [];
+                var count = 0;
+                for (var i = 0; i < glyphs.length; i++) if (glyphs[i]) count++;
+                label.__dzGlyphN = Math.max(1, count - 1);
                 var gi = 0;
                 for (var i = 0; i < glyphs.length; i++) {
                     var g = glyphs[i];
                     if (!g) continue;
-                    g.__dzPal = pal;
-                    g.__dzGlyphI = gi++;
-                    // Force rainbow channel if color code didn't stick
-                    try { g.C5 = (pal === "tezzler" ? 97 : 96); if (g.h4) g.h4(g.C5); } catch (eC) {}
+                    // Wins digits use color 9 (yellow from ^9) — skip pulse on those
+                    var isWinsGlyph = (g.C5 === 9 || g.C5 === "9");
+                    if (!isWinsGlyph) {
+                        g.__dzPal = pal;
+                        g.__dzGlyphI = gi++;
+                        g.__dzRgb = false;
+                        try {
+                            g.C5 = (pal === "tezzler" ? 97 : 96);
+                            if (g.h4) g.h4(g.C5);
+                        } catch (eC) {}
+                        // Same effect as Healing Area j48(): F6 scale + F7 oscillation, looping
+                        // Applied per letter so the name breathes; wins stay still
+                        try {
+                            if (!g.__dzHealPulse && g.F6 && g.F7) {
+                                g.__dzHealPulse = true;
+                                // Match j48: F6(3, 1.15, 1.15, 500, true) + F7(1, 0.1, 0.5)
+                                // Use 1.0 base so parent 0.5 scale keeps normal size; pulse is the F7 wobble
+                                g.F6(3, 1.15, 1.15, 500, true);
+                                g.F7(1, 0.1, 0.5);
+                                g.F6(4, 1.15, 1.15, 500, true);
+                                g.F7(1, 0.1, 0.5);
+                            }
+                        } catch (eP) {}
+                    }
                 }
             } catch (eG) {}
+            try {
+                label.set_local_xScale(scale);
+                label.set_local_yScale(scale);
+            } catch (eSc2) {}
             return true
         },
                 adminApplyOwnerTag: function() {
@@ -25945,6 +25981,26 @@ var u = function() {};
             a.set_xScale(a.set_yScale(.66666667));
             a.f30((this.d32 - 24) / a.a8);
             this.B34.push(a);
+            // Tag chat glyphs that use admin gradient codes so L→R colors animate
+            try {
+              var raw = String(a && a.E32 || "");
+              var isAdChat = raw.indexOf("^@") >= 0 || raw.indexOf("^#") >= 0;
+              if (isAdChat && a._9) {
+                var pal = raw.indexOf("^#") >= 0 ? "tezzler" : "harlan";
+                a.__dzPal = pal;
+                var cnt = 0;
+                for (var i = 0; i < a._9.length; i++) if (a._9[i]) cnt++;
+                a.__dzGlyphN = Math.max(1, cnt - 1);
+                var idx = 0;
+                for (var i = 0; i < a._9.length; i++) {
+                  var g = a._9[i];
+                  if (!g) continue;
+                  g.__dzPal = pal;
+                  g.__dzGlyphI = idx++;
+                  if (96 == g.C5 || 97 == g.C5) { /* already set by E37 */ }
+                }
+              }
+            } catch (_ch) {}
             1 > Math.abs(this.B33) && (this.C45 = 0);
             this.C48();
             b = 0;
@@ -56318,22 +56374,34 @@ function __normalizeWearableScales(skel) {
                 g = new xa(q.SCREENWIDTH - 190,a,__code + __nm,__font,2);
                 if (__isAd) {
                     try {
-                        var __bs = 0.55;
+                        var __bs = 0.5;
                         g.__dzBaseScale = __bs;
                         g.__dzPal = __pal;
                         g.__dzRgb = false;
                         g.set_local_xScale(__bs);
                         g.set_local_yScale(__bs);
                         var __gs = g._9 || [];
+                        var __cnt = 0;
+                        for (var __gi = 0; __gi < __gs.length; __gi++) if (__gs[__gi]) __cnt++;
+                        g.__dzGlyphN = Math.max(1, __cnt - 1);
+                        var __idx = 0;
                         for (var __gi = 0; __gi < __gs.length; __gi++) {
                             if (__gs[__gi]) {
                                 __gs[__gi].__dzPal = __pal;
-                                __gs[__gi].__dzGlyphI = __gi;
+                                __gs[__gi].__dzGlyphI = __idx++;
                                 __gs[__gi].__dzRgb = false;
                                 try {
                                     var __c5 = __pal === "tezzler" ? 97 : 96;
                                     __gs[__gi].C5 = __c5;
                                     if (__gs[__gi].h4) __gs[__gi].h4(__c5);
+                                    // Healing Area letter pulse (same as nameplate)
+                                    if (!__gs[__gi].__dzHealPulse && __gs[__gi].F6 && __gs[__gi].F7) {
+                                        __gs[__gi].__dzHealPulse = true;
+                                        __gs[__gi].F6(3, 1.15, 1.15, 500, true);
+                                        __gs[__gi].F7(1, 0.1, 0.5);
+                                        __gs[__gi].F6(4, 1.15, 1.15, 500, true);
+                                        __gs[__gi].F7(1, 0.1, 0.5);
+                                    }
                                 } catch(_c){}
                             }
                         }
@@ -122543,7 +122611,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
     };
     var releaseRoomState=proto.pvpApplyRoomState;proto.pvpApplyRoomState=function(m){if(m&&m.map&&(this.mode==='pvp'||this.mode==='digtrade'))this.pvpApplyBaseMap(m.map);return releaseRoomState.call(this,m)};
     function refreshBoard(service){try{if(l.z38&&l.z38.R37&&l.z38.R37.Z44)l.z38.R37.Z44()}catch(e){}}
-    function setNameWins(e,w){try{if(e&&e.J30&&e.J30.E32){var wins=Math.max(0,w|0);var base=String(e._1||'Player');if(e.J30.__dzPal&&window.q&&q.diggerzService&&q.diggerzService.adminApplyRoleTag){e.J30.E32.__dzAdminStyled=false;q.diggerzService.adminApplyRoleTag(e,"owner",e.J30.__dzPal);}else{e.J30.E32.E37(base+" ^9"+wins);}}}catch(_e){}} function resetScores(service){try{if(l.z39){l.z39.k31=0;setNameWins(l.z39,service&&service.state?service.state.wins|0:0)}var peers=service&&service.pvpEnsurePeers?service.pvpEnsurePeers():{};for(var k in peers){var peer=peers[k],e=service.pvpEntityForPeer(peer);if(e){e.k31=0;setNameWins(e,peer&&peer.info?peer.info.wins|0:0)}}refreshBoard(service)}catch(e){}}
+    function setNameWins(e,w){try{if(e&&e.J30&&e.J30.E32){var wins=Math.max(0,w|0);var base=String(e._1||'Player');if(e.J30.__dzPal&&window.q&&q.diggerzService&&q.diggerzService.adminApplyRoleTag){var lab=e.J30.E32;lab.E32=base+" ^9"+wins;lab.__dzAdminStyled=false;q.diggerzService.adminApplyRoleTag(e,"owner",e.J30.__dzPal);}else{e.J30.E32.E37(base+" ^9"+wins);}}}catch(_e){}} function resetScores(service){try{if(l.z39){l.z39.k31=0;setNameWins(l.z39,service&&service.state?service.state.wins|0:0)}var peers=service&&service.pvpEnsurePeers?service.pvpEnsurePeers():{};for(var k in peers){var peer=peers[k],e=service.pvpEntityForPeer(peer);if(e){e.k31=0;setNameWins(e,peer&&peer.info?peer.info.wins|0:0)}}refreshBoard(service)}catch(e){}}
     function setScore(service,cid,kills){try{var e=String(cid||'')===String(P.connectionId||'')?l.z39:(service.pvpPeerForConnection(cid)&&service.pvpEntityForPeer(service.pvpPeerForConnection(cid)));if(e)e.k31=Math.max(0,kills|0);refreshBoard(service)}catch(_e){}}
     function itemLine(service,item){item=item||{};if(!item.category||!item.count)return null;return (item.count>1?item.count+' × ':'')+service.itemName(item.category|0,item.id|0)}
     function closeReview(){if(review)review.style.display='none'}
@@ -122636,7 +122704,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
 
     function chat(service,text){try{service.message(text)}catch(e){}}
     function refreshBoard(service){try{var board=service&&service.game&&service.game.f4?service.game.f4(window.Ao):null;if(board&&board.Z44)board.Z44()}catch(e){}}
-    function nameWins(e,w){try{if(e&&e.J30&&e.J30.E32){var wins=Math.max(0,w|0);var base=String(e._1||'Player');if(e.J30.__dzPal&&window.q&&q.diggerzService&&q.diggerzService.adminApplyRoleTag){e.J30.E32.__dzAdminStyled=false;q.diggerzService.adminApplyRoleTag(e,"owner",e.J30.__dzPal);try{var t=String(e.J30.E32.E32||base);if(t.indexOf("^9")<0)e.J30.E32.E37(t+" ^9"+wins);}catch(_w){}}else{e.J30.E32.E37(base+" ^9"+wins);}}}catch(_e){}} function applyWins(service){try{if(service&&l.z39)nameWins(l.z39,service.state.wins|0);refreshBoard(service)}catch(e){}}
+    function nameWins(e,w){try{if(e&&e.J30&&e.J30.E32){var wins=Math.max(0,w|0);var base=String(e._1||'Player');if(e.J30.__dzPal&&window.q&&q.diggerzService&&q.diggerzService.adminApplyRoleTag){var lab=e.J30.E32;lab.E32=base+" ^9"+wins;lab.__dzAdminStyled=false;q.diggerzService.adminApplyRoleTag(e,"owner",e.J30.__dzPal);}else{e.J30.E32.E37(base+" ^9"+wins);}}}catch(_e){}} function applyWins(service){try{if(service&&l.z39)nameWins(l.z39,service.state.wins|0);refreshBoard(service)}catch(e){}}
     function setRemoteWins(service,cid,wins){try{var peer=service.pvpPeerForConnection(cid),e=peer&&service.pvpEntityForPeer(peer);if(peer&&peer.info)peer.info.wins=Math.max(0,wins|0);if(e)nameWins(e,wins);refreshBoard(service)}catch(err){}}
     function smallPrompt(service,text){
       if(!service||!text)return;
@@ -124340,21 +124408,22 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
 
   var PAL = {
     harlan: {
-      left:  { r: 0.25, g: 0.72, b: 0.12 }, // darker lime/green
-      right: { r: 0.45, g: 0.12, b: 0.72 }  // darker purple
+      left:  { r: 0.18, g: 0.55, b: 0.08 }, // dark green (left)
+      right: { r: 0.38, g: 0.08, b: 0.58 }  // dark purple (right)
     },
     tezzler: {
-      left:  { r: 0.12, g: 0.28, b: 0.85 }, // darker blue
-      right: { r: 0.85, g: 0.70, b: 0.10 }  // darker yellow/gold
+      left:  { r: 0.08, g: 0.20, b: 0.70 }, // dark blue (left)
+      right: { r: 0.72, g: 0.55, b: 0.06 }  // dark gold/yellow (right)
     }
   };
 
-  window.__dzAdminGradientColor = function(pal, glyphIndex){
+  window.__dzAdminGradientColor = function(pal, glyphIndex, glyphCount){
     var p = PAL[pal] || PAL.harlan;
-    // Pure left→right across the name (glyph index)
-    var t = clamp01((Number(glyphIndex) || 0) / 10);
-    // Slight soft wave so it isn't completely static
-    var wave = 0.04 * Math.sin(Date.now() / 900 + (glyphIndex || 0) * 0.4);
+    var n = Math.max(1, Number(glyphCount) || 10);
+    // Pure left→right: first letter = left color, last letter = right color
+    var t = clamp01((Number(glyphIndex) || 0) / n);
+    // Very slight shimmer (does not change which colors are used)
+    var wave = 0.03 * Math.sin(Date.now() / 1100 + (glyphIndex || 0) * 0.35);
     t = clamp01(t + wave);
     return {
       r: clamp01(lerp(p.left.r, p.right.r, t)),
@@ -124363,16 +124432,13 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
     };
   };
 
-  // Healing-Area-style pulse: gentle scale breathe on admin name labels
+  // Whole-label scale is FIXED at 0.5 — pulse lives on each letter via F6/F7 (Healing Area j48)
   window.__dzAdminPulseTick = function(label, baseScale){
     if (!label) return;
-    baseScale = baseScale || label.__dzBaseScale || 1;
-    label.__dzBaseScale = baseScale;
-    // ~same cadence as Healing Area F6(..., 500ms): 1.0 → 1.12 → 1.0
-    var pulse = 1 + 0.12 * Math.sin(Date.now() / 500 * Math.PI);
     try {
-      label.set_local_xScale(baseScale * pulse);
-      label.set_local_yScale(baseScale * pulse);
+      label.__dzBaseScale = 0.5;
+      label.set_local_xScale(0.5);
+      label.set_local_yScale(0.5);
     } catch(e){}
   };
 
@@ -124393,7 +124459,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
             var bigH = (q.MAIN_FONT_BIG && q.MAIN_FONT_BIG.M17 && q.MAIN_FONT_BIG.M17.lineHeight) || 32;
             var smallH = (q.MAIN_FONT && q.MAIN_FONT.M17 && q.MAIN_FONT.M17.lineHeight) || 16;
             base = Math.max(0.4, Math.min(1, smallH / bigH));
-          } catch(e){ base = 0.55; }
+          } catch(e){ base = 0.5; }
           lab.__dzBaseScale = base;
         }
         if (window.__dzAdminPulseTick) window.__dzAdminPulseTick(lab, base);
@@ -124408,7 +124474,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
           var ent = s.pvpEntityForPeer && s.pvpEntityForPeer(peer);
           if (!ent || !ent.J30 || !ent.J30.E32 || !ent.J30.__dzPal) return;
           var lab2 = ent.J30.E32;
-          var b2 = lab2.__dzBaseScale || 0.55;
+          var b2 = 0.5;
           lab2.__dzBaseScale = b2;
           if (window.__dzAdminPulseTick) window.__dzAdminPulseTick(lab2, b2);
         });
@@ -124419,8 +124485,9 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
           var rows = l.z38.R37._9;
           for (var i = 0; i < rows.length; i++) {
             var row = rows[i];
-            if (row && row.__dzPal && window.__dzAdminPulseTick)
-              window.__dzAdminPulseTick(row, row.__dzBaseScale || 0.55);
+            // Pulse text labels only — never the black bar (__dzRgbPlate)
+            if (row && row.__dzPal && !row.__dzRgbPlate && window.__dzAdminPulseTick)
+              window.__dzAdminPulseTick(row, 0.5);
           }
         }
       } catch(eLB){}
