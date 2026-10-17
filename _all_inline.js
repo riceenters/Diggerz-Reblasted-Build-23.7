@@ -5002,7 +5002,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         OnKeyDown: function(a) {
             var b = String.fromCodePoint(a.charCode);
             !a.shiftKey && H.parseInt(b) >= H.parseInt("A") && H.parseInt(b) <= H.parseInt("Z") && (b = b.toLowerCase());
-            0 == a.charCode ? (13 != a.keyCode && 27 != a.keyCode && 9 != a.keyCode && 32 != a.keyCode || q.mKeyQueue.push(a.keyCode),
+            0 == a.charCode ? ((8 == a.keyCode || 46 == a.keyCode || 13 == a.keyCode || 27 == a.keyCode || 9 == a.keyCode || 32 == a.keyCode) && q.mKeyQueue.push(a.keyCode),
             q.mKeyDown[a.keyCode] = !0) : (q.mKeyDown[a.keyCode] = !0,
             q.mKeyDown[T.cca(b, 0)] = !0,
             q.mKeyQueue.push(T.cca(b, 0)));
@@ -17868,6 +17868,19 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         q31: null,
         q32: null,
         q33: function() {
+            try {
+                if (window.__diggerzEmailPopup === this)
+                    window.__diggerzEmailPopup = null;
+            } catch (e) {}
+            try {
+                var __title = (this._2 && this._2.d52) ? this._2 : (window.q && q.GetChildByType ? null : null);
+                // $b._2 is the title menu (passed as first ctor arg)
+                var __menu = this._2;
+                if (__menu && __menu.d52) {
+                    __menu.d52.Q31 = (__menu.d52.__dzPrevQ31 != null) ? __menu.d52.__dzPrevQ31 : !0;
+                    delete __menu.d52.__dzPrevQ31;
+                }
+            } catch (e2) {}
             E.u4(this, 0, 300, 1, .5, 0, 1, 0);
             this.a0 = 1
         },
@@ -17923,6 +17936,25 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
         },
         e0: function() {
             l.b41 = !1;
+            // While the email JA popup is open, only that popup's field accepts input.
+            // Prevents the title-screen name box (d52) from stealing focus / keys.
+            try {
+                var __ep = window.__diggerzEmailPopup;
+                if (__ep && __ep.a0) {
+                    window.__diggerzEmailPopup = null;
+                    try {
+                        var __m = __ep._2;
+                        if (__m && __m.d52) {
+                            __m.d52.Q31 = (__m.d52.__dzPrevQ31 != null) ? __m.d52.__dzPrevQ31 : !0;
+                            delete __m.d52.__dzPrevQ31;
+                        }
+                    } catch (__r) {}
+                    __ep = null;
+                }
+                if (__ep && this !== __ep.F30) {
+                    return xa.prototype.e0.call(this);
+                }
+            } catch (__epErr) {}
             this.Q31 && q.thisMain.stage.set_focus(this.Q30);
             if (null != this._2 && !this._2.a2)
                 return xa.prototype.e0.call(this);
@@ -17931,7 +17963,7 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                     for (var a = 0, b = this.Q30.get_length(); a < b; ) {
                         var c = a++;
                         c = T.substr(this.Q30.get_text(), c, 1);
-                        null != this.E31.M17.allchars[T.cca(c, 0)] && (this.q35 += c,
+                        (null != this.E31.M17.allchars[T.cca(c, 0)] || (function(self, ch){var p=self;for(var i=0;i<6&&p;i++){if(p._1==="getemail")return /^[A-Za-z0-9@._+%-]$/.test(ch);if(p.F31&&/email/i.test(p.F31.E32||""))return /^[A-Za-z0-9@._+%-]$/.test(ch);p=p._2;}return !1;})(this,c)) && (this.q35 += c,
                         // Typing sound for soft-keyboard / IME character insert
                         E.v2(Pj.n7()))
                     }
@@ -17944,10 +17976,9 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
             for (c = q.mKeyQueue; b < c.length; ) {
                 var d = c[b];
                 ++b;
-                String.fromCodePoint(d);
                 a = !0;
                 // Every key that changes the field (printable or backspace) plays type.ogg
-                if (8 == d) {
+                if (8 == d || 46 == d) {
                     if (0 < this.q35.length) {
                         this.q35 = T.substr(this.q35, 0, this.q35.length - 1);
                         this.a1 = 0;
@@ -17963,10 +17994,27 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                         this.q38();
                         this.a0 = 1;
                     }
+                } else if (this.q35.length < this.q31) {
+                    // Desktop / physical keyboard: insert printable chars from mKeyQueue.
+                    // (Q30 soft-keyboard path above still handles IME/mobile.)
+                    var __ch = "";
+                    try { __ch = String.fromCodePoint(d); } catch (__e) { __ch = ""; }
+                    if (__ch) {
+                        var __emailField = !1, __p = this;
+                        for (var __i = 0; __i < 6 && __p; __i++) {
+                            if (__p._1 === "getemail") { __emailField = !0; break; }
+                            if (__p.F31 && /email/i.test(__p.F31.E32 || "")) { __emailField = !0; break; }
+                            __p = __p._2;
+                        }
+                        if (null != this.E31.M17.allchars[T.cca(__ch, 0)] || (__emailField && /^[A-Za-z0-9@._+%-]$/.test(__ch))) {
+                            this.q35 += __ch;
+                            E.v2(Pj.n7());
+                        }
+                    }
                 }
-                // Printable chars are inserted via Q30 soft-keyboard path above
-                // (already plays type sound). Do not play on bare keycodes here.
             }
+            // Consume the queue so keys are not re-applied every frame
+            q.mKeyQueue = [];
             if (a || 25 > this.a1 % 20 != 25 > (this.a1 - 1) % 50) {
                 if (this.q36) {
                     a = "";
@@ -90031,6 +90079,13 @@ function __normalizeWearableScales(skel) {
                 this.D54 = !0;
                 box.c0 = !0;
                 window.__diggerzEmailPopup = box;
+                // Disable title name box input until email popup closes
+                try {
+                    if (this.d52) {
+                        this.d52.__dzPrevQ31 = this.d52.Q31;
+                        this.d52.Q31 = !1;
+                    }
+                } catch (eN) {}
                 q.children.push(box);
                 try { q.thisMain.stage.set_focus(box.F30.Q30); } catch (eF) {}
             });
@@ -90084,6 +90139,12 @@ function __normalizeWearableScales(skel) {
             q.thisMain.userEmail = email;
             try { a.a0 = 1; } catch (eClose) {}
             window.__diggerzEmailPopup = null;
+            try {
+                if (this.d52) {
+                    this.d52.Q31 = (this.d52.__dzPrevQ31 != null) ? this.d52.__dzPrevQ31 : !0;
+                    delete this.d52.__dzPrevQ31;
+                }
+            } catch (eRest) {}
             var self = this;
             function showSent() {
                 var msg = new ja(420, 180, !0);
