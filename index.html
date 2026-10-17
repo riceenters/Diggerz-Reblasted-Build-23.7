@@ -2141,18 +2141,6 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 b = .18;
                 c = 1;
                 break;
-            case 96:
-                // Admin gradient ^@ (harlan) — animated in Ef.e0
-                a = .55;
-                b = 1;
-                c = .25;
-                break;
-            case 97:
-                // Admin gradient ^# (tezzler) — animated in Ef.e0
-                a = .2;
-                b = .45;
-                c = 1;
-                break;
             case 99:
                 // Rainbow text (^!) — hue cycles in Ef.e0
                 a = 1;
@@ -6908,8 +6896,8 @@ $jscomp.polyfill("Array.prototype.find", function(ca) {
                 if ("^" == J && this.E35)
                     e = !0,
                     k = null;
-                else if (e && ("!" == J || "@" == J || "#" == J || "0" == J || "1" == J || "2" == J || "3" == J || "4" == J || "5" == J || "6" == J || "7" == J || "8" == J || "9" == J))
-                    d = "!" == J ? 99 : "@" == J ? 96 : "#" == J ? 97 : H.parseInt(this.E32.charAt(f)),
+                else if (e && ("!" == J || "0" == J || "1" == J || "2" == J || "3" == J || "4" == J || "5" == J || "6" == J || "7" == J || "8" == J || "9" == J))
+                    d = "!" == J ? 99 : H.parseInt(this.E32.charAt(f)),
                     k = null,
                     e = !1;
                 else if (null != k) {
@@ -18904,43 +18892,28 @@ var u = function() {};
             Ef.R30.push(this)
         },
         e0: function() {
-            // ^@ (96)=harlan L→R, ^# (97)=tezzler L→R, ^! (99)=rainbow/RGB
-            if (96 == this.C5 || 97 == this.C5 || 99 == this.C5) {
+            // Rainbow / admin gradient text (^! / C5===99)
+            if (99 == this.C5) {
                 var r, g, b;
-                var wantRgb = !!(this.__dzRgb || (this._2 && this._2.__dzRgb));
-                if (wantRgb || (99 == this.C5 && !this.__dzPal && !(this._2 && this._2.__dzPal))) {
-                    // Full RGB: each letter offset in the hue cycle (True-RGB style)
-                    var gi = this.__dzGlyphI || 0;
-                    var t = (Date.now() / 1200) + gi * 0.45;
+                var pal = this.__dzPal || (this._2 && this._2.__dzPal) || null;
+                // Walk up a couple parents for name-card palette
+                if (!pal) {
+                    try {
+                        var p = this._2;
+                        for (var wi = 0; wi < 4 && p; wi++) {
+                            if (p.__dzPal) { pal = p.__dzPal; break; }
+                            p = p._2;
+                        }
+                    } catch (_w) {}
+                }
+                if (pal && window.__dzAdminGradientColor) {
+                    var col = window.__dzAdminGradientColor(pal, this.__dzGlyphI || 0);
+                    r = col.r; g = col.g; b = col.b;
+                } else {
+                    var t = (Date.now() % 3000) / 3000 * 6.28318530718;
                     r = .5 + .5 * Math.sin(t);
                     g = .5 + .5 * Math.sin(t + 2.09439510239);
                     b = .5 + .5 * Math.sin(t + 4.18879020479);
-                } else {
-                    var pal = null;
-                    if (96 == this.C5) pal = "harlan";
-                    else if (97 == this.C5) pal = "tezzler";
-                    else {
-                        pal = this.__dzPal || (this._2 && this._2.__dzPal) || null;
-                        if (!pal) {
-                            try {
-                                var p = this._2;
-                                for (var wi = 0; wi < 4 && p; wi++) {
-                                    if (p.__dzPal) { pal = p.__dzPal; break; }
-                                    p = p._2;
-                                }
-                            } catch (_w) {}
-                        }
-                    }
-                    if ((96 == this.C5 || 97 == this.C5 || pal) && window.__dzAdminGradientColor) {
-                        var gn = (this._2 && this._2.__dzGlyphN) || 12;
-                        var col = window.__dzAdminGradientColor(pal || (96 == this.C5 ? "harlan" : "tezzler"), this.__dzGlyphI || 0, gn);
-                        r = col.r; g = col.g; b = col.b;
-                    } else {
-                        var t2 = (Date.now() % 3000) / 3000 * 6.28318530718;
-                        r = .5 + .5 * Math.sin(t2);
-                        g = .5 + .5 * Math.sin(t2 + 2.09439510239);
-                        b = .5 + .5 * Math.sin(t2 + 4.18879020479);
-                    }
                 }
                 try {
                     if (this.b1) {
@@ -18969,8 +18942,6 @@ var u = function() {};
                 this.set_xScale(this._2.a8);
                 this.set_yScale(this._2.a9);
                 z.prototype.E4.call(this, a);
-                // Admin gradients (^@=96, ^#=97) and rainbow (^!=99): recompute every draw
-                // so parent white does not wipe the colors set in e0.
                 if (96 == this.C5 || 97 == this.C5 || 99 == this.C5) {
                     if (99 == this.C5 && !this.__dzPal && !(this._2 && this._2.__dzPal)) {
                         var t = (Date.now() % 2400) / 2400 * 6.28318530718;
@@ -18978,8 +18949,7 @@ var u = function() {};
                         c = .55 + .45 * Math.sin(t + 2.09439510239);
                         d = .55 + .45 * Math.sin(t + 4.18879020479);
                     } else if (96 == this.C5 || 97 == this.C5 || this.__dzPal || (this._2 && this._2.__dzPal)) {
-                        var pal = 96 == this.C5 ? "harlan" : (97 == this.C5 ? "tezzler" : null);
-                        if (!pal) pal = this.__dzPal || (this._2 && this._2.__dzPal) || "harlan";
+                        var pal = 96 == this.C5 ? "harlan" : (97 == this.C5 ? "tezzler" : (this.__dzPal || (this._2 && this._2.__dzPal) || "harlan"));
                         var gi = this.__dzGlyphI || 0;
                         var gn = (this._2 && this._2.__dzGlyphN) || 12;
                         if (window.__dzAdminGradientColor) {
@@ -20483,7 +20453,7 @@ var u = function() {};
             b = this.V31(b);
             null != b && (b.l30(!1),
             !(0 <= l.A42.indexOf(b._1)) && (a = a.r5(),
-            "/me " == T.substr(a, 0, 4) ? this.R35.C46("^1*^7" + b._1 + " " + T.substr(a, 4, null) + "^1*") : this.R35.C46("[" + (function(__p){try{var __pal=__p&&__p.J30&&__p.J30.__dzPal;if(__pal==="tezzler")return"^#"+__p._1+"^7";if(__pal)return"^@"+__p._1+"^7";}catch(_e){}return"^3"+b._1+"^7";})(b) + "] " + a),
+            "/me " == T.substr(a, 0, 4) ? this.R35.C46("^1*^7" + b._1 + " " + T.substr(a, 4, null) + "^1*") : this.R35.C46("[^3" + b._1 + "^7] " + a),
             b instanceof pa || I.__cast(b, ai).B48)) && (a = new mj(a,0,b,2400,!1,!0,!1),
             this.R39[l.a40]._9.push(a))
         },
@@ -24300,10 +24270,8 @@ var u = function() {};
             var card = target.J30, label = card.E32;
             var baseName = String(target._1 || "Player");
             baseName = baseName.replace(/\^[@#!0-9]/g, "");
-            baseName = baseName.replace(/\[ADMIN\]/gi, "");
-            baseName = baseName.replace(/\[OWNER\]/gi, "");
-            baseName = baseName.replace(/\s{2,}/g, " ").trim();
-            if (!baseName) baseName = "Player";
+            baseName = baseName.replace(/\[ADMIN\]/gi, "").replace(/\[OWNER\]/gi, "");
+            baseName = baseName.replace(/\s{2,}/g, " ").trim() || "Player";
             var winsSuffix = "";
             try {
                 var prev = String(label.E32 || "");
@@ -24321,32 +24289,23 @@ var u = function() {};
                     else if (role === "lime") pal = "tezzler";
                 } catch (ePal) {}
             }
-            // BIG font, much smaller than before so it matches normal name size
             var scale = 0.32;
             try {
                 var bigH = (q.MAIN_FONT_BIG && q.MAIN_FONT_BIG.M17 && q.MAIN_FONT_BIG.M17.lineHeight) || 32;
                 var smallH = (q.MAIN_FONT && q.MAIN_FONT.M17 && q.MAIN_FONT.M17.lineHeight) || 14;
                 var ratio = smallH / bigH;
-                if (ratio > 0.15 && ratio < 0.9) scale = ratio * 0.95;
+                if (ratio > 0.15 && ratio < 0.9) scale = ratio * 0.92;
             } catch (eR) {}
-            var code = pal === "tezzler" ? "^#" : "^@";
-            try {
-                if (q.MAIN_FONT_BIG) label.E31 = q.MAIN_FONT_BIG;
-            } catch (eFont) {}
+            var code = (pal === "tezzler") ? "^#" : "^@";
+            try { if (q.MAIN_FONT_BIG) label.E31 = q.MAIN_FONT_BIG; } catch (eFont) {}
             label.__dzBaseScale = scale;
             card.__dzPal = pal;
             label.__dzPal = pal;
             label.__dzAdminStyled = true;
-            // Main name + wins (solid, no pulse)
             label.E37(code + baseName + winsSuffix);
+            try { label.set_local_xScale(scale); label.set_local_yScale(scale); } catch (eSc) {}
             try {
-                label.set_local_xScale(scale);
-                label.set_local_yScale(scale);
-            } catch (eSc) {}
-            // Tag name glyphs for gradient (skip wins)
-            try {
-                var glyphs = label._9 || [];
-                var gi = 0, count = 0;
+                var glyphs = label._9 || [], gi = 0, count = 0;
                 for (var i = 0; i < glyphs.length; i++) if (glyphs[i]) count++;
                 label.__dzGlyphN = Math.max(1, count - 1);
                 for (var i = 0; i < glyphs.length; i++) {
@@ -24354,13 +24313,9 @@ var u = function() {};
                     if (!g || g.C5 === 9) continue;
                     g.__dzPal = pal;
                     g.__dzGlyphI = gi++;
-                    try {
-                        g.C5 = (pal === "tezzler" ? 97 : 96);
-                        if (g.h4) g.h4(g.C5);
-                    } catch (eC) {}
+                    try { g.C5 = (pal === "tezzler" ? 97 : 96); if (g.h4) g.h4(g.C5); } catch (eC) {}
                 }
             } catch (eG) {}
-            // Nameplate positions (above head)
             try {
                 label.b7 = -132;
                 if (card.b48 && card.b48._5) {
@@ -24376,8 +24331,7 @@ var u = function() {};
                     try { label.b6 = card.b49.b6 + card.b49._5.width + 4; } catch (eF) {}
                 }
             } catch (ePos) {}
-            // Ghost copy behind name — Healing Area style (j48)
-            // CRITICAL: D7() resets b6/b7 to 0 (player origin / feet). Set position AFTER D7.
+            // Ghost behind name (Healing Area style). D7 resets pos — set b6/b7 AFTER D7.
             try {
                 if (card.__dzNameGhost) {
                     try {
@@ -24388,13 +24342,12 @@ var u = function() {};
                     card.__dzNameGhost = null;
                 }
                 var font = q.MAIN_FONT_BIG || q.MAIN_FONT;
-                var ghost = new xa(0, 0, code + baseName, font, 0); // CENTER align
+                var ghost = new xa(0, 0, code + baseName, font, 0);
                 ghost._1 = "__dzNameGhost";
                 ghost.E37(code + baseName);
                 ghost.__dzPal = pal;
                 ghost.__dzBaseScale = scale;
                 ghost.__dzIsGhost = true;
-                // Tag ghost glyphs for gradient
                 try {
                     var gg = ghost._9 || [], gii = 0, gc = 0;
                     for (var i = 0; i < gg.length; i++) if (gg[i]) gc++;
@@ -24404,17 +24357,12 @@ var u = function() {};
                         if (!gl) continue;
                         gl.__dzPal = pal;
                         gl.__dzGlyphI = gii++;
-                        try {
-                            gl.C5 = (pal === "tezzler" ? 97 : 96);
-                            if (gl.h4) gl.h4(gl.C5);
-                        } catch (eCg) {}
+                        try { gl.C5 = (pal === "tezzler" ? 97 : 96); if (gl.h4) gl.h4(gl.C5); } catch (eCg) {}
                     }
                 } catch (eTg) {}
-                // Parent first (resets local pos/scale), THEN place above head with label
                 ghost.D7(card);
                 var nameW = 0;
                 try { nameW = ghost.E38() || 0; } catch (eNw) { nameW = 80; }
-                // Center of name text (label is LEFT aligned at label.b6)
                 ghost.b6 = (label.b6 || 0) + (nameW * scale) / 2;
                 ghost.b7 = label.b7 || -132;
                 try {
@@ -24422,27 +24370,13 @@ var u = function() {};
                     ghost.set_local_yScale(scale);
                     ghost.set_local_alp(0.7);
                 } catch (eAl) {}
-                // j48 pulse on ghost: F6 center scale + F7 sine wobble
-                try {
-                    if (ghost.F6 && ghost.F7) {
-                        var mid = scale * 1.15;
-                        var amp = scale * 0.12;
-                        ghost.F6(3, mid, mid, 500, true);
-                        ghost.F7(1, amp, 0.5);
-                        ghost.F6(4, mid, mid, 500, true);
-                        ghost.F7(1, amp, 0.5);
-                    }
-                } catch (eF6) {}
                 if (!card._9) card._9 = [];
                 var li = card._9.indexOf(label);
                 if (li >= 0) card._9.splice(li, 0, ghost);
                 else card._9.unshift(ghost);
                 card.__dzNameGhost = ghost;
             } catch (eGhost) {}
-            try {
-                label.set_local_xScale(scale);
-                label.set_local_yScale(scale);
-            } catch (eSc2) {}
+            try { label.set_local_xScale(scale); label.set_local_yScale(scale); } catch (eSc2) {}
             return true
         },
                 adminApplyOwnerTag: function() {
@@ -26024,26 +25958,6 @@ var u = function() {};
             a.set_xScale(a.set_yScale(.66666667));
             a.f30((this.d32 - 24) / a.a8);
             this.B34.push(a);
-            // Tag chat glyphs that use admin gradient codes so L→R colors animate
-            try {
-              var raw = String(a && a.E32 || "");
-              var isAdChat = raw.indexOf("^@") >= 0 || raw.indexOf("^#") >= 0;
-              if (isAdChat && a._9) {
-                var pal = raw.indexOf("^#") >= 0 ? "tezzler" : "harlan";
-                a.__dzPal = pal;
-                var cnt = 0;
-                for (var i = 0; i < a._9.length; i++) if (a._9[i]) cnt++;
-                a.__dzGlyphN = Math.max(1, cnt - 1);
-                var idx = 0;
-                for (var i = 0; i < a._9.length; i++) {
-                  var g = a._9[i];
-                  if (!g) continue;
-                  g.__dzPal = pal;
-                  g.__dzGlyphI = idx++;
-                  if (96 == g.C5 || 97 == g.C5) { /* already set by E37 */ }
-                }
-              }
-            } catch (_ch) {}
             1 > Math.abs(this.B33) && (this.C45 = 0);
             this.C48();
             b = 0;
@@ -56393,33 +56307,6 @@ function __normalizeWearableScales(skel) {
             for (var d = this.Z43; c < d.length; ) {
                 var e = d[c];
                 ++c;
-                // Detect admin even if nameplate style has not run yet (avoids needing a tab switch)
-                var __isAd = !!(e.J30 && e.J30.__dzPal);
-                var __pal = __isAd ? e.J30.__dzPal : "";
-                if (!__isAd) {
-                    try {
-                        var __svc = window.q && q.diggerzService;
-                        if (__svc && __svc.pvpEnsurePeers) {
-                            var __peers = __svc.pvpEnsurePeers();
-                            for (var __pk in __peers) {
-                                var __pr = __peers[__pk];
-                                if (__pr && __pr.isAdmin && __svc.pvpEntityForPeer && __svc.pvpEntityForPeer(__pr) === e) {
-                                    __isAd = true;
-                                    __pal = __pr.adminPal || "harlan";
-                                    break;
-                                }
-                            }
-                        }
-                        // Local player email admin
-                        if (!__isAd && e === l.z39 && window.DiggerzIsEmailAdmin && window.DiggerzIsEmailAdmin()) {
-                            __isAd = true;
-                            try {
-                                var __em = String((window.DiggerzAuth237 && window.DiggerzAuth237.state && window.DiggerzAuth237.state.email) || "").toLowerCase();
-                                __pal = __em.indexOf("tezzler") >= 0 ? "tezzler" : "harlan";
-                            } catch (_e2) { __pal = "harlan"; }
-                        }
-                    } catch (_det) {}
-                }
                 var g = z.I9();
                 g.Init(f.SPARK_PNG());
                 g.set_r(g.set_g(g.set_b(0)));
@@ -56428,50 +56315,8 @@ function __normalizeWearableScales(skel) {
                 g.set_yScale(12);
                 g.A7 = q.SCREENWIDTH - 104;
                 g.A8 = a - 3;
-                // Admin leaderboard nameplate bar: RGB-cycle the black box (not the letters)
-                if (__isAd) {
-                    g.__dzRgbPlate = true;
-                    g.__dzPal = __pal;
-                    g.set_alp(.55);
-                }
                 this._9.push(g);
-                var __nm = String(e._1 || "Player");
-                // Admin: BIG font glyphs, scaled to match MAIN_FONT_SMALL height
-                // Non-admin: normal MAIN_FONT_SMALL
-                var __code = __pal === "tezzler" ? "^#" : (__isAd ? "^@" : "");
-                var __font = (__isAd && q.MAIN_FONT_BIG) ? q.MAIN_FONT_BIG : q.MAIN_FONT_SMALL;
-                g = new xa(q.SCREENWIDTH - 190,a,__code + __nm,__font,2);
-                if (__isAd) {
-                    try {
-                        // Match visual size of normal leaderboard text
-                        var __bigH = (q.MAIN_FONT_BIG && q.MAIN_FONT_BIG.M17 && q.MAIN_FONT_BIG.M17.lineHeight) || 32;
-                        var __smallH = (q.MAIN_FONT_SMALL && q.MAIN_FONT_SMALL.M17 && q.MAIN_FONT_SMALL.M17.lineHeight) || 16;
-                        var __bs = __smallH / __bigH;
-                        if (!(__bs > 0.15 && __bs < 1)) __bs = 0.4;
-                        g.__dzBaseScale = __bs;
-                        g.__dzPal = __pal;
-                        g.__dzRgb = false;
-                        g.set_local_xScale(__bs);
-                        g.set_local_yScale(__bs);
-                        var __gs = g._9 || [];
-                        var __cnt = 0;
-                        for (var __gi = 0; __gi < __gs.length; __gi++) if (__gs[__gi]) __cnt++;
-                        g.__dzGlyphN = Math.max(1, __cnt - 1);
-                        var __idx = 0;
-                        for (var __gi = 0; __gi < __gs.length; __gi++) {
-                            if (__gs[__gi]) {
-                                __gs[__gi].__dzPal = __pal;
-                                __gs[__gi].__dzGlyphI = __idx++;
-                                __gs[__gi].__dzRgb = false;
-                                try {
-                                    var __c5 = __pal === "tezzler" ? 97 : 96;
-                                    __gs[__gi].C5 = __c5;
-                                    if (__gs[__gi].h4) __gs[__gi].h4(__c5);
-                                } catch(_c){}
-                            }
-                        }
-                    } catch(_ad){}
-                }
+                g = new xa(q.SCREENWIDTH - 190,a,e._1,q.MAIN_FONT_SMALL,2);
                 this._9.push(g);
                 g = new xa(q.SCREENWIDTH - 34,a,"" + e.k31,q.MAIN_FONT_SMALL);
                 g.e38 = Pc.RIGHT;
@@ -122676,7 +122521,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
     };
     var releaseRoomState=proto.pvpApplyRoomState;proto.pvpApplyRoomState=function(m){if(m&&m.map&&(this.mode==='pvp'||this.mode==='digtrade'))this.pvpApplyBaseMap(m.map);return releaseRoomState.call(this,m)};
     function refreshBoard(service){try{if(l.z38&&l.z38.R37&&l.z38.R37.Z44)l.z38.R37.Z44()}catch(e){}}
-    function setNameWins(e,w){try{if(e&&e.J30&&e.J30.E32){var wins=Math.max(0,w|0);var base=String(e._1||'Player');if(e.J30.__dzPal&&window.q&&q.diggerzService&&q.diggerzService.adminApplyRoleTag){var lab=e.J30.E32;lab.E32=base+" ^9"+wins;lab.__dzAdminStyled=false;q.diggerzService.adminApplyRoleTag(e,"owner",e.J30.__dzPal);}else{e.J30.E32.E37(base+" ^9"+wins);}}}catch(_e){}} function resetScores(service){try{if(l.z39){l.z39.k31=0;setNameWins(l.z39,service&&service.state?service.state.wins|0:0)}var peers=service&&service.pvpEnsurePeers?service.pvpEnsurePeers():{};for(var k in peers){var peer=peers[k],e=service.pvpEntityForPeer(peer);if(e){e.k31=0;setNameWins(e,peer&&peer.info?peer.info.wins|0:0)}}refreshBoard(service)}catch(e){}}
+    function setNameWins(e,w){try{if(e&&e.J30&&e.J30.E32)e.J30.E32.E37(String(e._1||'Player')+' ^9'+Math.max(0,w|0))}catch(_e){}} function resetScores(service){try{if(l.z39){l.z39.k31=0;setNameWins(l.z39,service&&service.state?service.state.wins|0:0)}var peers=service&&service.pvpEnsurePeers?service.pvpEnsurePeers():{};for(var k in peers){var peer=peers[k],e=service.pvpEntityForPeer(peer);if(e){e.k31=0;setNameWins(e,peer&&peer.info?peer.info.wins|0:0)}}refreshBoard(service)}catch(e){}}
     function setScore(service,cid,kills){try{var e=String(cid||'')===String(P.connectionId||'')?l.z39:(service.pvpPeerForConnection(cid)&&service.pvpEntityForPeer(service.pvpPeerForConnection(cid)));if(e)e.k31=Math.max(0,kills|0);refreshBoard(service)}catch(_e){}}
     function itemLine(service,item){item=item||{};if(!item.category||!item.count)return null;return (item.count>1?item.count+' × ':'')+service.itemName(item.category|0,item.id|0)}
     function closeReview(){if(review)review.style.display='none'}
@@ -122769,7 +122614,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
 
     function chat(service,text){try{service.message(text)}catch(e){}}
     function refreshBoard(service){try{var board=service&&service.game&&service.game.f4?service.game.f4(window.Ao):null;if(board&&board.Z44)board.Z44()}catch(e){}}
-    function nameWins(e,w){try{if(e&&e.J30&&e.J30.E32){var wins=Math.max(0,w|0);var base=String(e._1||'Player');if(e.J30.__dzPal&&window.q&&q.diggerzService&&q.diggerzService.adminApplyRoleTag){var lab=e.J30.E32;lab.E32=base+" ^9"+wins;lab.__dzAdminStyled=false;q.diggerzService.adminApplyRoleTag(e,"owner",e.J30.__dzPal);}else{e.J30.E32.E37(base+" ^9"+wins);}}}catch(_e){}} function applyWins(service){try{if(service&&l.z39)nameWins(l.z39,service.state.wins|0);refreshBoard(service)}catch(e){}}
+    function nameWins(e,w){try{if(e&&e.J30&&e.J30.E32)e.J30.E32.E37(String(e._1||'Player')+' ^9'+Math.max(0,w|0))}catch(_e){}} function applyWins(service){try{if(service&&l.z39)nameWins(l.z39,service.state.wins|0);refreshBoard(service)}catch(e){}}
     function setRemoteWins(service,cid,wins){try{var peer=service.pvpPeerForConnection(cid),e=peer&&service.pvpEntityForPeer(peer);if(peer&&peer.info)peer.info.wins=Math.max(0,wins|0);if(e)nameWins(e,wins);refreshBoard(service)}catch(err){}}
     function smallPrompt(service,text){
       if(!service||!text)return;
@@ -124399,10 +124244,6 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
   // when the server has marked the player as a real email-admin.
   function stripFake(s){
     s = String(s || "");
-    // Admin-only gradient codes — strip from everyone; real admins get them
-    // re-applied via adminApplyRoleTag after server isAdmin check.
-    s = s.replace(/\^@/g, "");
-    s = s.replace(/\^#/g, "");
     s = s.replace(/\^!\[ADMIN\]/gi, "");
     s = s.replace(/\^1\[ADMIN\]/gi, "");
     s = s.replace(/\^6\[OWNER\]/gi, "");
@@ -124463,85 +124304,811 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
 </script>
 
 
-<script id="diggerz-admin-gradient">
+
+
+<script id="diggerz-email-admin">
 (function(){
-  // Fixed 2-color left→right gradients (darker). No multi-color drifting.
-  // harlan: dark lime → dark purple
-  // tezzler: dark blue → dark gold/yellow
-  function clamp01(x){ return x < 0 ? 0 : x > 1 ? 1 : x; }
-  function lerp(a,b,t){ return a + (b - a) * t; }
-
-  var PAL = {
-    harlan: {
-      left:  { r: 0.18, g: 0.55, b: 0.08 }, // dark green (left)
-      right: { r: 0.38, g: 0.08, b: 0.58 }  // dark purple (right)
-    },
-    tezzler: {
-      left:  { r: 0.08, g: 0.20, b: 0.70 }, // dark blue (left)
-      right: { r: 0.72, g: 0.55, b: 0.06 }  // dark gold/yellow (right)
-    }
+  var ALLOW = {
+    "theharlanhdavidson@gmail.com": true,
+    "tezzlerisasinner@gmail.com": true
   };
-
-  window.__dzAdminGradientColor = function(pal, glyphIndex, glyphCount){
-    var p = PAL[pal] || PAL.harlan;
-    var n = Math.max(1, Number(glyphCount) || 10);
-    // Pure left→right: first letter = left color, last letter = right color
-    var t = clamp01((Number(glyphIndex) || 0) / n);
-    // Very slight shimmer (does not change which colors are used)
-    var wave = 0.03 * Math.sin(Date.now() / 1100 + (glyphIndex || 0) * 0.35);
-    t = clamp01(t + wave);
-    return {
-      r: clamp01(lerp(p.left.r, p.right.r, t)),
-      g: clamp01(lerp(p.left.g, p.right.g, t)),
-      b: clamp01(lerp(p.left.b, p.right.b, t))
-    };
-  };
-
-  // Keep label at its stored base scale (nameplate ~0.5, leaderboard = small/big height ratio)
-  // Ghost pulse is handled by F6/F7 on the ghost, not here.
-  window.__dzAdminPulseTick = function(label, baseScale){
-    if (!label) return;
-    // Ghost: Healing Area style pulse (j48 formula), solid label stays fixed
-    if (label.__dzIsGhost) {
-      var base = label.__dzBaseScale || 0.32;
-      var ht = Date.now() / 1000;
-      var pulse = base * (1.15 + 0.12 * Math.sin(ht * Math.PI * 2 * 0.5));
-      try {
-        label.set_local_xScale(pulse);
-        label.set_local_yScale(pulse);
-        if (label.set_local_alp) label.set_local_alp(0.7);
-      } catch(e){}
-      return;
-    }
-    var s = baseScale || label.__dzBaseScale || 0.32;
-    label.__dzBaseScale = s;
+  function email(){
     try {
-      label.set_local_xScale(s);
-      label.set_local_yScale(s);
-    } catch(e){}
-  };
+      var a = window.DiggerzAuth237 && window.DiggerzAuth237.state;
+      return String((a && a.email) || "").trim().toLowerCase();
+    } catch(e){ return ""; }
+  }
+  function isAllowed(){ return !!ALLOW[email()]; }
+  function myPal(){
+    var e = email();
+    if (e.indexOf("tezzler") >= 0) return "tezzler";
+    return "harlan";
+  }
+  window.DiggerzIsEmailAdmin = isAllowed;
 
-  console.log("[Diggerz] admin 2-color L→R gradient + pulse ready");
+  function grantLocalAdmin(token, expiresAt){
+    try {
+      window.DiggerzAdminSessionToken = token || window.DiggerzAdminSessionToken || ("email-admin-" + Date.now());
+      var s = window.q && q.diggerzService;
+      if (!s) return;
+      s.ownerAdminAuthorized = true;
+      s.adminSessionExpiresAt = expiresAt || (Date.now() + 8*60*60*1000);
+      applyLocalStyle(true);
+    } catch(e){}
+  }
+
+  function applyLocalStyle(force){
+    try {
+      var s = window.q && q.diggerzService;
+      if (!s || !s.adminApplyRoleTag || !window.l || !l.z39) return;
+      var card = l.z39.J30, lab = card && card.E32;
+      if (!lab) return;
+      if (!force && lab.__dzAdminStyled) return;
+      s.adminApplyRoleTag(l.z39, "owner", myPal());
+    } catch(e){}
+  }
+
+  function applyPeerStyle(peer, entity){
+    try {
+      if (!peer || !peer.isAdmin) return;
+      var s = window.q && q.diggerzService;
+      if (!s || !s.adminApplyRoleTag) return;
+      var ent = entity || (s.pvpEntityForPeer && s.pvpEntityForPeer(peer));
+      if (!ent || !ent.J30 || !ent.J30.E32) return;
+      if (ent.J30.E32.__dzAdminStyled) return;
+      var pal = peer.adminPal || "harlan";
+      s.adminApplyRoleTag(ent, "owner", pal);
+    } catch(e){}
+  }
+
+  // Local admin poll — only style once until card is rebuilt
+  setInterval(function(){
+    try {
+      if (!isAllowed()) return;
+      var s = window.q && q.diggerzService;
+      if (!s) return;
+      if (!s.ownerAdminAuthorized) grantLocalAdmin(null, null);
+      else applyLocalStyle(false);
+    } catch(e){}
+  }, 800);
+
+  // Peer admin styling from roster + entity scan
+  setInterval(function(){
+    try {
+      var s = window.q && q.diggerzService;
+      if (!s || !s.pvpEnsurePeers) return;
+      var peers = s.pvpEnsurePeers();
+      if (!peers) return;
+      Object.keys(peers).forEach(function(cid){
+        var peer = peers[cid];
+        if (peer && peer.isAdmin) applyPeerStyle(peer);
+      });
+    } catch(e){}
+  }, 1200);
+
+  function wrapReceive(){
+    try {
+      var s = window.q && q.diggerzService;
+      if (!s || !s.pvpReceive || s.__dzEmailAdminRecv) return !!s;
+      s.__dzEmailAdminRecv = true;
+      var old = s.pvpReceive.bind(s);
+      s.pvpReceive = function(m){
+        if (m && m.t === "admin-email-granted") {
+          grantLocalAdmin(m.token, m.expiresAt);
+          return;
+        }
+        if (m && m.t === "room-roster" && Array.isArray(m.players)) {
+          try {
+            var peers = s.pvpEnsurePeers && s.pvpEnsurePeers();
+            if (peers) {
+              for (var i = 0; i < m.players.length; i++) {
+                var p = m.players[i];
+                if (!p || !p.connectionId) continue;
+                if (!peers[p.connectionId]) peers[p.connectionId] = peers[p.connectionId] || {};
+                if (peers[p.connectionId]) {
+                  peers[p.connectionId].isAdmin = !!p.isAdmin;
+                  peers[p.connectionId].adminPal = p.adminPal || "";
+                }
+                if (p.isAdmin) applyPeerStyle(peers[p.connectionId] || p);
+              }
+            }
+          } catch(eR){}
+        }
+        return old(m);
+      };
+      return true;
+    } catch(e){ return false; }
+  }
+  var t=0, iv=setInterval(function(){ if(wrapReceive()||++t>80) clearInterval(iv); }, 250);
+
+  function wrapAuthCheck(){
+    try {
+      var s = window.q && q.diggerzService;
+      if (!s || s.__dzEmailAdminAuth) return !!s;
+      s.__dzEmailAdminAuth = true;
+      var prev = s.adminIsAdminAuthorized && s.adminIsAdminAuthorized.bind(s);
+      s.adminIsAdminAuthorized = function(){
+        if (isAllowed()) return true;
+        return prev ? prev() : false;
+      };
+      var prevOwner = s.adminIsOwnerAuthorized && s.adminIsOwnerAuthorized.bind(s);
+      s.adminIsOwnerAuthorized = function(){
+        if (isAllowed()) return true;
+        return prevOwner ? prevOwner() : false;
+      };
+      return true;
+    } catch(e){ return false; }
+  }
+  var t2=0, iv2=setInterval(function(){ if(wrapAuthCheck()||++t2>80) clearInterval(iv2); }, 250);
+
+  console.log("[Diggerz] email-admin + peer style active");
 })();
 </script>
 
+<script id="diggerz-anti-dupe-tabs">
+(function(){
+  // Same-account, two-tabs dupe protection.
+  // Problem: both tabs load the same inventory into memory. Tab A trades items
+  // away and saves. Tab B still holds the pre-trade inventory and overwrites
+  // local/cloud storage → items exist on the trade partner AND on the account.
+  var TAB_ID = 'tab_' + Math.random().toString(36).slice(2) + '_' + Date.now().toString(36);
+  var LOCK_KEY = 'diggerz.sessionLock.v1';
+  var GEN_KEY = 'diggerz.inventoryGen.v1';
+  var LOCK_MS = 5 * 60 * 1000;
+  // Per-tab only (NOT localStorage) — shared stale flags would poison the leader tab too.
+  var tabStale = false;
+  var tabStaleReason = '';
+
+  function lsGet(k, d){ try { var v = localStorage.getItem(k); return v == null ? d : v; } catch(e){ return d; } }
+  function lsSet(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
+  function lsDel(k){ try { localStorage.removeItem(k); } catch(e){} }
+
+  function readLock(){
+    try { return JSON.parse(lsGet(LOCK_KEY, 'null')); } catch(e){ return null; }
+  }
+  function claimLock(reason){
+    var now = Date.now();
+    var lock = { tabId: TAB_ID, at: now, reason: String(reason||'play') };
+    lsSet(LOCK_KEY, JSON.stringify(lock));
+    return lock;
+  }
+  function releaseLock(){
+    var lock = readLock();
+    if (lock && lock.tabId === TAB_ID) lsDel(LOCK_KEY);
+  }
+  function hasForeignLock(){
+    var lock = readLock();
+    if (!lock || !lock.tabId) return false;
+    if (lock.tabId === TAB_ID) return false;
+    if ((Date.now() - (lock.at|0)) > LOCK_MS) return false;
+    return true;
+  }
+  function isLeader(){
+    var lock = readLock();
+    if (!lock || !lock.tabId) return true; // no lock yet
+    if ((Date.now() - (lock.at|0)) > LOCK_MS) return true;
+    return lock.tabId === TAB_ID;
+  }
+  function bumpGen(){
+    var g = (Number(lsGet(GEN_KEY, '0')) || 0) + 1;
+    lsSet(GEN_KEY, String(g));
+    lsSet('diggerz.localSaveUpdatedAt.v1', String(Date.now()));
+    return g;
+  }
+  function currentGen(){ return Number(lsGet(GEN_KEY, '0')) || 0; }
+
+  // Works for guests AND logged-in users (localStorage is shared across tabs
+  // on the same browser profile regardless of Firebase auth).
+  window.__dzInvGenSeen = currentGen();
+  window.__dzTabId = TAB_ID;
+  window.__dzIsInventoryLeader = function(){ return isLeader() && !tabStale; };
+  window.__dzClaimPlayLock = function(reason){
+    if (hasForeignLock()) return false;
+    claimLock(reason || 'digtrade');
+    tabStale = false;
+    tabStaleReason = '';
+    return true;
+  };
+  window.__dzReleasePlayLock = releaseLock;
+  window.__dzBumpInventoryGen = bumpGen;
+  window.__dzMarkInventoryStale = function(why){
+    tabStale = true;
+    tabStaleReason = String(why || 'stale');
+    window.__dzInvGenSeen = -1;
+  };
+  window.__dzClearInventoryStale = function(){
+    tabStale = false;
+    tabStaleReason = '';
+    window.__dzInvGenSeen = currentGen();
+  };
+
+  // Other tab changed inventory / lock → this tab must not push a stale bag
+  window.addEventListener('storage', function(ev){
+    if (!ev) return;
+    if (ev.key === GEN_KEY || ev.key === LOCK_KEY || (ev.key && ev.key.indexOf('diggerz.digtrade') === 0)) {
+      var g = currentGen();
+      if (g > (window.__dzInvGenSeen|0)) {
+        window.__dzMarkInventoryStale('peer-tab-save');
+        try {
+          if (window.q && q.diggerzService && q.diggerzService.pvpTrade) {
+            // Mid-trade on a stale tab is dangerous — cancel local trade UI
+            try { q.diggerzService.pvpCancelTradeLocal('Another tab updated your inventory.'); } catch(e){}
+          }
+        } catch(e2){}
+        console.warn('[Diggerz Anti-Dupe] Inventory changed in another tab. This tab will not overwrite cloud/local saves.');
+      }
+    }
+  });
+
+  // Wrap cloud push so a stale/secondary tab cannot restore traded-away items
+  function wrapCloudPush(){
+    var auth = window.DiggerzAuth237;
+    if (!auth || !auth.pushCloudSave || auth.__dzAntiDupeWrapped) return false;
+    var orig = auth.pushCloudSave.bind(auth);
+    auth.pushCloudSave = function(force){
+      if (!window.__dzIsInventoryLeader()) {
+        console.warn('[Diggerz Anti-Dupe] Blocked cloud save from non-leader/stale tab');
+        return Promise.resolve({ ok:false, blocked:'stale-tab' });
+      }
+      // Refresh seen gen after a successful leader save
+      return Promise.resolve(orig(force)).then(function(r){
+        try { window.__dzInvGenSeen = currentGen(); window.__dzClearInventoryStale(); } catch(e){}
+        return r;
+      });
+    };
+    auth.__dzAntiDupeWrapped = true;
+    return true;
+  }
+  var tries = 0;
+  var t = setInterval(function(){
+    tries++;
+    if (wrapCloudPush() || tries > 40) clearInterval(t);
+  }, 250);
+
+  // Claim leadership when this tab starts multiplayer matchmaking
+  function wrapMatchmake(){
+    try {
+      if (!window.DiggerzPvp22 || window.DiggerzPvp22.__dzLockWrapped) return false;
+      var P = window.DiggerzPvp22;
+      var prevConnect = P.connect || P.start || null;
+      // Hook send path used at matchmake
+      var origSendRaw = null;
+      // Intercept at websocket send of matchmake by patching after connect
+      P.__dzLockWrapped = true;
+      var prevInstall = P.installRuntimeHooks;
+      // Claim lock whenever joined becomes true
+      var lastJoined = false;
+      setInterval(function(){
+        try {
+          if (P.joined && !lastJoined) {
+            if (!window.__dzClaimPlayLock('digtrade-joined')) {
+              console.warn('[Diggerz Anti-Dupe] Another tab is already playing on this account.');
+              try {
+                if (P.socket) P.socket.close();
+              } catch(e){}
+              P.joined = false;
+              try {
+                if (window.q && q.diggerzService && q.diggerzService.message)
+                  q.diggerzService.message('^1Another tab is already using this account. Close other tabs to avoid item duplication.');
+              } catch(e2){}
+            } else {
+              window.__dzClearInventoryStale();
+            }
+          }
+          if (!P.joined && lastJoined) {
+            releaseLock();
+          }
+          lastJoined = !!P.joined;
+        } catch(e){}
+      }, 400);
+      return true;
+    } catch(e){ return false; }
+  }
+  var tries2 = 0;
+  var t2 = setInterval(function(){
+    tries2++;
+    if (wrapMatchmake() || tries2 > 80) clearInterval(t2);
+  }, 250);
+
+  // On trade-complete / cancel, leader bumps gen (also done in pvpCompleteTrade)
+  window.addEventListener('beforeunload', function(){ releaseLock(); });
+  window.addEventListener('pagehide', function(){ releaseLock(); });
+
+  console.log('[Diggerz Anti-Dupe] multi-tab protection active', TAB_ID);
+})();
+</script>
+
+<script src="/build239-client.js"></script><script src="/build240-client.js"></script>
+<script id="diggerz-purple-plaid-colorize">
+(function () {
+  /**
+   * Code-only purple for Purple Plaid Pants/Shirt.
+   * Uses the SAME plaid sprites (PLAIDLEG/BUTT/ARM/TORSO) — no atlas duplicates.
+   *
+   * Approximate Photopea COLORIZE via the engine's RGB multipliers:
+   *   final = low + gain * purple   (True RGB curve)
+   * Tweaks (browser console):
+   *   DiggerzPurpleColorize = { hue: 280, sat: 0.85, light: 0.55, low: 0.08, gain: 0.75 }
+   *   // light 0..1 controls brightness; sat 0..1 saturation strength
+   */
+  window.DiggerzPurpleColorize = window.DiggerzPurpleColorize || {
+    // purple target in 0..1 (Photopea-ish purple)
+    r: 0.72, g: 0.18, b: 1.0,
+    // True RGB style brightness curve
+    low: 0.10,
+    gain: 0.70
+  };
+
+  function purpleChannels() {
+    var p = window.DiggerzPurpleColorize;
+    return [
+      p.low + p.gain * p.r,
+      p.low + p.gain * p.g,
+      p.low + p.gain * p.b
+    ];
+  }
+
+  function tintNode(node) {
+    if (!node) return;
+    var c = purpleChannels();
+    try {
+      if (typeof node.set_local_r === 'function') node.set_local_r(c[0]);
+      if (typeof node.set_local_g === 'function') node.set_local_g(c[1]);
+      if (typeof node.set_local_b === 'function') node.set_local_b(c[2]);
+      if (typeof node.set_r === 'function') node.set_r(c[0]);
+      if (typeof node.set_g === 'function') node.set_g(c[1]);
+      if (typeof node.set_b === 'function') node.set_b(c[2]);
+      // c9=false so the grey-only skin path does not skip our tint
+      node.c9 = false;
+    } catch (e) {}
+    try {
+      var kids = node._9 || [];
+      for (var i = 0; i < kids.length; i++) tintNode(kids[i]);
+    } catch (e2) {}
+  }
+
+  window.DiggerzColorizePurple = tintNode;
+
+  function entityNode(ent, path) {
+    try {
+      var node = ent && ent.i33 ? ent.i33 : ent;
+      for (var i = 0; i < path.length; i++)
+        node = node && node.f2 ? node.f2(path[i]) : null;
+      return node || null;
+    } catch (e) { return null; }
+  }
+
+  function tintWornPurplePlaid() {
+    try {
+      var svc = window.q && q.diggerzService;
+      var app = svc && svc.state && svc.state.appearance;
+      var ent = window.l && l.z39;
+      if (!ent || !app) return;
+      // Shirt slot 2 = Purple Plaid Shirt (397) — same body parts True RGB shirts use
+      if ((app[2] | 0) === 397) {
+        tintNode(entityNode(ent, ['torso']));
+        tintNode(entityNode(ent, ['front_shoulder', 'arm']));
+        tintNode(entityNode(ent, ['back_shoulder', 'arm_back']));
+      }
+      // Pants slot 7 = Purple Plaid Pants (396) — same as True RGB pants
+      if ((app[7] | 0) === 396) {
+        tintNode(entityNode(ent, ['pants']));
+        tintNode(entityNode(ent, ['front_lowerleg', 'leg']));
+        tintNode(entityNode(ent, ['back_lowerleg', 'leg_back']));
+      }
+    } catch (e) {}
+  }
+
+  function loop() {
+    tintWornPurplePlaid();
+    try { requestAnimationFrame(loop); } catch (e) { setTimeout(loop, 40); }
+  }
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', function () { requestAnimationFrame(loop); });
+  else requestAnimationFrame(loop);
+})();
+</script>
+
+
+<script id="diggerz-admin-remote-backpack">
+(function(){
+  // Admin Remote Backpack: this is a duplicate of the game's native hb/Q44
+  // backpack inventory, populated from the selected player's authoritative slots.
+  function boot(){
+    try{
+      if(!window.DiggerzService||!window.q||typeof hb==='undefined'||typeof X==='undefined'||typeof gd==='undefined') return false;
+      var proto=window.DiggerzService.prototype;
+      if(proto.__dzRemoteBackpackInstalled) return true;
+      proto.__dzRemoteBackpackInstalled=true;
+
+      function closeRemote(){
+        try{var s=window.__dzRemoteBackpack;if(s){s.a0=1; if(s._9) s._9.length=0; if(window.l&&l.z38)T.remove(l.z38._9,s);}}
+        catch(e){}
+        window.__dzRemoteBackpack=null;
+        window.__dzRemoteBackpackTarget='';
+      }
+      window.DiggerzCloseRemoteBackpack=closeRemote;
+
+      function openRemote(service,name,rows){
+        closeRemote();
+        if(!window.l||!l.z38) return;
+        var inv=new hb();
+        window.__dzRemoteBackpack=inv;
+        window.__dzRemoteBackpackTarget=String(name||'');
+        inv.__dzRemote=true; inv.__dzRemoteService=service; inv.__dzRemoteRows=rows||[];
+        // Native constructor already created the exact inventory background,
+        // slot grid and Sort/drag instructions. Build item visuals from the
+        // selected player's slot array instead of local l.z39.n38.B30.
+        var fake={B30:[] ,q43:-1,q7:(l.z39&&l.z39.n38)?l.z39.n38.q7:null};
+        var originals=l.z39&&l.z39.n38;
+        try{
+          if(l.z39) l.z39.n38=fake;
+          // Native s42 creates the exact 95-slot layout and gd item renderers.
+          // We temporarily supply remote X objects as the source inventory.
+          fake.B30=[];
+          var list=Array.isArray(rows)?rows:[];
+          for(var i=0;i<Math.min(127,list.length);i++){
+            var it=list[i]; if(!it||!(it.category|0)||!(it.count|0)) continue;
+            try{
+              var src=new X(inv,it.category|0,it.id|0,i,it.count|0,it.variant|0,0,0,it.extra|0);
+              src.a2=false; src.__dzRemoteSource=true;
+              src.h44=i; src.b39=i; src.g36=it.count|0; src.S43=it.variant|0;
+              fake.B30[i]=src;
+            }catch(eItem){}
+          }
+          // Compact fake array exactly as native inventory expects.
+          fake.B30=fake.B30.filter(function(x){return !!x;});
+          inv.s42();
+        }catch(eBuild){console.warn('[Admin Remote Inventory]',eBuild);}
+        finally{try{if(l.z39)l.z39.n38=originals;}catch(eRestore){}}
+
+        // Re-number the visual items with their authoritative remote slot index.
+        var remoteBySlot={};
+        (rows||[]).forEach(function(it,i){if(it&&it.category&&it.count)remoteBySlot[i]=it});
+        if(inv.B30){
+          for(var j=0;j<inv.B30.length;j++){
+            var cell=inv.B30[j], slot=cell&&cell.S44?cell.S44.b39:j;
+            cell.__dzRemoteSlot=slot;
+          }
+        }
+
+        // Replace native local inventory mutations with admin actions.
+        inv.s40=function(){
+          if(!this.r49){return;}
+          var src=this.r49.__dzRemoteSlot;
+          if(src==null && this.r49.S44) src=this.r49.S44.b39|0;
+          src=src|0;
+          var outside=this.s43();
+          var dst=outside?src:(this.s44()|0);
+          var svc=this.__dzRemoteService;
+          var target=window.__dzRemoteBackpackTarget;
+          if(outside){
+            if(svc) svc.adminInventoryAction(target,'remove',src,1);
+          }else if(dst!==src){
+            if(svc) svc.adminInventoryAction(target,'move',src,1,{toSlot:dst});
+          }
+          this.r49=null; this.R40=false; this.R41=false; q.mClicked=false;
+          var self=this;
+          setTimeout(function(){try{if(svc)svc.adminViewInventory(target);}catch(e){}} ,180);
+        };
+        inv.R46=function(){
+          var svc=this.__dzRemoteService,target=window.__dzRemoteBackpackTarget;
+          if(svc) svc.adminInventoryAction(target,'sort',0,1,{sortMode:'slot'});
+          setTimeout(function(){try{if(svc)svc.adminViewInventory(target);}catch(e){}} ,180);
+        };
+        if(inv.r48) inv.r48.C33=function(){inv.R46();q.mClicked=false;};
+
+        // Native title/close affordance.
+        try{
+          var close=new ob(0,0,'Close',q.MAIN_FONT); close.D7(inv,!0); close.b6=inv.r41-55; close.b7=inv.r42+18; close.C33=function(){closeRemote();q.mClicked=false;}; inv._9.push(close);
+          var title=new xa(0,0,'^9Viewing '+String(name||'Player')+'\'s Inventory',q.MAIN_FONT_SMALL); title.D7(inv,!0); title.b6=q.SCREENWIDTH/2; title.b7=inv.r40-34; inv._9.push(title);
+        }catch(eTitle){}
+        if(l.z38._9.indexOf(inv)<0)l.z38._9.push(inv);
+        inv.a2=true;
+        try{l.z38.R35.d40();}catch(eDim){}
+        inv.q46(l.z38,!1);
+        return inv;
+      }
+
+      var oldReceive=proto.pvpReceive;
+      proto.pvpReceive=function(m){
+        if(m&&m.t==='admin-inventory-data'){
+          openRemote(this,String(m.targetName||''),Array.isArray(m.slots)?m.slots:[]);
+          var box=document.getElementById('admin-inventory'); if(box)box.innerHTML='Remote backpack open — '+String(m.targetName||'Player');
+          return;
+        }
+        if(m&&m.t==='admin-inventory-action-result'){
+          var target=window.__dzRemoteBackpackTarget||String(m.targetName||'');
+          if(target){setTimeout(function(){try{this.adminViewInventory(target)}catch(e){}}.bind(this),120);}
+          return;
+        }
+        return oldReceive.apply(this,arguments);
+      };
+
+      // Keep the existing View Inventory button as the opener; it now opens the
+      // real native-style backpack above the admin panel.
+      return true;
+    }catch(e){console.warn('[Admin Remote Inventory boot]',e);return false;}
+  }
+  function retry(){if(!boot())setTimeout(retry,250)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',retry);else retry();
+})();
+</script>
+
+<script>
+(function(){
+  // Hide base torso/arms/hands while Odette Dress (399) is worn; restore on unequip
+  var DRESS_ID = 399;
+  var SHOE_ID = 401;
+  var lastOn = null;
+  var lastShoe = null;
+  function partNames(){
+    return ['arm','arm_back','front_arm','back_arm','hand','hand_back']; // not torso — dress draws there
+  }
+  function footPartNames(){
+    return ['foot','front_foot','back_foot','front_foot_bone','back_foot_bone'];
+  }
+  function getChar(){
+    try {
+      if (window.q && q.player) return q.player;
+    } catch(e){}
+    return null;
+  }
+  function appearanceHasDress(ch){
+    try {
+      if (ch.i33 && ch.i33.Z28 && ch.i33.Z28.length){
+        for (var i=0;i<ch.i33.Z28.length;i++){
+          if ((ch.i33.Z28[i]|0) === DRESS_ID) return true;
+        }
+      }
+    } catch(e){}
+    try {
+      if (q.diggerzService && q.diggerzService.state && q.diggerzService.state.appearance){
+        var a = q.diggerzService.state.appearance;
+        for (var j=0;j<a.length;j++) if ((a[j]|0)===DRESS_ID) return true;
+      }
+    } catch(e2){}
+    try {
+      // walk inventory worn clothing
+      if (ch._9) {
+        for (var k=0;k<ch._9.length;k++){
+          var it=ch._9[k];
+          if (it && (it.h44|0)===DRESS_ID) return true;
+          if (it && it._1==='Odette Dress') return true;
+        }
+      }
+    } catch(e3){}
+    return false;
+  }
+  function setPartVisible(ch, visible){
+    if (!ch) return;
+    var names = partNames();
+    function visit(node, depth){
+      if (!node || depth>12) return;
+      try {
+        var n = node._1 || node.name || '';
+        var hide = false;
+        for (var i=0;i<names.length;i++){
+          if (n && String(n).toLowerCase().indexOf(names[i])>=0) { hide=true; break; }
+        }
+        // also: spine slot style
+        if (node.f2) {
+          for (var j=0;j<names.length;j++){
+            try {
+              var p = node.f2(names[j]);
+              if (p) {
+                if (visible) { p.a2 = true; p.a0 = 0; }
+                else { p.a2 = false; }
+              }
+            } catch(e){}
+          }
+        }
+        if (hide && node !== ch) {
+          if (visible) { node.a2 = true; node.a0 = 0; }
+          else { node.a2 = false; }
+        }
+      } catch(e){}
+      var kids = node._9;
+      if (kids && kids.length){
+        for (var k=0;k<kids.length;k++) visit(kids[k], depth+1);
+      }
+    }
+    visit(ch, 0);
+  }
+
+  function appearanceHasShoes(ch){
+    try {
+      if (ch.i33 && ch.i33.Z28 && ch.i33.Z28.length){
+        for (var i=0;i<ch.i33.Z28.length;i++){
+          if ((ch.i33.Z28[i]|0) === SHOE_ID) return true;
+        }
+      }
+    } catch(e){}
+    try {
+      if (q.diggerzService && q.diggerzService.state && q.diggerzService.state.appearance){
+        var a = q.diggerzService.state.appearance;
+        for (var j=0;j<a.length;j++) if ((a[j]|0)===SHOE_ID) return true;
+      }
+    } catch(e2){}
+    try {
+      if (ch._9) {
+        for (var k=0;k<ch._9.length;k++){
+          var it=ch._9[k];
+          if (it && (it.h44|0)===SHOE_ID) return true;
+          if (it && it._1==='Odette Shoes') return true;
+        }
+      }
+    } catch(e3){}
+    return false;
+  }
+  function setFootVisible(ch, visible){
+    if (!ch) return;
+    var names = footPartNames();
+    function visit(node, depth){
+      if (!node || depth>12) return;
+      try {
+        // never hide shoe clothing itself
+        if (node._1 === 'Odette Shoes' || (node.h44|0) === SHOE_ID) {
+          // still visit children? skip hiding this node
+        } else {
+          var n = String(node._1 || node.name || '').toLowerCase();
+          var hide = false;
+          for (var i=0;i<names.length;i++){
+            if (n.indexOf(names[i])>=0) { hide=true; break; }
+          }
+          if (node.f2) {
+            try {
+              var ff = node.f2('foot'); if (ff && ff !== node) { if (visible){ff.a2=true;ff.a0=0;} else ff.a2=false; }
+            } catch(e){}
+            try {
+              var ff2 = node.f2('front_foot'); if (ff2) { if (visible){ff2.a2=true;ff2.a0=0;} else ff2.a2=false; }
+            } catch(e){}
+            try {
+              var ff3 = node.f2('back_foot'); if (ff3) { if (visible){ff3.a2=true;ff3.a0=0;} else ff3.a2=false; }
+            } catch(e){}
+          }
+          if (hide) {
+            if (visible) { node.a2 = true; node.a0 = 0; }
+            else { node.a2 = false; }
+          }
+        }
+      } catch(e){}
+      var kids = node._9;
+      if (kids && kids.length){
+        for (var k=0;k<kids.length;k++) visit(kids[k], depth+1);
+      }
+    }
+    visit(ch, 0);
+  }
+  setInterval(function(){
+    try {
+      var ch = getChar();
+      if (!ch) return;
+      var on = appearanceHasDress(ch);
+      if (on !== lastOn) {
+        lastOn = on;
+        setPartVisible(ch, !on);
+      }
+      var sh = appearanceHasShoes(ch);
+      if (sh !== lastShoe) {
+        lastShoe = sh;
+        setFootVisible(ch, !sh); // hide base feet when shoes on
+      }
+    } catch(e){}
+  }, 200);
+})();
+</script>
+
+<script>
+
+;
+(function(){
+  function installBuild232(){
+    var P=window.DiggerzPvp22,DS=window.DiggerzService,q=window.q,l=window.l;
+    if(!P||!DS||!DS.prototype||!P.hooksInstalled||!q||!l||!l.z38){setTimeout(installBuild232,50);return}
+    var proto=DS.prototype;if(proto.__build232)return;proto.__build232=true;
+    function playHit(entity){
+      try{
+        var anim=entity&&entity.i33;
+        if(!anim||typeof anim._38!=='function')return;
+        // Force a restart on consecutive hits. The false loop flag makes it one-shot;
+        // normal walk/attack animations can replace it naturally on the next action.
+        if(anim.Z28==='hit')anim.Z28='';
+        anim._38('hit',false,100,1);
+      }catch(_hitAnimErr){}
+    }
+    var oldHurt=proto.hurtLocalPlayer;
+    if(typeof oldHurt==='function')proto.hurtLocalPlayer=function(amount,source){
+      var before=this.localHealth,wasDead=!!this.localDead;if(before==null)before=l.z39&&(l.z39.N34||l.z39.N33);
+      var result=oldHurt.apply(this,arguments);
+      var after=this.localHealth;
+      if(!wasDead&&!this.localDead&&after!=null&&(before==null||after<before)){this._build232HitUntil=Date.now()+430;playHit(l.z39)}
+      return result;
+    };
+    // The legacy dig animation fixer also clears the shared "hit" animation after
+    // a few ticks. Preserve a damage-hit briefly, but let any new action replace it.
+    var oldFixAnimations=proto.fixLocalAnimations;
+    if(typeof oldFixAnimations==='function')proto.fixLocalAnimations=function(){
+      var p=l.z39,anim=p&&p.i33,preserve=!!(anim&&anim.Z28==='hit'&&Date.now()<(this._build232HitUntil||0)&&q.mState===0),oldDig=this.lastDigTick;
+      if(preserve)this.lastDigTick=this.ticks;
+      try{return oldFixAnimations.apply(this,arguments)}finally{if(preserve)this.lastDigTick=oldDig}
+    };
+    // Remote players also play their one-shot hit animation when the server confirms damage.
+    var oldReceive=proto.pvpReceive;
+    if(typeof oldReceive==='function')proto.pvpReceive=function(m){
+      if(m&&m.t==='hit-animation'){
+        var peer=this.pvpPeerForConnection&&this.pvpPeerForConnection(String(m.targetConnectionId||''));
+        var entity=peer&&this.pvpEntityForPeer&&this.pvpEntityForPeer(peer);
+        if(entity)playHit(entity);
+        return;
+      }
+      return oldReceive.apply(this,arguments);
+    };
+    // If a short/zero-length click attack happens while touching another hitbox,
+    // apply a small server-authoritative tap hit as well as the normal ray check.
+    var oldDirect=proto.weaponDirectHit;
+    if(typeof oldDirect==='function')proto.weaponDirectHit=function(fromX,fromY,toX,toY,attackType){
+      var result=oldDirect.apply(this,arguments);
+      var allowed=(this.mode==='pvp'&&P.mode==='pvp')||(this.mode==='digtrade'&&P.mode==='digtrade'&&(this.adminPvpEnabled||(q.diggerzAdminPvpEnabled)));
+      if(!allowed||!this.pvpSend||!this.pvpEnsurePeers||!l.z39)return result;
+      var linePeer=null;try{linePeer=this.pvpRemoteHitLine(fromX,fromY,toX,toY)}catch(_lineErr){}
+      if(linePeer)return result;
+      var px=l.z39.b6/l._44,py=l.z39.b7/l._44;
+      var seg=Math.hypot((+toX||0)-(+fromX||0),(+toY||0)-(+fromY||0));
+      if(seg>1.5)return result;
+      var peers=this.pvpEnsurePeers(),best=null,bestD=1.25;
+      for(var k in peers){var peer=peers[k],e=this.pvpEntityForPeer(peer);if(!e||!e.a2||!peer.connectionId)continue;var dx=e.b6/l._44-px,dy=e.b7/l._44-py,d=Math.hypot(dx,dy);if(d<=bestD){best=peer;bestD=d}}
+      if(best){var now=Date.now(),key=String(best.connectionId);this._build232TouchHits=this._build232TouchHits||{};if(now-(this._build232TouchHits[key]||0)>280){this._build232TouchHits[key]=now;this.pvpSend({t:'touch-hit',targetConnectionId:best.connectionId})}}
+      return result;
+    };
+  }
+  installBuild232();
+}());
+
+</script>
+
+<script id="diggerz-admin-gradient">
+(function(){
+  function clamp01(x){ return x < 0 ? 0 : x > 1 ? 1 : x; }
+  function lerp(a,b,t){ return a + (b - a) * t; }
+  var PAL = {
+    harlan:  { left: { r:0.18, g:0.55, b:0.08 }, right: { r:0.38, g:0.08, b:0.58 } },
+    tezzler: { left: { r:0.08, g:0.20, b:0.70 }, right: { r:0.72, g:0.55, b:0.06 } }
+  };
+  window.__dzAdminGradientColor = function(pal, glyphIndex, glyphCount){
+    var p = PAL[pal] || PAL.harlan;
+    var n = Math.max(1, Number(glyphCount) || 10);
+    var t = clamp01((Number(glyphIndex) || 0) / n);
+    t = clamp01(t + 0.03 * Math.sin(Date.now() / 1100 + (glyphIndex || 0) * 0.35));
+    return { r: clamp01(lerp(p.left.r, p.right.r, t)), g: clamp01(lerp(p.left.g, p.right.g, t)), b: clamp01(lerp(p.left.b, p.right.b, t)) };
+  };
+})();
+</script>
 <script id="diggerz-admin-pulse">
 (function(){
+  function tickGhost(ghost){
+    if (!ghost || !ghost.__dzIsGhost) return;
+    var base = ghost.__dzBaseScale || 0.32;
+    var ht = Date.now() / 1000;
+    var pulse = base * (1.15 + 0.12 * Math.sin(ht * Math.PI * 2 * 0.5));
+    try {
+      ghost.set_local_xScale(pulse);
+      ghost.set_local_yScale(pulse);
+      if (ghost.set_local_alp) ghost.set_local_alp(0.7);
+    } catch(e){}
+  }
   function pulseAll(){
     try {
-      // Local player
       if (window.l && l.z39 && l.z39.J30 && l.z39.J30.__dzPal) {
         var card = l.z39.J30;
-        var lab = card.E32;
-        if (lab) {
-          var base = lab.__dzBaseScale || 0.32;
-          if (window.__dzAdminPulseTick) window.__dzAdminPulseTick(lab, base);
+        if (card.E32 && card.E32.__dzBaseScale) {
+          try {
+            card.E32.set_local_xScale(card.E32.__dzBaseScale);
+            card.E32.set_local_yScale(card.E32.__dzBaseScale);
+          } catch(e){}
         }
-        // Ghost pulse (opaque duplicate behind name)
-        if (card.__dzNameGhost && window.__dzAdminPulseTick)
-          window.__dzAdminPulseTick(card.__dzNameGhost, card.__dzNameGhost.__dzBaseScale || 0.32);
+        tickGhost(card.__dzNameGhost);
       }
-      // Peers
       var s = window.q && q.diggerzService;
       if (s && s.pvpEnsurePeers) {
         var peers = s.pvpEnsurePeers();
@@ -124549,9 +125116,33 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
           var peer = peers[cid];
           if (!peer || !peer.isAdmin) return;
           var ent = s.pvpEntityForPeer && s.pvpEntityForPeer(peer);
-          if (!ent || !ent.J30 || !ent.J30.E32 || !ent.J30.__dzPal) return;
-          var lab2 = ent.J30.E32;
-          var b2 = lab2.__dzBaseScale || 0.32;
-          if (window.__dzAdminPulseTick) window.__dzAdminPulseTick(lab2, b2);
-          if (ent.J30.__dzNameGhost && window.__dzAdminPulseTick)
-            window.__dzAdminPulseTick(ent.J30.__dzNameGhost, ent.J30.__dzNameGhost.__dzBaseScale || 0.32);
+          if (!ent || !ent.J30) return;
+          tickGhost(ent.J30.__dzNameGhost);
+        });
+      }
+      // RGB leaderboard bars
+      try {
+        if (l.z38 && l.z38.R37 && l.z38.R37._9) {
+          var rows = l.z38.R37._9, t = Date.now() / 900;
+          for (var i = 0; i < rows.length; i++) {
+            var bar = rows[i];
+            if (!bar || !bar.__dzRgbPlate) continue;
+            var r = .5 + .5 * Math.sin(t);
+            var g = .5 + .5 * Math.sin(t + 2.09439510239);
+            var b = .5 + .5 * Math.sin(t + 4.18879020479);
+            try {
+              if (bar.set_r) { bar.set_r(r); bar.set_g(g); bar.set_b(b); }
+            } catch(eC){}
+          }
+        }
+      } catch(ePlate){}
+    } catch(e){}
+  }
+  setInterval(pulseAll, 50);
+})();
+</script>
+
+</body>
+</html>
+<!-- Other original content may be protected by copyright. -->
+
