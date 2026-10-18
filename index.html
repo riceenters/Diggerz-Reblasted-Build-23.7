@@ -24331,16 +24331,30 @@ var u = function() {};
         adminApplyRoleTag: function(target, role, forcedPal) {
             if (!target || !target.J30 || !target.J30.E32) return false;
             var card = target.J30, label = card.E32;
-            var baseName = String(target._1 || "Player");
-            baseName = baseName.replace(/\^[@#!0-9]/g, "");
-            baseName = baseName.replace(/\[ADMIN\]/gi, "").replace(/\[OWNER\]/gi, "");
-            baseName = baseName.replace(/\s{2,}/g, " ").trim() || "Player";
+            // Keep the player's color codes (^0-^9). Only strip staff fakes / gradient codes.
+            var prev = "";
+            try { prev = String(label.E32 || ""); } catch (eP) {}
             var winsSuffix = "";
-            try {
-                var prev = String(label.E32 || "");
-                var wm = prev.match(/\^9\s*(\d+)\s*$/);
-                if (wm) winsSuffix = " ^9" + wm[1];
-            } catch (eW) {}
+            var wm = prev.match(/(\s*\^9\s*\d+)\s*$/);
+            if (wm) {
+                winsSuffix = wm[1];
+                prev = prev.slice(0, prev.length - wm[1].length);
+            }
+            // Prefer colored display text; fall back to entity name
+            var baseName = prev || String(target._1 || "Player");
+            baseName = baseName.replace(/\^[@#!]/g, ""); // drop gradient-only codes, keep ^0-9
+            baseName = baseName.replace(/\[ADMIN\]/gi, "").replace(/\[OWNER\]/gi, "");
+            baseName = baseName.replace(/\[the real lime\]/gi, "");
+            baseName = baseName.replace(/\s{2,}/g, " ").trim();
+            // If we stripped everything, use plain name
+            if (!baseName.replace(/\^[\d]/g, "").trim()) baseName = String(target._1 || "Player");
+            // Re-attach wins if missing
+            if (!winsSuffix) {
+                try {
+                    var ww = String(label.E32 || "").match(/\^9\s*(\d+)\s*$/);
+                    if (ww) winsSuffix = " ^9" + ww[1];
+                } catch (eW) {}
+            }
             var pal = forcedPal || "harlan";
             if (!forcedPal) {
                 try {
@@ -24352,7 +24366,6 @@ var u = function() {};
                     else if (role === "lime") pal = "tezzler";
                 } catch (ePal) {}
             }
-            // BIG font, scaled to roughly normal name height
             var scale = 0.32;
             try {
                 var bigH = (q.MAIN_FONT_BIG && q.MAIN_FONT_BIG.M17 && q.MAIN_FONT_BIG.M17.lineHeight) || 32;
@@ -24365,8 +24378,11 @@ var u = function() {};
             card.__dzPal = pal;
             label.__dzPal = pal;
             label.__dzAdminStyled = true;
-            // Plain name (no gradient codes) + yellow wins
-            label.E37(baseName + winsSuffix);
+            var next = baseName + winsSuffix;
+            // Only rebuild text if it changed — avoids wiping colors every 200ms
+            var cur = "";
+            try { cur = String(label.E32 || ""); } catch (eC) {}
+            if (cur !== next) label.E37(next);
             try {
                 label.set_local_xScale(scale);
                 label.set_local_yScale(scale);
@@ -24376,7 +24392,7 @@ var u = function() {};
                 if (card.b48 && card.b48._5) {
                     card.b48.b7 = -134;
                     card.b48.set_local_yScale(1);
-                    card.b48.__dzRgbPlate = true; // force RGB nameplate
+                    card.b48.__dzRgbPlate = true;
                     var w = 0;
                     try { w = label.E38() || 0; } catch (eW2) { w = 80; }
                     var barScale = (w * scale + 48) / card.b48._5.width;
@@ -122557,7 +122573,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
     };
     var releaseRoomState=proto.pvpApplyRoomState;proto.pvpApplyRoomState=function(m){if(m&&m.map&&(this.mode==='pvp'||this.mode==='digtrade'))this.pvpApplyBaseMap(m.map);return releaseRoomState.call(this,m)};
     function refreshBoard(service){try{if(l.z38&&l.z38.R37&&l.z38.R37.Z44)l.z38.R37.Z44()}catch(e){}}
-    function setNameWins(e,w){try{if(e&&e.J30&&e.J30.E32){e.J30.E32.E37(String(e._1||'Player')+' ^9'+Math.max(0,w|0));if(e.J30.__dzPal){var s=window.q&&q.diggerzService;if(s&&s.adminApplyRoleTag)s.adminApplyRoleTag(e,'owner',e.J30.__dzPal)}}}catch(_e){}} function resetScores(service){try{if(l.z39){l.z39.k31=0;setNameWins(l.z39,service&&service.state?service.state.wins|0:0)}var peers=service&&service.pvpEnsurePeers?service.pvpEnsurePeers():{};for(var k in peers){var peer=peers[k],e=service.pvpEntityForPeer(peer);if(e){e.k31=0;setNameWins(e,peer&&peer.info?peer.info.wins|0:0)}}refreshBoard(service)}catch(e){}}
+    function setNameWins(e,w){try{if(e&&e.J30&&e.J30.E32){var lab=e.J30.E32,prev=String(lab.E32||''),name=prev.replace(/\s*\^9\s*\d+\s*$/,'').trim()||String(e._1||'Player');lab.E37(name+' ^9'+Math.max(0,w|0));if(e.J30.__dzPal){var s=window.q&&q.diggerzService;if(s&&s.adminApplyRoleTag)s.adminApplyRoleTag(e,'owner',e.J30.__dzPal)}}}catch(_e){}} function resetScores(service){try{if(l.z39){l.z39.k31=0;setNameWins(l.z39,service&&service.state?service.state.wins|0:0)}var peers=service&&service.pvpEnsurePeers?service.pvpEnsurePeers():{};for(var k in peers){var peer=peers[k],e=service.pvpEntityForPeer(peer);if(e){e.k31=0;setNameWins(e,peer&&peer.info?peer.info.wins|0:0)}}refreshBoard(service)}catch(e){}}
     function setScore(service,cid,kills){try{var e=String(cid||'')===String(P.connectionId||'')?l.z39:(service.pvpPeerForConnection(cid)&&service.pvpEntityForPeer(service.pvpPeerForConnection(cid)));if(e)e.k31=Math.max(0,kills|0);refreshBoard(service)}catch(_e){}}
     function itemLine(service,item){item=item||{};if(!item.category||!item.count)return null;return (item.count>1?item.count+' × ':'')+service.itemName(item.category|0,item.id|0)}
     function closeReview(){if(review)review.style.display='none'}
@@ -122650,7 +122666,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
 
     function chat(service,text){try{service.message(text)}catch(e){}}
     function refreshBoard(service){try{var board=service&&service.game&&service.game.f4?service.game.f4(window.Ao):null;if(board&&board.Z44)board.Z44()}catch(e){}}
-    function nameWins(e,w){try{if(e&&e.J30&&e.J30.E32){e.J30.E32.E37(String(e._1||'Player')+' ^9'+Math.max(0,w|0));if(e.J30.__dzPal){var s=window.q&&q.diggerzService;if(s&&s.adminApplyRoleTag)s.adminApplyRoleTag(e,'owner',e.J30.__dzPal)}}}catch(_e){}} function applyWins(service){try{if(service&&l.z39)nameWins(l.z39,service.state.wins|0);refreshBoard(service)}catch(e){}}
+    function nameWins(e,w){try{if(e&&e.J30&&e.J30.E32){var lab=e.J30.E32,prev=String(lab.E32||''),name=prev.replace(/\s*\^9\s*\d+\s*$/,'').trim()||String(e._1||'Player');lab.E37(name+' ^9'+Math.max(0,w|0));if(e.J30.__dzPal){var s=window.q&&q.diggerzService;if(s&&s.adminApplyRoleTag)s.adminApplyRoleTag(e,'owner',e.J30.__dzPal)}}}catch(_e){}} function applyWins(service){try{if(service&&l.z39)nameWins(l.z39,service.state.wins|0);refreshBoard(service)}catch(e){}}
     function setRemoteWins(service,cid,wins){try{var peer=service.pvpPeerForConnection(cid),e=peer&&service.pvpEntityForPeer(peer);if(peer&&peer.info)peer.info.wins=Math.max(0,wins|0);if(e)nameWins(e,wins);refreshBoard(service)}catch(err){}}
     function smallPrompt(service,text){
       if(!service||!text)return;
