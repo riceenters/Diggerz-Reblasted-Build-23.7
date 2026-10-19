@@ -3821,6 +3821,13 @@ const server = http.createServer(async (req, res) => {
   if (urlPath === '/bknd.png') { serveBuffer(res,bkndPng,'image/png'); return; }
   if (urlPath === '/reblasted.png') { serveBuffer(res,reblastedPng,'image/png'); return; }
   if (urlPath === '/favicon.png') { serveBuffer(res,faviconPng,'image/png'); return; }
+  // Add-to-desktop (PWA) files
+  if (urlPath === '/manifest.json' || urlPath === '/service-worker.js' || urlPath === '/icon-192.png' || urlPath === '/icon-512.png' || urlPath === '/loading.jpg') {
+    const pwaTypes = {'/manifest.json':'application/manifest+json; charset=utf-8','/service-worker.js':'application/javascript; charset=utf-8','/icon-192.png':'image/png','/icon-512.png':'image/png','/loading.jpg':'image/jpeg'};
+    try { serveBuffer(res, fs.readFileSync(path.join(__dirname, urlPath.slice(1))), pwaTypes[urlPath]); }
+    catch (error) { res.writeHead(404,{'Content-Type':'text/plain; charset=utf-8'}); res.end('Missing file.\n'); }
+    return;
+  }
   if (urlPath === '/favicon.ico') {
     // Many browsers request /favicon.ico by default; serve the PNG with a
     // compatible type so the tab icon still appears.
