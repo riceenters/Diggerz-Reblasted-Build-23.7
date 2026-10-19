@@ -205,8 +205,8 @@ function patchGameHtmlForBuild239(input) {
 
   // Build 23.8 itch/Railway split: static browser clients always use Railway
   // for multiplayer and protected admin HTTP endpoints.
-  const railwayHttp = 'https://diggerz.onrender.com';
-  const railwayWs = 'wss://diggerz.onrender.com';
+  const railwayHttp = 'https://diggerz-production.up.railway.app';
+  const railwayWs = 'wss://diggerz-production.up.railway.app';
   const httpsWsOld = "    if(location.protocol==='https:')return 'wss://'+location.host;";
   if (html.includes(httpsWsOld)) html = html.replace(httpsWsOld, "    if(location.protocol==='https:')return '"+railwayWs+"';");
   else console.warn('[Diggerz 23.8] automatic HTTPS WebSocket target was not found.');

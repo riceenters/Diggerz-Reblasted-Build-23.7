@@ -118388,7 +118388,7 @@ e50: function(a) {
 })();
 
 ;
-(function(){if(location.pathname==='/banned')return;try{var b=JSON.parse(localStorage.getItem('diggerz.resurrection.activeBan.v1')||'null');if(b&&(b.permanent||Number(b.expiresAt)>Date.now()))location.replace('https://diggerz.onrender.com/banned');else if(b)localStorage.removeItem('diggerz.resurrection.activeBan.v1')}catch(e){}})();
+(function(){if(location.pathname==='/banned')return;try{var b=JSON.parse(localStorage.getItem('diggerz.resurrection.activeBan.v1')||'null');if(b&&(b.permanent||Number(b.expiresAt)>Date.now()))location.replace('https://diggerz-production.up.railway.app/banned');else if(b)localStorage.removeItem('diggerz.resurrection.activeBan.v1')}catch(e){}})();
 ;
 
 			aiptag.cmd.display.push(function() { aipDisplayTag.display('diggerz-io_300x250'); });
@@ -118447,7 +118447,7 @@ e50: function(a) {
       var code=window.prompt('Admin code:');
       if(code===null)return;
       code=String(code).trim();
-      var response=await fetch('https://diggerz.onrender.com/api/admin/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:code}),cache:'no-store'});
+      var response=await fetch('https://diggerz-production.up.railway.app/api/admin/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:code}),cache:'no-store'});
       var data={};try{data=await response.json()}catch(e){}
       if(!response.ok||!data.ok||!data.token){punishWrongCode();say(data.error==='too-many-attempts'?'Too many failed admin attempts. Try again later.':'Access denied.');return}
       adminToken=String(data.token);adminRole=String(data.role||'');adminExpiresAt=+data.expiresAt||0;window.DiggerzAdminSessionToken=adminToken;window.DiggerzAdminRole=adminRole;window.DiggerzAdminExpiresAt=adminExpiresAt;try{localStorage.setItem('diggerzAdminSessionToken',adminToken);localStorage.setItem('diggerzAdminSessionExpiresAt',String(adminExpiresAt));localStorage.setItem('diggerzAdminRole',adminRole)}catch(e){}
@@ -118595,10 +118595,10 @@ e50: function(a) {
   document.getElementById('admin-ban').onclick=function(){if(!ownerService())return say('Admin authentication required.');openModeration('ban')};
   document.getElementById('admin-mod-cancel').onclick=closeModeration;
   document.getElementById('admin-ban-permanent').onclick=function(){mod.permanent=!mod.permanent;this.classList.toggle('active',mod.permanent);this.textContent=mod.permanent?'Permanent: ON':'Permanent'};
-  async function moderate(action,target,extra){if(!adminToken)return {ok:false,error:'admin-auth'};var response=await fetch('https://diggerz.onrender.com/api/admin/moderate',{method:'POST',headers:authHeaders(),body:JSON.stringify(Object.assign({action:action,targetConnectionId:target&&target.connectionId||'',targetName:target&&target.name||''},extra||{})),cache:'no-store'});var data={};try{data=await response.json()}catch(e){};if(!response.ok)throw new Error(data.error||'moderation failed');return data}
+  async function moderate(action,target,extra){if(!adminToken)return {ok:false,error:'admin-auth'};var response=await fetch('https://diggerz-production.up.railway.app/api/admin/moderate',{method:'POST',headers:authHeaders(),body:JSON.stringify(Object.assign({action:action,targetConnectionId:target&&target.connectionId||'',targetName:target&&target.name||''},extra||{})),cache:'no-store'});var data={};try{data=await response.json()}catch(e){};if(!response.ok)throw new Error(data.error||'moderation failed');return data}
   document.getElementById('admin-mod-confirm').onclick=async function(){if(!mod.target)return;var reason=document.getElementById('admin-mod-reason').value.trim();try{if(mod.action==='kick'){await moderate('kick',mod.target,{reason:reason});say('Kicked '+mod.target.name+'.')}else{var s=+document.getElementById('admin-ban-seconds').value||0,h=+document.getElementById('admin-ban-hours').value||0,d=+document.getElementById('admin-ban-days').value||0,w=+document.getElementById('admin-ban-weeks').value||0,mo=+document.getElementById('admin-ban-months').value||0,y=+document.getElementById('admin-ban-years').value||0;var durationMs=(s+h*3600+d*86400+w*604800+mo*2592000+y*31536000)*1000;if(!mod.permanent&&durationMs<=0){say('Choose a ban length or Permanent.');return}var result=await moderate('ban',mod.target,{reason:reason,permanent:mod.permanent,durationMs:durationMs});say('Banned '+mod.target.name+(mod.permanent?' permanently.':'.')+(result&&result.ejectedConnections?' Ejected '+result.ejectedConnections+' live connection(s).':' Ban will enforce on next connection.'));await refreshBans()}closeModeration()}catch(e){say('Moderation failed: '+e.message)}};
   async function fetchBanList(){
-    var response=await fetch('https://diggerz.onrender.com/api/admin/bans',{headers:{'Authorization':'Bearer '+adminToken},cache:'no-store'}),data={};
+    var response=await fetch('https://diggerz-production.up.railway.app/api/admin/bans',{headers:{'Authorization':'Bearer '+adminToken},cache:'no-store'}),data={};
     try{data=await response.json()}catch(e){}
     if(!response.ok)throw new Error(data.error||'failed to load bans');
     return Array.isArray(data.bans)?data.bans:[]
@@ -118616,7 +118616,7 @@ e50: function(a) {
           btn.disabled=true;
           try{
             var payload={action:'unban',banId:b.id||'',targetName:String(b.name||''),normalizedName:String(b.name||'').trim().toLowerCase()};
-            var r=await fetch('https://diggerz.onrender.com/api/admin/moderate',{method:'POST',headers:authHeaders(),body:JSON.stringify(payload),cache:'no-store'}),d={};
+            var r=await fetch('https://diggerz-production.up.railway.app/api/admin/moderate',{method:'POST',headers:authHeaders(),body:JSON.stringify(payload),cache:'no-store'}),d={};
             try{d=await r.json()}catch(e){}
             if(!r.ok||d.ok===false)throw new Error(d.error||'server rejected unban');
             await new Promise(function(resolve){setTimeout(resolve,120)});
@@ -118666,7 +118666,7 @@ e50: function(a) {
   document.getElementById('diggerz-mp-clear').onclick=function(){P.debugLines=[];dbg('MP-000','debug log cleared')};
   document.getElementById('diggerz-mp-hide').onclick=function(){debugBox.style.display='none'};
   function automaticServerUrl(){
-    if(location.protocol==='https:')return 'wss://diggerz.onrender.com';
+    if(location.protocol==='https:')return 'wss://diggerz-production.up.railway.app';
     if(location.protocol==='http:')return 'ws://'+location.host;
     try{return localStorage.getItem('diggerzServerUrl')||'ws://127.0.0.1:8080'}catch(e){return 'ws://127.0.0.1:8080'}
   }
@@ -118727,7 +118727,7 @@ e50: function(a) {
       if(event.data instanceof ArrayBuffer){try{var op0=new DataView(event.data).getUint16(0,true);if(op0===5)dbg('MP-031','native spawn packet '+op0+' received ('+event.data.byteLength+' bytes)')}catch(_e){}routeNativePacket(event.data);return}
       if(typeof Blob!=='undefined'&&event.data instanceof Blob){event.data.arrayBuffer().then(routeNativePacket).catch(function(e){console.error('Diggerz Blob packet',e)});return}
       var m;try{m=JSON.parse(event.data)}catch(e){setStatus('Server sent invalid data.');return}if(!m||!m.t)return;
-      if(m.t==='banned'){try{localStorage.setItem('diggerz.resurrection.activeBan.v1',JSON.stringify({id:m.id||'',name:m.name||username(),createdAt:+m.createdAt||Date.now(),expiresAt:+m.expiresAt||0,permanent:!!m.permanent,reason:String(m.reason||'no reason provided.')}))}catch(e){};location.replace('https://diggerz.onrender.com/banned');return;}
+      if(m.t==='banned'){try{localStorage.setItem('diggerz.resurrection.activeBan.v1',JSON.stringify({id:m.id||'',name:m.name||username(),createdAt:+m.createdAt||Date.now(),expiresAt:+m.expiresAt||0,permanent:!!m.permanent,reason:String(m.reason||'no reason provided.')}))}catch(e){};location.replace('https://diggerz-production.up.railway.app/banned');return;}
       if(m.t==='kicked'){try{alert('you have been kicked.\nreason: '+String(m.reason||'no reason provided.'))}catch(e){};P.intentionalClose=true;try{ws.close()}catch(e){};setTimeout(function(){location.replace('/')},50);return;}
       if(m.t==='server-hello'){dbg('MP-012','server hello: '+String(m.server||'unknown'));return;}
       if(m.t==='welcome'){P.joined=true;P.suppressPeerJoinChat=true;try{if(P.service)P.service._pvpAnnounceJoins=false}catch(_e){}

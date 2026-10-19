@@ -18,7 +18,7 @@
   document.getElementById('diggerz-mp-clear').onclick=function(){P.debugLines=[];dbg('MP-000','debug log cleared')};
   document.getElementById('diggerz-mp-hide').onclick=function(){debugBox.style.display='none'};
   function automaticServerUrl(){
-    if(location.protocol==='https:')return 'wss://diggerz.onrender.com';
+    if(location.protocol==='https:')return 'wss://diggerz-production.up.railway.app';
     if(location.protocol==='http:')return 'ws://'+location.host;
     try{return localStorage.getItem('diggerzServerUrl')||'ws://127.0.0.1:8080'}catch(e){return 'ws://127.0.0.1:8080'}
   }
@@ -79,7 +79,7 @@
       if(event.data instanceof ArrayBuffer){try{var op0=new DataView(event.data).getUint16(0,true);if(op0===5)dbg('MP-031','native spawn packet '+op0+' received ('+event.data.byteLength+' bytes)')}catch(_e){}routeNativePacket(event.data);return}
       if(typeof Blob!=='undefined'&&event.data instanceof Blob){event.data.arrayBuffer().then(routeNativePacket).catch(function(e){console.error('Diggerz Blob packet',e)});return}
       var m;try{m=JSON.parse(event.data)}catch(e){setStatus('Server sent invalid data.');return}if(!m||!m.t)return;
-      if(m.t==='banned'){try{localStorage.setItem('diggerz.resurrection.activeBan.v1',JSON.stringify({id:m.id||'',name:m.name||username(),createdAt:+m.createdAt||Date.now(),expiresAt:+m.expiresAt||0,permanent:!!m.permanent,reason:String(m.reason||'no reason provided.')}))}catch(e){};location.replace('https://diggerz.onrender.com/banned');return;}
+      if(m.t==='banned'){try{localStorage.setItem('diggerz.resurrection.activeBan.v1',JSON.stringify({id:m.id||'',name:m.name||username(),createdAt:+m.createdAt||Date.now(),expiresAt:+m.expiresAt||0,permanent:!!m.permanent,reason:String(m.reason||'no reason provided.')}))}catch(e){};location.replace('https://diggerz-production.up.railway.app/banned');return;}
       if(m.t==='kicked'){try{alert('you have been kicked.\nreason: '+String(m.reason||'no reason provided.'))}catch(e){};P.intentionalClose=true;try{ws.close()}catch(e){};setTimeout(function(){location.replace('/')},50);return;}
       if(m.t==='server-hello'){dbg('MP-012','server hello: '+String(m.server||'unknown'));return;}
       if(m.t==='welcome'){P.joined=true;P.suppressPeerJoinChat=true;try{if(P.service)P.service._pvpAnnounceJoins=false}catch(_e){}
