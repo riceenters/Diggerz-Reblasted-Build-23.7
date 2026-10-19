@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link rel="manifest" id="diggerz-pwa-manifest" href="manifest.webmanifest">
 <script id="diggerz-ban-enforcement-guard-v33">
 (function(){
   function readBan(){
@@ -75,8 +76,6 @@ This restoration includes the original client and recovered assets plus reconstr
 	<link rel="icon" type="image/png" href="data:image/png;base64,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">
 	<link rel="shortcut icon" type="image/png" href="data:image/png;base64,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">
 	<link rel="apple-touch-icon" href="data:image/png;base64,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">
-	<link rel="manifest" href="/manifest.json">
-	<meta name="theme-color" content="#4A90E2">
 	<link rel="icon" type="image/png" sizes="128x128" href="/favicon.png">
 	<link rel="shortcut icon" href="/favicon.ico">
 
@@ -21796,9 +21795,8 @@ var u = function() {};
         null == Rg.rootPath && (Rg.rootPath = "./");
         da.defaultRootPath = Rg.rootPath;
         a = rg.parse('{"name":null,"assets":"aoy4:pathy20:assets%2Floading.jpgy4:sizei15746y4:typey5:IMAGEy2:idR1y7:preloadtgoR0y17:assets%2Fbknd.pngR2i1413396R3R4R5R7R6tgoR0y18:assets%2Ftiles.pngR2i2218667R3R4R5R8R6tgoR0y15:assets%2Fui.pngR2i338367R3R4R5R9R6tgoR2i600827R3y5:MUSICR5y38:assets%2Faudio%2Fmusic_lobby_theme.oggy9:pathGroupaR11y38:assets%2Faudio%2Fmusic_lobby_theme.m4ahR6tgoR2i826006R3R10R5y32:assets%2Faudio%2Fmusic_theme.oggR12aR14y32:assets%2Faudio%2Fmusic_theme.m4ahR6tgoR2i882371R3R10R5y40:assets%2Faudio%2Fmusic_outside_theme.oggR12aR16y40:assets%2Faudio%2Fmusic_outside_theme.m4ahR6tgoR2i4007R3y5:SOUNDR5y26:assets%2Faudio%2Farrow.oggR12aR19y26:assets%2Faudio%2Farrow.m4ahR6tgoR2i6893R3R18R5y32:assets%2Faudio%2Fballoon_pop.oggR12aR21y32:assets%2Faudio%2Fballoon_pop.m4ahR6tgoR2i10911R3R18R5y25:assets%2Faudio%2Ffuse.oggR12aR23y25:assets%2Faudio%2Ffuse.m4ahR6tgoR2i4571R3R18R5y27:assets%2Faudio%2Fdeath2.oggR12aR25y27:assets%2Faudio%2Fdeath2.m4ahR6tgoR2i9780R3R18R5y37:assets%2Faudio%2Ffirework_explode.oggR12aR27y37:assets%2Faudio%2Ffirework_explode.m4ahR6tgoR2i5534R3R18R5y28:assets%2Faudio%2Fgrenade.oggR12aR29y28:assets%2Faudio%2Fgrenade.m4ahR6tgoR2i4466R3R18R5y31:assets%2Faudio%2Fswitchback.oggR12aR31y31:assets%2Faudio%2Fswitchback.m4ahR6tgoR2i4313R3R18R5y26:assets%2Faudio%2Fthrow.oggR12aR33y26:assets%2Faudio%2Fthrow.m4ahR6tgoR2i9491R3R18R5y27:assets%2Faudio%2Fdeath1.oggR12aR35y27:assets%2Faudio%2Fdeath1.m4ahR6tgoR2i4591R3R18R5y31:assets%2Faudio%2Fcheckpoint.oggR12aR37y31:assets%2Faudio%2Fcheckpoint.m4ahR6tgoR2i5579R3R18R5y25:assets%2Faudio%2Ftype.oggR12aR39y25:assets%2Faudio%2Ftype.m4ahR6tgoR2i6482R3R18R5y27:assets%2Faudio%2Fuphill.oggR12aR41y27:assets%2Faudio%2Fuphill.m4ahR6tgoR2i7382R3R18R5y29:assets%2Faudio%2Fpurchase.oggR12aR43y29:assets%2Faudio%2Fpurchase.m4ahR6tgoR2i6862R3R18R5y27:assets%2Faudio%2Fhealth.oggR12aR45y27:assets%2Faudio%2Fhealth.m4ahR6tgoR2i45538R3R18R5y28:assets%2Faudio%2Fpopcorn.oggR12aR47y28:assets%2Faudio%2Fpopcorn.m4ahR6tgoR2i4542R3R18R5y24:assets%2Faudio%2Fsaw.oggR12aR49y24:assets%2Faudio%2Fsaw.m4ahR6tgoR2i6155R3R18R5y27:assets%2Faudio%2Fthrust.oggR12aR51y27:assets%2Faudio%2Fthrust.m4ahR6tgoR2i3836R3R18R5y25:assets%2Faudio%2Fflap.oggR12aR53y25:assets%2Faudio%2Fflap.m4ahR6tgoR2i3530R3R18R5y25:assets%2Faudio%2Fland.oggR12aR55y25:assets%2Faudio%2Fland.m4ahR6tgoR2i3566R3R18R5y25:assets%2Faudio%2Fjump.oggR12aR57y25:assets%2Faudio%2Fjump.m4ahR6tgoR2i3977R3R18R5y25:assets%2Faudio%2Fcoin.oggR12aR59y25:assets%2Faudio%2Fcoin.m4ahR6tgoR2i8235R3R18R5y28:assets%2Faudio%2Fshotgun.oggR12aR61y28:assets%2Faudio%2Fshotgun.m4ahR6tgoR2i9947R3R18R5y26:assets%2Faudio%2Fpunch.oggR12aR63y26:assets%2Faudio%2Fpunch.m4ahR6tgoR2i5294R3R18R5y25:assets%2Faudio%2Fpain.oggR12aR65y25:assets%2Faudio%2Fpain.m4ahR6tgoR2i7679R3R18R5y31:assets%2Faudio%2Fpunch_land.oggR12aR67y31:assets%2Faudio%2Fpunch_land.m4ahR6tgoR2i5054R3R18R5y25:assets%2Faudio%2Fkick.oggR12aR69y25:assets%2Faudio%2Fkick.m4ahR6tgoR2i7090R3R18R5y26:assets%2Faudio%2Fplate.oggR12aR71y26:assets%2Faudio%2Fplate.m4ahR6tgoR2i21242R3R18R5y31:assets%2Faudio%2Flightsword.oggR12aR73y31:assets%2Faudio%2Flightsword.m4ahR6tgoR2i4871R3R18R5y27:assets%2Faudio%2Fishere.oggR12aR75y27:assets%2Faudio%2Fishere.m4ahR6tgoR2i4524R3R18R5y25:assets%2Faudio%2Fping.oggR12aR77y25:assets%2Faudio%2Fping.m4ahR6tgoR2i8894R3R18R5y25:assets%2Faudio%2Froll.oggR12aR79y25:assets%2Faudio%2Froll.m4ahR6tgoR2i5350R3R18R5y27:assets%2Faudio%2Fspikes.oggR12aR81y27:assets%2Faudio%2Fspikes.m4ahR6tgoR2i6633R3R18R5y27:assets%2Faudio%2Fswitch.oggR12aR83y27:assets%2Faudio%2Fswitch.m4ahR6tgoR2i7716R3R18R5y29:assets%2Faudio%2Fdooropen.oggR12aR85y29:assets%2Faudio%2Fdooropen.m4ahR6tgoR2i3807R3R18R5y24:assets%2Faudio%2Fpop.oggR12aR87y24:assets%2Faudio%2Fpop.m4ahR6tgoR2i8006R3R18R5y32:assets%2Faudio%2Felectricity.oggR12aR89y32:assets%2Faudio%2Felectricity.m4ahR6tgoR2i6422R3R18R5y27:assets%2Faudio%2Frubble.oggR12aR91y27:assets%2Faudio%2Frubble.m4ahR6tgoR2i8347R3R18R5y28:assets%2Faudio%2Flevelup.oggR12aR93y28:assets%2Faudio%2Flevelup.m4ahR6tgoR2i6403R3R18R5y25:assets%2Faudio%2Fswap.oggR12aR95y25:assets%2Faudio%2Fswap.m4ahR6tgoR2i5562R3R18R5y27:assets%2Faudio%2Fraygun.oggR12aR97y27:assets%2Faudio%2Fraygun.m4ahR6tgoR2i6134R3R18R5y27:assets%2Faudio%2Fsplash.oggR12aR99y27:assets%2Faudio%2Fsplash.m4ahR6tgoR2i8425R3R18R5R42R12aR41R42hgoR2i9238R3R18R5R44R12aR43R44hgoR2i8501R3R18R5R46R12aR45R46hgoR2i263384R3R18R5R15R12aR14R15hgoR2i6650R3R18R5R38R12aR37R38hgoR2i7112R3R18R5R40R12aR39R40hgoR2i5028R3R18R5R54R12aR53R54hgoR2i4479R3R18R5R56R12aR55R56hgoR2i5253R3R18R5R58R12aR57R58hgoR2i14374R3R18R5R48R12aR47R48hgoR2i5524R3R18R5R50R12aR49R50hgoR2i7622R3R18R5R52R12aR51R52hgoR2i13246R3R18R5R24R12aR23R24hgoR2i5200R3R18R5R20R12aR19R20hgoR2i8875R3R18R5R22R12aR21R22hgoR2i5712R3R18R5R32R12aR31R32hgoR2i5004R3R18R5R30R12aR29R30hgoR2i11070R3R18R5R28R12aR27R28hgoR2i11805R3R18R5R36R12aR35R36hgoR2i5682R3R18R5R34R12aR33R34hgoR2i206457R3R18R5R13R12aR11R13hgoR2i5801R3R18R5R26R12aR25R26hgoR2i9282R3R18R5R90R12aR89R90hgoR2i5263R3R18R5R88R12aR87R88hgoR2i6592R3R18R5R86R12aR85R86hgoR2i10068R3R18R5R94R12aR93R94hgoR2i8277R3R18R5R92R12aR91R92hgoR2i12676R3R18R5R80R12aR79R80hgoR2i5684R3R18R5R78R12aR77R78hgoR2i6485R3R18R5R76R12aR75R76hgoR2i11551R3R18R5R74R12aR73R74hgoR2i6844R3R18R5R82R12aR81R82hgoR2i5972R3R18R5R84R12aR83R84hgoR2i6301R3R18R5R98R12aR97R98hgoR2i8148R3R18R5R96R12aR95R96hgoR2i308918R3R18R5R17R12aR16R17hgoR2i7499R3R18R5R100R12aR99R100hgoR2i6146R3R18R5R62R12aR61R62hgoR2i5378R3R18R5R60R12aR59R60hgoR2i5310R3R18R5R68R12aR67R68hgoR2i5826R3R18R5R72R12aR71R72hgoR2i6370R3R18R5R70R12aR69R70hgoR2i5464R3R18R5R64R12aR63R64hgoR2i4864R3R18R5R66R12aR65R66hgh","rootPath":null,"version":2,"libraryArgs":[],"libraryType":null}', Rg.rootPath);
-        a.assets = a.assets.filter(function (asset) {
-            return asset.id !== "assets/loading.jpg";
-        });
+        // Keep the original loading.jpg resource in the preload manifest. The
+        // resource may be absent in some mirrors, so failure remains non-fatal.
         a.rootPath = "";
         a.assets.forEach(function (asset) {
             // Optional sound downloads must not delay the menu.
@@ -23177,11 +23175,6 @@ var u = function() {};
     // Main.diggerzService as its service bridge.
     window.Main = q;
     window.l = l;
-    // Native trade-review dialog needs these private engine classes (resolved lazily).
-    window.DiggerzNativeUi = {
-        get vb() { return vb; }, get ra() { return ra; }, get ja() { return ja; },
-        get X() { return X; }, get f() { return f; }
-    };
     window.oa = oa;
     window.DiggerzService = DiggerzService;
     window.DiggerzRuntime = {
@@ -24013,6 +24006,15 @@ var u = function() {};
                         E.V0(parent, wx, wy, 8, 4, 28, 0, 0, 0, 0, 1.2, 1.2, 1.2, 0.7, 2.5, 0.85, 0.9, 1.4);
                         q.diggerzMiningEffects = (q.diggerzMiningEffects || 0) + 1;
                     }
+                    // A brief native-sprite hit jiggle, matching the old block-hit feel.
+                    var tileLayer = l.z38 && l.z38.R39 && l.z38.R39[layer];
+                    var tileSprite = tileLayer && tileLayer.r33 ? tileLayer.r33(wx, wy) : null;
+                    if (tileSprite && tileSprite.F6) {
+                        var ox = tileSprite.b6, oy = tileSprite.b7, nudge = 2 + Math.random()*2;
+                        tileSprite.F6(1, ox, ox-nudge, 35); tileSprite.F6(1, ox-nudge, ox+nudge, 55, false, 35);
+                        tileSprite.F6(1, ox+nudge, ox, 45, false, 90);
+                        tileSprite.F6(2, oy, oy-1, 30); tileSprite.F6(2, oy-1, oy, 60, false, 30);
+                    }
                 } catch (mineFxErr) {}
             }
             return true
@@ -24727,7 +24729,7 @@ var u = function() {};
                 var mineNow=Date.now();
                 if(!this._build241MineNoticeAt || mineNow-this._build241MineNoticeAt>1800){
                     this._build241MineNoticeAt=mineNow;
-                    try{this.centerMessage("^3YOU CAN'T MINE BEFORE PVP STARTS!")}catch(_e){}
+                    try{chat("^3You can't mine until the match starts!")}catch(_e){}
                 }
                 return;
             }
@@ -45316,16 +45318,8 @@ var u = function() {};
         U41: function() {
             var a = this._2
               , b = l.z38.f4($b);
-            var __tradeTarget = this._2._2 instanceof ze;
-            if (null != b) {
-                b.a0 = 1;
-                if (__tradeTarget) {
-                    // Trade slot: split the chosen amount into the slot; never drop items on the ground.
-                    var __n = H.parseInt(b.F30.E32);
-                    window.__dzTradeSplit = (__n > 0 && __n < this.g36) ? {slot: this.b39, n: __n} : null;
-                } else
-                    K.Y8(a.q7, this.b39, this.g36 - H.parseInt(b.F30.E32));
-            }
+            null != b && (b.a0 = 1,
+            K.Y8(a.q7, this.b39, this.g36 - H.parseInt(b.F30.E32)));
             this._2._2 instanceof ze && (b = this._2._2,
             K.y4(a.q7, this.b39, b.n40.q7, b.k5));
             a.q46(a._2);
@@ -121950,11 +121944,7 @@ e50: function(a) {
       }
       return oldA17.call(this,opcode,body,c)
     };
-    var oldSwap=proto.swap;proto.swap=function(packet){if(!window.DiggerzIsMultiplayer(this)||!this.pvpTrade)return oldSwap.call(this,packet);var start=packet.Q0,fromId=packet.Q6(),from=packet.Q9(),toId=packet.Q6(),to=packet.Q9(),tr=this.pvpTrade;if(tr.locked){this.message('^1Trade is locked after acceptance.');return}var fromPlayer=fromId.q2(this.playerId),toPlayer=toId.q2(this.playerId),fromOffer=fromId.q2(tr.localGuid),toOffer=toId.q2(tr.localGuid);if(!(fromPlayer||fromOffer)||!(toPlayer||toOffer)){packet.Q0=start;return oldSwap.call(this,packet)}var fromArr=fromPlayer?this.state.slots:tr.localSlots,toArr=toPlayer?this.state.slots:tr.localSlots;if(from<0||to<0||from>=fromArr.length||to>=toArr.length)return;if((fromOffer&&from>=3)||(toOffer&&to>=3))return;var sp=window.__dzTradeSplit;window.__dzTradeSplit=null;
-      if(sp&&fromPlayer&&toOffer&&sp.slot===from){var src=fromArr[from],dst=toArr[to];
-        if(src&&src.category&&src.count>sp.n&&(!dst||!dst.category||!dst.count)){var part=itemCopy(src);part.count=sp.n;src.count-=sp.n;toArr[to]=part;this.sendInventory();this.pvpTradeOffer();return}
-        if(src&&src.category&&dst&&dst.category===src.category&&dst.id===src.id&&(dst.variant|0)===(src.variant|0)&&src.count>sp.n){dst.count+=sp.n;src.count-=sp.n;this.sendInventory();this.pvpTradeOffer();return}}
-      var hold=fromArr[from]||emptyItem();fromArr[from]=toArr[to]||emptyItem();toArr[to]=hold;this.sendInventory();this.pvpTradeOffer()};
+    var oldSwap=proto.swap;proto.swap=function(packet){if(!window.DiggerzIsMultiplayer(this)||!this.pvpTrade)return oldSwap.call(this,packet);var start=packet.Q0,fromId=packet.Q6(),from=packet.Q9(),toId=packet.Q6(),to=packet.Q9(),tr=this.pvpTrade;if(tr.locked){this.message('^1Trade is locked after acceptance.');return}var fromPlayer=fromId.q2(this.playerId),toPlayer=toId.q2(this.playerId),fromOffer=fromId.q2(tr.localGuid),toOffer=toId.q2(tr.localGuid);if(!(fromPlayer||fromOffer)||!(toPlayer||toOffer)){packet.Q0=start;return oldSwap.call(this,packet)}var fromArr=fromPlayer?this.state.slots:tr.localSlots,toArr=toPlayer?this.state.slots:tr.localSlots;if(from<0||to<0||from>=fromArr.length||to>=toArr.length)return;if((fromOffer&&from>=3)||(toOffer&&to>=3))return;var hold=fromArr[from]||emptyItem();fromArr[from]=toArr[to]||emptyItem();toArr[to]=hold;this.sendInventory();this.pvpTradeOffer()};
     var oldSave=proto.save;proto.save=function(force){if(window.DiggerzIsMultiplayer(this)&&this.pvpTrade)return false;return oldSave.call(this,force)};
     var oldDropGuid=proto.dropGuid;proto.dropGuid=function(){if(window.DiggerzIsMultiplayer(this)&&this.playerId){var n=this.nextDrop++;return this.guid((this.playerId.P4^0x44525031)|0,n|0,(this.playerId.P6^0x53485244)|0,(this.playerId.P7^n)|0)}return oldDropGuid.call(this)};
     var oldSpawnDrop=proto.spawnDrop;proto.spawnDrop=function(category,id,count,x,y,text,tier){var before={},k;for(k in this.drops)before[k]=1;var r=oldSpawnDrop.call(this,category,id,count,x,y,text,tier);if(window.DiggerzIsMultiplayer(this)&&P.joined&&!this._pvpApplyingDrop){for(k in this.drops)if(!before[k]){var d=this.drops[k];this.pvpSend({t:'drop-spawn',drop:{guid:guidParts(d.guid),category:d.category|0,id:d.id|0,variant:0,count:d.count|0,extra:0,x:+d.x||0,y:+d.y||0,text:String(d.text||''),tier:String(d.tier||'')}})}}return r};
@@ -121987,7 +121977,7 @@ e50: function(a) {
     // to enter and play immediately while the server connection establishes behind the scenes.
     installRuntimeHooks();
     if(!P.menu){setStatus('Title-screen menu reference is missing. Return to the title screen and try again.');return}
-    P.starting=true;overlay.style.display='none';
+    P.starting=true;overlay.style.display='none';try{window.dispatchEvent(new Event('diggerz:multiplayer-joining'))}catch(_joinLoadErr){}
     try{
       prepareMenu();
       q.player.l7=!1;
@@ -122024,13 +122014,18 @@ e50: function(a) {
 </script>
 
 <style id="diggerz-trade-review-style">
-#diggerz-trade-review{display:none;position:fixed;inset:0;z-index:2147483600;background:rgba(0,0,0,.72);align-items:center;justify-content:center;font-family:Arial,sans-serif}
-#diggerz-trade-review .box{width:min(470px,calc(100vw - 32px));background:#172330;border:3px solid #f4d45a;border-radius:12px;padding:20px;color:#fff;box-shadow:0 18px 70px #000}
-#diggerz-trade-review h2{margin:0 0 8px;color:#f4d45a}#diggerz-trade-review ul{min-height:55px;margin:10px 0 14px;padding-left:22px}
-#diggerz-trade-review .warn{color:#ffd76a;font-weight:700}#diggerz-trade-review .row{display:flex;gap:10px;justify-content:flex-end}
-#diggerz-trade-review button{padding:10px 16px;border:0;border-radius:6px;font-weight:800;cursor:pointer}#diggerz-trade-confirm{background:#55c879;color:#07170c}#diggerz-trade-back{background:#59697a;color:#fff}
+#diggerz-trade-review{display:none;position:fixed;inset:0;z-index:2147483600;background:rgba(0,0,0,.2);align-items:center;justify-content:center;font-family:Arial,sans-serif}
+#diggerz-trade-review .box{box-sizing:border-box;width:min(520px,calc(100vw - 28px));min-height:180px;background:rgba(10,18,54,.88);border:3px solid #53618a;border-radius:0;padding:12px 18px;color:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.65),0 6px 18px #0008;text-align:center}
+#diggerz-trade-review h2{margin:0 0 10px;color:#ffdf26;font-size:20px;font-weight:900;text-shadow:1px 2px #111}
+#diggerz-trade-review .get-label{color:#c58aff;font-size:16px;font-weight:900;text-shadow:1px 2px #111}
+#diggerz-trade-review ul{list-style:none;min-height:45px;margin:8px 0 12px;padding:0;display:flex;gap:8px;justify-content:center;align-items:center}
+#diggerz-trade-review .trade-review-slot{color:transparent;font-size:0;max-width:none;overflow:hidden;flex:0 0 72px;width:72px;height:72px;box-sizing:border-box}
+#diggerz-trade-review #diggerz-trade-receive{list-style:none;min-height:78px;margin:10px 0 14px;padding:0;display:flex;gap:10px;justify-content:center;align-items:center}
+#diggerz-trade-review .warn{display:none!important}#diggerz-trade-review .row{display:flex;gap:20px;justify-content:center}
+#diggerz-trade-review button{min-width:84px;padding:7px 18px;border:3px solid #9a9acb;border-radius:0;background:rgba(5,7,20,.7);box-shadow:inset 0 0 0 1px #25233c;color:#fff;font-size:16px;font-weight:900;text-shadow:1px 2px #111;cursor:pointer}
+#diggerz-trade-confirm{color:#ff4b4b!important}#diggerz-trade-back{color:#eee!important}
 </style>
-<div id="diggerz-trade-review"><div class="box"><h2>Check This Trade</h2><div>You are about to receive:</div><ul id="diggerz-trade-receive"></ul><div class="warn">Confirm only if this is exactly what you agreed to. If either player edits the trade, this review closes automatically.</div><div class="row"><button id="diggerz-trade-back">Keep Editing</button><button id="diggerz-trade-confirm">Confirm Trade</button></div></div></div>
+<div id="diggerz-trade-review"><div class="box"><h2>Check Your Trade Carefully!</h2><div class="get-label">You will get:</div><ul id="diggerz-trade-receive"></ul><div class="warn">Confirm only if this is exactly what you agreed to.</div><div class="row"><button id="diggerz-trade-confirm">Yes</button><button id="diggerz-trade-back">No</button></div></div></div></div>
 <style id="diggerz-br2216-style">
 #diggerz-br-banner{visibility:hidden!important;display:none;position:fixed;left:50%;top:14%;transform:translateX(-50%);z-index:2147482500;text-align:center;font:900 clamp(18px,2.5vw,34px)/1.15 Arial,sans-serif;text-shadow:0 3px 5px #000,0 0 10px #000;pointer-events:none;white-space:nowrap}
 #diggerz-br-pop{visibility:hidden!important;display:none;position:fixed;left:50%;top:40%;transform:translate(-50%,-50%) scale(2.2);z-index:2147482501;font:1000 clamp(70px,13vw,180px)/1 Arial,sans-serif;text-shadow:0 5px 10px #000;pointer-events:none;opacity:0}
@@ -122078,7 +122073,7 @@ e50: function(a) {
       try{if(P.service&&P.service.centerMessage)P.service.centerMessage((color==='#ff2f39'?'^1':'^3')+String(text))}catch(_centerErr){}
     }
     function winText(name){if(!winner)return;var text=String(name||'Player')+' wins!';winner.querySelector('.front').textContent=text;winner.querySelector('.shadow').textContent=text;winner.style.display='block';setTimeout(function(){winner.style.display='none'},2600)}
-    function resetBattleUi(){bannerText('');if(winner)winner.style.display='none';}
+    function resetBattleUi(){bannerText('');if(winner)winner.style.display='none'}
     function stats(service){if(!service.battleStats)service.battleStats={shots:0,hits:0,kills:0};return service.battleStats}
     function existingResult(){try{var Io=window.DiggerzRuntime&&window.DiggerzRuntime.getIo();return Io&&q.GetChildByType(Io)}catch(e){return null}}
     function showResults(service,title){if(!service||P.battle.resultsShown)return;P.battle.resultsShown=true;try{var Io=window.DiggerzRuntime&&window.DiggerzRuntime.getIo();if(!Io)throw new Error('result class missing');var old=existingResult();if(old)old.a0=1;var st=stats(service);q.children.push(new Io(st.shots|0,st.hits|0,st.kills|0,title))}catch(e){service.centerMessage(title)}}
@@ -122483,7 +122478,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
       #diggerz-trade-review .box{width:min(520px,calc(100vw - 30px))!important;background:linear-gradient(#4a4a4a,#232323)!important;border:4px solid #d4d4d4!important;border-radius:2px!important;box-shadow:inset 0 0 0 2px #111,0 8px 0 #111,0 15px 35px #000!important;padding:14px!important;text-align:center!important}
       #diggerz-trade-review h2{margin:3px 0 14px!important;color:#ff3434!important;text-shadow:2px 2px 0 #111!important;font-size:23px!important}
       #diggerz-trade-receive{list-style:none!important;padding:0!important;margin:8px auto 17px!important;display:flex!important;gap:12px!important;justify-content:center!important;min-height:94px!important}
-      #diggerz-trade-receive .trade-review-slot{width:116px;height:88px;box-sizing:border-box;background:linear-gradient(#858585,#4c4c4c);border:3px solid #d7d7d7;box-shadow:inset 0 0 0 3px #262626;display:flex;align-items:center;justify-content:center;padding:5px;color:white;text-shadow:1px 2px #111;font-weight:bold;font-size:13px;overflow:hidden}
+      #diggerz-trade-receive .trade-review-slot{width:72px!important;height:72px!important;flex:0 0 72px!important;box-sizing:border-box;background:linear-gradient(#858585,#4c4c4c);border:3px solid #d7d7d7;box-shadow:inset 0 0 0 3px #262626;display:flex;align-items:center;justify-content:center;overflow:hidden;color:transparent!important;font-size:0!important}
       #diggerz-trade-review .warn{display:none!important}
       #diggerz-trade-review .row{justify-content:center!important;gap:20px!important}
       #diggerz-trade-review button{min-width:125px!important;border:3px solid #eee!important;border-radius:2px!important;box-shadow:inset 0 0 0 2px rgba(0,0,0,.45),0 4px 0 #111!important;color:#fff!important;text-shadow:2px 2px #111!important;font-size:17px!important;padding:9px 14px!important}
@@ -122493,7 +122488,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
     `;document.head.appendChild(css);
 
     var review=document.getElementById('diggerz-trade-review'),reviewList=document.getElementById('diggerz-trade-receive'),confirmBtn=document.getElementById('diggerz-trade-confirm'),cancelBtn=document.getElementById('diggerz-trade-back');
-    if(review){var h=review.querySelector('h2');if(h)h.textContent='You will get these items.';if(confirmBtn)confirmBtn.textContent='Comfirm';if(cancelBtn)cancelBtn.textContent='Cancel'}
+    if(review){var h=review.querySelector('h2');if(h)h.textContent='Check Your Trade Carefully!';var gl=review.querySelector('.get-label');if(gl)gl.textContent='You will get:';if(confirmBtn)confirmBtn.textContent='Yes';if(cancelBtn)cancelBtn.textContent='No'}
 
     function chat(service,text){try{service.message(text)}catch(e){}}
     function refreshBoard(service){try{var board=service&&service.game&&service.game.f4?service.game.f4(window.Ao):null;if(board&&board.Z44)board.Z44()}catch(e){}}
@@ -122508,63 +122503,59 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
       }catch(e){try{service.centerMessage(text)}catch(_e){}}
     }
     function reviewItemName(service,item){item=item||{};if(!item.category||!item.count)return 'Empty';var name='Item';try{name=service.itemName(item.category|0,item.id|0)}catch(e){}return (item.count>1?item.count+' × ':'')+name}
-    function legacyShowTradeReview(service,m){
-      if(!review||!reviewList||!service.pvpTrade)return;
-      reviewList.innerHTML='';var items=Array.isArray(m.receive)?m.receive:[];
-      for(var i=0;i<3;i++){var d=document.createElement('div');d.className='trade-review-slot';d.textContent=reviewItemName(service,items[i]);reviewList.appendChild(d)}
-      service.pvpTrade.reviewOpen=true;service.pvpTrade.reviewToken=String(m.reviewToken||'');if(confirmBtn)confirmBtn.disabled=false;review.style.display='flex'
-    }
-    function legacyCloseTradeReview(){if(review)review.style.display='none';if(confirmBtn)confirmBtn.disabled=false}
-    if(confirmBtn)confirmBtn.onclick=function(){var s=P.service,tr=s&&s.pvpTrade;if(!s||!tr||!tr.reviewOpen)return;confirmBtn.disabled=true;s.pvpSend({t:'trade-confirm',tradeId:tr.id,reviewToken:tr.reviewToken})};
-    if(cancelBtn)cancelBtn.onclick=function(){var s=P.service,tr=s&&s.pvpTrade;if(tr){tr.reviewOpen=false;s.pvpSend({t:'trade-review-back',tradeId:tr.id})}closeTradeReview()};
-
-    // ---- Native "Check Your Trade Carefully!" dialog (engine class vb, Yes/No mode) ----
-    var tradeDlg=null;
-    function killTradeDlg(){try{if(tradeDlg)tradeDlg.a0=1}catch(e){}tradeDlg=null}
-    function closeTradeReview(){killTradeDlg();legacyCloseTradeReview()}
     function showTradeReview(service,m){
-      var N=window.DiggerzNativeUi,game=l.z38,tr=service&&service.pvpTrade;
-      if(!tr)return;
-      if(!N||!game||!game._9||typeof N.vb!=='function'){legacyShowTradeReview(service,m);return}
-      killTradeDlg();
+      if(!review||!reviewList||!service.pvpTrade)return;
+      reviewList.innerHTML='';
       var items=Array.isArray(m.receive)?m.receive:[];
-      tr.reviewOpen=true;tr.reviewToken=String(m.reviewToken||'');
-      var dlg;
-      function yes(){
-        var s=P.service,t=s&&s.pvpTrade;
-        if(s&&t&&t.reviewOpen){t.reviewWaiting=true;s.pvpSend({t:'trade-confirm',tradeId:t.id,reviewToken:t.reviewToken});chat('^7Waiting for the other player to confirm...')}
-        killTradeDlg();
-      }
-      function no(){
-        var s=P.service,t=s&&s.pvpTrade;
-        if(t){t.reviewOpen=false;s.pvpSend({t:'trade-review-back',tradeId:t.id})}
-        killTradeDlg();
-      }
-      try{
-        dlg=new N.vb(game,'^9Check Your Trade Carefully!','^6You will get:',service.playerId,N.vb.g30,yes,no,true);
-        // three display-only inventory slots (no drag, no click handlers); empty offer slot = empty frame
-        var y=dlg.F30.b7+dlg.F30.E39()+32;
-        for(var i=0;i<3;i++){
-          var cell=new N.ja(70,70,true);cell._1='tradecell';cell.D7(dlg);dlg._9.push(cell);
-          cell.b6=(i-1)*86;cell.b7=y;
-          var frame=new N.ra();frame.X6(N.f.INVENTORYGRID_PNG());frame.D7(cell);cell._9.push(frame);
-          var it=items[i];
-          if(it&&it.category&&it.count>0){
-            var icon=new N.X(cell,it.category|0,it.id|0,it.variant|0,0,it.count|0,0,null);
-            icon.N23();cell._9.push(icon);
+      for(var i=0;i<3;i++){
+        var item=items[i]||{}, d=document.createElement('div');
+        d.className='trade-review-slot';
+        d.setAttribute('role','img');
+        d.setAttribute('aria-label',reviewItemName(service,item));
+        d.title=reviewItemName(service,item);
+        d.textContent='';
+        d.style.position='relative';
+        d.style.flex='0 0 72px';
+        d.style.width='72px';d.style.height='72px';
+        d.style.boxSizing='border-box';
+        d.style.background='linear-gradient(135deg,#6d7891,#30384e)';
+        d.style.border='3px solid #aeb8d0';
+        d.style.boxShadow='inset 0 0 0 2px #202638, 0 2px 3px #0008';
+        d.style.display='flex';d.style.alignItems='center';d.style.justifyContent='center';
+        d.style.overflow='hidden';
+        if(item && item.category && item.id && service.game){
+          try{
+            var game=service.game||l.z38, cat=item.category|0, id=item.id|0;
+            // Use the same engine item-sprite constructor/helper used by the inventory where available.
+            var icon=null;
+            if(typeof window.__makeItemIcon==='function') icon=window.__makeItemIcon(d,id,cat,item.count|0);
+            if(!icon && typeof X==='function'){
+              icon=new X(game,cat,id,0,0,item.count|0,0,0);
+              try{if(typeof h!=='undefined'&&h.n7)h.n7(cat,icon,id,0)}catch(_){}
+              try{if(icon.N23)icon.N23()}catch(_){}
+            }
+            if(icon && icon.element && icon.element.parentNode!==d) d.appendChild(icon.element);
+          }catch(_){}
+          if((item.count|0)>1){
+            var count=document.createElement('span');count.textContent=String(item.count|0);
+            count.style.cssText='position:absolute;right:2px;bottom:1px;color:#fff;font:bold 12px Arial;text-shadow:1px 1px #000;pointer-events:none';
+            d.appendChild(count);
           }
         }
-        game._9.push(dlg);tradeDlg=dlg;
-      }catch(err){try{console.warn('native trade review failed',err)}catch(_e){}killTradeDlg();legacyShowTradeReview(service,m)}
+        reviewList.appendChild(d);
+      }
+      service.pvpTrade.reviewOpen=true;
+      service.pvpTrade.reviewToken=String(m.reviewToken||'');
+      if(confirmBtn)confirmBtn.disabled=false;
+      review.style.display='flex'
     }
-    // Make sure the dialog never outlives the trade it belongs to.
-    var _cancelLocal=proto.pvpCancelTradeLocal;if(_cancelLocal)proto.pvpCancelTradeLocal=function(){killTradeDlg();return _cancelLocal.apply(this,arguments)};
-    var _completeTrade=proto.pvpCompleteTrade;if(_completeTrade)proto.pvpCompleteTrade=function(){killTradeDlg();return _completeTrade.apply(this,arguments)};
+    function closeTradeReview(){if(review)review.style.display='none';if(confirmBtn)confirmBtn.disabled=false}
+    if(confirmBtn)confirmBtn.onclick=function(){var s=P.service,tr=s&&s.pvpTrade;if(!s||!tr||!tr.reviewOpen)return;confirmBtn.disabled=true;s.pvpSend({t:'trade-confirm',tradeId:tr.id,reviewToken:tr.reviewToken})};
+    if(cancelBtn)cancelBtn.onclick=function(){var s=P.service,tr=s&&s.pvpTrade;if(tr){tr.reviewOpen=false;s.pvpSend({t:'trade-review-back',tradeId:tr.id})}closeTradeReview()};
 
     function canvasTransform(service,x,y){
       try{var game=service.game||l.z38,canvas=document.querySelector('#openfl-content canvas'),r=canvas?canvas.getBoundingClientRect():{left:0,top:0,width:q.SCREENWIDTH,height:q.SCREENHEIGHT};var sx=r.width/(q.SCREENWIDTH||r.width||1),sy=r.height/(q.SCREENHEIGHT||r.height||1);return {x:r.left+(game.A7+x*l._44*(game.a8||1))*sx,y:r.top+(game.A8+y*l._44*(game.a9||1))*sy,rect:r}}catch(e){return null}
     }
-    function renderBarrier(service){}
     function audioFor(i){if(!speaker.audios[i]){var a=new Audio('/music_theme'+(i?i+1:'')+'.ogg');a.preload='auto';speaker.audios[i]=a}return speaker.audios[i]}
     function stopSpeaker(){for(var i=0;i<speaker.audios.length;i++)if(speaker.audios[i]){speaker.audios[i].pause();speaker.audios[i].volume=0}speaker.track=-1;speaker.volume=0}
     function setSpeakerState(m){speaker.state=m&&m.speaker?Object.assign({},m.speaker):null;speaker.serverOffset=(+m.serverNow||Date.now())-Date.now();if(!speaker.state||!speaker.state.on)stopSpeaker()}
@@ -122646,7 +122637,7 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
       return oldA17.call(this,opcode,body,c)
     };
 
-    var oldTick=proto.pvpTick;proto.pvpTick=function(){var r=oldTick.call(this);applyWins(this);try{renderBarrier(this)}catch(_e){};if(this.mode==='digtrade')tickSpeaker(this);return r};
+    var oldTick=proto.pvpTick;proto.pvpTick=function(){var r=oldTick.call(this);applyWins(this);if(this.mode==='digtrade')tickSpeaker(this);return r};
 
     // Build 23.7 SECURITY: the browser-local password database has been retired.
     // Preserve the currently bound account's saved game once, then erase password hashes/email bindings.
@@ -125059,21 +125050,31 @@ window.DiggerzBattleEquip=function(){resetBattleUi();P.intentionalClose=true;P.r
 })();
 </script>
 
-<button id="addToHomescreen" type="button" style="display:none;position:fixed;top:0;left:12px;z-index:99999;background:#d62828;color:#fff;border:none;cursor:pointer;padding:3px 10px;font:bold 13px sans-serif;border-radius:0 0 6px 6px">Add Diggerz to your desktop!</button>
-<script>
+<style id="diggerz-restored-loader-install-style">
+#diggerz-startup-loader{position:fixed;inset:0;z-index:2147483646;background:#10172b url('assets/loading.jpg') center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:#fff;font:900 20px Arial,sans-serif;text-shadow:2px 2px #000;transition:opacity .35s ease;pointer-events:none}
+#diggerz-startup-loader .inner{background:#111b31dd;border:3px solid #7c91c8;padding:20px 30px;text-align:center;box-shadow:0 5px 0 #000}
+#diggerz-startup-loader .sub{font-size:12px;margin-top:8px;opacity:.8}
+#diggerz-install-app{background:none;border:none;position:absolute;top:0px;right:75%;background-color:red;color:white;cursor:pointer;padding-top:2px;padding-right:8px;padding-bottom:2px;padding-left:8px}
+</style>
+<div id="diggerz-startup-loader" aria-live="polite"><div class="inner">Loading Diggerz…<div class="sub">Preparing game assets</div></div></div>
+<button id="diggerz-install-app" type="button" hidden>Add Diggerz to your desktop!</button>
+<script id="diggerz-restored-loader-install">
 (function(){
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('/service-worker.js').catch(function(e){console.log('SW failed',e)})}
-  var deferred=null,btn=document.getElementById('addToHomescreen');
-  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferred=e;btn.style.display='block'});
-  window.addEventListener('appinstalled',function(){btn.style.display='none';deferred=null});
-  btn.addEventListener('click',function(){
-    btn.style.display='none';
-    if(!deferred)return;
-    deferred.prompt();
-    deferred.userChoice.then(function(){deferred=null}).catch(function(){});
-  });
+ var loader=document.getElementById('diggerz-startup-loader'),install=document.getElementById('diggerz-install-app'),deferred=null;
+ function hideLoader(){if(!loader)return;loader.style.opacity='0';setTimeout(function(){if(loader&&loader.parentNode)loader.parentNode.removeChild(loader)},400)}
+ window.addEventListener('load',function(){setTimeout(hideLoader,250)});
+ setTimeout(function(){if(document.readyState==='complete')hideLoader()},12000);
+ window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferred=e;if(install)install.hidden=false});
+ window.addEventListener('appinstalled',function(){deferred=null;if(install)install.hidden=true});
+ if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){window.addEventListener('load',function(){navigator.serviceWorker.register('./service-worker.js').catch(function(){})})}
+ if(install)install.addEventListener('click',async function(){if(!deferred){install.title='Use your browser menu to install Diggerz';return}deferred.prompt();try{await deferred.userChoice}catch(e){}deferred=null;install.hidden=true});
+ // Show the same loading surface while a multiplayer join is underway, but never
+ // leave it up if a connection stalls.
+ function joinLoading(){if(!loader||!loader.isConnected){loader=document.createElement('div');loader.id='diggerz-startup-loader';loader.setAttribute('aria-live','polite');loader.innerHTML='<div class="inner">Joining multiplayer…<div class="sub">Connecting and synchronizing the world</div></div>';document.body.appendChild(loader)}else{var inner=loader.querySelector('.inner');if(inner)inner.innerHTML='Joining multiplayer…<div class="sub">Connecting and synchronizing the world</div>'}loader.style.display='flex';loader.style.opacity='1';setTimeout(hideLoader,10000)}
+ window.addEventListener('diggerz:multiplayer-joining',joinLoading);
 })();
 </script>
+
 </body>
 </html>
 <!-- Other original content may be protected by copyright. -->

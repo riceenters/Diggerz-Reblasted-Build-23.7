@@ -1,0 +1,9 @@
+{
+  "name": "Diggerz Reblasted",
+  "short_name": "Diggerz",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#10172b",
+  "theme_color": "#10172b",
+  "description": "Diggerz Reblasted"
+}
