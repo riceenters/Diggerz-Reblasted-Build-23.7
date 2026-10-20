@@ -51,7 +51,7 @@
       var code=window.prompt('Admin code:');
       if(code===null)return;
       code=String(code).trim();
-      var response=await fetch('https://diggerz-production.up.railway.app/api/admin/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:code}),cache:'no-store'});
+      var response=await fetch('https://diggerz.onrender.com/api/admin/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:code}),cache:'no-store'});
       var data={};try{data=await response.json()}catch(e){}
       if(!response.ok||!data.ok||!data.token){punishWrongCode();say(data.error==='too-many-attempts'?'Too many failed admin attempts. Try again later.':'Access denied.');return}
       adminToken=String(data.token);adminRole=String(data.role||'');adminExpiresAt=+data.expiresAt||0;window.DiggerzAdminSessionToken=adminToken;window.DiggerzAdminRole=adminRole;window.DiggerzAdminExpiresAt=adminExpiresAt;try{localStorage.setItem('diggerzAdminSessionToken',adminToken);localStorage.setItem('diggerzAdminSessionExpiresAt',String(adminExpiresAt));localStorage.setItem('diggerzAdminRole',adminRole)}catch(e){}
