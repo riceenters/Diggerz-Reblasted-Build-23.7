@@ -653,8 +653,10 @@ function patchGameHtmlForBuild239(input) {
     })();
   `;
   const localAdminAnchor = "  var ownerSequenceIndex=0;";
+  const codeHandler = "async function requestOwnerCode(){";
+  if (html.includes(codeHandler)) html = html.replace(codeHandler, codeHandler + "\\n    if(ownerAuthenticated || limeAuthenticated){panel.style.display='block';return;} ");
   if (html.includes(localAdminAnchor) && !html.includes('startVerifiedAdmin()')) {
-    html = html.replace(localAdminAnchor, localAdminAnchor + '\\n' + adminBridge);
+    html = html.replace(localAdminAnchor, localAdminAnchor + '\n' + adminBridge);
   } else {
     console.warn('[Diggerz Admin] Could not attach verified Firebase admin bridge to existing panel.');
   }
