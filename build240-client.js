@@ -106,8 +106,8 @@
   }
 
   function isRgbWeekend(){
-    // Retired permanently: regular RGB variants are admin-granted only.
-    return false;
+    var p=easternParts(new Date());
+    return p.weekday==='Sat'||p.weekday==='Sun';
   }
 
   function weekendSeed(){
@@ -813,15 +813,17 @@
           return null;
         }
 
-        // RGB and True RGB are admin-granted items, not mining drops.
-
+        if(!isRgbWeekend()){
+          var trueReward=rollTrueRgbReward();
+          if(trueReward)return trueReward;
+        }
 
         var hash=randomHash();
         var roll=hash%10000,item,list;
-        // Normal RGB and True RGB are admin-granted only, never natural drops.
-        // Keep the regular super-rare roll for non-RGB items; the reward helper
-        // filters any legacy/cached RGB candidate defensively.
-        if(roll<12)return this.superRareRewardAt(hash);
+        // Featured RGB is only a little more obtainable on weekends: 0.03%
+        // per natural block, rather than the old 0.24% combined weekend rate.
+        if(roll<(isRgbWeekend()?3:12))return this.superRareRewardAt(hash);
+        if(isRgbWeekend() && roll<12)return null;
         if(roll<42){
           list=window.DiggerzService.RARE_REWARDS||[];
           if(list.length){
