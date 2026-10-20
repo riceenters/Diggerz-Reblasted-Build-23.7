@@ -124,7 +124,9 @@ async function verifyFirebaseAdminIdToken(idToken) {
       !payload.sub || typeof payload.sub !== 'string' || payload.sub.length > 128 ||
       !Number.isFinite(payload.exp) || payload.exp <= now ||
       !Number.isFinite(payload.iat) || payload.iat > now + 60 ||
-      payload.email_verified !== true || !isAdminEmail(payload.email)) throw new Error('not-authorized');
+      payload.email_verified !== true ||
+      !payload.firebase || payload.firebase.sign_in_provider !== 'google.com' ||
+      !isAdminEmail(payload.email)) throw new Error('not-authorized');
   const certs = await readFirebaseCertificates();
   const certificate = certs[header.kid];
   if (!certificate || !crypto.verify('RSA-SHA256', Buffer.from(parts[0] + '.' + parts[1]), certificate, Buffer.from(parts[2], 'base64url'))) throw new Error('invalid-signature');
@@ -3623,20 +3625,9 @@ async function handleAdminApi(req, res, urlPath) {
     }
     return true;
   }
+  // Legacy password-only endpoint is retired: it bypasses verified Google identity.
   if (urlPath === '/api/admin/auth' && req.method === 'POST') {
-    const state = authAttemptState(ip);
-    if (state.blockedUntil > Date.now()) { sendApiJson(res,429,{ok:false,error:'too-many-attempts',retryAt:state.blockedUntil}); return true; }
-    let body; try { body = await readJsonBody(req,4096); } catch { sendApiJson(res,400,{ok:false,error:'bad-request'}); return true; }
-    const role = adminRoleForCode(body && body.code);
-    if (!role) {
-      const after = recordAdminAuthFailure(ip);
-      sendApiJson(res,403,{ok:false,error:'invalid-admin-code',remaining:Math.max(0,ADMIN_MAX_FAILURES-after.failures)});
-      return true;
-    }
-    clearAdminAuthFailures(ip);
-    const session = issueAdminSession(role,ip);
-    log(`Admin ${role} session authenticated from ${ip}.`);
-    sendApiJson(res,200,{ok:true,role:session.role,token:session.token,expiresAt:session.expiresAt});
+    sendApiJson(res,403,{ok:false,error:'google-login-required'});
     return true;
   }
   if (urlPath === '/api/admin/bans' && req.method === 'GET') {
