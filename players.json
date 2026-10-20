@@ -12,5 +12,12 @@
     "clientIdHash": "1db73fa3c3f8fb2f4c52408b75cac9c77e39776793a07f65d4915a5a316fbf85",
     "ipHash": "12ca17b49af2289436f303e0166030a21e525d266e209267433801a8fd4071a0",
     "lastSeen": 1792453227911
+  },
+  {
+    "name": "Player2",
+    "nameKey": "player2",
+    "clientIdHash": "5459aabb46ea417b4c9fb063ddf0137a81c057ae3a1eef88f9a1918065ccfdd4",
+    "ipHash": "12ca17b49af2289436f303e0166030a21e525d266e209267433801a8fd4071a0",
+    "lastSeen": 1792454869441
   }
 ]
