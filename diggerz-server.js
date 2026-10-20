@@ -220,8 +220,8 @@ function patchGameHtmlForBuild239(input) {
 
   // Build 23.8 itch/Railway split: static browser clients always use Railway
   // for multiplayer and protected admin HTTP endpoints.
-  const railwayHttp = 'https://diggerz-production.up.railway.app';
-  const railwayWs = 'wss://diggerz-production.up.railway.app';
+  const railwayHttp = 'https://diggerz.onrender.com';
+  const railwayWs = 'wss://diggerz.onrender.com';
   const httpsWsOld = "    if(location.protocol==='https:')return 'wss://'+location.host;";
   if (html.includes(httpsWsOld)) html = html.replace(httpsWsOld, "    if(location.protocol==='https:')return '"+railwayWs+"';");
   else console.warn('[Diggerz 23.8] automatic HTTPS WebSocket target was not found.');
@@ -566,6 +566,11 @@ function patchGameHtmlForBuild239(input) {
   const nativeRaceMenuReplacement = '            c = new xa(0,-70,"Support Diggerz");\n            c.D7(b, !0);\n            c.set_local_xScale(c.set_local_yScale(1.25));\n            this._9.push(c);\n            // Cart Racing reuses the original red native menu button.\n            b = new z;\n            b.Init(u.REDBUTTON_PNG());\n            b.D7(this);\n            b.b7 = d;\n            d += 80;\n            b.b6 = q.SCREENWIDTH / 2 - 150;\n            b.set_local_xScale(b.set_local_yScale(.5));\n            b._1 = "welcome message";\n            b.F6(5, 0, 1, 500);\n            this._9.push(b);\n            this.d51 = new ob(0,0,"",q.MAIN_FONT_BIG);\n            this.d51.D7(b);\n            this.d51.E37("Cart Racing");\n            this.d51.b7 = 2;\n            this.d51.C33 = function() { if(window.DiggerzLaunchCartRace)window.DiggerzLaunchCartRace(); };\n            this.d51._1 = "welcome message";\n            this._9.push(this.d51);\n            c = new xa(0,-70,"^1NEW  Race to the finish!",q.MAIN_FONT);\n            c.D7(b, !0);\n            c.set_local_xScale(c.set_local_yScale(1.15));\n            this._9.push(c)\n        },\n        d59: null,';
   if(html.includes(nativeRaceMenuAnchor))html=html.replace(nativeRaceMenuAnchor,nativeRaceMenuReplacement);
   else if(!html.includes('this.d51.E37("Cart Racing");'))console.warn('[Cart Racing] Native Donate menu anchor missing');
+
+  // Render fallback: older embedded scripts still target expired Railway URLs.
+  // Rewrite only the obsolete host; preserve all existing game and admin logic.
+  html = html.replace(/https:\/\/diggerz-production\.up\.railway\.app/g, 'https://diggerz.onrender.com');
+  html = html.replace(/wss:\/\/diggerz-production\.up\.railway\.app/g, 'wss://diggerz.onrender.com');
 
   return Buffer.from(html, 'utf8');
 }
