@@ -80,6 +80,57 @@ const ADMIN_EMAIL_ALLOWLIST = new Set([
   'theharlanhdavidson@gmail.com',
   'tezzlerisasinner@gmail.com'
 ]);
+
+const FIREBASE_CERT_URL = 'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com';
+let firebaseCertificates = null, firebaseCertificatesExpiry = 0;
+function readFirebaseCertificates() {
+  if (firebaseCertificates && Date.now() < firebaseCertificatesExpiry) return Promise.resolve(firebaseCertificates);
+  return new Promise((resolve, reject) => {
+    https.get(FIREBASE_CERT_URL, {timeout: 7000}, response => {
+      if (response.statusCode !== 200) { response.resume(); reject(new Error('firebase-cert-http')); return; }
+      let body = '';
+      response.on('data', chunk => { body += chunk; if (body.length > 100000) response.destroy(); });
+      response.on('end', () => {
+        try {
+          const certs = JSON.parse(body);
+          if (!certs || typeof certs !== 'object') throw new Error('invalid-certificates');
+          const maxAge = /max-age=(\\d+)/.exec(String(response.headers['cache-control'] || ''));
+          firebaseCertificates = certs;
+          firebaseCertificatesExpiry = Date.now() + Math.min(3600, Math.max(60, maxAge ? Number(maxAge[1]) : 300)) * 1000;
+          resolve(certs);
+        } catch (error) { reject(error); }
+      });
+      response.on('error', reject);
+    }).on('error', reject);
+  });
+}
+async function verifyFirebaseAdminIdToken(idToken) {
+  if (typeof idToken !== 'string' || idToken.length > 8192) throw new Error('invalid-token');
+  const parts = idToken.split('.');
+  if (parts.length !== 3) throw new Error('invalid-token');
+  const header = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
+  const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+  // Project ID is pinned to the Firebase configuration bundled into the deployed game,
+  // or supplied explicitly by the operator. Never accept it from the request.
+  const configured = String(process.env.DIGGERZ_FIREBASE_PROJECT_ID || '').trim();
+  const bundle = gameHtml ? gameHtml.toString('utf8') : '';
+  const match = bundle.match(/projectId\\s*[:=]\\s*["']([a-z0-9-]+)["']/i);
+  const projectId = configured || (match ? match[1] : '');
+  const now = Math.floor(Date.now() / 1000);
+  if (!projectId) throw new Error('firebase-project-not-configured');
+  if (header.alg !== 'RS256' || !header.kid ||
+      payload.aud !== projectId ||
+      payload.iss !== 'https://securetoken.google.com/' + projectId ||
+      !payload.sub || typeof payload.sub !== 'string' || payload.sub.length > 128 ||
+      !Number.isFinite(payload.exp) || payload.exp <= now ||
+      !Number.isFinite(payload.iat) || payload.iat > now + 60 ||
+      payload.email_verified !== true || !isAdminEmail(payload.email)) throw new Error('not-authorized');
+  const certs = await readFirebaseCertificates();
+  const certificate = certs[header.kid];
+  if (!certificate || !crypto.verify('RSA-SHA256', Buffer.from(parts[0] + '.' + parts[1]), certificate, Buffer.from(parts[2], 'base64url'))) throw new Error('invalid-signature');
+  return payload;
+}
+
 function isAdminEmail(email) {
   return ADMIN_EMAIL_ALLOWLIST.has(String(email || '').trim().toLowerCase());
 }
@@ -571,6 +622,42 @@ function patchGameHtmlForBuild239(input) {
   // Rewrite only the obsolete host; preserve all existing game and admin logic.
   html = html.replace(/https:\/\/diggerz-production\.up\.railway\.app/g, 'https://diggerz.onrender.com');
   html = html.replace(/wss:\/\/diggerz-production\.up\.railway\.app/g, 'wss://diggerz.onrender.com');
+
+
+  // Bridge the verified Firebase session into the existing admin closure.
+  const adminBridge = `
+    (function(){
+      function startVerifiedAdmin(){
+        if(!window.firebase || !firebase.auth || !document.getElementById('diggerz-admin-panel')) return false;
+        firebase.auth().onAuthStateChanged(async function(user){
+          if(!user) { ownerAuthenticated=false; limeAuthenticated=false; adminToken=''; panel.style.display='none'; toggle.style.display='none'; return; }
+          try {
+            var idToken = await user.getIdToken();
+            var resp = await fetch('/api/admin/firebase-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({idToken:idToken}),cache:'no-store'});
+            var data = await resp.json();
+            if(!resp.ok || !data.ok || !data.token){say('Admin account verification failed.');return;}
+            adminToken=String(data.token);adminRole=String(data.role||'');adminExpiresAt=Number(data.expiresAt)||0;
+            ownerAuthenticated=adminRole==='owner';limeAuthenticated=adminRole==='lime';
+            window.DiggerzAdminSessionToken=adminToken;
+            window.DiggerzAdminRole=adminRole;
+            window.DiggerzAdminExpiresAt=adminExpiresAt;
+            try {localStorage.setItem('diggerzAdminSessionToken',adminToken);localStorage.setItem('diggerzAdminSessionExpiresAt',String(adminExpiresAt));localStorage.setItem('diggerzAdminRole',adminRole)}catch(_e){}
+            authorizeCurrentService();showToggle();panel.style.display='block';
+            try{refreshPlayers();refreshItemCatalog();refreshBans();refreshAdminMaps()}catch(_e){}
+            say('Verified Google admin session active.');
+          } catch(error) {say('Admin verification unavailable.');}
+        });
+        return true;
+      }
+      var checks=0, timer=setInterval(function(){if(startVerifiedAdmin()||++checks>100)clearInterval(timer)},200);
+    })();
+  `;
+  const localAdminAnchor = "  var ownerSequenceIndex=0;";
+  if (html.includes(localAdminAnchor) && !html.includes('startVerifiedAdmin()')) {
+    html = html.replace(localAdminAnchor, localAdminAnchor + '\\n' + adminBridge);
+  } else {
+    console.warn('[Diggerz Admin] Could not attach verified Firebase admin bridge to existing panel.');
+  }
 
   return Buffer.from(html, 'utf8');
 }
@@ -2526,23 +2613,8 @@ function relayGameMessage(client, message, rawLength) {
   if (message.t==='hello') {
     try {
       if (message.playerGuid) client.playerGuid = String(message.playerGuid).slice(0, 80);
-      if (message.authUid) client.authUid = String(message.authUid).slice(0, 128);
-      if (message.authEmail) client.authEmail = String(message.authEmail).trim().toLowerCase().slice(0, 180);
-      client.isAdmin = isAdminEmail(client.authEmail);
-      if (client.isAdmin) {
-        // Issue a long-lived admin session for this connection without a password code
-        try {
-          const session = issueAdminSession('owner', client.ip || '');
-          client.adminToken = session.token;
-          sendJson(client, {
-            t: 'admin-email-granted',
-            role: 'owner',
-            token: session.token,
-            expiresAt: session.expiresAt,
-            email: client.authEmail
-          });
-        } catch (eAdm) {}
-      }
+      // Never trust authUid/authEmail from a WebSocket hello for admin privileges.
+      // Admin identity must be verified by /api/admin/firebase-auth.
     } catch (e) {}
     const newName=normalizeName(message.name||client.name), changed=newName!==client.name;
     client.name=newName;
@@ -3534,6 +3606,21 @@ async function handleAdminApi(req, res, urlPath) {
     return true;
   }
 
+  if (urlPath === '/api/admin/firebase-auth' && req.method === 'POST') {
+    let body;
+    try { body = await readJsonBody(req, 12288); }
+    catch { sendApiJson(res,400,{ok:false,error:'bad-request'}); return true; }
+    try {
+      const user = await verifyFirebaseAdminIdToken(body && body.idToken);
+      const role = 'owner'; // Existing email allowlist grants owner privileges to both maintainers.
+      const session = issueAdminSession(role, ip);
+      sendApiJson(res,200,{ok:true,role:session.role,token:session.token,expiresAt:session.expiresAt});
+    } catch(error) {
+      const configError = error.message === 'firebase-project-not-configured';
+      sendApiJson(res,configError ? 503 : 403,{ok:false,error:configError ? 'firebase-not-configured' : 'not-authorized'});
+    }
+    return true;
+  }
   if (urlPath === '/api/admin/auth' && req.method === 'POST') {
     const state = authAttemptState(ip);
     if (state.blockedUntil > Date.now()) { sendApiJson(res,429,{ok:false,error:'too-many-attempts',retryAt:state.blockedUntil}); return true; }
