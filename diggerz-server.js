@@ -94,7 +94,7 @@ function readFirebaseCertificates() {
         try {
           const certs = JSON.parse(body);
           if (!certs || typeof certs !== 'object') throw new Error('invalid-certificates');
-          const maxAge = /max-age=(\\d+)/.exec(String(response.headers['cache-control'] || ''));
+          const maxAge = /max-age=(\d+)/.exec(String(response.headers['cache-control'] || ''));
           firebaseCertificates = certs;
           firebaseCertificatesExpiry = Date.now() + Math.min(3600, Math.max(60, maxAge ? Number(maxAge[1]) : 300)) * 1000;
           resolve(certs);
@@ -114,7 +114,7 @@ async function verifyFirebaseAdminIdToken(idToken) {
   // or supplied explicitly by the operator. Never accept it from the request.
   const configured = String(process.env.DIGGERZ_FIREBASE_PROJECT_ID || '').trim();
   const bundle = gameHtml ? gameHtml.toString('utf8') : '';
-  const match = bundle.match(/projectId\\s*[:=]\\s*["']([a-z0-9-]+)["']/i);
+  const match = bundle.match(/projectId\s*[:=]\s*["']([a-z0-9-]+)["']/i);
   const projectId = configured || (match ? match[1] : '');
   const now = Math.floor(Date.now() / 1000);
   if (!projectId) throw new Error('firebase-project-not-configured');
@@ -656,7 +656,7 @@ function patchGameHtmlForBuild239(input) {
   `;
   const localAdminAnchor = "  var ownerSequenceIndex=0;";
   const codeHandler = "async function requestOwnerCode(){";
-  if (html.includes(codeHandler)) html = html.replace(codeHandler, codeHandler + "\\n    if(ownerAuthenticated || limeAuthenticated){panel.style.display='block';return;} ");
+  if (html.includes(codeHandler)) html = html.replace(codeHandler, codeHandler + "\n    if(ownerAuthenticated || limeAuthenticated){panel.style.display='block';return;} ");
   if (html.includes(localAdminAnchor) && !html.includes('startVerifiedAdmin()')) {
     html = html.replace(localAdminAnchor, localAdminAnchor + '\n' + adminBridge);
   } else {
