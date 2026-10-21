@@ -46,6 +46,7 @@ const GAME_HTML_PATH = path.join(__dirname, 'index.html');
 const BUILD239_CLIENT_PATH = path.join(__dirname, 'build239-client.js');
 const BUILD240_CLIENT_PATH = path.join(__dirname, 'build240-client.js');
 const BUILD250_CLIENT_PATH = path.join(__dirname, 'build250-client.js');
+const ZOMBIES25_CLIENT_PATH = path.join(__dirname, 'zombies25-client.js');
 const TILES_PNG_PATH = path.join(__dirname, 'tiles.png');
 const BKND_PNG_PATH = path.join(__dirname, 'bknd.png');
 const REBLASTED_PNG_PATH = path.join(__dirname, 'reblasted.png');
@@ -570,6 +571,16 @@ function patchGameHtmlForBuild239(input) {
   if(html.includes(nativeRaceMenuAnchor))html=html.replace(nativeRaceMenuAnchor,nativeRaceMenuReplacement);
   else if(!html.includes('this.d51.E37("Cart Racing");'))console.warn('[Cart Racing] Native Donate menu anchor missing');
 
+  // Native Diggerz REDBUTTON_PNG gamemode entry, inserted after Cart Racing.
+  const zombieButtonAnchor='this.d51.E37("Cart Racing");\\n            this.d51.b7 = 2;';
+  if(html.includes(zombieButtonAnchor)){
+    // Keep the existing Cart Racing button and append Zombies after its subtitle.
+    const zombieSubtitle='c = new xa(0,-70,"^1NEW  Race to the finish!",q.MAIN_FONT);\\n            c.D7(b, !0);\\n            c.set_local_xScale(c.set_local_yScale(1.15));\\n            this._9.push(c)';
+    const nativeZombies='c = new xa(0,-70,"^1NEW  Race to the finish!",q.MAIN_FONT);\\n            c.D7(b, !0);\\n            c.set_local_xScale(c.set_local_yScale(1.15));\\n            this._9.push(c);\\n            b = new z;\\n            b.Init(u.REDBUTTON_PNG());\\n            b.D7(this);\\n            b.b7 = d;\\n            d += 80;\\n            b.b6 = q.SCREENWIDTH / 2 - 150;\\n            b.set_local_xScale(b.set_local_yScale(.5));\\n            b._1 = "welcome message";\\n            b.F6(5, 0, 1, 500);\\n            this._9.push(b);\\n            this.d51 = new ob(0,0,"",q.MAIN_FONT_BIG);\\n            this.d51.D7(b);\\n            this.d51.E37("Zombies");\\n            this.d51.b7 = 2;\\n            this.d51.C33 = function(){if(window.DiggerzLaunchZombies25)window.DiggerzLaunchZombies25()};\\n            this.d51._1 = "welcome message";\\n            this._9.push(this.d51);\\n            c = new xa(0,-70,"^1SOLO  Survive Wasteland",q.MAIN_FONT);\\n            c.D7(b, !0);\\n            c.set_local_xScale(c.set_local_yScale(1.15));\\n            this._9.push(c)';
+    if(html.includes(zombieSubtitle))html=html.replace(zombieSubtitle,nativeZombies);
+  }
+  if(!html.includes('/zombies25-client.js'))html=html.replace('</body>','<script src="/zombies25-client.js"></script></body>');
+
   // Render fallback: older embedded scripts still target expired Railway URLs.
   // Rewrite only the obsolete host; preserve all existing game and admin logic.
   html = html.replace(/https:\/\/diggerz-production\.up\.railway\.app/g, 'https://diggerz.onrender.com');
@@ -582,6 +593,7 @@ let gameHtml = null;
 let build239ClientJs = null;
 let build240ClientJs = null;
 let build250ClientJs = null;
+let zombies25ClientJs = null;
 let build25FoxyGif = null;
 let build25FoxyScreamMp3 = null;
 let build25FoxyFinalPng = null;
@@ -600,6 +612,7 @@ try { gameHtml = patchGameHtmlForBuild239(fs.readFileSync(GAME_HTML_PATH)); } ca
 try { build239ClientJs = fs.readFileSync(BUILD239_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build239-client.js not found:', error.message); }
 try { build240ClientJs = fs.readFileSync(BUILD240_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build240-client.js not found:', error.message); }
 try { build250ClientJs = fs.readFileSync(BUILD250_CLIENT_PATH); } catch (error) { console.warn('[Diggerz] build250-client.js not found:', error.message); }
+try { zombies25ClientJs = fs.readFileSync(ZOMBIES25_CLIENT_PATH); } catch (error) { console.warn('[Zombies25] missing client:',error.message); }
 try { build25FoxyGif = fs.readFileSync(BUILD25_FOXY_GIF_PATH); } catch (error) { console.warn('[Diggerz 25.0] build25-foxy.gif not bundled.'); }
 try { build25FoxyScreamMp3 = fs.readFileSync(BUILD25_FOXY_SCREAM_PATH); } catch (error) { console.warn('[Diggerz 25.0] build25-foxy-scream.mp3 not bundled.'); }
 try { build25FoxyFinalPng = fs.readFileSync(BUILD25_FOXY_FINAL_PATH); } catch (error) { console.warn('[Diggerz 25.0] build25-foxy-final.png not bundled.'); }
@@ -3876,6 +3889,7 @@ const server = http.createServer(async (req, res) => {
     sendApiJson(res,200,{ok:true,events:game.events.splice(0),state:{phase:game.phase,wave:game.wave,points:game.points,kills:game.kills,player:game.player,zombies:game.zombies,box:game.box}});
     return;
   }
+  if (urlPath === '/zombies25-client.js') { serveBuffer(res,zombies25ClientJs,'application/javascript; charset=utf-8'); return; }
   if (urlPath === '/build250-client.js') { serveBuffer(res,build250ClientJs,'application/javascript; charset=utf-8'); return; }
   if (urlPath === '/tiles.png') { serveBuffer(res,tilesPng,'image/png'); return; }
   if (urlPath === '/bknd.png') { serveBuffer(res,bkndPng,'image/png'); return; }
