@@ -1,0 +1,28 @@
+'use strict';
+// Offline smoke tests: node zombies25-core.test.js
+const assert=require('node:assert/strict');
+const {ZombiesRun,surfaces}=require('./zombies25-core');
+const map={format:'diggerz-pvp-map-v1',name:'Test',width:128,height:80,tiles:[]};
+for(let x=0;x<128;x++)map.tiles.push([x,50,240,0]);
+const events=[];
+const game=new ZombiesRun(map,e=>events.push(e),{rng:()=>0.5});
+assert.ok(surfaces(map).length>100,'ground should be detected');
+assert.equal(game.phase,'countdown');
+for(let i=0;i<101;i++)game.tick(0.1);
+assert.equal(game.wave,1);
+assert.equal(game.phase,'wave');
+assert.equal(game.guns[0].id,'shotgun-z');
+assert.equal(game.points,0);
+assert.equal(game.boxInteract().ok,false,'box must require proximity');
+game.move(game.box.x,game.box.y);
+assert.equal(game.boxInteract().reason,'not-enough-points');
+game.points=1000;
+assert.equal(game.boxInteract().ok,true);
+for(let i=0;i<32;i++)game.tick(0.1);
+assert.equal(game.box.state,'ready');
+assert.equal(game.boxInteract().ok,true);
+game.survived=10;game.finish();
+const end=events.findLast(e=>e.t==='zombies-game-over');
+assert.equal(end.coins,30);
+assert.equal(end.cosmeticEligible,true);
+console.log('Zombies core smoke tests passed');
