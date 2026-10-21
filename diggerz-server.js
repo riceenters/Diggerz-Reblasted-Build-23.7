@@ -64,6 +64,9 @@ const BUILD25_FOXY_GIF_PATH = path.join(__dirname, 'build25-foxy.gif');
 const BUILD25_FOXY_SCREAM_PATH = path.join(__dirname, 'build25-foxy-scream.mp3');
 const BUILD25_FOXY_FINAL_PATH = path.join(__dirname, 'build25-foxy-final.png');
 const MAPS_DIR = path.join(__dirname, 'maps');
+const { ZombiesRun } = require('./zombies25-core');
+const ZOMBIES_MAP_PATH = path.join(MAPS_DIR, 'wasteland.json');
+const zombiesSessions = new Map();
 const BANS_FILE = process.env.DIGGERZ_BANS_FILE || path.join(__dirname, 'bans.json');
 const PLAYERS_FILE = process.env.DIGGERZ_PLAYERS_FILE || path.join(__dirname, 'players.json');
 const DONATIONS_FILE = process.env.DIGGERZ_DONATIONS_FILE || path.join(__dirname, 'donations.json');
@@ -3821,6 +3824,58 @@ const server = http.createServer(async (req, res) => {
   }
   if (urlPath === '/build239-client.js') { serveBuffer(res,build239ClientJs,'application/javascript; charset=utf-8'); return; }
   if (urlPath === '/build240-client.js') { serveBuffer(res,build240ClientJs,'application/javascript; charset=utf-8'); return; }
+  // Build 25 Zombies development API (only a single independent solo session per token).
+  if (urlPath === '/api/zombies/map' && req.method === 'GET') {
+    try {
+      const map=JSON.parse(fs.readFileSync(ZOMBIES_MAP_PATH,'utf8'));
+      sendApiJson(res,200,{ok:true,map});
+    } catch(error){sendApiJson(res,503,{ok:false,error:'wasteland-map-not-installed'});}
+    return;
+  }
+  if (urlPath === '/api/zombies/action' && req.method === 'POST') {
+    let body;
+    try {body=await readJsonBody(req,8192);}
+    catch {sendApiJson(res,400,{ok:false,error:'invalid-request'});return;}
+    const token=String(body&&body.session||'');
+    if(!/^[a-f0-9]{48}$/.test(token)){sendApiJson(res,403,{ok:false,error:'session-required'});return;}
+    const game=zombiesSessions.get(token);
+    if(!game){sendApiJson(res,404,{ok:false,error:'no-session'});return;}
+    let result={ok:true};
+    switch(body.action){
+      case 'move':game.move(body.x,body.y);break;
+      case 'shoot':result=game.fire(Number(body.zombie));break;
+      case 'collect':result={ok:game.collect(Number(body.drop))};break;
+      case 'box':result=game.boxInteract();break;
+      case 'equip':game.setActive(Number(body.index));break;
+      case 'leave':game.finish();zombiesSessions.delete(token);break;
+      default:result={ok:false,error:'unknown-action'};
+    }
+    sendApiJson(res,200,result);return;
+  }
+  if (urlPath === '/api/zombies/start' && req.method === 'POST') {
+    try {
+      const map=JSON.parse(fs.readFileSync(ZOMBIES_MAP_PATH,'utf8'));
+      const id=crypto.randomBytes(24).toString('hex');
+      const events=[];const game=new ZombiesRun(map,event=>events.push(event));
+      const timer=setInterval(()=>{
+        if(game.phase==='over'){clearInterval(timer);return;}
+        game.tick(.1);
+        // Prevent unbounded events until client polling is installed.
+        if(events.length>200)events.splice(0,events.length-200);
+      },100);
+      game.events=events;game.timer=timer;
+      zombiesSessions.set(id,game);
+      sendApiJson(res,200,{ok:true,session:id,map:map.name});
+    } catch(error){sendApiJson(res,503,{ok:false,error:'zombies-not-configured'});}
+    return;
+  }
+  if (urlPath === '/api/zombies/state' && req.method === 'GET') {
+    const u=new URL(req.url,'http://localhost');
+    const game=zombiesSessions.get(String(u.searchParams.get('session')||''));
+    if(!game){sendApiJson(res,404,{ok:false,error:'no-session'});return;}
+    sendApiJson(res,200,{ok:true,events:game.events.splice(0),state:{phase:game.phase,wave:game.wave,points:game.points,kills:game.kills,player:game.player,zombies:game.zombies,box:game.box}});
+    return;
+  }
   if (urlPath === '/build250-client.js') { serveBuffer(res,build250ClientJs,'application/javascript; charset=utf-8'); return; }
   if (urlPath === '/tiles.png') { serveBuffer(res,tilesPng,'image/png'); return; }
   if (urlPath === '/bknd.png') { serveBuffer(res,bkndPng,'image/png'); return; }
