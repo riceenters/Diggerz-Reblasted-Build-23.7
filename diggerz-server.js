@@ -68,6 +68,22 @@ const MAPS_DIR = path.join(__dirname, 'maps');
 const { ZombiesRun } = require('./zombies25-core');
 const ZOMBIES_MAP_PATH = path.join(MAPS_DIR, 'wasteland.json');
 const zombiesSessions = new Map();
+const ZOMBIES_MAX_ACTIVE_SESSIONS = 20;
+const ZOMBIES_IDLE_MS = 12 * 60 * 1000;
+function disposeZombieSession(token) {
+  const game=zombiesSessions.get(token);
+  if (!game) return;
+  if (game.timer) clearInterval(game.timer);
+  zombiesSessions.delete(token);
+}
+const zombieCleanup=setInterval(()=>{
+  const now=Date.now();
+  for(const [token,game] of zombiesSessions) {
+    if(game.phase==='over'||now-(game.lastSeen||now)>ZOMBIES_IDLE_MS) disposeZombieSession(token);
+  }
+},60*1000);
+if(zombieCleanup.unref)zombieCleanup.unref();
+
 const BANS_FILE = process.env.DIGGERZ_BANS_FILE || path.join(__dirname, 'bans.json');
 const PLAYERS_FILE = process.env.DIGGERZ_PLAYERS_FILE || path.join(__dirname, 'players.json');
 const DONATIONS_FILE = process.env.DIGGERZ_DONATIONS_FILE || path.join(__dirname, 'donations.json');
@@ -3853,6 +3869,7 @@ const server = http.createServer(async (req, res) => {
     if(!/^[a-f0-9]{48}$/.test(token)){sendApiJson(res,403,{ok:false,error:'session-required'});return;}
     const game=zombiesSessions.get(token);
     if(!game){sendApiJson(res,404,{ok:false,error:'no-session'});return;}
+    game.lastSeen=Date.now();
     let result={ok:true};
     switch(body.action){
       case 'move':game.move(body.x,body.y);break;
@@ -3860,12 +3877,13 @@ const server = http.createServer(async (req, res) => {
       case 'collect':result={ok:game.collect(Number(body.drop))};break;
       case 'box':result=game.boxInteract();break;
       case 'equip':game.setActive(Number(body.index));break;
-      case 'leave':game.finish();zombiesSessions.delete(token);break;
+      case 'leave':game.finish();disposeZombieSession(token);break;
       default:result={ok:false,error:'unknown-action'};
     }
     sendApiJson(res,200,result);return;
   }
   if (urlPath === '/api/zombies/start' && req.method === 'POST') {
+    if(zombiesSessions.size>=ZOMBIES_MAX_ACTIVE_SESSIONS){sendApiJson(res,429,{ok:false,error:'zombies-capacity'});return;}
     try {
       const map=JSON.parse(fs.readFileSync(ZOMBIES_MAP_PATH,'utf8'));
       const id=crypto.randomBytes(24).toString('hex');
@@ -3876,7 +3894,7 @@ const server = http.createServer(async (req, res) => {
         // Prevent unbounded events until client polling is installed.
         if(events.length>200)events.splice(0,events.length-200);
       },100);
-      game.events=events;game.timer=timer;
+      game.events=events;game.timer=timer;game.lastSeen=Date.now();
       zombiesSessions.set(id,game);
       sendApiJson(res,200,{ok:true,session:id,map:map.name});
     } catch(error){sendApiJson(res,503,{ok:false,error:'zombies-not-configured'});}
@@ -3886,6 +3904,7 @@ const server = http.createServer(async (req, res) => {
     const u=new URL(req.url,'http://localhost');
     const game=zombiesSessions.get(String(u.searchParams.get('session')||''));
     if(!game){sendApiJson(res,404,{ok:false,error:'no-session'});return;}
+    game.lastSeen=Date.now();
     sendApiJson(res,200,{ok:true,events:game.events.splice(0),state:{phase:game.phase,wave:game.wave,points:game.points,kills:game.kills,player:game.player,zombies:game.zombies,box:game.box}});
     return;
   }
